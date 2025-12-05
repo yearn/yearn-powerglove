@@ -1,11 +1,11 @@
 import { useQuery, ApolloError } from '@apollo/client'
 import { GET_VAULT_DETAILS } from '@/graphql/queries/vaults'
-import { queryAPY, queryPPS, queryTVL } from '@/graphql/queries/timeseries'
 import { VaultExtended } from '@/types/vaultTypes'
 import { TimeseriesDataPoint } from '@/types/dataTypes'
 import { useMemo } from 'react'
 import { ChainId } from '@/constants/chains'
 import { useYDaemonVault } from '@/hooks/useYDaemonVaults'
+import { useRestTimeseries } from '@/hooks/useRestTimeseries'
 
 interface UseVaultPageDataProps {
   vaultAddress: string
@@ -38,7 +38,8 @@ interface UseVaultPageDataReturn {
 }
 
 /**
- * Coordinates all GraphQL queries for the vault page and manages loading states
+ * Coordinates data fetching for the vault page and manages loading states
+ * Uses GraphQL for vault details and REST API for timeseries data
  */
 export function useVaultPageData({
   vaultAddress,
@@ -57,62 +58,51 @@ export function useVaultPageData({
     vaultAddress
   )
 
-  // Fetch weekly APY data
+  // Fetch weekly APY data from REST API
   const {
     data: apyWeeklyData,
-    loading: apyWeeklyLoading,
+    isLoading: apyWeeklyLoading,
     error: apyWeeklyError,
-  } = useQuery(queryAPY, {
-    variables: {
-      chainId: vaultChainId,
-      address: vaultAddress,
-      label: 'apy-bwd-delta-pps',
-      component: 'weeklyNet',
-      limit: 1000,
-    },
+  } = useRestTimeseries({
+    segment: 'apy-historical',
+    chainId: vaultChainId,
+    address: vaultAddress,
+    components: ['weeklyNet'],
   })
 
-  // Fetch weekly Monthly data
+  // Fetch monthly APY data from REST API
   const {
     data: apyMonthlyData,
-    loading: apyMonthlyLoading,
+    isLoading: apyMonthlyLoading,
     error: apyMonthlyError,
-  } = useQuery(queryAPY, {
-    variables: {
-      chainId: vaultChainId,
-      address: vaultAddress,
-      label: 'apy-bwd-delta-pps',
-      component: 'monthlyNet',
-      limit: 1000,
-    },
+  } = useRestTimeseries({
+    segment: 'apy-historical',
+    chainId: vaultChainId,
+    address: vaultAddress,
+    components: ['monthlyNet'],
   })
 
-  // Fetch TVL data
+  // Fetch TVL data from REST API
   const {
     data: tvlData,
-    loading: tvlLoading,
+    isLoading: tvlLoading,
     error: tvlError,
-  } = useQuery(queryTVL, {
-    variables: {
-      chainId: vaultChainId,
-      address: vaultAddress,
-      label: 'tvl',
-      limit: 1000,
-    },
+  } = useRestTimeseries({
+    segment: 'tvl',
+    chainId: vaultChainId,
+    address: vaultAddress,
   })
 
-  // Fetch PPS data
+  // Fetch PPS data from REST API
   const {
     data: ppsData,
-    loading: ppsLoading,
+    isLoading: ppsLoading,
     error: ppsError,
-  } = useQuery(queryPPS, {
-    variables: {
-      address: vaultAddress,
-      label: 'pps',
-      component: 'humanized',
-      limit: 1000,
-    },
+  } = useRestTimeseries({
+    segment: 'pps',
+    chainId: vaultChainId,
+    address: vaultAddress,
+    components: ['humanized'],
   })
 
   // Extract vault details with null safety
