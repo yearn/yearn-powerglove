@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { ReallocationChart, ReallocationStrategyTable } from '@/components/reallocation-panel'
+import { KongDataTab } from '@/components/strategies-panel/KongDataTab'
 import StrategiesSkeleton from '@/components/strategies-panel/StrategiesSkeleton'
 import { useIsMobile } from '@/components/ui/use-mobile'
 import { VaultEventsPanel, VaultManagementEventsPanel } from '@/components/vault-events'
@@ -15,6 +16,7 @@ import {
   getReallocationPanelLabels
 } from '@/lib/reallocation-panels'
 import { cn } from '@/lib/utils'
+import type { KongVaultSnapshot } from '@/types/kong'
 import type { ReallocationData } from '@/types/reallocationTypes'
 import type { VaultExtended } from '@/types/vaultTypes'
 import type { ChainId } from '../../constants/chains'
@@ -27,12 +29,13 @@ interface StrategiesPanelProps {
   aboutDescription?: string
   aboutLink?: string
   reallocationData?: ReallocationData | null
+  kongSnapshot: KongVaultSnapshot | null
 }
 
 const ABOUT_TAB_TEXT = `No additional vault description is currently available.`
 
 export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
-  ({ vaultChainId, vaultDetails, aboutDescription, aboutLink, reallocationData }) => {
+  ({ vaultChainId, vaultDetails, aboutDescription, aboutLink, reallocationData, kongSnapshot }) => {
     // Extract data logic to custom hooks
     const strategiesData = useStrategiesData(vaultChainId, vaultDetails)
     const sortingState = useSortingAndFiltering(strategiesData.strategies)
@@ -57,6 +60,7 @@ export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
     const mainTabs = React.useMemo(() => {
       const list: string[] = ['Current Strategies']
       if (hasReallocation) list.push('Current Reallocation')
+      list.push('Kong Data')
       if (isMobile && hasAbout) list.push('About')
       return list
     }, [hasReallocation, isMobile, hasAbout])
@@ -268,6 +272,8 @@ export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
             </div>
           )
         }
+        case 'Kong Data':
+          return <KongDataTab snapshot={kongSnapshot} />
         // case 'Info':
         //   return (
         //     <div className="p-8">

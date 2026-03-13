@@ -32,6 +32,7 @@ function SingleVaultPage() {
   const {
     vaultDetails,
     vaultSnapshotTimestampUtc,
+    kongSnapshot,
     apyWeeklyData,
     apyMonthlyData,
     aprOracleAprData,
@@ -184,6 +185,7 @@ function SingleVaultPage() {
             aboutDescription={mainInfoPanelProps.description}
             aboutLink={mainInfoPanelProps.yearnVaultLink}
             reallocationData={reallocationData}
+            kongSnapshot={kongSnapshot}
           />
         </div>
       </div>
