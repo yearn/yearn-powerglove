@@ -30,6 +30,7 @@ function SingleVaultPage() {
 
   const {
     vaultDetails,
+    kongSnapshot,
     apyWeeklyData,
     apyMonthlyData,
     aprOracleAprData,
@@ -169,7 +170,7 @@ function SingleVaultPage() {
               hasErrors={chartsError}
             />
           </Suspense>
-          <StrategiesPanel vaultChainId={vaultChainId} vaultDetails={vaultDetails} />
+          <StrategiesPanel vaultChainId={vaultChainId} vaultDetails={vaultDetails} kongSnapshot={kongSnapshot} />
         </div>
       </div>
     </VaultPageLayout>

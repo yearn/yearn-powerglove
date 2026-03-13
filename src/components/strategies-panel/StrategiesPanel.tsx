@@ -1,8 +1,10 @@
 import React, { useState } from 'react'
+import { KongDataTab } from '@/components/strategies-panel/KongDataTab'
 import StrategiesSkeleton from '@/components/strategies-panel/StrategiesSkeleton'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useSortingAndFiltering } from '@/hooks/useSortingAndFiltering'
 import { useStrategiesData } from '@/hooks/useStrategiesData'
-import { cn } from '@/lib/utils'
+import type { KongVaultSnapshot } from '@/types/kong'
 import type { VaultExtended } from '@/types/vaultTypes'
 import type { ChainId } from '../../constants/chains'
 import { StrategyAllocationChart } from './StrategyAllocationChart'
@@ -11,119 +13,103 @@ import { StrategyTable } from './StrategyTable'
 interface StrategiesPanelProps {
   vaultChainId: ChainId
   vaultDetails: VaultExtended
+  kongSnapshot: KongVaultSnapshot | null
 }
 
-export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(({ vaultChainId, vaultDetails }) => {
-  // Extract data logic to custom hooks
-  const strategiesData = useStrategiesData(vaultChainId, vaultDetails)
-  const sortingState = useSortingAndFiltering(strategiesData.strategies)
+export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
+  ({ vaultChainId, vaultDetails, kongSnapshot }) => {
+    // Extract data logic to custom hooks
+    const strategiesData = useStrategiesData(vaultChainId, vaultDetails)
+    const sortingState = useSortingAndFiltering(strategiesData.strategies)
 
-  // UI state
-  const [expandedRow, setExpandedRow] = useState<number | null>(null)
-  const [activeTab, setActiveTab] = useState<string>('Strategies')
-  const [showUnallocated, setShowUnallocated] = useState<boolean>(false)
+    // UI state
+    const [expandedRow, setExpandedRow] = useState<number | null>(null)
+    const [activeTab, setActiveTab] = useState<'strategies' | 'kong-data'>('strategies')
+    const [showUnallocated, setShowUnallocated] = useState<boolean>(false)
 
-  const toggleRow = (index: number) => {
-    setExpandedRow(expandedRow === index ? null : index)
-  }
+    const toggleRow = (index: number) => {
+      setExpandedRow(expandedRow === index ? null : index)
+    }
 
-  const renderTabContent = () => {
-    switch (activeTab) {
-      case 'Strategies': {
-        if (strategiesData.isLoading) {
-          return <StrategiesSkeleton />
-        }
+    const renderStrategiesContent = () => {
+      if (strategiesData.isLoading) {
+        return <StrategiesSkeleton />
+      }
 
-        // Add error state handling
-        if (strategiesData.error) {
-          return (
-            <div className="flex justify-center items-center h-full">
-              <p className="text-red-500">{strategiesData.error?.message}</p>
-            </div>
-          )
-        }
-
-        // Check if strategies is empty or null
-        if (!sortingState.sortedStrategies || sortingState.sortedStrategies.length === 0) {
-          return (
-            <div className="flex justify-center items-center h-full p-20">
-              <p className="text-gray-500 text-center">
-                This vault contains no strategies, and most likely is a strategy for an allocator vault.
-              </p>
-            </div>
-          )
-        }
-
+      if (strategiesData.error) {
         return (
-          <div className="pb-4 lg:flex lg:flex-row flex-col">
-            {/* Table Section */}
-            <StrategyTable
-              allocatedStrategies={sortingState.allocatedStrategies}
-              unallocatedStrategies={sortingState.unallocatedStrategies}
-              sortColumn={sortingState.sortColumn}
-              sortDirection={sortingState.sortDirection}
-              onSort={sortingState.handleSort}
-              expandedRow={expandedRow}
-              onToggleRow={toggleRow}
-              showUnallocated={showUnallocated}
-              onToggleUnallocated={() => setShowUnallocated(!showUnallocated)}
-            />
-
-            {/* Charts Section */}
-            <StrategyAllocationChart
-              allocationData={strategiesData.allocationChartData}
-              apyContributionData={strategiesData.apyContributionChartData}
-              totalAPYContribution={strategiesData.totalAPYContribution}
-            />
+          <div className="flex h-full items-center justify-center px-6 py-20">
+            <p className="text-sm text-red-500">{strategiesData.error.message}</p>
           </div>
         )
       }
-      // case 'Info':
-      //   return (
-      //     <div className="p-8">
-      //       <h2 className="text-xl font-semibold mb-4">Info</h2>
-      //       <p className="text-[#4f4f4f]">
-      //         Additional information and details about the investment strategy.
-      //       </p>
-      //     </div>
-      //   )
-      // case 'Risk':
-      //   return (
-      //     <div className="p-8">
-      //       <h2 className="text-xl font-semibold mb-4">Risk</h2>
-      //       <p className="text-[#4f4f4f]">
-      //         Risk assessment and considerations for this investment strategy.
-      //       </p>
-      //     </div>
-      //   )
-      default:
-        return null
-    }
-  }
 
-  return (
-    <div className="w-full">
-      <div className="w-full mx-auto bg-white border-x border-b border-border">
-        {/* Tab Navigation */}
-        <div className="flex items-center border-b border-border">
-          {/*{['Strategies', 'Info', 'Risk'].map(tab => (*/}
-          {['Strategies'].map((tab) => (
-            <div
-              key={tab}
-              className={cn(
-                'px-6 py-3 cursor-pointer',
-                activeTab === tab ? 'text-black font-medium border-b-2 border-[#0657f9]' : 'text-[#808080]'
-              )}
-              onClick={() => setActiveTab(tab)}
-            >
-              {tab}
-            </div>
-          ))}
+      if (!sortingState.sortedStrategies || sortingState.sortedStrategies.length === 0) {
+        return (
+          <div className="flex h-full items-center justify-center px-6 py-20">
+            <p className="max-w-xl text-center text-sm text-muted-foreground">
+              This vault contains no strategies, and most likely is itself a strategy for an allocator vault.
+            </p>
+          </div>
+        )
+      }
+
+      return (
+        <div className="flex flex-col pb-4 lg:flex-row">
+          <StrategyTable
+            allocatedStrategies={sortingState.allocatedStrategies}
+            unallocatedStrategies={sortingState.unallocatedStrategies}
+            sortColumn={sortingState.sortColumn}
+            sortDirection={sortingState.sortDirection}
+            onSort={sortingState.handleSort}
+            expandedRow={expandedRow}
+            onToggleRow={toggleRow}
+            showUnallocated={showUnallocated}
+            onToggleUnallocated={() => setShowUnallocated(!showUnallocated)}
+          />
+
+          <StrategyAllocationChart
+            allocationData={strategiesData.allocationChartData}
+            apyContributionData={strategiesData.apyContributionChartData}
+            totalAPYContribution={strategiesData.totalAPYContribution}
+          />
         </div>
+      )
+    }
 
-        {/* Tab Content */}
-        {renderTabContent()}
+    return (
+      <div className="w-full">
+        <div className="mx-auto w-full border-x border-b border-border bg-white">
+          <Tabs value={activeTab} className="w-full" onValueChange={(value) => setActiveTab(value as typeof activeTab)}>
+            <div className="border-b border-border">
+              <div className="px-0 pt-3">
+                <TabsList className="grid h-auto w-fit grid-cols-2 bg-transparent p-0">
+                  <TabsTrigger
+                    value="strategies"
+                    className="rounded-none border-b-2 border-transparent px-5 py-2.5 text-sm text-muted-foreground data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none"
+                  >
+                    Strategies
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="kong-data"
+                    className="rounded-none border-b-2 border-transparent px-5 py-2.5 text-sm text-muted-foreground data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none"
+                  >
+                    Kong Data
+                  </TabsTrigger>
+                </TabsList>
+              </div>
+            </div>
+
+            <TabsContent value="strategies" className="mt-0">
+              {renderStrategiesContent()}
+            </TabsContent>
+
+            <TabsContent value="kong-data" className="mt-0">
+              <KongDataTab snapshot={kongSnapshot} />
+            </TabsContent>
+          </Tabs>
+        </div>
       </div>
-    </div>
-  )
-})
+    )
+  }
+)
