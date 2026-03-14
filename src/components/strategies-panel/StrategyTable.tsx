@@ -41,7 +41,7 @@ export const StrategyTable: React.FC<StrategyTableProps> = React.memo(
     }
 
     return (
-      <div className="lg:flex-1">
+      <div className="w-full">
         <div className="border border-[#f5f5f5]">
           {/* Table Header */}
           <div className="flex items-center p-3 text-sm text-[#4f4f4f]">

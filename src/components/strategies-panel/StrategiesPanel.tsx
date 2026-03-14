@@ -55,26 +55,26 @@ export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(({ vau
         }
 
         return (
-          <div className="pb-4 lg:flex lg:flex-row flex-col">
-            {/* Table Section */}
-            <StrategyTable
-              allocatedStrategies={sortingState.allocatedStrategies}
-              unallocatedStrategies={sortingState.unallocatedStrategies}
-              sortColumn={sortingState.sortColumn}
-              sortDirection={sortingState.sortDirection}
-              onSort={sortingState.handleSort}
-              expandedRow={expandedRow}
-              onToggleRow={toggleRow}
-              showUnallocated={showUnallocated}
-              onToggleUnallocated={() => setShowUnallocated(!showUnallocated)}
-            />
+          <div className="flex flex-col pb-4 lg:flex-row lg:gap-6">
+            <div className="w-full lg:basis-3/4">
+              <StrategyTable
+                allocatedStrategies={sortingState.allocatedStrategies}
+                unallocatedStrategies={sortingState.unallocatedStrategies}
+                sortColumn={sortingState.sortColumn}
+                sortDirection={sortingState.sortDirection}
+                onSort={sortingState.handleSort}
+                expandedRow={expandedRow}
+                onToggleRow={toggleRow}
+                showUnallocated={showUnallocated}
+                onToggleUnallocated={() => setShowUnallocated(!showUnallocated)}
+              />
+            </div>
 
-            {/* Charts Section */}
-            <StrategyAllocationChart
-              allocationData={strategiesData.allocationChartData}
-              apyContributionData={strategiesData.apyContributionChartData}
-              totalAPYContribution={strategiesData.totalAPYContribution}
-            />
+            {strategiesData.allocationChartData.length > 0 && (
+              <div className="w-full lg:basis-1/4">
+                <StrategyAllocationChart allocationData={strategiesData.allocationChartData} />
+              </div>
+            )}
           </div>
         )
       }

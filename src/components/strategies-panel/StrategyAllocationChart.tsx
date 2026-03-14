@@ -1,149 +1,179 @@
 import React from 'react'
 import { Cell, Label, Pie, PieChart, Tooltip } from 'recharts'
+import type { NameType, Payload, ValueType } from 'recharts/types/component/DefaultTooltipContent'
+import type { StrategyAllocationChartDatum } from '@/types/dataTypes'
 
-interface AllocationChartData {
-  id: number
-  name: string
-  value: number
-  amount: string
-}
-
-interface APYContributionChartData {
-  id: number
-  name: string
-  value: number
-  formattedValue: string
-  apyValue: number
-  allocationPercent: number
-}
+const LIGHT_MODE_COLORS = ['#0657f9', '#3d7bfa', '#5c93fb', '#7aabfc', '#99c3fd', '#b8dbfe']
+const DARK_MODE_COLORS = ['#ff6ba5', '#ffb3d1', '#ff8fbb', '#ffd6e7', '#d21162', '#ff4d94']
 
 interface StrategyAllocationChartProps {
-  allocationData: AllocationChartData[]
-  apyContributionData: APYContributionChartData[]
-  totalAPYContribution: number
-  colors?: string[]
+  allocationData: StrategyAllocationChartDatum[]
 }
 
-// Generate colors for chart segments
-const DEFAULT_COLORS = [
-  '#000838', // Dark blue
-  '#001070',
-  '#0018A8',
-  '#0020E0' // Lighter blue
-]
-
-// Custom tooltip component for the charts
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const CustomTooltip = ({ active, payload }: any) => {
-  if (active && payload && payload.length) {
-    const data = payload[0].payload
-    return (
-      <div className="bg-white p-2 shadow-lg border border-[#f5f5f5] min-w-[180px]">
-        <p className="font-medium text-sm">{data.name}</p>
-        {data.amount && (
-          <div className="flex justify-between text-xs mt-1">
-            <span className="text-[#808080]">Allocation:</span>
-            <span>{data.value}%</span>
-          </div>
-        )}
-        {data.amount && (
-          <div className="flex justify-between text-xs">
-            <span className="text-[#808080]">Amount:</span>
-            <span>{data.amount}</span>
-          </div>
-        )}
-        {data.apyValue && (
-          <div className="flex justify-between text-xs mt-1">
-            <span className="text-[#808080]">APY:</span>
-            <span>{data.apyValue}%</span>
-          </div>
-        )}
-        {data.formattedValue && (
-          <div className="flex justify-between text-xs">
-            <span className="text-[#808080]">Contribution:</span>
-            <span>{data.formattedValue}%</span>
-          </div>
-        )}
-      </div>
-    )
+function isRootDarkMode(): boolean {
+  if (typeof document === 'undefined') {
+    return false
   }
-  return null
+
+  return document.documentElement.classList.contains('dark')
 }
 
-export const StrategyAllocationChart: React.FC<StrategyAllocationChartProps> = React.memo(
-  ({ allocationData, apyContributionData, totalAPYContribution, colors = DEFAULT_COLORS }) => {
-    return (
-      <div className="lg:ml-6 lg:w-64 mt-6 lg:mt-0 flex lg:flex-col flex-row justify-around pt-3 pb-16">
-        {/* Allocation Chart */}
-        <div className="lg:w-full w-1/2 pr-2 lg:pr-0">
-          <PieChart width={160} height={160}>
-            <Pie
-              data={allocationData}
-              dataKey="value"
-              nameKey="name"
-              cx="50%"
-              cy="50%"
-              innerRadius={60}
-              outerRadius={80}
-              startAngle={90}
-              endAngle={-270}
-            >
-              {allocationData.map((entry, index) => (
-                <Cell key={entry.id} fill={colors[index % colors.length]} />
-              ))}
-              <Label
-                content={() => (
-                  <text
-                    x={80}
-                    y={80}
-                    textAnchor="middle"
-                    dominantBaseline="middle"
-                    className="fill-foreground text-sm font-medium"
-                  >
-                    allocation %
-                  </text>
-                )}
-              />
-            </Pie>
-            <Tooltip content={<CustomTooltip />} />
-          </PieChart>
-        </div>
+function useRootDarkMode(): boolean {
+  const [isDark, setIsDark] = React.useState(() => isRootDarkMode())
 
-        {/* APY Contribution Chart */}
-        <div className="lg:w-full w-1/2 pl-2 lg:pl-0 lg:mt-6">
-          <PieChart width={160} height={160}>
-            <Pie
-              data={apyContributionData}
-              dataKey="value"
-              nameKey="name"
-              cx="50%"
-              cy="50%"
-              innerRadius={60}
-              outerRadius={80}
-              startAngle={90}
-              endAngle={-270}
+  React.useEffect(() => {
+    if (typeof document === 'undefined') {
+      return undefined
+    }
+
+    const root = document.documentElement
+    const sync = () => setIsDark(root.classList.contains('dark'))
+    sync()
+
+    if (typeof MutationObserver === 'undefined') {
+      return undefined
+    }
+
+    const observer = new MutationObserver(sync)
+    observer.observe(root, {
+      attributes: true,
+      attributeFilter: ['class']
+    })
+
+    return () => observer.disconnect()
+  }, [])
+
+  return isDark
+}
+
+function AllocationTooltip({
+  active,
+  payload
+}: {
+  active: boolean
+  payload: Payload<ValueType, NameType>[] | undefined
+}): React.ReactNode {
+  if (!active || !payload?.length) {
+    return null
+  }
+
+  const data = payload[0]?.payload as StrategyAllocationChartDatum | undefined
+  if (!data) {
+    return null
+  }
+
+  return (
+    <div className="min-w-[180px] border border-border bg-card p-2 text-card-foreground shadow-lg">
+      <p className="text-sm font-medium">{data.name}</p>
+      <div className="mt-1 flex justify-between text-xs">
+        <span>{data.name === 'Unallocated' ? 'Percentage:' : 'Allocation:'}</span>
+        <span className="font-semibold">{data.value.toFixed(2)}%</span>
+      </div>
+      <div className="flex justify-between text-xs">
+        <span>Amount:</span>
+        <span className="font-semibold">{data.amount}</span>
+      </div>
+    </div>
+  )
+}
+
+function AllocationPie({
+  allocationData,
+  colors,
+  strokeColor,
+  width,
+  height,
+  innerRadius,
+  outerRadius
+}: {
+  allocationData: StrategyAllocationChartDatum[]
+  colors: string[]
+  strokeColor: string
+  width: number
+  height: number
+  innerRadius: number
+  outerRadius: number
+}): React.ReactNode {
+  return (
+    <PieChart width={width} height={height}>
+      <Pie
+        data={allocationData}
+        dataKey="value"
+        nameKey="name"
+        cx="50%"
+        cy="50%"
+        innerRadius={innerRadius}
+        outerRadius={outerRadius}
+        paddingAngle={5}
+        fill="white"
+        stroke={strokeColor}
+        startAngle={90}
+        minAngle={3}
+        endAngle={-270}
+      >
+        {allocationData.map(({ id }, index) => (
+          <Cell key={id} fill={colors[index % colors.length]} />
+        ))}
+        <Label
+          content={() => (
+            <text
+              x={width / 2}
+              y={height / 2}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              className="fill-foreground text-sm font-medium"
             >
-              {apyContributionData.map((entry, index) => (
-                <Cell key={entry.id} fill={colors[index % colors.length]} />
-              ))}
-              <Label
-                content={() => (
-                  <text
-                    x={80}
-                    y={80}
-                    textAnchor="middle"
-                    dominantBaseline="middle"
-                    className="fill-foreground text-sm font-medium"
-                  >
-                    {totalAPYContribution.toFixed(2)}%
-                  </text>
-                )}
-              />
-            </Pie>
-            <Tooltip content={<CustomTooltip />} />
-          </PieChart>
+              allocation %
+            </text>
+          )}
+        />
+      </Pie>
+      <Tooltip
+        position={{ y: -80 }}
+        content={({ active, payload }) => <AllocationTooltip active={active || false} payload={payload} />}
+      />
+    </PieChart>
+  )
+}
+
+export const StrategyAllocationChart: React.FC<StrategyAllocationChartProps> = React.memo(({ allocationData }) => {
+  const isDark = useRootDarkMode()
+  const colors = isDark ? DARK_MODE_COLORS : LIGHT_MODE_COLORS
+  const strokeColor = isDark ? '#ff6ba5' : '#0657f9'
+
+  if (allocationData.length === 0) {
+    return null
+  }
+
+  return (
+    <div
+      className="mt-6 flex w-full flex-col items-center pt-3 pb-16 lg:mt-0 lg:px-4"
+      data-testid="strategy-allocation-chart"
+    >
+      <div className="flex w-full items-center justify-center">
+        <div className="md:hidden">
+          <AllocationPie
+            allocationData={allocationData}
+            colors={colors}
+            strokeColor={strokeColor}
+            width={192}
+            height={192}
+            innerRadius={64}
+            outerRadius={96}
+          />
+        </div>
+        <div className="hidden md:block">
+          <AllocationPie
+            allocationData={allocationData}
+            colors={colors}
+            strokeColor={strokeColor}
+            width={220}
+            height={220}
+            innerRadius={74}
+            outerRadius={108}
+          />
         </div>
       </div>
-    )
-  }
-)
+    </div>
+  )
+})

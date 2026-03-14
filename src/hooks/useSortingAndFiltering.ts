@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react'
-import { parseCompactDisplayNumber } from '@/lib/formatters'
 import type { Strategy } from '@/types/dataTypes'
 import type { SortDirection } from '@/utils/sortingUtils'
 
@@ -43,9 +42,9 @@ export function useSortingAndFiltering(strategies: Strategy[]): SortingAndFilter
             ? a.allocationPercent - b.allocationPercent
             : b.allocationPercent - a.allocationPercent
         case 'allocationAmount': {
-          const aVal = parseCompactDisplayNumber(a.allocationAmount)
-          const bVal = parseCompactDisplayNumber(b.allocationAmount)
-          return sortDirection === 'asc' ? aVal - bVal : bVal - aVal
+          return sortDirection === 'asc'
+            ? a.allocationAmountUsd - b.allocationAmountUsd
+            : b.allocationAmountUsd - a.allocationAmountUsd
         }
         case 'estimatedAPY': {
           const aVal = parseFormattedPercentage(a.estimatedAPY)

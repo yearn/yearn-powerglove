@@ -82,11 +82,19 @@ export type Strategy = {
   name: string
   allocationPercent: number
   allocationAmount: string
+  allocationAmountUsd: number
   estimatedAPY: string
   estimatedApySource?: 'ydaemon' | 'oracle' | 'graph'
   tokenSymbol: string
   tokenIconUri: string
   details: StrategyDetails
+}
+
+export type StrategyAllocationChartDatum = {
+  id: string
+  name: string
+  value: number
+  amount: string
 }
 
 export type VaultDebtData = {
