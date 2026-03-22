@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import APYChart from '@/components/charts/APYChart'
 import ChartSkeleton from '@/components/charts/ChartSkeleton'
 import ChartsLoader from '@/components/charts/ChartsLoader'
 import { FixedHeightChartContainer } from '@/components/charts/chart-container'
 import PPSChart from '@/components/charts/PPSChart'
 import TVLChart from '@/components/charts/TVLChart'
+import { useIsMobile } from '@/components/ui/use-mobile'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ChartErrorBoundary } from '@/components/utils/ErrorBoundary'
 import type { aprApyChartData, ppsChartData, tvlChartData } from '@/types/dataTypes'
@@ -17,32 +18,41 @@ type ChartData = {
   hasErrors?: boolean
 }
 
+type ChartTab = 'historical-apy' | 'historical-pps' | 'historical-tvl'
+
+const chartTabs: Array<{
+  value: ChartTab
+  label: string
+  mobileLabel: string
+}> = [
+  { value: 'historical-apy', label: 'Historical Performance', mobileLabel: 'Performance' },
+  { value: 'historical-pps', label: 'Historical Share Growth', mobileLabel: 'Share Growth' },
+  { value: 'historical-tvl', label: 'Historical TVL', mobileLabel: 'TVL' }
+]
+
+const timeframes = [
+  { label: '30 Days', mobileLabel: '30D', value: '30d' },
+  { label: '90 Days', mobileLabel: '90D', value: '90d' },
+  { label: '1 Year', mobileLabel: '1Y', value: '1y' },
+  { label: 'All Time', mobileLabel: 'All', value: 'all' }
+] as const
+
 export function ChartsPanel(data: ChartData) {
-  const [activeTab, setActiveTab] = useState('historical-apy')
+  const isMobile = useIsMobile()
+  const [activeTab, setActiveTab] = useState<ChartTab>('historical-apy')
   const { aprApyData, tvlData, ppsData, isLoading = false, hasErrors = false } = data
+  const [timeframe, setTimeframe] = useState(timeframes[3])
 
-  // Define timeframe options with values that match the chart component expectations
-  const timeframes = [
-    { label: '30 Days', value: '30d' },
-    { label: '90 Days', value: '90d' },
-    { label: '1 Year', value: '1y' },
-    { label: 'All Time', value: 'all' }
-  ]
-
-  const [timeframe, setTimeframe] = useState(timeframes[3]) // Default to All Time
-
-  // Show error state if there are errors
   if (hasErrors) {
     return (
       <div className="border-x border-border bg-white">
-        <div className="h-96 flex items-center justify-center">
+        <div className="flex h-96 items-center justify-center">
           <div className="text-red-500">Error loading chart data</div>
         </div>
       </div>
     )
   }
 
-  // Show skeleton with loader overlay when loading or no data yet
   if (isLoading || !aprApyData || !tvlData || !ppsData) {
     return (
       <div className="relative">
@@ -52,94 +62,53 @@ export function ChartsPanel(data: ChartData) {
     )
   }
 
-  // Define chart titles and descriptions based on active tab
   const chartInfo = {
     'historical-apy': {
-      title: 'Vault Performance (TVL shown ghosted)',
-      description: `1-Day, 7-Day, and 30-Day APYs over ${timeframe.label}.`
+      title: 'Vault Performance',
+      description: `1-Day, 7-Day, and 30-Day APYs over ${timeframe.label}.`,
+      mobileDescription: `Compare APY trends over ${timeframe.mobileLabel}.`
     },
     'historical-pps': {
-      title: 'Vault Share Growth (1-Day APY shown ghosted)',
-      description: `Price Per Share values over ${timeframe.label}.`
+      title: 'Vault Share Growth',
+      description: `Price Per Share values over ${timeframe.label}.`,
+      mobileDescription: `Track share price growth over ${timeframe.mobileLabel}.`
     },
     'historical-tvl': {
-      title: 'Total Value Deposited (APY shown ghosted)',
-      description: `Value Deposited in Vault over ${timeframe.label}.`
+      title: 'Total Value Deposited',
+      description: `Value deposited in vault over ${timeframe.label}.`,
+      mobileDescription: `Review TVL changes over ${timeframe.mobileLabel}.`
     }
-  }
+  } satisfies Record<ChartTab, { title: string; description: string; mobileDescription: string }>
 
-  return (
-    <div className="border-x border-border bg-white">
-      <Tabs defaultValue="historical-apy" className="w-full" onValueChange={(value) => setActiveTab(value)}>
-        <div className="border-b border-border">
-          <div className="px-0 pt-4">
-            <TabsList className="grid w-fit grid-cols-3 bg-transparent p-0">
-              <TabsTrigger
-                value="historical-apy"
-                className="rounded-none border-b-2 border-transparent px-4 py-2 data-[state=active]:border-[#0657f9] data-[state=active]:bg-transparent data-[state=active]:shadow-none"
-              >
-                Historical Performance
-              </TabsTrigger>
-              <TabsTrigger
-                value="historical-pps"
-                className="rounded-none border-b-2 border-transparent px-4 py-2 data-[state=active]:border-[#0657f9] data-[state=active]:bg-transparent data-[state=active]:shadow-none"
-              >
-                Historical Share Growth
-              </TabsTrigger>
-              <TabsTrigger
-                value="historical-tvl"
-                className="rounded-none border-b-2 border-transparent px-4 py-2 data-[state=active]:border-[#0657f9] data-[state=active]:bg-transparent data-[state=active]:shadow-none"
-              >
-                Historical TVL
-              </TabsTrigger>
-            </TabsList>
-          </div>
-        </div>
+  const activeChartInfo = chartInfo[activeTab]
+  const showGhostedOverlay = !isMobile
+  const chartHeightClassName = isMobile ? 'h-[260px]' : 'h-[320px] lg:h-[400px]'
 
-        <div className="p-6">
-          <div className="flex justify-between items-center mb-4">
-            <div>
-              <div className="text-sm font-medium">{chartInfo[activeTab as keyof typeof chartInfo].title}</div>
-              <div className="text-xs text-gray-500">{chartInfo[activeTab as keyof typeof chartInfo].description}</div>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {timeframes.map((tf) => (
-                <button
-                  key={tf.value}
-                  onClick={() => setTimeframe(tf)}
-                  className={`px-3 py-1 text-sm ${
-                    timeframe.value === tf.value
-                      ? 'bg-gray-200 text-gray-800'
-                      : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                  }`}
-                >
-                  {tf.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <TabsContent value="historical-apy" className="mt-0">
-            <FixedHeightChartContainer>
-              <ChartErrorBoundary>
-                <APYChart chartData={aprApyData} timeframe={timeframe.value} />
-              </ChartErrorBoundary>
-              <div className="absolute inset-0 opacity-10 pointer-events-none">
-                {/* Ghosted TVL chart */}
+  const chartBody = useMemo(() => {
+    switch (activeTab) {
+      case 'historical-apy':
+        return (
+          <FixedHeightChartContainer heightClassName={chartHeightClassName}>
+            <ChartErrorBoundary>
+              <APYChart chartData={aprApyData} timeframe={timeframe.value} />
+            </ChartErrorBoundary>
+            {showGhostedOverlay && (
+              <div className="pointer-events-none absolute inset-0 opacity-10">
                 <ChartErrorBoundary>
                   <TVLChart chartData={tvlData} timeframe={timeframe.value} hideAxes={true} hideTooltip={true} />
                 </ChartErrorBoundary>
               </div>
-            </FixedHeightChartContainer>
-          </TabsContent>
-
-          <TabsContent value="historical-pps" className="mt-0">
-            <FixedHeightChartContainer>
-              <ChartErrorBoundary>
-                <PPSChart chartData={ppsData} timeframe={timeframe.value} />
-              </ChartErrorBoundary>
-              <div className="absolute inset-0 opacity-30 pointer-events-none">
-                {/* Ghosted APY chart (7-day) */}
+            )}
+          </FixedHeightChartContainer>
+        )
+      case 'historical-pps':
+        return (
+          <FixedHeightChartContainer heightClassName={chartHeightClassName}>
+            <ChartErrorBoundary>
+              <PPSChart chartData={ppsData} timeframe={timeframe.value} />
+            </ChartErrorBoundary>
+            {showGhostedOverlay && (
+              <div className="pointer-events-none absolute inset-0 opacity-30">
                 <ChartErrorBoundary>
                   <APYChart
                     chartData={aprApyData}
@@ -156,16 +125,17 @@ export function ChartsPanel(data: ChartData) {
                   />
                 </ChartErrorBoundary>
               </div>
-            </FixedHeightChartContainer>
-          </TabsContent>
-
-          <TabsContent value="historical-tvl" className="mt-0">
-            <FixedHeightChartContainer>
-              <ChartErrorBoundary>
-                <TVLChart chartData={tvlData} timeframe={timeframe.value} />
-              </ChartErrorBoundary>
-              <div className="absolute inset-0 opacity-30 pointer-events-none">
-                {/* Ghosted APY chart (7-day) */}
+            )}
+          </FixedHeightChartContainer>
+        )
+      case 'historical-tvl':
+        return (
+          <FixedHeightChartContainer heightClassName={chartHeightClassName}>
+            <ChartErrorBoundary>
+              <TVLChart chartData={tvlData} timeframe={timeframe.value} />
+            </ChartErrorBoundary>
+            {showGhostedOverlay && (
+              <div className="pointer-events-none absolute inset-0 opacity-30">
                 <ChartErrorBoundary>
                   <APYChart
                     chartData={aprApyData}
@@ -182,7 +152,70 @@ export function ChartsPanel(data: ChartData) {
                   />
                 </ChartErrorBoundary>
               </div>
-            </FixedHeightChartContainer>
+            )}
+          </FixedHeightChartContainer>
+        )
+    }
+  }, [activeTab, aprApyData, chartHeightClassName, ppsData, showGhostedOverlay, timeframe.value, tvlData])
+
+  return (
+    <div className="border-x border-border bg-white">
+      <Tabs value={activeTab} className="w-full" onValueChange={(value) => setActiveTab(value as ChartTab)}>
+        <div className="border-b border-border">
+          <div className="px-4 pt-4 sm:px-6">
+            <TabsList className="grid h-auto w-full grid-cols-1 gap-2 bg-transparent p-0 sm:w-fit sm:grid-cols-3 sm:gap-0">
+              {chartTabs.map((tab) => (
+                <TabsTrigger
+                  key={tab.value}
+                  value={tab.value}
+                  className="h-auto rounded-none border border-border px-4 py-3 text-left text-sm data-[state=active]:border-[#0657f9] data-[state=active]:bg-[#0657f9]/5 data-[state=active]:text-foreground data-[state=active]:shadow-none sm:border-x-0 sm:border-t-0 sm:border-b-2 sm:text-center"
+                >
+                  {isMobile ? tab.mobileLabel : tab.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </div>
+        </div>
+
+        <div className="space-y-4 p-4 sm:p-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="space-y-1">
+              <div className="text-sm font-medium">{activeChartInfo.title}</div>
+              <div className="text-xs text-gray-500">
+                {isMobile ? activeChartInfo.mobileDescription : activeChartInfo.description}
+              </div>
+              {isMobile && (
+                <div className="text-[11px] text-gray-400">Tap the series toggles below the chart to simplify the view.</div>
+              )}
+            </div>
+            <div className="grid grid-cols-4 gap-2 sm:flex sm:flex-wrap">
+              {timeframes.map((tf) => (
+                <button
+                  key={tf.value}
+                  onClick={() => setTimeframe(tf)}
+                  className={`min-w-0 rounded-md px-3 py-2 text-center text-xs font-medium transition-colors sm:text-sm ${
+                    timeframe.value === tf.value
+                      ? 'bg-[#0657f9] text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                  type="button"
+                >
+                  {isMobile ? tf.mobileLabel : tf.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <TabsContent value="historical-apy" className="mt-0">
+            {activeTab === 'historical-apy' ? chartBody : null}
+          </TabsContent>
+
+          <TabsContent value="historical-pps" className="mt-0">
+            {activeTab === 'historical-pps' ? chartBody : null}
+          </TabsContent>
+
+          <TabsContent value="historical-tvl" className="mt-0">
+            {activeTab === 'historical-tvl' ? chartBody : null}
           </TabsContent>
         </div>
       </Tabs>

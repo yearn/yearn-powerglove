@@ -2,102 +2,91 @@ import React, { useMemo } from 'react'
 import { Bar, CartesianGrid, ComposedChart, ResponsiveContainer, XAxis, YAxis } from 'recharts'
 import { getTimeframeLimit } from '@/components/charts/chart-utils'
 import { ChartContainer, ChartTooltip } from '@/components/ui/chart'
+import { useIsMobile } from '@/components/ui/use-mobile'
 import type { ChartDataPoint } from '@/types/dataTypes'
 
 interface TVLChartProps {
   chartData: ChartDataPoint[]
   timeframe: string
-  hideAxes?: boolean // Added prop for hiding axes
-  hideTooltip?: boolean // Added prop for hiding tooltip
+  hideAxes?: boolean
+  hideTooltip?: boolean
 }
 
 const formatTooltipValue = (value: number) => {
   return `$${value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
 }
 
-// Converted to a React function component with arrow syntax
-export const TVLChart: React.FC<TVLChartProps> = React.memo(
-  ({
-    // memoized
-    chartData,
-    timeframe,
-    hideAxes,
-    hideTooltip
-  }) => {
-    const filteredData = useMemo(() => chartData.slice(-getTimeframeLimit(timeframe)), [chartData, timeframe])
+export const TVLChart: React.FC<TVLChartProps> = React.memo(({ chartData, timeframe, hideAxes, hideTooltip }) => {
+  const isMobile = useIsMobile()
+  const filteredData = useMemo(() => chartData.slice(-getTimeframeLimit(timeframe)), [chartData, timeframe])
 
-    return (
-      <ChartContainer
-        config={{
-          value: { label: 'TVL (millions)', color: 'var(--chart-1)' }
-        }}
-        style={{ height: 'inherit' }}
-      >
-        <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart
-            data={filteredData}
-            margin={{
-              top: 20,
-              right: 30,
-              left: 10, // Increased left margin for Y-axis label
-              bottom: 20
-            }}
-          >
-            <CartesianGrid vertical={false} />
-            <XAxis
-              dataKey="date"
-              tick={
-                hideAxes
-                  ? false
-                  : {
+  return (
+    <ChartContainer
+      config={{
+        value: { label: 'TVL (millions)', color: 'var(--chart-1)' }
+      }}
+      style={{ height: '100%' }}
+    >
+      <ResponsiveContainer width="100%" height="100%">
+        <ComposedChart
+          data={filteredData}
+          margin={{
+            top: 12,
+            right: isMobile ? 8 : 20,
+            left: isMobile ? -18 : 0,
+            bottom: hideAxes ? 8 : isMobile ? 12 : 16
+          }}
+        >
+          <CartesianGrid vertical={false} />
+          <XAxis
+            dataKey="date"
+            minTickGap={isMobile ? 32 : 24}
+            tick={
+              hideAxes
+                ? false
+                : {
+                    fill: 'hsl(var(--muted-foreground))',
+                    fontSize: isMobile ? 11 : 12
+                  }
+            }
+            axisLine={hideAxes ? false : { stroke: 'hsl(var(--muted-foreground))' }}
+            tickLine={hideAxes ? false : { stroke: 'hsl(var(--muted-foreground))' }}
+          />
+          <YAxis
+            width={isMobile ? 52 : 68}
+            domain={[0, 'auto']}
+            tickFormatter={(value) => `$${(value / 1_000_000).toFixed(1)}M`}
+            label={
+              hideAxes || isMobile
+                ? undefined
+                : {
+                    value: 'TVL ($ millions)',
+                    angle: -90,
+                    position: 'insideLeft',
+                    offset: 10,
+                    style: {
+                      textAnchor: 'middle',
                       fill: 'hsl(var(--muted-foreground))'
                     }
-              } // Hide ticks when hideAxes is true
-              axisLine={hideAxes ? false : { stroke: 'hsl(var(--muted-foreground))' }} // Hide axis line
-              tickLine={hideAxes ? false : { stroke: 'hsl(var(--muted-foreground))' }} // Hide tick lines
-            />
-            <YAxis
-              domain={[0, 'auto']}
-              tickFormatter={(value) => `$${(value / 1_000_000).toFixed(1)}M`}
-              label={
-                hideAxes
-                  ? undefined
-                  : {
-                      value: 'TVL ($ millions)',
-                      angle: -90,
-                      position: 'insideLeft',
-                      offset: 10,
-                      style: {
-                        textAnchor: 'middle',
-                        fill: 'hsl(var(--muted-foreground))' // Added fill color
-                      }
-                    }
-              } // Hide label when hideAxes is true
-              tick={
-                hideAxes
-                  ? false
-                  : {
-                      fill: 'hsl(var(--muted-foreground))'
-                    }
-              } // Hide ticks when hideAxes is true
-              axisLine={hideAxes ? false : { stroke: 'hsl(var(--muted-foreground))' }} // Hide axis line
-              tickLine={hideAxes ? false : { stroke: 'hsl(var(--muted-foreground))' }} // Hide tick lines
-            />
-            {!hideTooltip && <ChartTooltip formatter={formatTooltipValue} />}
-            <Bar
-              dataKey="TVL"
-              fill={'var(--color-value)'}
-              stroke={'transparent'}
-              // fill={hideAxes ? 'transparent' : 'var(--color-value)'}
-              // stroke={hideAxes ? 'var(--color-value)' : 'transparent'}
-              radius={[4, 4, 0, 0]}
-              isAnimationActive={false}
-            />
-          </ComposedChart>
-        </ResponsiveContainer>
-      </ChartContainer>
-    )
-  }
-)
+                  }
+            }
+            tick={
+              hideAxes
+                ? false
+                : {
+                    fill: 'hsl(var(--muted-foreground))',
+                    fontSize: isMobile ? 11 : 12
+                  }
+            }
+            axisLine={hideAxes ? false : { stroke: 'hsl(var(--muted-foreground))' }}
+            tickLine={hideAxes ? false : { stroke: 'hsl(var(--muted-foreground))' }}
+          />
+          {!hideTooltip && <ChartTooltip formatter={formatTooltipValue} />}
+          <Bar dataKey="TVL" fill="var(--color-value)" stroke="transparent" radius={[4, 4, 0, 0]} isAnimationActive={false} />
+        </ComposedChart>
+      </ResponsiveContainer>
+    </ChartContainer>
+  )
+})
 
 export default TVLChart
