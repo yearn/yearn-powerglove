@@ -58,7 +58,7 @@ export default function Header() {
           </a>
         </div>
 
-        <div className="relative hidden w-full md:block md:w-[300px]">
+        <div className="relative w-full md:w-[300px]">
           <input
             ref={searchInputRef}
             type="text"

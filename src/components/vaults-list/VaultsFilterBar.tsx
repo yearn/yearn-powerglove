@@ -88,21 +88,34 @@ const YearnAvatar = () => {
 
 const MobileChainDropdown = ({
   chains,
-  selectedChainId,
+  selectedChainIds,
   allChainsLabel,
-  onChange
+  onChainToggle,
+  onSetSelectedChains
 }: {
   chains: MobileChainOption[]
-  selectedChainId: number | null
+  selectedChainIds: number[]
   allChainsLabel: string
-  onChange: (chainId: number | null) => void
+  onChainToggle: (chainId: number) => void
+  onSetSelectedChains: (chainIds: number[]) => void
 }) => {
   const [open, setOpen] = useState(false)
-  const selectedChain = selectedChainId ? (chains.find((chain) => chain.id === selectedChainId) ?? null) : null
+  const allSelected = selectedChainIds.length === 0 || selectedChainIds.length === chains.length
+  const selectedChain =
+    selectedChainIds.length === 1 ? (chains.find((chain) => chain.id === selectedChainIds[0]) ?? null) : null
+  const triggerLabel = allSelected ? allChainsLabel : selectedChain ? selectedChain.name : `${selectedChainIds.length} Chains`
 
-  const handleSelect = (chainId: number | null) => {
-    onChange(chainId)
+  const handleClearSelection = () => {
+    onSetSelectedChains([])
     setOpen(false)
+  }
+
+  const handleChainToggle = (chainId: number) => {
+    if (allSelected) {
+      onSetSelectedChains([chainId])
+    } else {
+      onChainToggle(chainId)
+    }
   }
 
   return (
@@ -115,7 +128,7 @@ const MobileChainDropdown = ({
         >
           <div className="flex min-w-0 items-center gap-2">
             {selectedChain ? <ChainAvatar iconUri={selectedChain.icon} alt={selectedChain.name} /> : <YearnAvatar />}
-            <span className="truncate">{selectedChain ? selectedChain.name : allChainsLabel}</span>
+            <span className="truncate">{triggerLabel}</span>
           </div>
           <ChevronDown className={cn('h-4 w-4 shrink-0 text-gray-500 transition-transform', open && 'rotate-180')} />
         </button>
@@ -132,17 +145,17 @@ const MobileChainDropdown = ({
             type="button"
             className={cn(
               'flex w-full items-center gap-2 rounded-none px-3 py-2 text-left text-sm transition-colors hover:bg-gray-50',
-              selectedChain === null ? 'font-semibold text-gray-900' : 'text-gray-600'
+              allSelected ? 'font-semibold text-gray-900' : 'text-gray-600'
             )}
-            onClick={() => handleSelect(null)}
+            onClick={handleClearSelection}
           >
             <YearnAvatar />
             <span className="min-w-0 flex-1 truncate">{allChainsLabel}</span>
-            {selectedChain === null ? <Check className="h-4 w-4 text-gray-900" /> : null}
+            {allSelected ? <Check className="h-4 w-4 text-gray-900" /> : null}
           </button>
 
           {chains.map((chain) => {
-            const isSelected = chain.id === selectedChainId
+            const isSelected = !allSelected && selectedChainIds.includes(chain.id)
             return (
               <button
                 key={chain.id}
@@ -151,7 +164,7 @@ const MobileChainDropdown = ({
                   'flex w-full items-center gap-2 rounded-none px-3 py-2 text-left text-sm transition-colors hover:bg-gray-50',
                   isSelected ? 'font-semibold text-gray-900' : 'text-gray-600'
                 )}
-                onClick={() => handleSelect(chain.id)}
+                onClick={() => handleChainToggle(chain.id)}
               >
                 <ChainAvatar iconUri={chain.icon} alt={chain.name} />
                 <span className="min-w-0 flex-1 truncate">{chain.name}</span>
@@ -237,9 +250,10 @@ export const VaultsFilterBar: React.FC<VaultsFilterBarProps> = ({
 
         <MobileChainDropdown
           chains={mobileChains}
-          selectedChainId={selectedChains[0] ?? null}
+          selectedChainIds={selectedChains}
           allChainsLabel="All Chains"
-          onChange={(chainId) => onSetSelectedChains(chainId === null ? [] : [chainId])}
+          onChainToggle={onChainToggle}
+          onSetSelectedChains={onSetSelectedChains}
         />
 
         <Sheet open={isMobileFiltersOpen} onOpenChange={setIsMobileFiltersOpen}>

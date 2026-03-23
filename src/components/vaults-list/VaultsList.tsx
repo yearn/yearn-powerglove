@@ -66,7 +66,7 @@ export const VaultsList: React.FC<VaultsListProps> = React.memo(({ vaults, token
 
       {/* Vaults List */}
       {isMobile ? (
-        <VaultsMobileList vaults={filteredAndSortedVaults} />
+        <VaultsMobileList vaults={filteredAndSortedVaults} availableHeight={availableHeight} />
       ) : (
         <div className="overflow-hidden rounded border bg-white text-sm">
           <VaultsTableHeader sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />

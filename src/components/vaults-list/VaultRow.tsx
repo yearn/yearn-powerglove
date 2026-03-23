@@ -26,6 +26,8 @@ interface VaultMobileListRowProps extends VaultRowProps {
   isLast?: boolean
 }
 
+export const MOBILE_VAULT_ROW_HEIGHT = 72
+
 const TYPE_META_LABELS: Record<string, string> = {
   'Allocator Vault': 'Allocator',
   'Strategy Vault': 'Strategy',
@@ -135,7 +137,7 @@ export const VaultMobileListRow: React.FC<VaultMobileListRowProps> = ({ vault, i
         vaultAddress: vault.id
       }}
       className={cn(
-        'block bg-white px-3 py-2.5 transition-colors hover:bg-gray-50',
+        'block h-full bg-white px-3 py-2.5 transition-colors hover:bg-gray-50',
         !isLast && 'border-b border-gray-100'
       )}
     >
