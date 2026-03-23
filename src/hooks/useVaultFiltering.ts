@@ -4,7 +4,7 @@ import { getChainIdByName } from '@/constants/chains'
 import { parseCompactDisplayNumber } from '@/lib/formatters'
 import type { SortDirection } from '@/utils/sortingUtils'
 
-type VaultSortColumn = keyof VaultListData
+export type VaultSortColumn = keyof VaultListData
 
 export interface VaultFilteringState {
   sortColumn: VaultSortColumn

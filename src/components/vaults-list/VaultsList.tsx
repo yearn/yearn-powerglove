@@ -1,4 +1,5 @@
 import React from 'react'
+import { useIsMobile } from '@/components/ui/use-mobile'
 import { YearnVaultsSummary } from '@/components/YearnVaultsSummary'
 import { useViewportHeight } from '@/hooks/useResponsiveHeight'
 import { useVaultFiltering } from '@/hooks/useVaultFiltering'
@@ -6,6 +7,7 @@ import { useVaultListData } from '@/hooks/useVaultListData'
 import type { TokenAsset } from '@/types/tokenAsset'
 import type { Vault } from '@/types/vaultTypes'
 import { VaultsFilterBar } from './VaultsFilterBar'
+import { VaultsMobileList } from './VaultsMobileList'
 import { VaultsTable } from './VaultsTable'
 import { VaultsTableHeader } from './VaultsTableHeader'
 
@@ -15,6 +17,8 @@ interface VaultsListProps {
 }
 
 export const VaultsList: React.FC<VaultsListProps> = React.memo(({ vaults, tokenAssets }) => {
+  const isMobile = useIsMobile()
+
   // Calculate available height for virtual scrolling container
   const availableHeight = useViewportHeight({
     headerHeight: 53, // Header height
@@ -30,6 +34,8 @@ export const VaultsList: React.FC<VaultsListProps> = React.memo(({ vaults, token
     searchTerm,
     selectedChains,
     selectedTypes,
+    setSortColumn,
+    setSortDirection,
     setSearchTerm,
     setSelectedChains,
     setSelectedTypes,
@@ -41,30 +47,32 @@ export const VaultsList: React.FC<VaultsListProps> = React.memo(({ vaults, token
 
   return (
     <div>
-      <YearnVaultsSummary
-        vaults={vaults}
-        selectedType={selectedTypes[0] || ''}
-        onTypeFilterChange={(type: string) => setSelectedTypes([type])}
-      />
+      <YearnVaultsSummary />
       {/* Filters Bar */}
       <VaultsFilterBar
         selectedChains={selectedChains}
         selectedTypes={selectedTypes}
         searchTerm={searchTerm}
+        sortColumn={sortColumn}
+        sortDirection={sortDirection}
         onChainToggle={handleToggleChain}
         onSetSelectedChains={setSelectedChains}
         onTypeToggle={handleToggleType}
+        onSetSelectedTypes={setSelectedTypes}
         onSearchChange={setSearchTerm}
+        onSortColumnChange={setSortColumn}
+        onSortDirectionChange={setSortDirection}
       />
 
       {/* Vaults List */}
-      <div className="border rounded text-sm overflow-hidden bg-white">
-        {/* Headers Row */}
-        <VaultsTableHeader sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
-
-        {/* Virtual Scrolled Rows */}
-        <VaultsTable vaults={filteredAndSortedVaults} availableHeight={availableHeight} />
-      </div>
+      {isMobile ? (
+        <VaultsMobileList vaults={filteredAndSortedVaults} />
+      ) : (
+        <div className="overflow-hidden rounded border bg-white text-sm">
+          <VaultsTableHeader sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
+          <VaultsTable vaults={filteredAndSortedVaults} availableHeight={availableHeight} />
+        </div>
+      )}
     </div>
   )
 })

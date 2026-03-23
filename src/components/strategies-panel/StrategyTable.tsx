@@ -1,6 +1,8 @@
 import { ChevronDown, ChevronRight, ChevronUp } from 'lucide-react'
 import React from 'react'
+import { useIsMobile } from '@/components/ui/use-mobile'
 import type { StrategySortColumn } from '@/hooks/useSortingAndFiltering'
+import { cn } from '@/lib/utils'
 import type { Strategy } from '@/types/dataTypes'
 import type { SortDirection } from '@/utils/sortingUtils'
 import { StrategyRow } from './StrategyRow'
@@ -29,6 +31,8 @@ export const StrategyTable: React.FC<StrategyTableProps> = React.memo(
     showUnallocated,
     onToggleUnallocated
   }) => {
+    const isMobile = useIsMobile()
+
     const renderSortIcon = (column: StrategySortColumn) => {
       if (sortColumn !== column) {
         return <ChevronDown className="w-4 h-4 ml-1 inline-block" />
@@ -43,32 +47,58 @@ export const StrategyTable: React.FC<StrategyTableProps> = React.memo(
     return (
       <div className="w-full">
         <div className="border border-[#f5f5f5]">
-          {/* Table Header */}
-          <div className="flex items-center p-3 text-sm text-[#4f4f4f]">
-            <div className="w-1/2 flex items-center">
-              <span className="ml-8 whitespace-nowrap">Vault</span>
+          {isMobile ? (
+            <div className="border-b border-[#f5f5f5] p-3">
+              <div className="text-[11px] font-medium uppercase tracking-[0.08em] text-[#808080]">Sort strategies</div>
+              <div className="mt-2 flex flex-wrap gap-2">
+                  {[
+                  { column: 'allocationPercent', label: 'Allocation %' },
+                  { column: 'allocationAmount', label: 'amount' },
+                  { column: 'estimatedAPY', label: 'APY' }
+                ].map(({ column, label }) => (
+                  <button
+                    key={column}
+                    type="button"
+                    onClick={() => onSort(column as StrategySortColumn)}
+                    className={cn(
+                      'rounded-full border px-3 py-1.5 text-xs font-medium transition-colors',
+                      sortColumn === column
+                        ? 'border-[#0657f9] bg-[#0657f9]/10 text-[#0657f9]'
+                        : 'border-[#e5e5e5] text-[#4f4f4f] hover:bg-[#f5f5f5]'
+                    )}
+                  >
+                    {label}
+                    {renderSortIcon(column as StrategySortColumn)}
+                  </button>
+                ))}
+              </div>
             </div>
-            <div
-              className="w-1/6 text-right whitespace-nowrap cursor-pointer"
-              onClick={() => onSort('allocationPercent')}
-            >
-              <span>Allocation %</span>
-              {renderSortIcon('allocationPercent')}
+          ) : (
+            <div className="flex items-center p-3 text-sm text-[#4f4f4f]">
+              <div className="flex w-1/2 items-center">
+                <span className="ml-8 whitespace-nowrap">Vault</span>
+              </div>
+              <div
+                className="w-1/6 cursor-pointer whitespace-nowrap text-right"
+                onClick={() => onSort('allocationPercent')}
+              >
+                <span>Allocation %</span>
+                {renderSortIcon('allocationPercent')}
+              </div>
+              <div
+                className="w-1/6 cursor-pointer whitespace-nowrap text-right"
+                onClick={() => onSort('allocationAmount')}
+              >
+                <span>amount</span>
+                {renderSortIcon('allocationAmount')}
+              </div>
+              <div className="w-1/6 cursor-pointer whitespace-nowrap text-right" onClick={() => onSort('estimatedAPY')}>
+                <span>APY</span>
+                {renderSortIcon('estimatedAPY')}
+              </div>
             </div>
-            <div
-              className="w-1/6 text-right whitespace-nowrap cursor-pointer"
-              onClick={() => onSort('allocationAmount')}
-            >
-              <span>Allocation $</span>
-              {renderSortIcon('allocationAmount')}
-            </div>
-            <div className="w-1/6 text-right whitespace-nowrap cursor-pointer" onClick={() => onSort('estimatedAPY')}>
-              <span>Est. APY</span>
-              {renderSortIcon('estimatedAPY')}
-            </div>
-          </div>
+          )}
 
-          {/* Allocated Strategies Table Rows */}
           {allocatedStrategies.map((strategy) => (
             <StrategyRow
               key={strategy.id}
@@ -78,18 +108,20 @@ export const StrategyTable: React.FC<StrategyTableProps> = React.memo(
             />
           ))}
 
-          {/* Accordion for Unallocated Strategies */}
           {unallocatedStrategies.length > 0 && (
             <div className="border-t border-[#f5f5f5]">
-              <div className="flex items-center p-3 hover:bg-[#f5f5f5]/50 cursor-pointer" onClick={onToggleUnallocated}>
-                <div className="w-8 flex justify-center">
+              <div className="flex cursor-pointer items-center p-3 hover:bg-[#f5f5f5]/50" onClick={onToggleUnallocated}>
+                <div className="flex w-8 justify-center">
                   {showUnallocated ? (
                     <ChevronDown className="w-4 h-4 text-[#4f4f4f]" />
                   ) : (
                     <ChevronRight className="w-4 h-4 text-[#4f4f4f]" />
                   )}
                 </div>
-                <div className="flex-1 ml-2 text-sm font-medium">View unallocated strategies</div>
+                <div className="ml-2 flex-1 text-sm font-medium">
+                  View unallocated strategies
+                  <span className="ml-2 text-xs font-normal text-[#808080]">({unallocatedStrategies.length})</span>
+                </div>
               </div>
               {showUnallocated &&
                 unallocatedStrategies.map((strategy) => (

@@ -147,7 +147,7 @@ export const StrategyAllocationChart: React.FC<StrategyAllocationChartProps> = R
 
   return (
     <div
-      className="mt-6 flex w-full flex-col items-center pt-3 pb-16 lg:mt-0 lg:px-4"
+      className="mt-4 flex w-full flex-col items-center pb-4 pt-3 lg:mt-0 lg:px-4 lg:pb-12"
       data-testid="strategy-allocation-chart"
     >
       <div className="flex w-full items-center justify-center">

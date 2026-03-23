@@ -80,6 +80,15 @@ export function formatVaultTVL(tvlValue?: number): string {
   return formatCurrency(tvlValue ?? 0)
 }
 
+export function formatVaultDescription(description?: string): string {
+  return (description ?? '')
+    .replace(/<\/p>\s*<p>/gi, '\n\n')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
 /**
  * Gets network information for vault
  */

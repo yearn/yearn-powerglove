@@ -13,12 +13,21 @@ interface PPSChartProps {
   hideAxes?: boolean
   hideTooltip?: boolean
   dataKey?: 'PPS' | PercentSeriesKey
+  chartMargin?: Partial<{
+    top: number
+    right: number
+    left: number
+    bottom: number
+  }>
+  yAxisWidth?: number
 }
 
 export const PPSChart: React.FC<PPSChartProps> = React.memo(
-  ({ chartData, timeframe, hideAxes, hideTooltip, dataKey = 'PPS' }) => {
+  ({ chartData, timeframe, hideAxes, hideTooltip, dataKey = 'PPS', chartMargin, yAxisWidth }) => {
     const isMobile = useIsMobile()
     const filteredData = useMemo(() => chartData.slice(-getTimeframeLimit(timeframe)), [chartData, timeframe])
+    const chartBottomPadding = isMobile ? 12 : 16
+    const yAxisMargin = yAxisWidth ?? (isMobile ? 44 : 60)
 
     const isPercentSeries = dataKey !== 'PPS'
     const percentSeriesMeta: Record<PercentSeriesKey, { label: string; color: string }> = {
@@ -52,10 +61,10 @@ export const PPSChart: React.FC<PPSChartProps> = React.memo(
           <LineChart
             data={filteredData}
             margin={{
-              top: 12,
-              right: isMobile ? 8 : 20,
-              left: isMobile ? -20 : 0,
-              bottom: hideAxes ? 8 : isMobile ? 12 : 16
+              top: chartMargin?.top ?? 12,
+              right: chartMargin?.right ?? (isMobile ? 8 : 20),
+              left: chartMargin?.left ?? (isMobile ? -20 : 0),
+              bottom: chartMargin?.bottom ?? (hideAxes ? 8 : chartBottomPadding)
             }}
           >
             <CartesianGrid vertical={false} />
@@ -74,7 +83,7 @@ export const PPSChart: React.FC<PPSChartProps> = React.memo(
               tickLine={hideAxes ? false : { stroke: 'hsl(var(--muted-foreground))' }}
             />
             <YAxis
-              width={isMobile ? 44 : 60}
+              width={isMobile ? 44 : yAxisMargin}
               domain={isPercentSeries ? [0, 'auto'] : ['auto', 'auto']}
               tickFormatter={(value) => (isPercentSeries ? `${value}%` : Number(value).toFixed(3))}
               label={

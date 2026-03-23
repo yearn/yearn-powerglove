@@ -40,32 +40,43 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-10 border-b border-border bg-white py-2">
-      <div className="container flex items-center justify-between px-8">
-        <Link to="/" className="flex items-center gap-2 cursor-pointer">
-          <img src="/logo.svg" alt="Yearn PowerGlove Logo" className="w-6 h-6" />
-          <span className="text-lg font-bold">Yearn PowerGlove</span>
-        </Link>
-        <div className="flex items-center gap-4 relative">
-          {/* Search Bar */}
+      <div className="container flex flex-col gap-3 px-4 sm:flex-row sm:items-center sm:justify-between sm:px-8">
+        <div className="flex items-center justify-between gap-3">
+          <Link to="/" className="flex min-w-0 cursor-pointer items-center gap-2">
+            <img src="/logo.svg" alt="Yearn PowerGlove Logo" className="h-6 w-6 shrink-0" />
+            <span className="text-base font-bold sm:text-lg">Yearn PowerGlove</span>
+          </Link>
+          <a href="https://partners.yearn.fi" target="_blank" rel="noopener noreferrer" className="shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-2 rounded-none border-[#0657f9] px-3 text-xs text-[#0657f9] sm:text-sm"
+            >
+              Partner with us
+              <ExternalLink className="h-4 w-4" />
+            </Button>
+          </a>
+        </div>
+
+        <div className="relative hidden w-full md:block md:w-[300px]">
           <input
-            ref={searchInputRef} // Attach the ref to the search input
+            ref={searchInputRef}
             type="text"
             placeholder="Search vaults..."
             value={searchTerm}
             onChange={(e) => {
               setSearchTerm(e.target.value)
-              setIsDropdownOpen(true) // Open dropdown when typing
+              setIsDropdownOpen(true)
             }}
-            onFocus={() => setIsDropdownOpen(true)} // Open dropdown on focus
-            className="border border-gray-300 rounded px-2 py-1 w-[300px]"
+            onFocus={() => setIsDropdownOpen(true)}
+            className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
           />
-          {/* Dropdown for filtered vaults */}
           {isDropdownOpen && searchTerm && (
             <div
-              ref={dropdownRef} // Attach the ref to the dropdown
-              className="absolute bg-white border border-gray-300 rounded shadow-md left-0 right-0 top-full overflow-y-auto"
+              ref={dropdownRef}
+              className="absolute left-0 right-0 top-[calc(100%+0.25rem)] z-20 overflow-y-auto rounded border border-gray-300 bg-white shadow-md"
               style={{
-                maxHeight: '50vh' // Half the window height
+                maxHeight: '50vh'
               }}
             >
               {filteredVaults.map((vault) => (
@@ -76,28 +87,18 @@ export default function Header() {
                     chainId: vault.chainId.toString(),
                     vaultAddress: vault.address
                   }}
-                  className="px-4 py-2 hover:bg-gray-100 cursor-pointer flex gap-2 items-center"
+                  className="flex cursor-pointer items-center gap-2 px-4 py-2 hover:bg-gray-100"
                   onClick={() => {
                     setIsDropdownOpen(false)
                     setSearchTerm('')
                   }}
                 >
                   <span>{vault.name}</span>
-                  <span className="text-gray-600 text-sm">{vault.apiVersion}</span>{' '}
+                  <span className="text-sm text-gray-600">{vault.apiVersion}</span>
                 </Link>
               ))}
             </div>
           )}
-          <a href="partners.yearn.fi" target="_blank" rel="noopener noreferrer">
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-[#0657f9] border-[#0657f9] rounded-none flex items-center gap-2"
-            >
-              Partner with us
-              <ExternalLink className="w-4 h-4" />
-            </Button>
-          </a>
         </div>
       </div>
     </header>
