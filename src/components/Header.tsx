@@ -1,4 +1,4 @@
-import { Link } from '@tanstack/react-router'
+import { Link, useRouterState } from '@tanstack/react-router'
 import { ExternalLink } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
@@ -6,10 +6,12 @@ import { useVaults } from '@/contexts/useVaults'
 
 export default function Header() {
   const { vaults } = useVaults()
+  const pathname = useRouterState({ select: (state) => state.location.pathname })
   const [searchTerm, setSearchTerm] = useState('')
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
+  const hideMobileSearch = pathname === '/'
 
   // Filter vaults based on the search term
   const filteredVaults = vaults.filter(
@@ -58,7 +60,7 @@ export default function Header() {
           </a>
         </div>
 
-        <div className="relative w-full md:w-[300px]">
+        <div className={hideMobileSearch ? 'relative hidden w-full md:block md:w-[300px]' : 'relative w-full md:w-[300px]'}>
           <input
             ref={searchInputRef}
             type="text"
