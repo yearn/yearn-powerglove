@@ -47,7 +47,7 @@ export const VaultsList: React.FC<VaultsListProps> = React.memo(({ vaults, token
 
   return (
     <div>
-      <YearnVaultsSummary />
+      {!isMobile && <YearnVaultsSummary />}
       {/* Filters Bar */}
       <VaultsFilterBar
         selectedChains={selectedChains}
