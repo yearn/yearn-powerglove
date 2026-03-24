@@ -55,6 +55,7 @@ export type tvlChartData = {
 export type ppsChartData = {
   date: string
   PPS: number | null
+  time?: number
 }[]
 
 export type aprApyChartData = {

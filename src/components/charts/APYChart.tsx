@@ -22,6 +22,7 @@ export type APYSeriesKey =
   | 'derivedApy'
   | 'sevenDayApy'
   | 'thirtyDayApy'
+  | 'ppsPeriodApy'
   | 'oracleApr'
   | 'oracleApy30dAvg'
 export type APYVisibleSeries = Record<APYSeriesKey, boolean>
@@ -30,12 +31,15 @@ const TOOLTIP_ORDER: Record<APYSeriesKey, number> = {
   derivedApy: 0,
   sevenDayApy: 1,
   thirtyDayApy: 2,
-  oracleApr: 3,
-  oracleApy30dAvg: 4,
+  ppsPeriodApy: 3,
+  oracleApr: 4,
+  oracleApy30dAvg: 5,
 }
 
 const isDashedSeries = (seriesKey: APYSeriesKey) =>
-  seriesKey === 'thirtyDayApy' || seriesKey === 'oracleApy30dAvg'
+  seriesKey === 'thirtyDayApy' ||
+  seriesKey === 'ppsPeriodApy' ||
+  seriesKey === 'oracleApy30dAvg'
 
 const SERIES_BASE_CONFIG: Record<
   APYSeriesKey,
@@ -56,6 +60,11 @@ const SERIES_BASE_CONFIG: Record<
     legendLabel: '30-day APY',
     color: 'var(--chart-1)',
   },
+  ppsPeriodApy: {
+    chartLabel: 'Period APY %',
+    legendLabel: 'Period APY',
+    color: '#6d90f2',
+  },
   oracleApr: {
     chartLabel: 'Oracle APR %',
     legendLabel: 'Oracle APR',
@@ -72,6 +81,7 @@ const SERIES_ORDER: APYSeriesKey[] = [
   'derivedApy',
   'sevenDayApy',
   'thirtyDayApy',
+  'ppsPeriodApy',
   'oracleApr',
   'oracleApy30dAvg',
 ]
@@ -82,18 +92,22 @@ export const buildApyVisibleSeries = (
   derivedApy: overrides?.derivedApy ?? true,
   sevenDayApy: overrides?.sevenDayApy ?? true,
   thirtyDayApy: overrides?.thirtyDayApy ?? true,
+  ppsPeriodApy: overrides?.ppsPeriodApy ?? true,
   oracleApr: overrides?.oracleApr ?? false,
   oracleApy30dAvg: overrides?.oracleApy30dAvg ?? false,
 })
 
 export const getAvailableApySeries = ({
+  hasPpsPeriodApy,
   hasOracleApr,
   hasOracleApy30dAvg,
 }: {
+  hasPpsPeriodApy: boolean
   hasOracleApr: boolean
   hasOracleApy30dAvg: boolean
 }): APYSeriesKey[] => {
   return SERIES_ORDER.filter((seriesKey) => {
+    if (seriesKey === 'ppsPeriodApy') return hasPpsPeriodApy
     if (seriesKey === 'oracleApr') return hasOracleApr
     if (seriesKey === 'oracleApy30dAvg') return hasOracleApy30dAvg
     return true
@@ -116,11 +130,13 @@ interface APYChartProps {
   visibleSeries?: APYVisibleSeries
   onVisibleSeriesChange?: (nextVisibleSeries: APYVisibleSeries) => void
   hideSeriesControls?: boolean
+  ppsPeriodApy?: number | null
 }
 
 interface APYSeriesSelectorProps {
   visibleSeries: APYVisibleSeries
   onVisibleSeriesChange: (nextVisibleSeries: APYVisibleSeries) => void
+  hasPpsPeriodApy: boolean
   hasOracleApr: boolean
   hasOracleApy30dAvg: boolean
   className?: string
@@ -132,6 +148,7 @@ interface APYSeriesSelectorProps {
 export function APYSeriesSelector({
   visibleSeries,
   onVisibleSeriesChange,
+  hasPpsPeriodApy,
   hasOracleApr,
   hasOracleApy30dAvg,
   className,
@@ -152,59 +169,61 @@ export function APYSeriesSelector({
         className,
       )}
     >
-      {getAvailableApySeries({ hasOracleApr, hasOracleApy30dAvg }).map(
-        (seriesKey) => (
-          <div
-            key={seriesKey}
-            className={cn(
-              'flex min-w-[8.75rem] items-center gap-2 sm:min-w-0',
-              itemClassName,
-            )}
-          >
-            {compact ? (
+      {getAvailableApySeries({
+        hasPpsPeriodApy,
+        hasOracleApr,
+        hasOracleApy30dAvg,
+      }).map((seriesKey) => (
+        <div
+          key={seriesKey}
+          className={cn(
+            'flex min-w-[8.75rem] items-center gap-2 sm:min-w-0',
+            itemClassName,
+          )}
+        >
+          {compact ? (
+            <label
+              key={`compact-${seriesKey}`}
+              className="flex cursor-pointer items-center gap-2 text-left"
+              htmlFor={`${idPrefix}-${seriesKey}-compact`}
+            >
+              <Checkbox
+                id={`${idPrefix}-${seriesKey}-compact`}
+                checked={visibleSeries[seriesKey]}
+                className="h-4 w-4 rounded-[4px] border border-gray-400 bg-white text-gray-700 data-[state=checked]:border-gray-700 data-[state=checked]:bg-white data-[state=checked]:text-gray-800"
+                onCheckedChange={(checked) =>
+                  toggleSeries(seriesKey, !!checked)
+                }
+              />
+              <span>{SERIES_BASE_CONFIG[seriesKey].legendLabel}</span>
+            </label>
+          ) : (
+            <>
+              <Checkbox
+                id={`${idPrefix}-${seriesKey}`}
+                checked={visibleSeries[seriesKey]}
+                className="h-4 w-4 rounded-[4px] border border-gray-400 bg-white text-gray-700 data-[state=checked]:border-gray-700 data-[state=checked]:bg-white data-[state=checked]:text-gray-800"
+                onCheckedChange={(checked) =>
+                  toggleSeries(seriesKey, !!checked)
+                }
+              />
               <label
-                key={`compact-${seriesKey}`}
-                className="flex cursor-pointer items-center gap-2 text-left"
-                htmlFor={`${idPrefix}-${seriesKey}-compact`}
+                htmlFor={`${idPrefix}-${seriesKey}`}
+                className="flex items-center gap-1"
               >
-                <Checkbox
-                  id={`${idPrefix}-${seriesKey}-compact`}
-                  checked={visibleSeries[seriesKey]}
-                  className="h-4 w-4 rounded-[4px] border border-gray-400 bg-white text-gray-700 data-[state=checked]:border-gray-700 data-[state=checked]:bg-white data-[state=checked]:text-gray-800"
-                  onCheckedChange={(checked) =>
-                    toggleSeries(seriesKey, !!checked)
-                  }
+                <span
+                  aria-hidden="true"
+                  className="inline-block h-3.5 w-3.5 rounded-sm border border-gray-200"
+                  style={{
+                    backgroundColor: SERIES_BASE_CONFIG[seriesKey].color,
+                  }}
                 />
-                <span>{SERIES_BASE_CONFIG[seriesKey].legendLabel}</span>
+                {SERIES_BASE_CONFIG[seriesKey].legendLabel}
               </label>
-            ) : (
-              <>
-                <Checkbox
-                  id={`${idPrefix}-${seriesKey}`}
-                  checked={visibleSeries[seriesKey]}
-                  className="h-4 w-4 rounded-[4px] border border-gray-400 bg-white text-gray-700 data-[state=checked]:border-gray-700 data-[state=checked]:bg-white data-[state=checked]:text-gray-800"
-                  onCheckedChange={(checked) =>
-                    toggleSeries(seriesKey, !!checked)
-                  }
-                />
-                <label
-                  htmlFor={`${idPrefix}-${seriesKey}`}
-                  className="flex items-center gap-1"
-                >
-                  <span
-                    aria-hidden="true"
-                    className="inline-block h-3.5 w-3.5 rounded-sm border border-gray-200"
-                    style={{
-                      backgroundColor: SERIES_BASE_CONFIG[seriesKey].color,
-                    }}
-                  />
-                  {SERIES_BASE_CONFIG[seriesKey].legendLabel}
-                </label>
-              </>
-            )}
-          </div>
-        ),
-      )}
+            </>
+          )}
+        </div>
+      ))}
     </div>
   )
 }
@@ -221,6 +240,7 @@ export const APYChart: React.FC<APYChartProps> = React.memo(
     visibleSeries,
     onVisibleSeriesChange,
     hideSeriesControls,
+    ppsPeriodApy,
   }) => {
     const isMobile = useIsMobile()
     const [internalVisibleSeries, setInternalVisibleSeries] =
@@ -243,6 +263,8 @@ export const APYChart: React.FC<APYChartProps> = React.memo(
     )
     const chartBottomPadding = isMobile ? 12 : 16
     const yAxisMargin = yAxisWidth ?? (isMobile ? 44 : 60)
+    const hasPpsPeriodApy =
+      typeof ppsPeriodApy === 'number' && Number.isFinite(ppsPeriodApy)
 
     const hasOracleApr = useMemo(() => {
       return filteredData.some((point) => typeof point.oracleApr === 'number')
@@ -254,8 +276,22 @@ export const APYChart: React.FC<APYChartProps> = React.memo(
       )
     }, [filteredData])
 
+    const chartSeriesData = useMemo(
+      () =>
+        hasPpsPeriodApy
+          ? filteredData.map((point) => ({
+              ...point,
+              ppsPeriodApy,
+            }))
+          : filteredData,
+      [filteredData, hasPpsPeriodApy, ppsPeriodApy],
+    )
+
     const chartConfig = useMemo<ChartConfig>(() => {
       return Object.entries(SERIES_BASE_CONFIG).reduce((acc, [key, meta]) => {
+        if (key === 'ppsPeriodApy' && !hasPpsPeriodApy) {
+          return acc
+        }
         if (key === 'oracleApr' && !hasOracleApr) {
           return acc
         }
@@ -268,10 +304,22 @@ export const APYChart: React.FC<APYChartProps> = React.memo(
         }
         return acc
       }, {} as ChartConfig)
-    }, [hideAxes, hasOracleApr, hasOracleApy30dAvg])
+    }, [hideAxes, hasPpsPeriodApy, hasOracleApr, hasOracleApy30dAvg])
 
-    const getSeriesLabel = (name: string) =>
-      seriesConfig[name as APYSeriesKey]?.legendLabel || name
+    const getTimeframeLabel = (value: string) => {
+      if (value === '30d') return '30D'
+      if (value === '90d') return '90D'
+      if (value === '1y') return '1Y'
+      if (value === 'all') return 'All Time'
+      return value
+    }
+
+    const getSeriesLabel = (name: string) => {
+      if (name === 'ppsPeriodApy') {
+        return `${getTimeframeLabel(timeframe)} APY`
+      }
+      return seriesConfig[name as APYSeriesKey]?.legendLabel || name
+    }
 
     return (
       <div className="flex h-full flex-col">
@@ -279,7 +327,7 @@ export const APYChart: React.FC<APYChartProps> = React.memo(
           <ChartContainer config={chartConfig} style={{ height: '100%' }}>
             <ResponsiveContainer width="100%" height="100%">
               <LineChart
-                data={filteredData}
+                data={chartSeriesData}
                 margin={{
                   top: chartMargin?.top ?? 12,
                   right: chartMargin?.right ?? (isMobile ? 8 : 20),
@@ -445,6 +493,17 @@ export const APYChart: React.FC<APYChartProps> = React.memo(
                     isAnimationActive={false}
                   />
                 )}
+                {hasPpsPeriodApy && resolvedVisibleSeries.ppsPeriodApy && (
+                  <Line
+                    type="monotone"
+                    dataKey="ppsPeriodApy"
+                    stroke="var(--color-ppsPeriodApy)"
+                    // strokeDasharray="16 10"
+                    strokeWidth={hideAxes ? 1 : 0.5}
+                    dot={false}
+                    isAnimationActive={false}
+                  />
+                )}
                 {resolvedVisibleSeries.derivedApy && (
                   <Line
                     type="monotone"
@@ -486,6 +545,7 @@ export const APYChart: React.FC<APYChartProps> = React.memo(
             <APYSeriesSelector
               visibleSeries={resolvedVisibleSeries}
               onVisibleSeriesChange={setSeriesVisibility}
+              hasPpsPeriodApy={hasPpsPeriodApy}
               hasOracleApr={hasOracleApr}
               hasOracleApy30dAvg={hasOracleApy30dAvg}
             />

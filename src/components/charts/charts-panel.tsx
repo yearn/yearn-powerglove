@@ -8,7 +8,10 @@ import APYChart, {
 import ChartSkeleton from '@/components/charts/ChartSkeleton'
 import ChartsLoader from '@/components/charts/ChartsLoader'
 import { FixedHeightChartContainer } from '@/components/charts/chart-container'
-import { getTimeframeLimit } from '@/components/charts/chart-utils'
+import {
+  calculatePpsPeriodApy,
+  getTimeframeLimit,
+} from '@/components/charts/chart-utils'
 import PPSChart from '@/components/charts/PPSChart'
 import TVLChart from '@/components/charts/TVLChart'
 import { Button } from '@/components/ui/button'
@@ -78,7 +81,15 @@ export function ChartsPanel(data: ChartData) {
   } = data
   const [timeframe, setTimeframe] = useState<Timeframe>(timeframes[3])
   const [apyVisibleSeries, setApyVisibleSeries] = useState<APYVisibleSeries>(
-    () => buildApyVisibleSeries(),
+    () =>
+      buildApyVisibleSeries({
+        derivedApy: false,
+        sevenDayApy: false,
+        thirtyDayApy: true,
+        ppsPeriodApy: true,
+        oracleApr: false,
+        oracleApy30dAvg: true,
+      }),
   )
   const [isTimeframeDialogOpen, setIsTimeframeDialogOpen] = useState(false)
   const [isDataDialogOpen, setIsDataDialogOpen] = useState(false)
@@ -107,6 +118,8 @@ export function ChartsPanel(data: ChartData) {
   const filteredAprApyData = aprApyData.slice(
     -getTimeframeLimit(timeframe.value),
   )
+  const ppsPeriodApy = calculatePpsPeriodApy(ppsData, timeframe.value)
+  const hasPpsPeriodApy = typeof ppsPeriodApy === 'number'
   const hasOracleApr = filteredAprApyData.some(
     (point) => typeof point.oracleApr === 'number',
   )
@@ -114,6 +127,7 @@ export function ChartsPanel(data: ChartData) {
     (point) => typeof point.oracleApy30dAvg === 'number',
   )
   const availableApySeries = getAvailableApySeries({
+    hasPpsPeriodApy,
     hasOracleApr,
     hasOracleApy30dAvg,
   })
@@ -164,6 +178,7 @@ export function ChartsPanel(data: ChartData) {
                 visibleSeries={apyVisibleSeries}
                 onVisibleSeriesChange={setApyVisibleSeries}
                 hideSeriesControls={true}
+                ppsPeriodApy={ppsPeriodApy}
               />
             </ChartErrorBoundary>
             {showGhostedOverlay && (
@@ -337,6 +352,7 @@ export function ChartsPanel(data: ChartData) {
             <APYSeriesSelector
               visibleSeries={apyVisibleSeries}
               onVisibleSeriesChange={setApyVisibleSeries}
+              hasPpsPeriodApy={hasPpsPeriodApy}
               hasOracleApr={hasOracleApr}
               hasOracleApy30dAvg={hasOracleApy30dAvg}
               className="grid gap-2 border-none bg-transparent p-0"
@@ -373,6 +389,7 @@ export function ChartsPanel(data: ChartData) {
       <APYSeriesSelector
         visibleSeries={apyVisibleSeries}
         onVisibleSeriesChange={setApyVisibleSeries}
+        hasPpsPeriodApy={hasPpsPeriodApy}
         hasOracleApr={hasOracleApr}
         hasOracleApy30dAvg={hasOracleApy30dAvg}
         compact={true}
