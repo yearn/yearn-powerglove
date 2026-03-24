@@ -69,7 +69,7 @@ export const buildAllocationChartData = ({
   chartStrategies: Array<
     Pick<Strategy, 'id' | 'name' | 'allocationPercent' | 'allocationAmount' | 'allocationAmountUsd'>
   >
-  vaultTvlUsd: number
+  vaultTvlUsd: number | null
 }): StrategyAllocationChartDatum[] => {
   const strategyChartData: StrategyAllocationChartDatum[] = chartStrategies.map((strategy) => ({
     id: String(strategy.id),
@@ -79,11 +79,12 @@ export const buildAllocationChartData = ({
   }))
 
   const allocatedPercentTotal = chartStrategies.reduce((sum, strategy) => sum + strategy.allocationPercent, 0)
-  const allocatedUsdTotal = chartStrategies.reduce((sum, strategy) => sum + strategy.allocationAmountUsd, 0)
   const unallocatedPercent = Math.max(0, 100 - allocatedPercentTotal)
-  const unallocatedAmountUsd = Math.max(0, vaultTvlUsd - allocatedUsdTotal)
 
-  if (unallocatedPercent > 0) {
+  if (vaultTvlUsd !== null && unallocatedPercent > 0) {
+    const allocatedUsdTotal = chartStrategies.reduce((sum, strategy) => sum + strategy.allocationAmountUsd, 0)
+    const unallocatedAmountUsd = Math.max(0, vaultTvlUsd - allocatedUsdTotal)
+
     strategyChartData.push({
       id: 'unallocated',
       name: 'Unallocated',
@@ -165,7 +166,7 @@ export function useStrategiesData(vaultChainId: ChainId, vaultDetails: VaultExte
   const allocationChartData = useMemo(() => {
     return buildAllocationChartData({
       chartStrategies,
-      vaultTvlUsd: vaultDetails.tvl?.close ?? 0
+      vaultTvlUsd: typeof vaultDetails.tvl?.close === 'number' ? vaultDetails.tvl.close : null
     })
   }, [chartStrategies, vaultDetails.tvl?.close])
 

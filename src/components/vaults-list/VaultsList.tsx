@@ -34,7 +34,6 @@ export const VaultsList: React.FC<VaultsListProps> = React.memo(({ vaults, token
     searchTerm,
     selectedChains,
     selectedTypes,
-    setSortColumn,
     setSortDirection,
     setSearchTerm,
     setSelectedChains,
@@ -60,7 +59,7 @@ export const VaultsList: React.FC<VaultsListProps> = React.memo(({ vaults, token
         onTypeToggle={handleToggleType}
         onSetSelectedTypes={setSelectedTypes}
         onSearchChange={setSearchTerm}
-        onSortColumnChange={setSortColumn}
+        onSortColumnChange={handleSort}
         onSortDirectionChange={setSortDirection}
       />
 
