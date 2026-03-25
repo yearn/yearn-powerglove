@@ -18,7 +18,7 @@ interface VaultPageBreadcrumbProps {
  */
 export const VaultPageBreadcrumb = React.memo<VaultPageBreadcrumbProps>(({ vaultName }) => {
   return (
-    <div className="px-6 pt-2 border border-border bg-white border-b-0 border-t-0">
+    <div className="bg-white px-4 pt-2 sm:border sm:border-border sm:border-b-0 sm:border-t-0 sm:px-6">
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>

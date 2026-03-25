@@ -2,6 +2,7 @@ import React, { useMemo } from 'react'
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, XAxis, YAxis } from 'recharts'
 import { getTimeframeLimit } from '@/components/charts/chart-utils'
 import { ChartContainer, ChartTooltip } from '@/components/ui/chart'
+import { useIsMobile } from '@/components/ui/use-mobile'
 import type { ChartDataPoint } from '@/types/dataTypes'
 
 type PercentSeriesKey = 'derivedApr'
@@ -12,11 +13,21 @@ interface PPSChartProps {
   hideAxes?: boolean
   hideTooltip?: boolean
   dataKey?: 'PPS' | PercentSeriesKey
+  chartMargin?: Partial<{
+    top: number
+    right: number
+    left: number
+    bottom: number
+  }>
+  yAxisWidth?: number
 }
 
 export const PPSChart: React.FC<PPSChartProps> = React.memo(
-  ({ chartData, timeframe, hideAxes, hideTooltip, dataKey = 'PPS' }) => {
+  ({ chartData, timeframe, hideAxes, hideTooltip, dataKey = 'PPS', chartMargin, yAxisWidth }) => {
+    const isMobile = useIsMobile()
     const filteredData = useMemo(() => chartData.slice(-getTimeframeLimit(timeframe)), [chartData, timeframe])
+    const chartBottomPadding = isMobile ? 12 : 16
+    const yAxisMargin = yAxisWidth ?? (isMobile ? 44 : 60)
 
     const isPercentSeries = dataKey !== 'PPS'
     const percentSeriesMeta: Record<PercentSeriesKey, { label: string; color: string }> = {
@@ -44,36 +55,39 @@ export const PPSChart: React.FC<PPSChartProps> = React.memo(
                 }
               }
         }
-        style={{ height: 'inherit' }}
+        style={{ height: '100%' }}
       >
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
             data={filteredData}
             margin={{
-              top: 20,
-              right: 30,
-              left: 10,
-              bottom: 20
+              top: chartMargin?.top ?? 12,
+              right: chartMargin?.right ?? (isMobile ? 8 : 20),
+              left: chartMargin?.left ?? (isMobile ? -20 : 0),
+              bottom: chartMargin?.bottom ?? (hideAxes ? 8 : chartBottomPadding)
             }}
           >
             <CartesianGrid vertical={false} />
             <XAxis
               dataKey="date"
+              minTickGap={isMobile ? 32 : 24}
               tick={
                 hideAxes
                   ? false
                   : {
-                      fill: 'hsl(var(--muted-foreground))'
+                      fill: 'hsl(var(--muted-foreground))',
+                      fontSize: isMobile ? 11 : 12
                     }
               }
               axisLine={hideAxes ? false : { stroke: 'hsl(var(--muted-foreground))' }}
               tickLine={hideAxes ? false : { stroke: 'hsl(var(--muted-foreground))' }}
             />
             <YAxis
+              width={isMobile ? 44 : yAxisMargin}
               domain={isPercentSeries ? [0, 'auto'] : ['auto', 'auto']}
               tickFormatter={(value) => (isPercentSeries ? `${value}%` : Number(value).toFixed(3))}
               label={
-                hideAxes
+                hideAxes || isMobile
                   ? undefined
                   : {
                       value: isPercentSeries && activePercentMeta ? activePercentMeta.label : 'Price Per Share',
@@ -90,7 +104,8 @@ export const PPSChart: React.FC<PPSChartProps> = React.memo(
                 hideAxes
                   ? false
                   : {
-                      fill: 'hsl(var(--muted-foreground))'
+                      fill: 'hsl(var(--muted-foreground))',
+                      fontSize: isMobile ? 11 : 12
                     }
               }
               axisLine={hideAxes ? false : { stroke: 'hsl(var(--muted-foreground))' }}

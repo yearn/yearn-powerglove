@@ -3,11 +3,16 @@ import type React from 'react'
 interface ChartContainerProps {
   children: React.ReactNode
   className?: string
+  heightClassName?: string
 }
 
-export function FixedHeightChartContainer({ children, className = '' }: ChartContainerProps) {
+export function FixedHeightChartContainer({
+  children,
+  className = '',
+  heightClassName = 'h-[280px] sm:h-[360px] lg:h-[400px]'
+}: ChartContainerProps) {
   return (
-    <div className={`${className} relative h-[400px]`}>
+    <div className={`${className} relative ${heightClassName}`}>
       <div
         className="absolute inset-0"
         style={
@@ -15,14 +20,11 @@ export function FixedHeightChartContainer({ children, className = '' }: ChartCon
             '--chart-1': '#46a2ff',
             '--chart-2': '#46a2ff',
             '--chart-3': '#94adf2',
-            // '--chart-3': '#6786db',
             '--chart-4': '#b0b5bf'
           } as React.CSSProperties
         }
       >
-        {/* This div will force all children to take full height */}
         <div className="h-full w-full">
-          {/* Apply styles to override aspect-ratio */}
           <style>{`
             .aspect-video {
               aspect-ratio: auto !important;

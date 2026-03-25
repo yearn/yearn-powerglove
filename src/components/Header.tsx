@@ -1,4 +1,4 @@
-import { Link } from '@tanstack/react-router'
+import { Link, useRouterState } from '@tanstack/react-router'
 import { ExternalLink } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
@@ -6,10 +6,12 @@ import { useVaults } from '@/contexts/useVaults'
 
 export default function Header() {
   const { vaults } = useVaults()
+  const pathname = useRouterState({ select: (state) => state.location.pathname })
   const [searchTerm, setSearchTerm] = useState('')
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
+  const hideMobileSearch = pathname === '/'
 
   // Filter vaults based on the search term
   const filteredVaults = vaults.filter(
@@ -38,66 +40,76 @@ export default function Header() {
     }
   }, [])
 
+  const partnerButton = (
+    <a href="https://partners.yearn.fi" target="_blank" rel="noopener noreferrer" className="shrink-0">
+      <Button
+        variant="outline"
+        size="sm"
+        className="flex items-center gap-2 rounded-none border-[#0657f9] px-3 text-xs text-[#0657f9] sm:text-sm"
+      >
+        Partner with us
+        <ExternalLink className="h-4 w-4" />
+      </Button>
+    </a>
+  )
+
   return (
     <header className="sticky top-0 z-10 border-b border-border bg-white py-2">
-      <div className="container flex items-center justify-between px-8">
-        <Link to="/" className="flex items-center gap-2 cursor-pointer">
-          <img src="/logo.svg" alt="Yearn PowerGlove Logo" className="w-6 h-6" />
-          <span className="text-lg font-bold">Yearn PowerGlove</span>
-        </Link>
-        <div className="flex items-center gap-4 relative">
-          {/* Search Bar */}
-          <input
-            ref={searchInputRef} // Attach the ref to the search input
-            type="text"
-            placeholder="Search vaults..."
-            value={searchTerm}
-            onChange={(e) => {
-              setSearchTerm(e.target.value)
-              setIsDropdownOpen(true) // Open dropdown when typing
-            }}
-            onFocus={() => setIsDropdownOpen(true)} // Open dropdown on focus
-            className="border border-gray-300 rounded px-2 py-1 w-[300px]"
-          />
-          {/* Dropdown for filtered vaults */}
-          {isDropdownOpen && searchTerm && (
-            <div
-              ref={dropdownRef} // Attach the ref to the dropdown
-              className="absolute bg-white border border-gray-300 rounded shadow-md left-0 right-0 top-full overflow-y-auto"
-              style={{
-                maxHeight: '50vh' // Half the window height
+      <div className="container flex flex-col gap-3 px-4 sm:flex-row sm:items-center sm:justify-between sm:px-8">
+        <div className="flex items-center justify-between gap-3">
+          <Link to="/" className="flex min-w-0 cursor-pointer items-center gap-2">
+            <img src="/logo.svg" alt="Yearn PowerGlove Logo" className="h-6 w-6 shrink-0" />
+            <span className="text-base font-bold sm:text-lg">Yearn PowerGlove</span>
+          </Link>
+          <div className="md:hidden">{partnerButton}</div>
+        </div>
+
+        <div className="flex w-full items-center gap-3 md:w-auto">
+          <div
+            className={hideMobileSearch ? 'relative hidden w-full md:block md:w-[300px]' : 'relative w-full md:w-[300px]'}
+          >
+            <input
+              ref={searchInputRef}
+              type="text"
+              placeholder="Search vaults..."
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value)
+                setIsDropdownOpen(true)
               }}
-            >
-              {filteredVaults.map((vault) => (
-                <Link
-                  key={vault.address}
-                  to="/vaults/$chainId/$vaultAddress"
-                  params={{
-                    chainId: vault.chainId.toString(),
-                    vaultAddress: vault.address
-                  }}
-                  className="px-4 py-2 hover:bg-gray-100 cursor-pointer flex gap-2 items-center"
-                  onClick={() => {
-                    setIsDropdownOpen(false)
-                    setSearchTerm('')
-                  }}
-                >
-                  <span>{vault.name}</span>
-                  <span className="text-gray-600 text-sm">{vault.apiVersion}</span>{' '}
-                </Link>
-              ))}
-            </div>
-          )}
-          <a href="partners.yearn.fi" target="_blank" rel="noopener noreferrer">
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-[#0657f9] border-[#0657f9] rounded-none flex items-center gap-2"
-            >
-              Partner with us
-              <ExternalLink className="w-4 h-4" />
-            </Button>
-          </a>
+              onFocus={() => setIsDropdownOpen(true)}
+              className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+            />
+            {isDropdownOpen && searchTerm && (
+              <div
+                ref={dropdownRef}
+                className="absolute left-0 right-0 top-[calc(100%+0.25rem)] z-20 overflow-y-auto rounded border border-gray-300 bg-white shadow-md"
+                style={{
+                  maxHeight: '50vh'
+                }}
+              >
+                {filteredVaults.map((vault) => (
+                  <Link
+                    key={vault.address}
+                    to="/vaults/$chainId/$vaultAddress"
+                    params={{
+                      chainId: vault.chainId.toString(),
+                      vaultAddress: vault.address
+                    }}
+                    className="flex cursor-pointer items-center gap-2 px-4 py-2 hover:bg-gray-100"
+                    onClick={() => {
+                      setIsDropdownOpen(false)
+                      setSearchTerm('')
+                    }}
+                  >
+                    <span>{vault.name}</span>
+                    <span className="text-sm text-gray-600">{vault.apiVersion}</span>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="hidden md:block">{partnerButton}</div>
         </div>
       </div>
     </header>

@@ -5,6 +5,7 @@ import type { TokenAsset } from '@/types/tokenAsset'
 import type { VaultExtended } from '@/types/vaultTypes'
 import {
   formatVaultDate,
+  formatVaultDescription,
   formatVaultMetrics,
   formatVaultTVL,
   generateVaultLinks,
@@ -33,7 +34,7 @@ export function useMainInfoPanelData({
     const deploymentDate = formatVaultDate(vaultDetails.inceptTime)
 
     const vaultName = vaultDetails.name
-    const description = vaultDetails.meta?.description || ''
+    const description = formatVaultDescription(vaultDetails.meta?.description)
     const chainId = vaultDetails.chainId
 
     // Token icon resolution
