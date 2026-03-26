@@ -12,45 +12,47 @@ const ChartSkeleton: React.FC = () => {
   ]
 
   return (
-    <div className="border-x border-border bg-white">
+    <div className="bg-white sm:border-x sm:border-border">
       <Tabs defaultValue="historical-apy" className="w-full">
         <div className="border-b border-border">
-          <div className="px-0 pt-4">
-            <TabsList className="grid w-fit grid-cols-3 bg-transparent p-0">
+          <div className="px-4 pt-4 sm:px-6">
+            <TabsList className="grid w-full grid-cols-3 bg-transparent p-0">
               <TabsTrigger
                 value="historical-apy"
-                className="rounded-none border-b-2 border-transparent px-4 py-2 data-[state=active]:border-[#0657f9] data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+                className="rounded-none border border-border px-2 py-3 text-xs data-[state=active]:border-[#0657f9] data-[state=active]:bg-transparent data-[state=active]:shadow-none sm:border-x-0 sm:border-t-0 sm:border-b-2 sm:px-4 sm:text-sm"
               >
-                Historical APY
+                Performance
               </TabsTrigger>
               <TabsTrigger
                 value="historical-pps"
-                className="rounded-none border-b-2 border-transparent px-4 py-2 data-[state=active]:border-[#0657f9] data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+                className="rounded-none border border-border px-2 py-3 text-xs data-[state=active]:border-[#0657f9] data-[state=active]:bg-transparent data-[state=active]:shadow-none sm:border-x-0 sm:border-t-0 sm:border-b-2 sm:px-4 sm:text-sm"
               >
-                Historical PPS
+                Share Growth
               </TabsTrigger>
               <TabsTrigger
                 value="historical-tvl"
-                className="rounded-none border-b-2 border-transparent px-4 py-2 data-[state=active]:border-[#0657f9] data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+                className="rounded-none border border-border px-2 py-3 text-xs data-[state=active]:border-[#0657f9] data-[state=active]:bg-transparent data-[state=active]:shadow-none sm:border-x-0 sm:border-t-0 sm:border-b-2 sm:px-4 sm:text-sm"
               >
-                Historical TVL
+                TVL
               </TabsTrigger>
             </TabsList>
           </div>
         </div>
 
-        <div className="p-6">
-          <div className="flex justify-between items-center mb-4">
+        <div className="p-4 sm:p-6">
+          <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              {/* Skeleton title and description */}
               <div className="h-4 bg-gray-200 rounded w-64 mb-2 animate-pulse"></div>
               <div className="h-3 bg-gray-200 rounded w-80 animate-pulse"></div>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {/* Skeleton timeframe buttons */}
-              {timeframes.map((tf) => (
-                <div key={tf.value} className="h-7 w-16 bg-gray-200 rounded animate-pulse"></div>
-              ))}
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+              <div className="h-10 rounded-md bg-gray-200 animate-pulse"></div>
+              <div className="h-10 rounded-md bg-gray-200 animate-pulse"></div>
+              <div className="hidden sm:contents">
+                {timeframes.map((tf) => (
+                  <div key={tf.value} className="h-7 w-16 rounded bg-gray-200 animate-pulse"></div>
+                ))}
+              </div>
             </div>
           </div>
 

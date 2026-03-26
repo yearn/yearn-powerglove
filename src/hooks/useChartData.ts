@@ -146,7 +146,8 @@ export function useChartData({
     // Transform PPS data
     const transformedPpsData: ppsChartData = ppsFilled.map((dataPoint) => ({
       date: formatUnixTimestamp(dataPoint.time),
-      PPS: dataPoint.value ?? null
+      PPS: dataPoint.value ?? null,
+      time: Number(dataPoint.time)
     }))
 
     const transformedAprApyData: aprApyChartData = aprFilled.map((aprDataPoint, index) => ({

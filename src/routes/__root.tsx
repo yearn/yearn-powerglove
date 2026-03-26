@@ -10,9 +10,9 @@ export const Route = createRootRoute({
     return (
       <VaultsProvider>
         <ScrollToTop />
-        <div className="flex h-screen flex-col bg-[#f5f5f5]">
+        <div className="flex min-h-screen flex-col bg-[#f5f5f5]">
           <Header />
-          <main className="flex-1 px-0 py-0 max-w-[1400px] mx-auto w-full overflow-hidden pb-8">
+          <main className="mx-auto flex w-full max-w-[1400px] flex-1 px-0 py-0">
             <Outlet />
           </main>
           <Footer />

@@ -2,37 +2,14 @@ import { useMemo } from 'react'
 import type { ChainId } from '@/constants/chains'
 import { useTokenAssetsContext } from '@/contexts/useTokenAssets'
 import { useVaults } from '@/contexts/useVaults'
-import { formatApyDisplay, formatTvlDisplay, parseCompactDisplayNumber } from '@/lib/formatters'
-import type { Strategy } from '@/types/dataTypes'
+import { formatApyDisplay, formatTvlDisplay } from '@/lib/formatters'
+import type { Strategy, StrategyAllocationChartDatum } from '@/types/dataTypes'
 import type { VaultDerivedStrategy, VaultExtended } from '@/types/vaultTypes'
 import { isLegacyVaultType } from '@/utils/vaultDataUtils'
 
 export interface StrategiesData {
   strategies: Strategy[]
-  chartStrategies: Strategy[]
-  apyContributions: Array<{
-    id: number
-    name: string
-    apyValue: number
-    allocationPercent: number
-    contribution: number
-    formattedContribution: string
-  }>
-  totalAPYContribution: number
-  allocationChartData: Array<{
-    id: number
-    name: string
-    value: number
-    amount: string
-  }>
-  apyContributionChartData: Array<{
-    id: number
-    name: string
-    value: number
-    formattedValue: string
-    apyValue: number
-    allocationPercent: number
-  }>
+  allocationChartData: StrategyAllocationChartDatum[]
   isLoading: boolean
   error: Error | undefined
 }
@@ -75,9 +52,48 @@ export const hasAllocatedDebt = (strategy: Pick<VaultDerivedStrategy, 'status' |
   return strategy.debtRatio > 0
 }
 
-const parseStrategyApyDisplayValue = (apyValue: string): number => {
-  const parsed = parseCompactDisplayNumber(apyValue)
-  return Number.isFinite(parsed) ? parsed : 0
+export const resolveStrategyAllocationAmountUsd = (
+  strategy: Pick<VaultDerivedStrategy, 'totalDebtUsd' | 'currentDebtUsd'>
+): number => {
+  if (strategy.totalDebtUsd > 0) {
+    return strategy.totalDebtUsd
+  }
+
+  return strategy.currentDebtUsd
+}
+
+export const buildAllocationChartData = ({
+  chartStrategies,
+  vaultTvlUsd
+}: {
+  chartStrategies: Array<
+    Pick<Strategy, 'id' | 'name' | 'allocationPercent' | 'allocationAmount' | 'allocationAmountUsd'>
+  >
+  vaultTvlUsd: number | null
+}): StrategyAllocationChartDatum[] => {
+  const strategyChartData: StrategyAllocationChartDatum[] = chartStrategies.map((strategy) => ({
+    id: String(strategy.id),
+    name: strategy.name,
+    value: strategy.allocationPercent,
+    amount: strategy.allocationAmount
+  }))
+
+  const allocatedPercentTotal = chartStrategies.reduce((sum, strategy) => sum + strategy.allocationPercent, 0)
+  const unallocatedPercent = Math.max(0, 100 - allocatedPercentTotal)
+
+  if (vaultTvlUsd !== null && unallocatedPercent > 0) {
+    const allocatedUsdTotal = chartStrategies.reduce((sum, strategy) => sum + strategy.allocationAmountUsd, 0)
+    const unallocatedAmountUsd = Math.max(0, vaultTvlUsd - allocatedUsdTotal)
+
+    strategyChartData.push({
+      id: 'unallocated',
+      name: 'Unallocated',
+      value: unallocatedPercent,
+      amount: formatTvlDisplay(unallocatedAmountUsd)
+    })
+  }
+
+  return strategyChartData
 }
 
 export function useStrategiesData(vaultChainId: ChainId, vaultDetails: VaultExtended): StrategiesData {
@@ -108,7 +124,7 @@ export function useStrategiesData(vaultChainId: ChainId, vaultDetails: VaultExte
       const strategyDisplayName =
         strategy.name && !strategy.name.startsWith('Strategy ') ? strategy.name : linkedVault?.name || strategy.name
 
-      const strategyUsdValue = strategy.totalDebtUsd > 0 ? strategy.totalDebtUsd : strategy.currentDebtUsd
+      const strategyUsdValue = resolveStrategyAllocationAmountUsd(strategy)
       const hasAllocation = hasAllocatedDebt(strategy)
       const allocationPercent = hasAllocation ? strategy.debtRatio / 100 : 0
       const displayApr = strategy.estimatedApy ?? strategy.netApr ?? 0
@@ -125,6 +141,7 @@ export function useStrategiesData(vaultChainId: ChainId, vaultDetails: VaultExte
         name: strategyDisplayName || 'Unknown Strategy',
         allocationPercent,
         allocationAmount: formatTvlDisplay(strategyUsdValue),
+        allocationAmountUsd: strategyUsdValue,
         estimatedAPY,
         tokenSymbol,
         tokenIconUri,
@@ -146,52 +163,16 @@ export function useStrategiesData(vaultChainId: ChainId, vaultDetails: VaultExte
     return strategies.filter((s) => s.allocationPercent > 0).sort((a, b) => b.allocationPercent - a.allocationPercent)
   }, [strategies])
 
-  const apyContributions = useMemo(() => {
-    return chartStrategies.map((strategy) => {
-      const apyValue = parseStrategyApyDisplayValue(strategy.estimatedAPY)
-      const contribution = (apyValue * strategy.allocationPercent) / 100
-      return {
-        id: strategy.id,
-        name: strategy.name,
-        apyValue,
-        allocationPercent: strategy.allocationPercent,
-        contribution,
-        formattedContribution: contribution.toFixed(2)
-      }
-    })
-  }, [chartStrategies])
-
-  const totalAPYContribution = useMemo(() => {
-    return apyContributions.reduce((sum, item) => sum + item.contribution, 0)
-  }, [apyContributions])
-
   const allocationChartData = useMemo(() => {
-    return chartStrategies.map((strategy) => ({
-      id: strategy.id,
-      name: strategy.name,
-      value: strategy.allocationPercent,
-      amount: strategy.allocationAmount
-    }))
-  }, [chartStrategies])
-
-  const apyContributionChartData = useMemo(() => {
-    return apyContributions.map((item) => ({
-      id: item.id,
-      name: item.name,
-      value: item.contribution,
-      formattedValue: item.formattedContribution,
-      apyValue: item.apyValue,
-      allocationPercent: item.allocationPercent
-    }))
-  }, [apyContributions])
+    return buildAllocationChartData({
+      chartStrategies,
+      vaultTvlUsd: typeof vaultDetails.tvl?.close === 'number' ? vaultDetails.tvl.close : null
+    })
+  }, [chartStrategies, vaultDetails.tvl?.close])
 
   return {
     strategies,
-    chartStrategies,
-    apyContributions,
-    totalAPYContribution,
     allocationChartData,
-    apyContributionChartData,
     isLoading: false,
     error: undefined
   }

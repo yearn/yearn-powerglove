@@ -169,7 +169,12 @@ function SingleVaultPage() {
               hasErrors={chartsError}
             />
           </Suspense>
-          <StrategiesPanel vaultChainId={vaultChainId} vaultDetails={vaultDetails} />
+          <StrategiesPanel
+            vaultChainId={vaultChainId}
+            vaultDetails={vaultDetails}
+            aboutDescription={mainInfoPanelProps.description}
+            aboutLink={mainInfoPanelProps.yearnVaultLink}
+          />
         </div>
       </div>
     </VaultPageLayout>

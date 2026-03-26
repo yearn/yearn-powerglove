@@ -6,7 +6,7 @@ const StrategiesSkeleton: React.FC = () => {
 
   return (
     <div className="w-full">
-      <div className="w-full mx-auto bg-white border-x border-b border-border">
+      <div className="w-full mx-auto border-b border-border bg-white sm:border-x">
         {/* Tab Navigation Skeleton */}
         <div className="flex items-center border-b border-border">
           <div className="px-6 py-3">

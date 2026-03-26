@@ -1,9 +1,11 @@
 import { Check, Copy, ExternalLink } from 'lucide-react'
 import { useState } from 'react'
+import { useIsMobile } from '@/components/ui/use-mobile'
 import type { MainInfoPanelProps } from '@/types/dataTypes'
 
 export function MainInfoPanel(data: MainInfoPanelProps) {
   const [copied, setCopied] = useState(false)
+  const isMobile = useIsMobile()
 
   const handleCopy = () => {
     navigator.clipboard.writeText(data.vaultAddress)
@@ -12,19 +14,19 @@ export function MainInfoPanel(data: MainInfoPanelProps) {
   }
 
   return (
-    <div className="border border-border bg-white border-b-0 border-t-0">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-6">
+    <div className="bg-white sm:border sm:border-border sm:border-b-0 sm:border-t-0">
+      <div className="grid grid-cols-1 gap-6 p-4 sm:p-6 md:grid-cols-3">
         <div className="md:col-span-2">
-          <div className="mb-2 flex items-center gap-2">
+          <div className="mb-2 flex flex-wrap items-center gap-2">
             <div className="text-sm text-gray-500">{data.vaultId}</div>
             <div className="bg-gray-100 text-xs inline-block px-2 py-1">Deployed: {data.deploymentDate}</div>
           </div>
-          <div className="">
-            <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-3xl font-bold mb-3">{data.vaultName}</h1>
+          <div>
+            <div className="mb-2 flex flex-col gap-1 sm:flex-row sm:items-end sm:gap-3">
+              <h1 className="text-3xl font-bold">{data.vaultName}</h1>
               <div className="text-sm text-gray-500">{data.apiVersion}</div>
             </div>
-            <p className="text-gray-600 mb-4 max-w-md">{data.description}</p>
+            {!isMobile && <p className="mb-4 max-w-2xl whitespace-pre-line text-gray-600">{data.description}</p>}
             <a
               className="bg-[#0657f9] hover:bg-[#0657f9]/90 rounded-none text-white px-4 py-2 inline-flex items-center"
               href={data.yearnVaultLink}
