@@ -48,7 +48,6 @@
     "@tanstack/react-query": "^5.69.0",
     "@tanstack/react-router": "^1.114.27",
     "autoprefixer": "^10.4.17",
-    "axios": "^1.8.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "1.0.4",
