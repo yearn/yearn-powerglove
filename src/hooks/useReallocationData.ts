@@ -194,7 +194,7 @@ export function useReallocationData(vaultAddress: string): {
               console.warn('[reallocation] fetchStrategyDisplayNames failed', err)
               return {}
             })
-          : Promise.resolve({}),
+          : Promise.resolve({})
       ])
 
       const baseData = transformRawReallocation(raw, vaultStrategyLookup)
@@ -202,7 +202,7 @@ export function useReallocationData(vaultAddress: string): {
     },
     staleTime: 10 * 60 * 1000,
     enabled: Boolean(vaultAddress),
-    retry: 1,
+    retry: 1
   })
 
   if (error) {
@@ -211,6 +211,6 @@ export function useReallocationData(vaultAddress: string): {
 
   return {
     data: data ?? null,
-    isLoading,
+    isLoading
   }
 }

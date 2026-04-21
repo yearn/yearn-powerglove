@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { ReallocationChart, ReallocationStrategyTable } from '@/components/reallocation-panel'
 import StrategiesSkeleton from '@/components/strategies-panel/StrategiesSkeleton'
 import { useIsMobile } from '@/components/ui/use-mobile'
+import { VaultEventsPanel } from '@/components/vault-events'
 import { useSortingAndFiltering } from '@/hooks/useSortingAndFiltering'
 import { useStrategiesData } from '@/hooks/useStrategiesData'
 import { cn } from '@/lib/utils'
@@ -29,13 +30,14 @@ export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
 
     // UI state
     const [expandedRow, setExpandedRow] = useState<number | null>(null)
-    const [activeTab, setActiveTab] = useState<string>('Strategies')
+    const [activeTab, setActiveTab] = useState<string>('Current Strategies')
     const [showUnallocated, setShowUnallocated] = useState<boolean>(false)
     const isMobile = useIsMobile()
     const hasAbout = Boolean(aboutDescription?.trim())
     const hasReallocation = Boolean(reallocationData)
     const tabs = React.useMemo(() => {
-      const list: string[] = ['Strategies']
+      const list: string[] = ['Current Strategies']
+      list.push('Historical User Events')
       if (hasReallocation) list.push('Current Reallocation')
       if (isMobile && hasAbout) list.push('About')
       return list
@@ -43,7 +45,7 @@ export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
 
     React.useEffect(() => {
       if (!tabs.includes(activeTab)) {
-        setActiveTab('Strategies')
+        setActiveTab('Current Strategies')
       }
     }, [tabs, activeTab])
 
@@ -53,7 +55,7 @@ export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
 
     const renderTabContent = () => {
       switch (activeTab) {
-        case 'Strategies': {
+        case 'Current Strategies': {
           if (strategiesData.isLoading) {
             return <StrategiesSkeleton />
           }
@@ -103,6 +105,16 @@ export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
                 />
               </div>
             </div>
+          )
+        }
+        case 'Historical User Events': {
+          return (
+            <VaultEventsPanel
+              vaultChainId={vaultChainId}
+              vaultAddress={vaultDetails.address}
+              tokenSymbol={vaultDetails.asset?.symbol ?? vaultDetails.symbol}
+              tokenDecimals={vaultDetails.asset?.decimals}
+            />
           )
         }
         case 'Current Reallocation': {

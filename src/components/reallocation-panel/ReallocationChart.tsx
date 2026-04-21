@@ -17,24 +17,28 @@ interface LabelProps {
   width?: number
   height?: number
   value?: number
+  index?: number
 }
 
-function renderBarLabel(props: LabelProps) {
-  const { x = 0, y = 0, width = 0, height = 0, value } = props
-  if (!value || value <= 0 || value < 5) return <g />
-  return (
-    <text
-      x={x + width / 2}
-      y={y + height / 2}
-      fill="#fff"
-      textAnchor="middle"
-      dominantBaseline="middle"
-      fontSize={11}
-      fontWeight="bold"
-    >
-      {`${value.toFixed(1)}%`}
-    </text>
-  )
+function makeBarLabel(valuesByRow: number[]) {
+  return function BarLabel(props: LabelProps) {
+    const { x = 0, y = 0, width = 0, height = 0, index = 0 } = props
+    const individualValue = valuesByRow[index] ?? 0
+    if (individualValue <= 0 || individualValue < 5) return <g />
+    return (
+      <text
+        x={x + width / 2}
+        y={y + height / 2}
+        fill="#fff"
+        textAnchor="middle"
+        dominantBaseline="middle"
+        fontSize={11}
+        fontWeight="bold"
+      >
+        {`${individualValue.toFixed(1)}%`}
+      </text>
+    )
+  }
 }
 
 function CustomTooltip({
@@ -112,11 +116,11 @@ export const ReallocationChart: React.FC<ReallocationChartProps> = React.memo(({
     )
   }
 
-  const chartData: ChartRow[] = [{ name: 'Before' }, { name: 'After' }]
+  const chartData: ChartRow[] = [{ name: 'After' }, { name: 'Before' }]
 
   for (const strategy of strategies) {
-    chartData[0][strategy.name] = strategy.currentRatioPct
-    chartData[1][strategy.name] = strategy.targetRatioPct
+    chartData[0][strategy.name] = strategy.targetRatioPct
+    chartData[1][strategy.name] = strategy.currentRatioPct
   }
 
   const visibleStrategies = strategies.filter((s) => s.currentRatioPct > 0 || s.targetRatioPct > 0)
@@ -145,6 +149,7 @@ export const ReallocationChart: React.FC<ReallocationChartProps> = React.memo(({
             <Tooltip content={<CustomTooltip />} />
             {visibleStrategies.map((strategy) => {
               const isDimmed = hoveredKey !== null && hoveredKey !== strategy.strategyKey
+              const valuesByRow = [strategy.targetRatioPct, strategy.currentRatioPct]
               return (
                 <Bar
                   key={strategy.strategyKey}
@@ -153,7 +158,7 @@ export const ReallocationChart: React.FC<ReallocationChartProps> = React.memo(({
                   fill={strategy.color}
                   fillOpacity={isDimmed ? 0.3 : 1}
                   isAnimationActive={false}
-                  label={renderBarLabel}
+                  label={makeBarLabel(valuesByRow)}
                   onMouseEnter={() => setHoveredKey(strategy.strategyKey)}
                   onMouseLeave={() => setHoveredKey(null)}
                 />
