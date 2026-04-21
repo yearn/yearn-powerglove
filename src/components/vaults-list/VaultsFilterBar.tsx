@@ -103,7 +103,11 @@ const MobileChainDropdown = ({
   const allSelected = selectedChainIds.length === 0 || selectedChainIds.length === chains.length
   const selectedChain =
     selectedChainIds.length === 1 ? (chains.find((chain) => chain.id === selectedChainIds[0]) ?? null) : null
-  const triggerLabel = allSelected ? allChainsLabel : selectedChain ? selectedChain.name : `${selectedChainIds.length} Chains`
+  const triggerLabel = allSelected
+    ? allChainsLabel
+    : selectedChain
+      ? selectedChain.name
+      : `${selectedChainIds.length} Chains`
 
   const handleClearSelection = () => {
     onSetSelectedChains([])

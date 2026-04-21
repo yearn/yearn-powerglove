@@ -66,7 +66,9 @@ export default function Header() {
 
         <div className="flex w-full items-center gap-3 md:w-auto">
           <div
-            className={hideMobileSearch ? 'relative hidden w-full md:block md:w-[300px]' : 'relative w-full md:w-[300px]'}
+            className={
+              hideMobileSearch ? 'relative hidden w-full md:block md:w-[300px]' : 'relative w-full md:w-[300px]'
+            }
           >
             <input
               ref={searchInputRef}

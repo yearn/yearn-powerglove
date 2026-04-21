@@ -1,10 +1,6 @@
 import React from 'react'
 import { VirtualScrollTable } from '@/components/ui/VirtualScrollTable'
-import {
-  MOBILE_VAULT_ROW_HEIGHT,
-  type VaultListData,
-  VaultMobileListRow
-} from '@/components/vaults-list/VaultRow'
+import { MOBILE_VAULT_ROW_HEIGHT, type VaultListData, VaultMobileListRow } from '@/components/vaults-list/VaultRow'
 
 interface VaultsMobileListProps {
   vaults: VaultListData[]

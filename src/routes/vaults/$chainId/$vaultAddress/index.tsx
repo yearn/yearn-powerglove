@@ -17,6 +17,7 @@ import { useTokenAssetsContext } from '@/contexts/useTokenAssets'
 import { useAprOracle } from '@/hooks/useAprOracle'
 import { useChartData } from '@/hooks/useChartData'
 import { useMainInfoPanelData } from '@/hooks/useMainInfoPanelData'
+import { useReallocationData } from '@/hooks/useReallocationData'
 // Import our new data hooks and layout components
 import { useVaultPageData } from '@/hooks/useVaultPageData'
 import { formatPercent } from '@/lib/formatters'
@@ -113,6 +114,8 @@ function SingleVaultPage() {
 
   const overrideItems = React.useMemo(() => getVaultOverrideDisplayItems(overrideConfig), [overrideConfig])
 
+  const { data: reallocationData } = useReallocationData(vaultAddress)
+
   // Ensure we have vault details and main info panel data
   if (!vaultDetails || !mainInfoPanelProps) {
     return (
@@ -174,6 +177,7 @@ function SingleVaultPage() {
             vaultDetails={vaultDetails}
             aboutDescription={mainInfoPanelProps.description}
             aboutLink={mainInfoPanelProps.yearnVaultLink}
+            reallocationData={reallocationData}
           />
         </div>
       </div>

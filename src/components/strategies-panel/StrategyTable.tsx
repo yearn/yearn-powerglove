@@ -51,7 +51,7 @@ export const StrategyTable: React.FC<StrategyTableProps> = React.memo(
             <div className="border-b border-[#f5f5f5] p-3">
               <div className="text-[11px] font-medium uppercase tracking-[0.08em] text-[#808080]">Sort strategies</div>
               <div className="mt-2 flex flex-wrap gap-2">
-                  {[
+                {[
                   { column: 'allocationPercent', label: 'Allocation %' },
                   { column: 'allocationAmount', label: 'amount' },
                   { column: 'estimatedAPY', label: 'APY' }
