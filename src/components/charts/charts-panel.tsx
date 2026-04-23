@@ -3,15 +3,12 @@ import APYChart, {
   APYSeriesSelector,
   type APYVisibleSeries,
   buildApyVisibleSeries,
-  getAvailableApySeries,
+  getAvailableApySeries
 } from '@/components/charts/APYChart'
 import ChartSkeleton from '@/components/charts/ChartSkeleton'
 import ChartsLoader from '@/components/charts/ChartsLoader'
 import { FixedHeightChartContainer } from '@/components/charts/chart-container'
-import {
-  calculatePpsPeriodApy,
-  getTimeframeLimit,
-} from '@/components/charts/chart-utils'
+import { calculatePpsPeriodApy, getTimeframeLimit } from '@/components/charts/chart-utils'
 import PPSChart from '@/components/charts/PPSChart'
 import TVLChart from '@/components/charts/TVLChart'
 import { Button } from '@/components/ui/button'
@@ -21,16 +18,12 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
+  DialogTrigger
 } from '@/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useIsMobile } from '@/components/ui/use-mobile'
 import { ChartErrorBoundary } from '@/components/utils/ErrorBoundary'
-import type {
-  aprApyChartData,
-  ppsChartData,
-  tvlChartData,
-} from '@/types/dataTypes'
+import type { aprApyChartData, ppsChartData, tvlChartData } from '@/types/dataTypes'
 
 type ChartData = {
   aprApyData: aprApyChartData | null
@@ -50,21 +43,21 @@ const chartTabs: Array<{
   {
     value: 'historical-apy',
     label: 'Historical Performance',
-    mobileLabel: 'Performance',
+    mobileLabel: 'Performance'
   },
   {
     value: 'historical-pps',
     label: 'Historical Share Growth',
-    mobileLabel: 'Share Growth',
+    mobileLabel: 'Share Growth'
   },
-  { value: 'historical-tvl', label: 'Historical TVL', mobileLabel: 'TVL' },
+  { value: 'historical-tvl', label: 'Historical TVL', mobileLabel: 'TVL' }
 ]
 
 const timeframes = [
   { label: '30 Days', mobileLabel: '30D', value: '30d' },
   { label: '90 Days', mobileLabel: '90D', value: '90d' },
   { label: '1 Year', mobileLabel: '1Y', value: '1y' },
-  { label: 'All Time', mobileLabel: 'All', value: 'all' },
+  { label: 'All Time', mobileLabel: 'All', value: 'all' }
 ] as const
 
 type Timeframe = (typeof timeframes)[number]
@@ -72,24 +65,17 @@ type Timeframe = (typeof timeframes)[number]
 export function ChartsPanel(data: ChartData) {
   const isMobile = useIsMobile()
   const [activeTab, setActiveTab] = useState<ChartTab>('historical-apy')
-  const {
-    aprApyData,
-    tvlData,
-    ppsData,
-    isLoading = false,
-    hasErrors = false,
-  } = data
+  const { aprApyData, tvlData, ppsData, isLoading = false, hasErrors = false } = data
   const [timeframe, setTimeframe] = useState<Timeframe>(timeframes[3])
-  const [apyVisibleSeries, setApyVisibleSeries] = useState<APYVisibleSeries>(
-    () =>
-      buildApyVisibleSeries({
-        derivedApy: false,
-        sevenDayApy: false,
-        thirtyDayApy: true,
-        ppsPeriodApy: true,
-        oracleApr: false,
-        oracleApy30dAvg: true,
-      }),
+  const [apyVisibleSeries, setApyVisibleSeries] = useState<APYVisibleSeries>(() =>
+    buildApyVisibleSeries({
+      derivedApy: false,
+      sevenDayApy: false,
+      thirtyDayApy: true,
+      ppsPeriodApy: true,
+      oracleApr: false,
+      oracleApy30dAvg: true
+    })
   )
   const [isTimeframeDialogOpen, setIsTimeframeDialogOpen] = useState(false)
   const [isDataDialogOpen, setIsDataDialogOpen] = useState(false)
@@ -108,53 +94,40 @@ export function ChartsPanel(data: ChartData) {
     return (
       <div className="relative">
         <ChartSkeleton />
-        <ChartsLoader
-          loadingState={isLoading ? 'loading charts' : 'preparing charts'}
-        />
+        <ChartsLoader loadingState={isLoading ? 'loading charts' : 'preparing charts'} />
       </div>
     )
   }
 
-  const filteredAprApyData = aprApyData.slice(
-    -getTimeframeLimit(timeframe.value),
-  )
+  const filteredAprApyData = aprApyData.slice(-getTimeframeLimit(timeframe.value))
   const ppsPeriodApy = calculatePpsPeriodApy(ppsData, timeframe.value)
   const hasPpsPeriodApy = typeof ppsPeriodApy === 'number'
-  const hasOracleApr = filteredAprApyData.some(
-    (point) => typeof point.oracleApr === 'number',
-  )
-  const hasOracleApy30dAvg = filteredAprApyData.some(
-    (point) => typeof point.oracleApy30dAvg === 'number',
-  )
+  const hasOracleApr = filteredAprApyData.some((point) => typeof point.oracleApr === 'number')
+  const hasOracleApy30dAvg = filteredAprApyData.some((point) => typeof point.oracleApy30dAvg === 'number')
   const availableApySeries = getAvailableApySeries({
     hasPpsPeriodApy,
     hasOracleApr,
-    hasOracleApy30dAvg,
+    hasOracleApy30dAvg
   })
-  const selectedApySeriesCount = availableApySeries.filter(
-    (seriesKey) => apyVisibleSeries[seriesKey],
-  ).length
+  const selectedApySeriesCount = availableApySeries.filter((seriesKey) => apyVisibleSeries[seriesKey]).length
 
   const chartInfo = {
     'historical-apy': {
       title: 'Vault Performance',
       description: `1-Day, 7-Day, and 30-Day APYs over ${timeframe.label}.`,
-      mobileDescription: `Compare APY trends over ${timeframe.mobileLabel}.`,
+      mobileDescription: `Compare APY trends over ${timeframe.mobileLabel}.`
     },
     'historical-pps': {
       title: 'Vault Share Growth',
       description: `Price Per Share values over ${timeframe.label}.`,
-      mobileDescription: `Track share price growth over ${timeframe.mobileLabel}.`,
+      mobileDescription: `Track share price growth over ${timeframe.mobileLabel}.`
     },
     'historical-tvl': {
       title: 'Total Value Deposited',
       description: `Value deposited in vault over ${timeframe.label}.`,
-      mobileDescription: `Review TVL changes over ${timeframe.mobileLabel}.`,
-    },
-  } satisfies Record<
-    ChartTab,
-    { title: string; description: string; mobileDescription: string }
-  >
+      mobileDescription: `Review TVL changes over ${timeframe.mobileLabel}.`
+    }
+  } satisfies Record<ChartTab, { title: string; description: string; mobileDescription: string }>
 
   const activeChartInfo = chartInfo[activeTab]
   const showGhostedOverlay = !isMobile
@@ -163,7 +136,7 @@ export function ChartsPanel(data: ChartData) {
   const chartOverlayYAxisWidthByTab = {
     'historical-apy': 60,
     'historical-pps': 60,
-    'historical-tvl': 68,
+    'historical-tvl': 68
   } satisfies Record<ChartTab, number>
 
   const chartBody = (() => {
@@ -218,7 +191,7 @@ export function ChartsPanel(data: ChartData) {
                       thirtyDayApy: false,
                       derivedApy: true,
                       oracleApr: false,
-                      oracleApy30dAvg: false,
+                      oracleApy30dAvg: false
                     }}
                   />
                 </ChartErrorBoundary>
@@ -247,7 +220,7 @@ export function ChartsPanel(data: ChartData) {
                       thirtyDayApy: true,
                       derivedApy: false,
                       oracleApr: false,
-                      oracleApy30dAvg: false,
+                      oracleApy30dAvg: false
                     }}
                   />
                 </ChartErrorBoundary>
@@ -263,9 +236,7 @@ export function ChartsPanel(data: ChartData) {
   const mobileChartDescription = (
     <div className="space-y-1">
       <div className="text-sm font-medium">{activeChartInfo.title}</div>
-      <div className="text-xs text-gray-500">
-        {activeChartInfo.mobileDescription}
-      </div>
+      <div className="text-xs text-gray-500">{activeChartInfo.mobileDescription}</div>
     </div>
   )
 
@@ -279,29 +250,20 @@ export function ChartsPanel(data: ChartData) {
   const mobileChartControls = (
     <div className="flex flex-col gap-4">
       <div className="grid w-full grid-cols-2 gap-2">
-        <Dialog
-          open={isTimeframeDialogOpen}
-          onOpenChange={setIsTimeframeDialogOpen}
-        >
+        <Dialog open={isTimeframeDialogOpen} onOpenChange={setIsTimeframeDialogOpen}>
           <DialogTrigger asChild>
             <Button
               variant="outline"
               className="flex h-auto flex-col items-start rounded-md border-border px-3 py-2 text-left"
             >
-              <span className="text-[11px] font-medium uppercase tracking-[0.08em] text-gray-500">
-                Timeframe
-              </span>
-              <span className="text-sm text-foreground">
-                {timeframe.mobileLabel}
-              </span>
+              <span className="text-[11px] font-medium uppercase tracking-[0.08em] text-gray-500">Timeframe</span>
+              <span className="text-sm text-foreground">{timeframe.mobileLabel}</span>
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-[calc(100vw-2rem)] rounded-lg p-4 sm:max-w-sm">
             <DialogHeader>
               <DialogTitle>Timeframe</DialogTitle>
-              <DialogDescription>
-                Choose the time window for the active chart.
-              </DialogDescription>
+              <DialogDescription>Choose the time window for the active chart.</DialogDescription>
             </DialogHeader>
             <div className="grid gap-2">
               {timeframes.map((tf) => (
@@ -332,22 +294,16 @@ export function ChartsPanel(data: ChartData) {
               disabled={activeTab !== 'historical-apy'}
               className="flex h-auto flex-col items-start rounded-md border-border px-3 py-2 text-left disabled:opacity-40"
             >
-              <span className="text-[11px] font-medium uppercase tracking-[0.08em] text-gray-500">
-                Data
-              </span>
+              <span className="text-[11px] font-medium uppercase tracking-[0.08em] text-gray-500">Data</span>
               <span className="text-sm text-foreground">
-                {activeTab === 'historical-apy'
-                  ? `${selectedApySeriesCount} series`
-                  : 'Unavailable'}
+                {activeTab === 'historical-apy' ? `${selectedApySeriesCount} series` : 'Unavailable'}
               </span>
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-[calc(100vw-2rem)] rounded-lg p-4 sm:max-w-sm">
             <DialogHeader>
               <DialogTitle>Data</DialogTitle>
-              <DialogDescription>
-                Choose which APY series are visible on the chart.
-              </DialogDescription>
+              <DialogDescription>Choose which APY series are visible on the chart.</DialogDescription>
             </DialogHeader>
             <APYSeriesSelector
               visibleSeries={apyVisibleSeries}
@@ -372,9 +328,7 @@ export function ChartsPanel(data: ChartData) {
           key={tf.value}
           onClick={() => setTimeframe(tf)}
           className={`min-w-0 rounded-md px-3 py-2 text-center text-xs font-medium transition-colors sm:text-sm ${
-            timeframe.value === tf.value
-              ? 'bg-[#0657f9] text-white'
-              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            timeframe.value === tf.value ? 'bg-[#0657f9] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
           }`}
           type="button"
         >
@@ -444,9 +398,7 @@ export function ChartsPanel(data: ChartData) {
             </div>
           </div>
           <div className="space-y-4 p-4 sm:p-6">
-            <div className="border-b border-border pb-4">
-              {mobileChartDescription}
-            </div>
+            <div className="border-b border-border pb-4">{mobileChartDescription}</div>
             {chartTabContent}
             {mobileChartControls}
           </div>

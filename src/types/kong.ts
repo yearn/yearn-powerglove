@@ -130,6 +130,8 @@ export type KongVaultSnapshotDebt = {
 export type KongVaultSnapshot = {
   address: string
   chainId: number
+  blockNumber?: KongNullableNumberish
+  blockTime?: KongNullableNumberish
   apiVersion?: string | null
   inceptTime?: KongNullableNumberish
   name?: string

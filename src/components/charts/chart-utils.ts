@@ -19,10 +19,7 @@ export function calculatePpsPeriodApy(data: PpsPeriodPoint[], timeframe: string)
   const filteredData = data.slice(-getTimeframeLimit(timeframe))
   const validPoints = filteredData.filter(
     (point): point is { PPS: number; time: number } =>
-      typeof point.PPS === 'number' &&
-      point.PPS > 0 &&
-      typeof point.time === 'number' &&
-      Number.isFinite(point.time),
+      typeof point.PPS === 'number' && point.PPS > 0 && typeof point.time === 'number' && Number.isFinite(point.time)
   )
 
   if (validPoints.length < 2) {
