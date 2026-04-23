@@ -192,7 +192,7 @@ function ReallocationSummary({
 }): React.ReactNode {
   return (
     <div className={cn('min-w-0 space-y-1', align === 'right' && 'sm:text-right', className)}>
-      <div className="text-sm font-semibold text-foreground">{label}</div>
+      <div className="text-sm text-foreground">{label}</div>
       <div className="text-xs text-muted-foreground">{formatReallocationTimestamp(timestampUtc)}</div>
       <div className="text-xs text-muted-foreground">
         <span>{'Vault APR/APY '}</span>

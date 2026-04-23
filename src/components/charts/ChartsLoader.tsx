@@ -1,13 +1,20 @@
 import type React from 'react'
+import { cn } from '@/lib/utils'
 
 interface ChartsLoaderProps {
   loadingState?: string
+  overlayClassName?: string
+  contentClassName?: string
 }
 
-const ChartsLoader: React.FC<ChartsLoaderProps> = ({ loadingState = 'loading charts' }) => {
+const ChartsLoader: React.FC<ChartsLoaderProps> = ({
+  loadingState = 'loading charts',
+  overlayClassName,
+  contentClassName
+}) => {
   return (
-    <div className="absolute inset-0 bg-white/20 flex items-center justify-center z-10">
-      <div className="flex flex-col items-center justify-center opacity-20">
+    <div className={cn('absolute inset-0 z-10 flex items-center justify-center bg-white/20', overlayClassName)}>
+      <div className={cn('flex flex-col items-center justify-center opacity-20', contentClassName)}>
         <div className="relative flex items-center justify-center w-12 h-12">
           {/* Spinning border circles around the logo */}
           <div className="absolute inset-0 w-12 h-12 border-2 border-t-transparent border-[#0657F9] rounded-full animate-spin"></div>
