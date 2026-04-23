@@ -29,7 +29,7 @@ function SortHeader({ label, sortKey, onSort }: { label: string; sortKey: SortKe
   return (
     <button
       onClick={() => onSort(sortKey)}
-      className="flex items-center gap-1 text-xs font-medium uppercase tracking-[0.08em] text-[#808080] hover:text-[#1a1a1a]"
+      className="flex items-center gap-1 text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground hover:text-foreground"
     >
       {label}
       <ArrowUpDown className="h-3 w-3 opacity-50" />
@@ -40,12 +40,14 @@ function SortHeader({ label, sortKey, onSort }: { label: string; sortKey: SortKe
 interface ReallocationStrategyTableProps {
   strategies: ReallocationStrategy[]
   chainId: number | null
+  beforeLabel?: string
+  afterLabel?: string
 }
 
 export const ReallocationStrategyTable: React.FC<ReallocationStrategyTableProps> = React.memo(
-  ({ strategies, chainId }) => {
+  ({ strategies, chainId, beforeLabel = 'Current', afterLabel = 'Target' }) => {
     const [sortConfig, setSortConfig] = useState<SortConfig>({
-      key: 'allocationDelta',
+      key: 'targetRatio',
       direction: 'desc'
     })
     const [isExpanded, setIsExpanded] = useState(true)
@@ -100,51 +102,53 @@ export const ReallocationStrategyTable: React.FC<ReallocationStrategyTableProps>
     const activeStrategies = strategies.filter((s) => !s.isUnallocated)
 
     return (
-      <div className="rounded-lg border border-[#f5f5f5]">
+      <div className="rounded-lg border border-border bg-card">
         <button
           onClick={() => setIsExpanded(!isExpanded)}
-          className="flex w-full items-center justify-between px-4 py-3 hover:bg-[#f5f5f5]/30"
+          className="flex w-full items-center justify-between px-4 py-3 hover:bg-muted/30"
         >
-          <h3 className="font-semibold text-[#1a1a1a]">
+          <h3 className="font-semibold text-foreground">
             Strategy Details
-            <span className="ml-2 text-sm font-normal text-[#808080]">({activeStrategies.length} strategies)</span>
+            <span className="ml-2 text-sm font-normal text-muted-foreground">
+              ({activeStrategies.length} strategies)
+            </span>
           </h3>
           {isExpanded ? (
-            <ChevronDown className="h-5 w-5 text-[#808080]" />
+            <ChevronDown className="h-5 w-5 text-muted-foreground" />
           ) : (
-            <ChevronUp className="h-5 w-5 text-[#808080]" />
+            <ChevronUp className="h-5 w-5 text-muted-foreground" />
           )}
         </button>
 
         {isExpanded && (
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-[#f5f5f5]/50">
-                <tr className="border-b border-[#f5f5f5] text-left">
+              <thead className="bg-muted/40">
+                <tr className="border-b border-border text-left">
                   <th className="px-4 py-3">
                     <SortHeader label="Strategy" sortKey="name" onSort={handleSort} />
                   </th>
                   <th className="px-4 py-3 text-right">
-                    <SortHeader label="Current" sortKey="currentRatio" onSort={handleSort} />
+                    <SortHeader label={beforeLabel} sortKey="currentRatio" onSort={handleSort} />
                   </th>
                   <th className="px-4 py-3 text-right">
-                    <SortHeader label="Target" sortKey="targetRatio" onSort={handleSort} />
+                    <SortHeader label={afterLabel} sortKey="targetRatio" onSort={handleSort} />
                   </th>
                   <th className="px-4 py-3 text-right">
                     <SortHeader label="Δ Alloc" sortKey="allocationDelta" onSort={handleSort} />
                   </th>
                   <th className="px-4 py-3 text-right">
-                    <SortHeader label="Current APR" sortKey="currentApr" onSort={handleSort} />
+                    <SortHeader label={`${beforeLabel} APR`} sortKey="currentApr" onSort={handleSort} />
                   </th>
                   <th className="px-4 py-3 text-right">
-                    <SortHeader label="Target APR" sortKey="targetApr" onSort={handleSort} />
+                    <SortHeader label={`${afterLabel} APR`} sortKey="targetApr" onSort={handleSort} />
                   </th>
                   <th className="px-4 py-3 text-right">
                     <SortHeader label="Δ APR" sortKey="aprDelta" onSort={handleSort} />
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#f5f5f5] text-sm">
+              <tbody className="divide-y divide-border text-sm">
                 {sortedStrategies.map((strategy) => {
                   const isIncreasing = strategy.allocationDeltaPct >= 0
                   const aprIncreasing = strategy.aprDeltaPct !== null && strategy.aprDeltaPct >= 0
@@ -153,19 +157,19 @@ export const ReallocationStrategyTable: React.FC<ReallocationStrategyTableProps>
                   return (
                     <tr
                       key={strategy.strategyKey}
-                      className={cn('hover:bg-[#f5f5f5]/30', strategy.isUnallocated && 'opacity-50')}
+                      className={cn('hover:bg-muted/30', strategy.isUnallocated && 'opacity-50')}
                     >
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: strategy.color }} />
                           <div className="min-w-0 flex-1">
-                            <div className="font-medium text-[#1a1a1a]">{strategy.name}</div>
+                            <div className="font-medium text-foreground">{strategy.name}</div>
                             {!strategy.isUnallocated && strategy.strategyAddress && (
                               <a
                                 href={getExplorerUrl(chainId, displayAddress)}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="font-mono text-xs text-[#0657f9] hover:underline"
+                                className="font-mono text-xs text-blue-600 hover:underline dark:text-blue-400"
                               >
                                 {formatAddress(displayAddress)}
                               </a>
@@ -173,10 +177,10 @@ export const ReallocationStrategyTable: React.FC<ReallocationStrategyTableProps>
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-right tabular-nums text-[#1a1a1a]">
+                      <td className="px-4 py-3 text-right tabular-nums text-foreground">
                         {formatPercent(strategy.currentRatioPct)}
                       </td>
-                      <td className="px-4 py-3 text-right tabular-nums text-[#1a1a1a]">
+                      <td className="px-4 py-3 text-right tabular-nums text-foreground">
                         {formatPercent(strategy.targetRatioPct)}
                       </td>
                       <td
@@ -188,17 +192,17 @@ export const ReallocationStrategyTable: React.FC<ReallocationStrategyTableProps>
                         {isIncreasing ? '+' : ''}
                         {formatPercent(strategy.allocationDeltaPct)}
                       </td>
-                      <td className="px-4 py-3 text-right tabular-nums text-[#4f4f4f]">
+                      <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
                         {formatPercent(strategy.currentAprPct)}
                       </td>
-                      <td className="px-4 py-3 text-right tabular-nums text-[#4f4f4f]">
+                      <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
                         {formatPercent(strategy.targetAprPct)}
                       </td>
                       <td
                         className={cn(
                           'px-4 py-3 text-right font-medium tabular-nums',
                           strategy.aprDeltaPct === null
-                            ? 'text-[#808080]'
+                            ? 'text-muted-foreground'
                             : aprIncreasing
                               ? 'text-green-600'
                               : 'text-red-600'

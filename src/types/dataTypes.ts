@@ -96,6 +96,7 @@ export type StrategyAllocationChartDatum = {
   name: string
   value: number
   amount: string
+  color?: string
 }
 
 export type VaultDebtData = {

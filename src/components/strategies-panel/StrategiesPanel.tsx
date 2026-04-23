@@ -3,8 +3,17 @@ import { ReallocationChart, ReallocationStrategyTable } from '@/components/reall
 import StrategiesSkeleton from '@/components/strategies-panel/StrategiesSkeleton'
 import { useIsMobile } from '@/components/ui/use-mobile'
 import { VaultEventsPanel } from '@/components/vault-events'
+import { useRootDarkMode } from '@/hooks/useRootDarkMode'
 import { useSortingAndFiltering } from '@/hooks/useSortingAndFiltering'
 import { useStrategiesData } from '@/hooks/useStrategiesData'
+import { isEnvioConfigured } from '@/lib/envio-client'
+import {
+  buildComparisonStrategies,
+  buildReallocationColorMap,
+  buildStateAllocationChartData,
+  formatReallocationTimestamp,
+  getReallocationPanelLabels
+} from '@/lib/reallocation-panels'
 import { cn } from '@/lib/utils'
 import type { ReallocationData } from '@/types/reallocationTypes'
 import type { VaultExtended } from '@/types/vaultTypes'
@@ -32,22 +41,86 @@ export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
     const [expandedRow, setExpandedRow] = useState<number | null>(null)
     const [activeTab, setActiveTab] = useState<string>('Current Strategies')
     const [showUnallocated, setShowUnallocated] = useState<boolean>(false)
+    const [activeReallocationIndex, setActiveReallocationIndex] = useState<number>(0)
     const isMobile = useIsMobile()
+    const isDark = useRootDarkMode()
     const hasAbout = Boolean(aboutDescription?.trim())
     const hasReallocation = Boolean(reallocationData)
+    const hasHistoricalUserEvents = isEnvioConfigured()
+    const latestReallocationPanelId = reallocationData?.panels.length
+      ? reallocationData.panels[reallocationData.panels.length - 1]?.id
+      : undefined
     const tabs = React.useMemo(() => {
       const list: string[] = ['Current Strategies']
-      list.push('Historical User Events')
+      if (hasHistoricalUserEvents) list.push('Historical User Events')
       if (hasReallocation) list.push('Current Reallocation')
       if (isMobile && hasAbout) list.push('About')
       return list
-    }, [hasReallocation, isMobile, hasAbout])
+    }, [hasHistoricalUserEvents, hasReallocation, isMobile, hasAbout])
 
     React.useEffect(() => {
       if (!tabs.includes(activeTab)) {
         setActiveTab('Current Strategies')
       }
     }, [tabs, activeTab])
+
+    React.useEffect(() => {
+      if (!reallocationData?.panels.length) {
+        setActiveReallocationIndex(0)
+        return
+      }
+
+      if (!latestReallocationPanelId) {
+        setActiveReallocationIndex(reallocationData.panels.length - 1)
+        return
+      }
+
+      setActiveReallocationIndex(reallocationData.panels.length - 1)
+    }, [latestReallocationPanelId, reallocationData?.panels.length])
+
+    const activeReallocationPanel = React.useMemo(() => {
+      if (!reallocationData?.panels.length) {
+        return null
+      }
+
+      const nextIndex = Math.min(Math.max(activeReallocationIndex, 0), reallocationData.panels.length - 1)
+      return reallocationData.panels[nextIndex] ?? null
+    }, [activeReallocationIndex, reallocationData])
+
+    const reallocationPanelLabels = React.useMemo(() => {
+      if (!activeReallocationPanel) {
+        return {
+          beforeLabel: 'Before',
+          afterLabel: 'After'
+        }
+      }
+
+      return getReallocationPanelLabels(activeReallocationPanel)
+    }, [activeReallocationPanel])
+
+    const reallocationColorByStrategyKey = React.useMemo(() => {
+      if (!reallocationData) {
+        return {}
+      }
+
+      return buildReallocationColorMap(reallocationData.panels, isDark)
+    }, [isDark, reallocationData])
+
+    const activeReallocationStrategies = React.useMemo(() => {
+      if (!activeReallocationPanel) {
+        return []
+      }
+
+      return buildComparisonStrategies(activeReallocationPanel, reallocationColorByStrategyKey)
+    }, [activeReallocationPanel, reallocationColorByStrategyKey])
+
+    const activeReallocationAllocationData = React.useMemo(() => {
+      if (!activeReallocationPanel) {
+        return []
+      }
+
+      return buildStateAllocationChartData(activeReallocationPanel.afterState, reallocationColorByStrategyKey)
+    }, [activeReallocationPanel, reallocationColorByStrategyKey])
 
     const toggleRow = (index: number) => {
       setExpandedRow(expandedRow === index ? null : index)
@@ -112,26 +185,54 @@ export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
             <VaultEventsPanel
               vaultChainId={vaultChainId}
               vaultAddress={vaultDetails.address}
-              tokenSymbol={vaultDetails.asset?.symbol ?? vaultDetails.symbol}
-              tokenDecimals={vaultDetails.asset?.decimals}
+              assetSymbol={vaultDetails.asset?.symbol}
+              assetDecimals={vaultDetails.asset?.decimals}
+              shareSymbol={vaultDetails.symbol}
+              shareDecimals={vaultDetails.decimals ?? vaultDetails.asset?.decimals}
             />
           )
         }
         case 'Current Reallocation': {
-          if (!reallocationData) return null
+          if (!reallocationData || !activeReallocationPanel) return null
           return (
-            <div className="space-y-4 px-4 py-4">
+            <div className="space-y-6 px-4 py-4">
               <div className="text-[11px] font-medium uppercase tracking-[0.08em] text-[#808080]">
-                Latest allocation change{reallocationData.timestampUtc ? ` (${reallocationData.timestampUtc})` : ''}
+                Recent reallocation timeline
               </div>
-              <ReallocationChart strategies={reallocationData.strategies} />
-              <ReallocationStrategyTable strategies={reallocationData.strategies} chainId={reallocationData.chainId} />
-              {reallocationData.hasUnallocated && (
-                <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                  <span className="font-semibold">Warning:</span> {(reallocationData.unallocatedBps / 100).toFixed(2)}%
-                  of assets are unallocated.
+
+              <ReallocationChart
+                panels={reallocationData.panels}
+                activePanelIndex={activeReallocationIndex}
+                onActivePanelIndexChange={setActiveReallocationIndex}
+                colorByStrategyKey={reallocationColorByStrategyKey}
+              />
+
+              <div className="flex flex-col pb-4 lg:flex-row lg:gap-6">
+                <div className="order-2 w-full lg:order-1 lg:basis-3/4">
+                  <ReallocationStrategyTable
+                    strategies={activeReallocationStrategies}
+                    chainId={reallocationData.chainId}
+                    beforeLabel={reallocationPanelLabels.beforeLabel}
+                    afterLabel={reallocationPanelLabels.afterLabel}
+                  />
                 </div>
-              )}
+
+                <div className="order-1 w-full border-b border-border px-4 py-4 lg:order-2 lg:basis-1/4 lg:border-b-0 lg:px-0 lg:py-0">
+                  <div className="text-[11px] font-medium uppercase tracking-[0.08em] text-[#808080]">
+                    {reallocationPanelLabels.afterLabel} allocation
+                  </div>
+                  <div className="text-xs text-[#808080]">
+                    {formatReallocationTimestamp(activeReallocationPanel.afterTimestampUtc)}
+                  </div>
+                  {activeReallocationAllocationData.length > 0 ? (
+                    <StrategyAllocationChart allocationData={activeReallocationAllocationData} />
+                  ) : (
+                    <div className="flex h-[220px] items-center justify-center text-sm text-[#808080]">
+                      No allocation summary available for this panel
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           )
         }

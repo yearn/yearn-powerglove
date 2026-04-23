@@ -1,11 +1,13 @@
 import React, { useMemo } from 'react'
-import { CHAIN_ID_TO_BLOCK_EXPLORER, CHAIN_ID_TO_NAME } from '@/constants/chains'
+import { CHAIN_ID_TO_BLOCK_EXPLORER } from '@/constants/chains'
 import type { VaultUserEvent } from '@/types/vaultEventTypes'
 
 interface VaultEventRowProps {
   event: VaultUserEvent
-  tokenSymbol?: string
-  tokenDecimals?: number
+  assetSymbol?: string
+  assetDecimals?: number
+  shareSymbol?: string
+  shareDecimals?: number
 }
 
 function formatAddress(address: string): string {
@@ -67,14 +69,8 @@ function getExplorerAddressUrl(address: string, chainId: number): string | null 
   return `${base}/address/${address}`
 }
 
-function getChainName(chainId: number): string {
-  return CHAIN_ID_TO_NAME[chainId as keyof typeof CHAIN_ID_TO_NAME] ?? `Chain ${chainId}`
-}
-
 export const VaultEventRow: React.FC<VaultEventRowProps> = React.memo(
-  ({ event, tokenSymbol = '', tokenDecimals = 18 }) => {
-    const decimals = tokenDecimals
-
+  ({ event, assetSymbol = '', assetDecimals = 18, shareSymbol = '', shareDecimals = 18 }) => {
     const display = useMemo(() => {
       switch (event.type) {
         case 'deposit':
@@ -83,8 +79,8 @@ export const VaultEventRow: React.FC<VaultEventRowProps> = React.memo(
             iconBg: 'bg-green-100',
             iconColor: 'text-green-700',
             label: 'Deposit',
-            amount: event.assets ? `+${formatUnits(event.assets, decimals)}` : '+0',
-            symbol: tokenSymbol
+            amount: event.assets ? `+${formatUnits(event.assets, assetDecimals)}` : '+0',
+            symbol: assetSymbol
           }
         case 'withdraw':
           return {
@@ -92,8 +88,8 @@ export const VaultEventRow: React.FC<VaultEventRowProps> = React.memo(
             iconBg: 'bg-red-100',
             iconColor: 'text-red-700',
             label: 'Withdraw',
-            amount: event.assets ? `-${formatUnits(event.assets, decimals)}` : '-0',
-            symbol: tokenSymbol
+            amount: event.assets ? `-${formatUnits(event.assets, assetDecimals)}` : '-0',
+            symbol: assetSymbol
           }
         case 'transfer':
           return {
@@ -101,8 +97,8 @@ export const VaultEventRow: React.FC<VaultEventRowProps> = React.memo(
             iconBg: 'bg-gray-100',
             iconColor: 'text-gray-700',
             label: 'Transfer',
-            amount: event.value ? formatUnits(event.value, decimals) : '0',
-            symbol: tokenSymbol
+            amount: event.value ? formatUnits(event.value, shareDecimals) : '0',
+            symbol: shareSymbol
           }
         default:
           return {
@@ -114,13 +110,12 @@ export const VaultEventRow: React.FC<VaultEventRowProps> = React.memo(
             symbol: ''
           }
       }
-    }, [event.type, event.assets, event.value, decimals, tokenSymbol])
+    }, [event.type, event.assets, event.value, assetDecimals, assetSymbol, shareDecimals, shareSymbol])
 
     const blockTimestamp = event.blockTimestamp
     const relativeTime = getRelativeTime(blockTimestamp)
 
     const chainId = event.chainId
-    const chainName = getChainName(chainId)
     const txUrl = event.transactionHash ? getExplorerTxUrl(event.transactionHash, chainId) : null
 
     const ownerAddress = event.owner || event.sender || ''
@@ -185,9 +180,9 @@ export const VaultEventRow: React.FC<VaultEventRowProps> = React.memo(
 
         <div className="flex items-center gap-3 sm:gap-4">
           <div className="text-right">
-            <div className={`text-sm font-semibold font-numeric ${amountClass}`}>
-              {display.amount} {display.symbol}
-            </div>
+            <div
+              className={`text-sm font-semibold font-numeric ${amountClass}`}
+            >{`${display.amount}${display.symbol ? ` ${display.symbol}` : ''}`}</div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             {txUrl && (

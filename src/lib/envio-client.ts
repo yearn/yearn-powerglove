@@ -1,11 +1,21 @@
-const ENVIO_GRAPHQL_URL = import.meta.env.VITE_PUBLIC_ENVIO_GRAPHQL_URL || 'http://localhost:8080/v1/graphql'
+function getEnvioGraphqlUrl(): string {
+  const envioGraphqlUrl = import.meta.env.VITE_PUBLIC_ENVIO_GRAPHQL_URL?.trim()
+  if (!envioGraphqlUrl) {
+    throw new Error('Historical user events require VITE_PUBLIC_ENVIO_GRAPHQL_URL to be configured.')
+  }
+  return envioGraphqlUrl
+}
+
+export function isEnvioConfigured(): boolean {
+  return Boolean(import.meta.env.VITE_PUBLIC_ENVIO_GRAPHQL_URL?.trim())
+}
 
 const headers: Record<string, string> = {
   'Content-Type': 'application/json'
 }
 
 export async function queryEnvio<T>(query: string, variables?: Record<string, unknown>): Promise<T> {
-  const response = await fetch(ENVIO_GRAPHQL_URL, {
+  const response = await fetch(getEnvioGraphqlUrl(), {
     method: 'POST',
     headers,
     body: JSON.stringify({ query, variables })

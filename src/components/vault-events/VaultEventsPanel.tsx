@@ -6,8 +6,10 @@ import { VaultEventRow } from './VaultEventRow'
 interface VaultEventsPanelProps {
   vaultChainId: ChainId
   vaultAddress: string
-  tokenSymbol?: string
-  tokenDecimals?: number
+  assetSymbol?: string
+  assetDecimals?: number
+  shareSymbol?: string
+  shareDecimals?: number
 }
 
 const EVENT_TYPE_OPTIONS = [
@@ -18,7 +20,7 @@ const EVENT_TYPE_OPTIONS = [
 ]
 
 export const VaultEventsPanel: React.FC<VaultEventsPanelProps> = React.memo(
-  ({ vaultChainId, vaultAddress, tokenSymbol, tokenDecimals }) => {
+  ({ vaultChainId, vaultAddress, assetSymbol, assetDecimals, shareSymbol, shareDecimals }) => {
     const {
       events,
       totalCount,
@@ -108,7 +110,14 @@ export const VaultEventsPanel: React.FC<VaultEventsPanelProps> = React.memo(
         ) : (
           <div className="border border-border rounded-lg overflow-hidden bg-white">
             {events.map((event) => (
-              <VaultEventRow key={event.id} event={event} tokenSymbol={tokenSymbol} tokenDecimals={tokenDecimals} />
+              <VaultEventRow
+                key={event.id}
+                event={event}
+                assetSymbol={assetSymbol}
+                assetDecimals={assetDecimals}
+                shareSymbol={shareSymbol}
+                shareDecimals={shareDecimals}
+              />
             ))}
           </div>
         )}

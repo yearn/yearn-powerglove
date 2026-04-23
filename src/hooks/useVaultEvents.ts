@@ -16,10 +16,12 @@ export function useVaultEvents(vaultAddress: string | undefined, chainId: ChainI
     if (!vaultAddress || !chainId) {
       setAllEvents([])
       setIsLoading(false)
+      setCurrentPage(1)
       return
     }
 
     let cancelled = false
+    setCurrentPage(1)
     setIsLoading(true)
     setError(null)
 
@@ -45,6 +47,10 @@ export function useVaultEvents(vaultAddress: string | undefined, chainId: ChainI
   const filteredEvents = eventType === 'all' ? allEvents : allEvents.filter((e) => e.type === eventType)
 
   const totalPages = Math.max(1, Math.ceil(filteredEvents.length / PAGE_SIZE))
+  useEffect(() => {
+    setCurrentPage((page) => Math.min(page, totalPages))
+  }, [totalPages])
+
   const paginatedEvents = filteredEvents.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
 
   const depositCount = allEvents.filter((e) => e.type === 'deposit').length

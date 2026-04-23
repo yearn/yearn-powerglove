@@ -15,23 +15,37 @@ export interface ReallocationStrategy {
   color: string
 }
 
+export interface ReallocationStateStrategy {
+  strategyKey: string
+  strategyAddress: string | null
+  name: string
+  isUnallocated: boolean
+  allocationPct: number
+  aprPct: number | null
+}
+
+export interface ReallocationState {
+  id: string
+  timestampUtc: string | null
+  tvl: number | null
+  tvlUnit: string | null
+  vaultAprPct: number | null
+  strategies: ReallocationStateStrategy[]
+}
+
+export interface ReallocationPanel {
+  id: string
+  beforeState: ReallocationState
+  afterState: ReallocationState
+  beforeTimestampUtc: string | null
+  afterTimestampUtc: string | null
+  kind: 'historical' | 'proposal' | 'current'
+}
+
 export interface ReallocationData {
   vault: string
   vaultLabel: string
   chainId: number | null
   chainName: string | null
-  tvl: number | null
-  tvlUnit: string | null
-
-  strategies: ReallocationStrategy[]
-
-  vaultAprCurrentPct: number
-  vaultAprProposedPct: number
-  vaultAprDeltaPct: number
-
-  hasUnallocated: boolean
-  unallocatedBps: number
-
-  timestampUtc: string | null
-  sourceKey: string
+  panels: ReallocationPanel[]
 }
