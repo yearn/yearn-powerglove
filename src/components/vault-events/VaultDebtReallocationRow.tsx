@@ -146,7 +146,7 @@ export const VaultDebtReallocationRow: React.FC<VaultDebtReallocationRowProps> =
         >
           <div className="flex min-w-0 items-start gap-3">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-white">
-              <span className="text-sm font-semibold text-[#4f4f4f]">⇄</span>
+              <span className="text-sm text-[#4f4f4f]">⇄</span>
             </div>
 
             <div className="min-w-0">
@@ -173,7 +173,7 @@ export const VaultDebtReallocationRow: React.FC<VaultDebtReallocationRowProps> =
             {movementSummary || txUrl ? (
               <div className="text-right">
                 {movementSummary ? (
-                  <div className={cn('font-numeric text-sm font-semibold text-[#4f4f4f]')}>{movementSummary}</div>
+                  <div className={cn('font-numeric text-sm font-regular text-[#4f4f4f]')}>{movementSummary}</div>
                 ) : null}
                 {txUrl ? (
                   <a
@@ -226,7 +226,7 @@ export const VaultDebtReallocationRow: React.FC<VaultDebtReallocationRowProps> =
                       <div
                         className={cn(
                           'text-xs font-semibold',
-                          direction === 'out' ? 'text-[#7f1d1d]' : 'text-[#4f4f4f]'
+                          direction === 'out' ? 'text-[#7f1d1d]' : 'text-green-700'
                         )}
                       >
                         {formatSignedDelta(delta, assetDecimals, assetSymbol)}

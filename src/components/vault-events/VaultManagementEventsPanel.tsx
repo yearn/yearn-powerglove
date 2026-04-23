@@ -9,6 +9,7 @@ import type { VaultDerivedStrategy } from '@/types/vaultTypes'
 import { VaultDebtReallocationRow } from './VaultDebtReallocationRow'
 import { VaultDebtSequenceRow } from './VaultDebtSequenceRow'
 import { VaultEventRow } from './VaultEventRow'
+import { VaultEventsLoadingState } from './VaultEventsLoadingState'
 
 interface VaultManagementEventsPanelProps {
   vaultChainId: ChainId
@@ -37,7 +38,11 @@ export const VaultManagementEventsPanel: React.FC<VaultManagementEventsPanelProp
       setCurrentPage
     } = useVaultManagementEvents(vaultAddress, vaultChainId)
 
-    const { data: userEvents = [] } = useQuery({
+    const {
+      data: userEvents = [],
+      isLoading: isUserEventsLoading,
+      error: userEventsError
+    } = useQuery({
       queryKey: ['envio', 'vault-user-events', vaultChainId, vaultAddress.toLowerCase()],
       queryFn: () => fetchVaultUserEvents(vaultAddress, vaultChainId),
       staleTime: 60 * 1000
@@ -100,10 +105,15 @@ export const VaultManagementEventsPanel: React.FC<VaultManagementEventsPanelProp
       return merged
     }, [baseStrategyNamesByAddress, fetchedStrategyNamesByAddress])
 
-    const timelineItems = React.useMemo(
-      () => buildVaultManagementTimelineItems(allEvents, userEvents, eventType),
-      [allEvents, userEvents, eventType]
-    )
+    const isTimelineLoading = isLoading || isUserEventsLoading
+
+    const timelineItems = React.useMemo(() => {
+      if (isTimelineLoading) {
+        return []
+      }
+
+      return buildVaultManagementTimelineItems(allEvents, userEvents, eventType)
+    }, [allEvents, userEvents, eventType, isTimelineLoading])
 
     const totalPages = Math.max(1, Math.ceil(timelineItems.length / PAGE_SIZE))
 
@@ -116,29 +126,20 @@ export const VaultManagementEventsPanel: React.FC<VaultManagementEventsPanelProp
       [currentPage, timelineItems]
     )
 
-    if (error) {
+    const resolvedUserEventsError =
+      userEventsError instanceof Error ? userEventsError : userEventsError ? new Error(String(userEventsError)) : null
+    const resolvedError = error ?? resolvedUserEventsError
+
+    if (resolvedError) {
       return (
         <div className="flex items-center justify-center py-12">
-          <p className="text-sm text-red-500">Failed to load management events: {error.message}</p>
+          <p className="text-sm text-red-500">Failed to load management events: {resolvedError.message}</p>
         </div>
       )
     }
 
-    if (isLoading) {
-      return (
-        <div className="space-y-3 px-4 py-4">
-          {[0, 1, 2, 3, 4].map((i) => (
-            <div key={i} className="flex animate-pulse items-center gap-3">
-              <div className="h-8 w-8 rounded-full bg-gray-200" />
-              <div className="flex-1 space-y-2">
-                <div className="h-3 w-32 rounded bg-gray-200" />
-                <div className="h-3 w-56 rounded bg-gray-200" />
-              </div>
-              <div className="h-3 w-20 rounded bg-gray-200" />
-            </div>
-          ))}
-        </div>
-      )
+    if (isTimelineLoading) {
+      return <VaultEventsLoadingState loadingState={isLoading ? 'loading management events' : 'combining event rows'} />
     }
 
     if (allEventCount === 0 && eventType === 'all') {

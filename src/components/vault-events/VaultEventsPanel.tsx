@@ -3,6 +3,7 @@ import type { ChainId } from '@/constants/chains'
 import { useVaultEvents } from '@/hooks/useVaultEvents'
 import { USER_EVENT_TYPE_OPTIONS } from '@/lib/vault-events'
 import { VaultEventRow } from './VaultEventRow'
+import { VaultEventsLoadingState } from './VaultEventsLoadingState'
 
 interface VaultEventsPanelProps {
   vaultChainId: ChainId
@@ -39,20 +40,7 @@ export const VaultEventsPanel: React.FC<VaultEventsPanelProps> = React.memo(
     }
 
     if (isLoading) {
-      return (
-        <div className="space-y-3 px-4 py-4">
-          {[0, 1, 2, 3, 4].map((i) => (
-            <div key={i} className="flex items-center gap-3 animate-pulse">
-              <div className="h-8 w-8 rounded-full bg-gray-200" />
-              <div className="flex-1 space-y-2">
-                <div className="h-3 w-24 rounded bg-gray-200" />
-                <div className="h-3 w-32 rounded bg-gray-200" />
-              </div>
-              <div className="h-3 w-20 rounded bg-gray-200" />
-            </div>
-          ))}
-        </div>
-      )
+      return <VaultEventsLoadingState loadingState="loading events" />
     }
 
     if (totalCount === 0 && eventType === 'all') {

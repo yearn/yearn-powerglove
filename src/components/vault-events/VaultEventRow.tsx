@@ -13,6 +13,7 @@ interface VaultEventRowProps {
   shareDecimals?: number
   strategyNamesByAddress?: Record<string, string>
   reason?: VaultManagementReason
+  nested?: boolean
 }
 
 interface EventDetail {
@@ -1193,7 +1194,8 @@ export const VaultEventRow: React.FC<VaultEventRowProps> = React.memo(
     shareSymbol = '',
     shareDecimals = 18,
     strategyNamesByAddress = {},
-    reason
+    reason,
+    nested = false
   }) => {
     const [isExpanded, setIsExpanded] = useState(false)
     const chainId = event.chainId
@@ -1229,14 +1231,15 @@ export const VaultEventRow: React.FC<VaultEventRowProps> = React.memo(
     }
 
     return (
-      <div className="border-b border-border last:border-b-0">
+      <div className={cn(!nested && 'border-b border-border last:border-b-0')}>
         <div
           role={isExpandable ? 'button' : undefined}
           tabIndex={isExpandable ? 0 : undefined}
           aria-expanded={isExpandable ? isExpanded : undefined}
           aria-label={isExpandable ? (isExpanded ? 'Collapse details' : 'Expand details') : undefined}
           className={cn(
-            'grid grid-cols-1 items-start gap-3 px-4 py-3 transition-colors hover:bg-gray-50 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start sm:gap-4',
+            'grid grid-cols-1 items-start gap-3 transition-colors sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start sm:gap-4',
+            nested ? 'px-0 py-2 hover:bg-transparent' : 'px-4 py-3 hover:bg-gray-50',
             isExpandable && 'cursor-pointer'
           )}
           onClick={(event) => handleToggle(event.target)}
@@ -1257,7 +1260,7 @@ export const VaultEventRow: React.FC<VaultEventRowProps> = React.memo(
                 isUserEvent ? display.iconBg : 'border border-border bg-white'
               }`}
             >
-              <span className={`${isUserEvent ? display.iconColor : 'text-[#4f4f4f]'} text-sm font-semibold`}>
+              <span className={`${isUserEvent ? display.iconColor : 'text-[#4f4f4f]'} text-sm`}> 
                 {display.icon}
               </span>
             </div>
@@ -1324,7 +1327,7 @@ export const VaultEventRow: React.FC<VaultEventRowProps> = React.memo(
                 {display.summary ? (
                   <div
                     className={cn(
-                      'font-numeric text-sm font-semibold text-foreground',
+                      'font-numeric text-sm text-foreground',
                       display.summaryClassName,
                       isTimelockControllerText(display.summary) && 'text-primary'
                     )}
@@ -1358,7 +1361,7 @@ export const VaultEventRow: React.FC<VaultEventRowProps> = React.memo(
 
         {isExpandable && isExpanded ? (
           <div className="border-t border-border bg-muted/20">
-            <div className="pl-20 pb-4">
+            <div className={nested ? 'pl-11 pb-2' : 'pl-20 pb-4'}>
               <div className="divide-y divide-border">
                 {display.details.map((detail) =>
                   detail.href ? (

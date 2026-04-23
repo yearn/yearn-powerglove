@@ -1,31 +1,14 @@
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import React, { useMemo, useState } from 'react'
-import { CHAIN_ID_TO_BLOCK_EXPLORER } from '@/constants/chains'
 import { cn } from '@/lib/utils'
 import type { VaultManagementTimelineSequenceItem } from '@/lib/vault-management-display'
+import { VaultEventRow } from './VaultEventRow'
 
 interface VaultDebtSequenceRowProps {
   item: VaultManagementTimelineSequenceItem
   assetSymbol?: string
   assetDecimals?: number
   strategyNamesByAddress?: Record<string, string>
-}
-
-function normalizeAddress(address?: string): string | null {
-  return address ? address.toLowerCase() : null
-}
-
-function formatAddress(address: string): string {
-  return `${address.slice(0, 6)}...${address.slice(-4)}`
-}
-
-function getStrategyLabel(address: string | undefined, strategyNamesByAddress: Record<string, string>): string {
-  const normalizedAddress = normalizeAddress(address)
-  if (!address || !normalizedAddress) {
-    return ''
-  }
-
-  return strategyNamesByAddress[normalizedAddress] ?? formatAddress(address)
 }
 
 function toBigInt(value: string | undefined): bigint | null {
@@ -94,15 +77,6 @@ function formatRelativeTime(blockTimestamp: string | number): string {
   return `${Math.floor(secondsAgo / 86_400)}d ago`
 }
 
-function getExplorerTxUrl(transactionHash: string, chainId: number): string | null {
-  const base = CHAIN_ID_TO_BLOCK_EXPLORER[chainId as keyof typeof CHAIN_ID_TO_BLOCK_EXPLORER]
-  if (!base) {
-    return null
-  }
-
-  return `${base}/tx/${transactionHash}`
-}
-
 export const VaultDebtSequenceRow: React.FC<VaultDebtSequenceRowProps> = React.memo(
   ({ item, assetSymbol = '', assetDecimals = 18, strategyNamesByAddress = {} }) => {
     const [isExpanded, setIsExpanded] = useState(false)
@@ -140,9 +114,7 @@ export const VaultDebtSequenceRow: React.FC<VaultDebtSequenceRowProps> = React.m
         >
           <div className="flex min-w-0 items-start gap-3">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-white">
-              <span className="text-sm font-semibold text-[#4f4f4f]">
-                {item.direction === 'decrease' ? '∆↓' : '∆↑'}
-              </span>
+              <span className="text-sm text-[#4f4f4f]">{item.direction === 'decrease' ? '∆↓' : '∆↑'}</span>
             </div>
 
             <div className="min-w-0">
@@ -167,8 +139,8 @@ export const VaultDebtSequenceRow: React.FC<VaultDebtSequenceRowProps> = React.m
             <div className="text-right">
               <div
                 className={cn(
-                  'font-numeric text-sm font-semibold',
-                  item.direction === 'decrease' ? 'text-[#7f1d1d]' : 'text-[#4f4f4f]'
+                  'font-numeric text-sm',
+                  item.direction === 'decrease' ? 'text-[#7f1d1d]' : 'text-green-700'
                 )}
               >
                 {formatSignedDelta(totalDelta, assetDecimals, assetSymbol)}
@@ -185,43 +157,18 @@ export const VaultDebtSequenceRow: React.FC<VaultDebtSequenceRowProps> = React.m
 
         {isExpanded ? (
           <div className="border-t border-border bg-muted/20">
-            <div className="divide-y divide-border px-4 pl-20 pb-4">
-              {item.items.map((timelineItem) => {
-                const currentDebt = toBigInt(timelineItem.event.currentDebt) ?? 0n
-                const newDebt = toBigInt(timelineItem.event.newDebt) ?? 0n
-                const delta = newDebt - currentDebt
-                const txUrl = getExplorerTxUrl(timelineItem.event.transactionHash, timelineItem.event.chainId)
-
-                return (
-                  <div key={timelineItem.id} className="flex items-start justify-between gap-3 py-2">
-                    <div className="min-w-0">
-                      <div className="text-xs font-medium text-black">
-                        {getStrategyLabel(timelineItem.event.strategy, strategyNamesByAddress)}
-                      </div>
-                      <div className="mt-1 text-[11px] text-[#808080]">
-                        {formatRelativeTime(timelineItem.event.blockTimestamp)}
-                      </div>
-                    </div>
-
-                    <div className="shrink-0 text-right">
-                      <div className={cn('text-xs font-semibold', delta < 0n ? 'text-[#7f1d1d]' : 'text-[#4f4f4f]')}>
-                        {formatSignedDelta(delta, assetDecimals, assetSymbol)}
-                      </div>
-                      {txUrl ? (
-                        <a
-                          data-no-row-toggle
-                          href={txUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="mt-1 block text-[11px] text-[#0657f9] hover:underline"
-                        >
-                          tx link
-                        </a>
-                      ) : null}
-                    </div>
-                  </div>
-                )
-              })}
+            <div className="divide-y divide-border pl-20 pr-4">
+              {item.items.map((timelineItem) => (
+                <VaultEventRow
+                  key={timelineItem.id}
+                  event={timelineItem.event}
+                  assetSymbol={assetSymbol}
+                  assetDecimals={assetDecimals}
+                  strategyNamesByAddress={strategyNamesByAddress}
+                  reason={timelineItem.reason}
+                  nested
+                />
+              ))}
             </div>
           </div>
         ) : null}
