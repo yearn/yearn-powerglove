@@ -50,18 +50,18 @@ type PanelAnimation = {
   from: number
 }
 
-const VIEWBOX_WIDTH = 1000
-const VIEWBOX_HEIGHT = 1000
+const VIEWBOX_WIDTH = 1500
+const VIEWBOX_HEIGHT = 900
 const NODE_WIDTH = 22
-const BEFORE_NODE_X = 44
+const BEFORE_NODE_X = 28
 const AFTER_NODE_X = VIEWBOX_WIDTH - BEFORE_NODE_X - NODE_WIDTH
-const CHART_TOP = 36
-const CHART_BOTTOM = 36
+const CHART_TOP = 48
+const CHART_BOTTOM = 48
 const NODE_LABEL_PADDING = 20
 const SCENE_TRANSITION_MS = 380
-const SIDE_SCENE_SHIFT_PERCENT = 81
-const FAR_SCENE_SHIFT_PERCENT = 112
-const SIDE_SCENE_OPACITY = 0.28
+const SIDE_SCENE_SHIFT_PX = 980
+const FAR_SCENE_SHIFT_PX =1960
+const SIDE_SCENE_OPACITY = 0.4
 
 function toSvgSafeId(value: string): string {
   return value.replace(/[^a-zA-Z0-9_-]/g, '-')
@@ -280,12 +280,12 @@ function buildRibbons(
   }
 }
 
-function getSceneOffsetPercent(slot: number): number {
-  if (slot <= -2) return -FAR_SCENE_SHIFT_PERCENT
-  if (slot === -1) return -SIDE_SCENE_SHIFT_PERCENT
-  if (slot === 1) return SIDE_SCENE_SHIFT_PERCENT
-  if (slot >= 2) return FAR_SCENE_SHIFT_PERCENT
-  return 0
+function getSceneOffset(slot: number): string {
+  if (slot <= -2) return `-${FAR_SCENE_SHIFT_PX}px`
+  if (slot === -1) return `-${SIDE_SCENE_SHIFT_PX}px`
+  if (slot === 1) return `${SIDE_SCENE_SHIFT_PX}px`
+  if (slot >= 2) return `${FAR_SCENE_SHIFT_PX}px`
+  return '0px'
 }
 
 function getSceneScale(_slot: number): number {
@@ -370,7 +370,8 @@ const ReallocationFlowScene: React.FC<{
   return (
     <svg
       viewBox={`0 0 ${VIEWBOX_WIDTH} ${VIEWBOX_HEIGHT}`}
-      className="h-full w-full"
+      className="block h-full w-auto max-w-none"
+      preserveAspectRatio="xMidYMid meet"
       role="img"
       aria-label={`Reallocation flow for panel ${panel.id}`}
       onMouseLeave={() => {
@@ -727,9 +728,12 @@ export const ReallocationChart: React.FC<ReallocationChartProps> = React.memo(
             return (
               <div
                 key={panel.id}
-                className={cn('absolute inset-0 left-1/2', distance > 0 && 'pointer-events-none select-none')}
+                className={cn(
+                  'absolute inset-y-0 left-1/2 flex items-stretch justify-center',
+                  distance > 0 && 'pointer-events-none select-none'
+                )}
                 style={{
-                  transform: `translateX(-50%) translateX(${getSceneOffsetPercent(slot)}%) scale(${getSceneScale(slot)})`,
+                  transform: `translateX(-50%) translateX(${getSceneOffset(slot)}) scale(${getSceneScale(slot)})`,
                   opacity: getSceneOpacity(slot),
                   zIndex: distance === 0 ? 30 : distance === 1 ? 20 : 10,
                   filter: distance === 0 ? 'none' : 'saturate(0.9)',
