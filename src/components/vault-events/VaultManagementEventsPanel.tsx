@@ -1,0 +1,276 @@
+import { useQuery } from '@tanstack/react-query'
+import React from 'react'
+import type { ChainId } from '@/constants/chains'
+import { useVaultManagementEvents } from '@/hooks/useVaultManagementEvents'
+import { fetchStrategyDisplayNames } from '@/lib/kong-strategy-names'
+import { fetchVaultUserEvents } from '@/lib/vault-events'
+import { buildVaultManagementTimelineItems } from '@/lib/vault-management-display'
+import type { VaultDerivedStrategy } from '@/types/vaultTypes'
+import { VaultDebtReallocationRow } from './VaultDebtReallocationRow'
+import { VaultDebtSequenceRow } from './VaultDebtSequenceRow'
+import { VaultEventRow } from './VaultEventRow'
+
+interface VaultManagementEventsPanelProps {
+  vaultChainId: ChainId
+  vaultAddress: string
+  assetSymbol?: string
+  assetDecimals?: number
+  shareSymbol?: string
+  shareDecimals?: number
+  strategyDetails?: VaultDerivedStrategy[]
+}
+
+const PAGE_SIZE = 50
+
+export const VaultManagementEventsPanel: React.FC<VaultManagementEventsPanelProps> = React.memo(
+  ({ vaultChainId, vaultAddress, assetSymbol, assetDecimals, shareSymbol, shareDecimals, strategyDetails = [] }) => {
+    const {
+      allEvents,
+      allEventCount,
+      countsByType,
+      availableEventTypeOptions,
+      isLoading,
+      error,
+      eventType,
+      setEventType,
+      currentPage,
+      setCurrentPage
+    } = useVaultManagementEvents(vaultAddress, vaultChainId)
+
+    const { data: userEvents = [] } = useQuery({
+      queryKey: ['envio', 'vault-user-events', vaultChainId, vaultAddress.toLowerCase()],
+      queryFn: () => fetchVaultUserEvents(vaultAddress, vaultChainId),
+      staleTime: 60 * 1000
+    })
+
+    const baseStrategyNamesByAddress = React.useMemo(() => {
+      const byAddress: Record<string, string> = {}
+
+      for (const strategy of strategyDetails) {
+        const normalizedAddress = strategy.address?.toLowerCase()
+        const normalizedName = strategy.name?.trim()
+        if (!normalizedAddress || !normalizedName) {
+          continue
+        }
+
+        byAddress[normalizedAddress] = normalizedName
+      }
+
+      return byAddress
+    }, [strategyDetails])
+
+    const unresolvedStrategyAddresses = React.useMemo(() => {
+      const addresses = new Set<string>()
+
+      for (const event of allEvents) {
+        if (event.strategy) {
+          const normalizedStrategyAddress = event.strategy.toLowerCase()
+          if (!baseStrategyNamesByAddress[normalizedStrategyAddress]) {
+            addresses.add(normalizedStrategyAddress)
+          }
+        }
+
+        for (const queueAddress of event.newDefaultQueue ?? []) {
+          const normalizedQueueAddress = queueAddress.toLowerCase()
+          if (!baseStrategyNamesByAddress[normalizedQueueAddress]) {
+            addresses.add(normalizedQueueAddress)
+          }
+        }
+      }
+
+      return [...addresses].sort()
+    }, [allEvents, baseStrategyNamesByAddress])
+
+    const { data: fetchedStrategyNamesByAddress } = useQuery({
+      queryKey: ['kong', 'management-event-strategy-names', vaultChainId, unresolvedStrategyAddresses],
+      queryFn: () => fetchStrategyDisplayNames(vaultChainId, unresolvedStrategyAddresses),
+      enabled: unresolvedStrategyAddresses.length > 0,
+      staleTime: 5 * 60 * 1000
+    })
+
+    const strategyNamesByAddress = React.useMemo(() => {
+      const merged: Record<string, string> = { ...baseStrategyNamesByAddress }
+
+      for (const [address, info] of Object.entries(fetchedStrategyNamesByAddress ?? {})) {
+        if (info?.name) {
+          merged[address.toLowerCase()] = info.name
+        }
+      }
+
+      return merged
+    }, [baseStrategyNamesByAddress, fetchedStrategyNamesByAddress])
+
+    const timelineItems = React.useMemo(
+      () => buildVaultManagementTimelineItems(allEvents, userEvents, eventType),
+      [allEvents, userEvents, eventType]
+    )
+
+    const totalPages = Math.max(1, Math.ceil(timelineItems.length / PAGE_SIZE))
+
+    React.useEffect(() => {
+      setCurrentPage((page) => Math.min(page, totalPages))
+    }, [setCurrentPage, totalPages])
+
+    const paginatedTimelineItems = React.useMemo(
+      () => timelineItems.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+      [currentPage, timelineItems]
+    )
+
+    if (error) {
+      return (
+        <div className="flex items-center justify-center py-12">
+          <p className="text-sm text-red-500">Failed to load management events: {error.message}</p>
+        </div>
+      )
+    }
+
+    if (isLoading) {
+      return (
+        <div className="space-y-3 px-4 py-4">
+          {[0, 1, 2, 3, 4].map((i) => (
+            <div key={i} className="flex animate-pulse items-center gap-3">
+              <div className="h-8 w-8 rounded-full bg-gray-200" />
+              <div className="flex-1 space-y-2">
+                <div className="h-3 w-32 rounded bg-gray-200" />
+                <div className="h-3 w-56 rounded bg-gray-200" />
+              </div>
+              <div className="h-3 w-20 rounded bg-gray-200" />
+            </div>
+          ))}
+        </div>
+      )
+    }
+
+    if (allEventCount === 0 && eventType === 'all') {
+      return (
+        <div className="flex items-center justify-center py-12">
+          <p className="text-sm text-gray-500">No vault management events found for this vault.</p>
+        </div>
+      )
+    }
+
+    const rawFilteredCount = eventType === 'all' ? allEventCount : (countsByType.get(eventType) ?? 0)
+    const activeTypeCount = timelineItems.length
+
+    return (
+      <div className="px-4 py-4">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="flex flex-wrap items-center gap-4 text-xs text-[#808080]">
+            <span>
+              <span className="font-semibold text-black">{allEventCount}</span> management events
+            </span>
+            {rawFilteredCount !== activeTypeCount ? (
+              <span>
+                <span className="font-semibold text-black">{activeTypeCount}</span> timeline entries after grouping
+              </span>
+            ) : null}
+            {eventType !== 'all' ? (
+              <span>
+                <span className="font-semibold text-black">{activeTypeCount}</span> matching current filter
+              </span>
+            ) : null}
+          </div>
+          <div className="flex-1" />
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-[#808080]">Filter:</label>
+            <select
+              value={eventType}
+              onChange={(e) => {
+                setEventType(e.target.value as typeof eventType)
+                setCurrentPage(1)
+              }}
+              className="rounded border border-border bg-white px-2 py-1 text-xs"
+            >
+              {availableEventTypeOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {timelineItems.length === 0 ? (
+          <div className="flex items-center justify-center py-8">
+            <p className="text-sm text-gray-500">No management events match the selected filter.</p>
+          </div>
+        ) : (
+          <div className="overflow-hidden rounded-lg border border-border bg-white">
+            {paginatedTimelineItems.map((item) =>
+              item.kind === 'reallocation' ? (
+                <VaultDebtReallocationRow
+                  key={item.id}
+                  item={item}
+                  assetSymbol={assetSymbol}
+                  assetDecimals={assetDecimals}
+                  strategyNamesByAddress={strategyNamesByAddress}
+                />
+              ) : item.kind === 'sequence' ? (
+                <VaultDebtSequenceRow
+                  key={item.id}
+                  item={item}
+                  assetSymbol={assetSymbol}
+                  assetDecimals={assetDecimals}
+                  strategyNamesByAddress={strategyNamesByAddress}
+                />
+              ) : (
+                <VaultEventRow
+                  key={item.id}
+                  event={item.event}
+                  assetSymbol={assetSymbol}
+                  assetDecimals={assetDecimals}
+                  shareSymbol={shareSymbol}
+                  shareDecimals={shareDecimals}
+                  strategyNamesByAddress={strategyNamesByAddress}
+                  reason={item.reason}
+                />
+              )
+            )}
+          </div>
+        )}
+
+        {totalPages > 1 ? (
+          <div className="mt-3 flex items-center justify-between text-xs text-[#808080]">
+            <span>
+              Page {currentPage} of {totalPages}
+            </span>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setCurrentPage(1)}
+                disabled={currentPage === 1}
+                className="rounded border border-border px-2 py-1 disabled:opacity-50 hover:bg-gray-50"
+              >
+                First
+              </button>
+              <button
+                type="button"
+                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                disabled={currentPage === 1}
+                className="rounded border border-border px-2 py-1 disabled:opacity-50 hover:bg-gray-50"
+              >
+                Prev
+              </button>
+              <button
+                type="button"
+                onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                disabled={currentPage === totalPages}
+                className="rounded border border-border px-2 py-1 disabled:opacity-50 hover:bg-gray-50"
+              >
+                Next
+              </button>
+              <button
+                type="button"
+                onClick={() => setCurrentPage(totalPages)}
+                disabled={currentPage === totalPages}
+                className="rounded border border-border px-2 py-1 disabled:opacity-50 hover:bg-gray-50"
+              >
+                Last
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </div>
+    )
+  }
+)

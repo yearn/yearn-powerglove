@@ -1,6 +1,7 @@
 import React from 'react'
 import type { ChainId } from '@/constants/chains'
 import { useVaultEvents } from '@/hooks/useVaultEvents'
+import { USER_EVENT_TYPE_OPTIONS } from '@/lib/vault-events'
 import { VaultEventRow } from './VaultEventRow'
 
 interface VaultEventsPanelProps {
@@ -11,13 +12,6 @@ interface VaultEventsPanelProps {
   shareSymbol?: string
   shareDecimals?: number
 }
-
-const EVENT_TYPE_OPTIONS = [
-  { value: 'all', label: 'All events' },
-  { value: 'deposit', label: 'Deposits' },
-  { value: 'withdraw', label: 'Withdrawals' },
-  { value: 'transfer', label: 'Transfers' }
-]
 
 export const VaultEventsPanel: React.FC<VaultEventsPanelProps> = React.memo(
   ({ vaultChainId, vaultAddress, assetSymbol, assetDecimals, shareSymbol, shareDecimals }) => {
@@ -89,12 +83,12 @@ export const VaultEventsPanel: React.FC<VaultEventsPanelProps> = React.memo(
             <select
               value={eventType}
               onChange={(e) => {
-                setEventType(e.target.value)
+                setEventType(e.target.value as typeof eventType)
                 setCurrentPage(1)
               }}
               className="text-xs border border-border rounded px-2 py-1 bg-white"
             >
-              {EVENT_TYPE_OPTIONS.map((opt) => (
+              {USER_EVENT_TYPE_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
                   {opt.label}
                 </option>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { ChainId } from '@/constants/chains'
 import { fetchVaultUserEvents } from '@/lib/vault-events'
-import type { VaultUserEvent } from '@/types/vaultEventTypes'
+import type { VaultUserEvent, VaultUserEventType } from '@/types/vaultEventTypes'
 
 const PAGE_SIZE = 50
 
@@ -9,7 +9,7 @@ export function useVaultEvents(vaultAddress: string | undefined, chainId: ChainI
   const [allEvents, setAllEvents] = useState<VaultUserEvent[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<Error | null>(null)
-  const [eventType, setEventType] = useState<string>('all')
+  const [eventType, setEventType] = useState<'all' | VaultUserEventType>('all')
   const [currentPage, setCurrentPage] = useState(1)
 
   useEffect(() => {

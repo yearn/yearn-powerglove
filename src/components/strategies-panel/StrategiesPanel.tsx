@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { ReallocationChart, ReallocationStrategyTable } from '@/components/reallocation-panel'
 import StrategiesSkeleton from '@/components/strategies-panel/StrategiesSkeleton'
 import { useIsMobile } from '@/components/ui/use-mobile'
-import { VaultEventsPanel } from '@/components/vault-events'
+import { VaultEventsPanel, VaultManagementEventsPanel } from '@/components/vault-events'
 import { useRootDarkMode } from '@/hooks/useRootDarkMode'
 import { useSortingAndFiltering } from '@/hooks/useSortingAndFiltering'
 import { useStrategiesData } from '@/hooks/useStrategiesData'
@@ -47,16 +47,18 @@ export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
     const hasAbout = Boolean(aboutDescription?.trim())
     const hasReallocation = Boolean(reallocationData)
     const hasHistoricalUserEvents = isEnvioConfigured()
+    const hasVaultManagementEvents = isEnvioConfigured()
     const latestReallocationPanelId = reallocationData?.panels.length
       ? reallocationData.panels[reallocationData.panels.length - 1]?.id
       : undefined
     const tabs = React.useMemo(() => {
       const list: string[] = ['Current Strategies']
       if (hasHistoricalUserEvents) list.push('Historical User Events')
+      if (hasVaultManagementEvents) list.push('Vault Management Events')
       if (hasReallocation) list.push('Current Reallocation')
       if (isMobile && hasAbout) list.push('About')
       return list
-    }, [hasHistoricalUserEvents, hasReallocation, isMobile, hasAbout])
+    }, [hasHistoricalUserEvents, hasVaultManagementEvents, hasReallocation, isMobile, hasAbout])
 
     React.useEffect(() => {
       if (!tabs.includes(activeTab)) {
@@ -189,6 +191,19 @@ export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
               assetDecimals={vaultDetails.asset?.decimals}
               shareSymbol={vaultDetails.symbol}
               shareDecimals={vaultDetails.decimals ?? vaultDetails.asset?.decimals}
+            />
+          )
+        }
+        case 'Vault Management Events': {
+          return (
+            <VaultManagementEventsPanel
+              vaultChainId={vaultChainId}
+              vaultAddress={vaultDetails.address}
+              assetSymbol={vaultDetails.asset?.symbol}
+              assetDecimals={vaultDetails.asset?.decimals}
+              shareSymbol={vaultDetails.symbol}
+              shareDecimals={vaultDetails.decimals ?? vaultDetails.asset?.decimals}
+              strategyDetails={vaultDetails.strategyDetails}
             />
           )
         }
