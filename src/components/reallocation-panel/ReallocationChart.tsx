@@ -51,7 +51,7 @@ type PanelAnimation = {
 }
 
 const VIEWBOX_WIDTH = 1000
-const VIEWBOX_HEIGHT = 675
+const VIEWBOX_HEIGHT = 1000
 const NODE_WIDTH = 22
 const BEFORE_NODE_X = 44
 const AFTER_NODE_X = VIEWBOX_WIDTH - BEFORE_NODE_X - NODE_WIDTH
@@ -59,10 +59,8 @@ const CHART_TOP = 36
 const CHART_BOTTOM = 36
 const NODE_LABEL_PADDING = 20
 const SCENE_TRANSITION_MS = 380
-const SIDE_SCENE_SHIFT_PERCENT = 86
-const FAR_SCENE_SHIFT_PERCENT = 120
-const SIDE_SCENE_SCALE = 0.94
-const FAR_SCENE_SCALE = 0.9
+const SIDE_SCENE_SHIFT_PERCENT = 81
+const FAR_SCENE_SHIFT_PERCENT = 112
 const SIDE_SCENE_OPACITY = 0.28
 
 function toSvgSafeId(value: string): string {
@@ -290,11 +288,8 @@ function getSceneOffsetPercent(slot: number): number {
   return 0
 }
 
-function getSceneScale(slot: number): number {
-  const distance = Math.abs(slot)
-  if (distance === 0) return 1
-  if (distance === 1) return SIDE_SCENE_SCALE
-  return FAR_SCENE_SCALE
+function getSceneScale(_slot: number): number {
+  return 1
 }
 
 function getSceneOpacity(slot: number): number {
@@ -310,8 +305,9 @@ const ReallocationFlowScene: React.FC<{
   colorByStrategyKey: Record<string, string>
   isDark: boolean
   hoverTarget: HoverTarget
+  showLabels?: boolean
   setHoverTarget?: React.Dispatch<React.SetStateAction<HoverTarget>>
-}> = React.memo(({ panel, sceneData, colorByStrategyKey, isDark, hoverTarget, setHoverTarget }) => {
+}> = React.memo(({ panel, sceneData, colorByStrategyKey, isDark, hoverTarget, showLabels = true, setHoverTarget }) => {
   const { graph, ribbons } = sceneData
   const interactive = Boolean(setHoverTarget)
   const gradientPrefix = React.useId().replace(/:/g, '-')
@@ -509,22 +505,24 @@ const ReallocationFlowScene: React.FC<{
             >
               <title>{`${node.displayName} • ${formatPercent(node.value)}`}</title>
             </rect>
-            <g
-              style={{
-                opacity: labelOpacity,
-                transition: 'opacity 180ms ease'
-              }}
-            >
-              <SankeyNodeLabel
-                node={node}
-                textColor={textColor}
-                mutedTextColor={mutedTextColor}
-                backgroundStrokeColor={backgroundStrokeColor}
-                fontSize={labelFontSize}
-                lineHeight={labelLineHeight}
-                strokeWidth={labelStrokeWidth}
-              />
-            </g>
+            {showLabels ? (
+              <g
+                style={{
+                  opacity: labelOpacity,
+                  transition: 'opacity 180ms ease'
+                }}
+              >
+                <SankeyNodeLabel
+                  node={node}
+                  textColor={textColor}
+                  mutedTextColor={mutedTextColor}
+                  backgroundStrokeColor={backgroundStrokeColor}
+                  fontSize={labelFontSize}
+                  lineHeight={labelLineHeight}
+                  strokeWidth={labelStrokeWidth}
+                />
+              </g>
+            ) : null}
           </g>
         )
       })}
@@ -729,10 +727,7 @@ export const ReallocationChart: React.FC<ReallocationChartProps> = React.memo(
             return (
               <div
                 key={panel.id}
-                className={cn(
-                  'absolute inset-y-0 left-1/2 w-[92%] lg:w-[88%]',
-                  distance > 0 && 'pointer-events-none select-none'
-                )}
+                className={cn('absolute inset-0 left-1/2', distance > 0 && 'pointer-events-none select-none')}
                 style={{
                   transform: `translateX(-50%) translateX(${getSceneOffsetPercent(slot)}%) scale(${getSceneScale(slot)})`,
                   opacity: getSceneOpacity(slot),
@@ -747,6 +742,7 @@ export const ReallocationChart: React.FC<ReallocationChartProps> = React.memo(
                   colorByStrategyKey={colorByStrategyKey}
                   isDark={isDark}
                   hoverTarget={distance === 0 ? hoverTarget : null}
+                  showLabels={distance === 0}
                   setHoverTarget={distance === 0 && !isAnimating ? setHoverTarget : undefined}
                 />
               </div>
