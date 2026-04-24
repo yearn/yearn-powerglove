@@ -1,11 +1,72 @@
 import { Check, Copy, ExternalLink } from 'lucide-react'
-import { useState } from 'react'
-import { useIsMobile } from '@/components/ui/use-mobile'
+import { type ReactNode, useState } from 'react'
+import { cn } from '@/lib/utils'
 import type { MainInfoPanelProps } from '@/types/dataTypes'
 
-export function MainInfoPanel(data: MainInfoPanelProps) {
+type MainInfoPanelComponentProps = MainInfoPanelProps & {
+  navigation?: ReactNode
+}
+
+export type VaultAtAGlanceItem = {
+  label: string
+  value: ReactNode
+}
+
+export function getVaultAtAGlanceItems(data: MainInfoPanelProps): VaultAtAGlanceItem[] {
+  return [
+    { label: 'Est. APY', value: data.oneDayAPY },
+    { label: '30-day APY', value: data.thirtyDayAPY },
+    {
+      label: 'Network',
+      value: (
+        <span className="inline-flex min-w-0 items-center gap-2">
+          {data.network.icon ? (
+            <img src={data.network.icon} alt={data.network.name} className="h-5 w-5 shrink-0 rounded-full" />
+          ) : (
+            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gray-300 text-xs text-white">
+              ?
+            </span>
+          )}
+          <span className="truncate">{data.network.name}</span>
+        </span>
+      )
+    },
+    {
+      label: 'Vault Token',
+      value: (
+        <span className="inline-flex min-w-0 items-center gap-2">
+          {data.vaultToken.icon ? (
+            <img src={data.vaultToken.icon} alt={data.vaultToken.name} className="h-5 w-5 shrink-0 rounded-full" />
+          ) : (
+            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gray-300 text-xs text-white">
+              ?
+            </span>
+          )}
+          <span className="truncate">{data.vaultToken.name}</span>
+        </span>
+      )
+    },
+    { label: 'Total Supply', value: data.totalSupply },
+    { label: 'Management Fee', value: data.managementFee },
+    { label: 'Performance Fee', value: data.performanceFee }
+  ]
+}
+
+export function VaultAtAGlance({ items, className }: { items: VaultAtAGlanceItem[]; className?: string }) {
+  return (
+    <dl className={cn('grid grid-cols-2 gap-x-5 gap-y-2', className)}>
+      {items.map((item) => (
+        <div key={item.label} className="min-w-0">
+          <dt className="mb-1 text-xs text-gray-500">{item.label}</dt>
+          <dd className="min-w-0 text-sm font-medium text-[#111111]">{item.value}</dd>
+        </div>
+      ))}
+    </dl>
+  )
+}
+
+export function MainInfoPanel(data: MainInfoPanelComponentProps) {
   const [copied, setCopied] = useState(false)
-  const isMobile = useIsMobile()
 
   const handleCopy = () => {
     navigator.clipboard.writeText(data.vaultAddress)
@@ -13,92 +74,72 @@ export function MainInfoPanel(data: MainInfoPanelProps) {
     setTimeout(() => setCopied(false), 1000)
   }
 
+  const shortVaultAddress = `${data.vaultAddress.slice(0, 8)}...${data.vaultAddress.slice(-8)}`
+  const metricItems = getVaultAtAGlanceItems(data)
+
   return (
-    <div className="bg-white sm:border sm:border-border sm:border-b-0 sm:border-t-0">
-      <div className="grid grid-cols-1 gap-6 p-4 sm:p-6 md:grid-cols-3">
-        <div className="md:col-span-2">
+    <div className="border-b border-border bg-white sm:border-x sm:border-border">
+      <div className="grid grid-cols-1 gap-5 px-4 sm:px-6 md:grid-cols-2">
+        <div className="min-w-0 pt-4">
           <div className="mb-2 flex flex-wrap items-center gap-2">
             <div className="text-sm text-gray-500">{data.vaultId}</div>
             <div className="bg-gray-100 text-xs inline-block px-2 py-1">Deployed: {data.deploymentDate}</div>
           </div>
-          <div>
-            <div className="mb-2 flex flex-col gap-1 sm:flex-row sm:items-end sm:gap-3">
-              <h1 className="text-3xl font-bold">{data.vaultName}</h1>
-              <div className="text-sm text-gray-500">{data.apiVersion}</div>
-            </div>
-            {!isMobile && <p className="mb-4 max-w-2xl whitespace-pre-line text-gray-600">{data.description}</p>}
+
+          <div className="mb-2 flex flex-col gap-1 sm:flex-row sm:items-end sm:gap-3">
+            <h1 className="truncate text-2xl font-bold leading-tight">{data.vaultName}</h1>
+            <div className="text-sm text-gray-500">{data.apiVersion}</div>
+          </div>
+
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-[#111111]">{shortVaultAddress}</span>
+            <button
+              type="button"
+              className="h-4 w-4 text-gray-400 transition-colors hover:text-gray-700"
+              onClick={handleCopy}
+              aria-label="Copy vault address"
+            >
+              {copied ? <Check className="h-4 w-4 text-gray-400" /> : <Copy className="h-4 w-4" />}
+            </button>
+            {data.blockExplorerLink ? (
+              <a
+                href={data.blockExplorerLink}
+                target="_blank"
+                rel="noreferrer"
+                className="h-4 w-4 text-gray-400 transition-colors hover:text-gray-700"
+                aria-label="Open vault address in block explorer"
+              >
+                <ExternalLink className="h-4 w-4" />
+              </a>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="hidden min-w-0 md:block">
+          <VaultAtAGlance items={metricItems} className="pl-6 lg:grid-cols-4" />
+        </div>
+      </div>
+
+      {(data.navigation || data.yearnVaultLink) && (
+        <div className="flex flex-col gap-3 px-4 pt-0 sm:px-6 md:flex-row md:items-stretch md:justify-between">
+          {data.navigation ? (
+            <div className="flex min-w-0 flex-1 justify-center md:justify-end">{data.navigation}</div>
+          ) : (
+            <div />
+          )}
+          {data.yearnVaultLink ? (
             <a
-              className="bg-[#0657f9] hover:bg-[#0657f9]/90 rounded-none text-white px-4 py-2 inline-flex items-center"
+              className="hidden shrink-0 items-center justify-center rounded-none bg-[#0657f9] px-4 py-2 text-sm text-white transition-colors hover:bg-[#0657f9]/90 md:inline-flex md:self-stretch"
               href={data.yearnVaultLink}
               target="_blank"
               rel="noreferrer"
             >
-              Go to Vault <ExternalLink className="ml-2 h-4 w-4" />
+              Go to Vault
+              <ExternalLink className="ml-2 h-4 w-4" />
             </a>
-          </div>
+          ) : null}
         </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <div className="text-sm text-gray-500 mb-1">Vault Token</div>
-            <div className="flex items-center gap-2">
-              {data.vaultToken.icon ? (
-                <img src={data.vaultToken.icon} alt={data.vaultToken.name} className="h-6 w-6 rounded-full" />
-              ) : (
-                <div className="w-6 h-6 flex items-center justify-center bg-gray-300 rounded-full text-white">?</div>
-              )}
-              <span>{data.vaultToken.name}</span>
-            </div>
-            <div className="text-sm text-gray-500 mt-4 mb-1">Total Supply</div>
-            <div>{data.totalSupply}</div>
-
-            <div className="text-sm text-gray-500 mt-4 mb-1">Network</div>
-            <div className="flex items-center gap-2">
-              {data.network.icon ? (
-                <img src={data.network.icon} alt={data.network.name} className="h-6 w-6 rounded-full" />
-              ) : (
-                <div className="w-6 h-6 flex items-center justify-center bg-gray-300 rounded-full text-white">?</div>
-              )}
-              <span>{data.network.name}</span>
-            </div>
-
-            <div className="text-sm text-gray-500 mt-4 mb-1">Vault Address</div>
-            <div className="flex items-center gap-2">
-              <span>{data.vaultAddress.slice(0, 5) + '...' + data.vaultAddress.slice(-4)}</span>
-              <div className="h-4 w-4 text-gray-400 cursor-pointer" onClick={handleCopy}>
-                {copied ? (
-                  <Check className="h-4 w-4 text-grey-400" />
-                ) : (
-                  <Copy className="h-4 w-4 text-gray-400 cursor-pointer" />
-                )}
-              </div>
-              <a href={data.blockExplorerLink} target="_blank" rel="noreferrer">
-                <ExternalLink className="h-4 w-4 text-gray-400 cursor-pointer" />
-              </a>
-            </div>
-          </div>
-
-          <div>
-            <div className="text-sm text-gray-500 mb-1">Est. APY</div>
-            <div>{data.oneDayAPY}</div>
-
-            <div className="text-sm text-gray-500 mt-4 mb-1">30-day APY</div>
-            <div>{data.thirtyDayAPY}</div>
-
-            <div className="text-sm text-gray-500 mt-4 mb-1 flex items-center gap-1">
-              Management Fee
-              {/* <Info className="h-4 w-4 text-gray-400" /> */}
-            </div>
-            <div>{data.managementFee}</div>
-
-            <div className="text-sm text-gray-500 mt-4 mb-1 flex items-center gap-1">
-              Performance Fee
-              {/* <Info className="h-4 w-4 text-gray-400" /> */}
-            </div>
-            <div>{data.performanceFee}</div>
-          </div>
-        </div>
-      </div>
+      )}
     </div>
   )
 }

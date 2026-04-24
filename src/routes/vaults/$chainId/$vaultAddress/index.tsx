@@ -1,35 +1,54 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { ExternalLink } from 'lucide-react'
 import React, { lazy, Suspense } from 'react'
-import { MainInfoPanel } from '@/components/main-info-panel'
+import type { Address } from 'viem'
+import { getVaultAtAGlanceItems, MainInfoPanel } from '@/components/main-info-panel'
+import { StrategiesPanel } from '@/components/strategies-panel/index'
+import { KongDataTab } from '@/components/strategies-panel/KongDataTab'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { VaultEventsTabs } from '@/components/vault-events'
+import { VaultOverviewTab, VaultPageBreadcrumb, VaultPageLayout } from '@/components/vault-page'
+import type { ChainId } from '@/constants/chains'
+import { useTokenAssetsContext } from '@/contexts/useTokenAssets'
+import { useAprOracle } from '@/hooks/useAprOracle'
+import { useChartData } from '@/hooks/useChartData'
+import { useMainInfoPanelData } from '@/hooks/useMainInfoPanelData'
+import { useReallocationData } from '@/hooks/useReallocationData'
+import { useVaultPageData } from '@/hooks/useVaultPageData'
+import { formatPercent } from '@/lib/formatters'
+import { isLegacyVaultType } from '@/utils/vaultDataUtils'
+import { getVaultOverrideDisplayItems } from '@/utils/vaultOverrides'
 
-// Lazy load ChartsPanel for code splitting (reduces initial bundle size)
 const ChartsPanel = lazy(() =>
   import('@/components/charts/charts-panel').then((m) => ({
     default: m.ChartsPanel
   }))
 )
 
-import type { Address } from 'viem'
-import { StrategiesPanel } from '@/components/strategies-panel/index'
-import { VaultPageBreadcrumb, VaultPageLayout } from '@/components/vault-page'
-import type { ChainId } from '@/constants/chains'
-import { useTokenAssetsContext } from '@/contexts/useTokenAssets'
-import { useAprOracle } from '@/hooks/useAprOracle'
-import { useChartData } from '@/hooks/useChartData'
-import { useMainInfoPanelData } from '@/hooks/useMainInfoPanelData'
-// Import our new data hooks and layout components
-import { useVaultPageData } from '@/hooks/useVaultPageData'
-import { formatPercent } from '@/lib/formatters'
-import { isLegacyVaultType } from '@/utils/vaultDataUtils'
-import { getVaultOverrideDisplayItems } from '@/utils/vaultOverrides'
+type VaultPageTab = 'overview' | 'charts' | 'strategy-info' | 'vault-events' | 'vault-data'
+
+const vaultPageTabs: Array<{ value: VaultPageTab; label: string }> = [
+  { value: 'overview', label: 'Overview' },
+  { value: 'charts', label: 'Charts' },
+  { value: 'strategy-info', label: 'Strategy Info' },
+  { value: 'vault-events', label: 'Vault Events' },
+  { value: 'vault-data', label: 'Vault Data' }
+]
+
+const vaultPageTabTriggerClassName =
+  'rounded-none border-b-2 border-transparent px-3 py-3 text-sm font-medium text-muted-foreground data-[state=active]:border-[#0657f9] data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none md:px-5'
+const vaultPageTabContentClassName = 'mt-3 flex-1 bg-white'
 
 function SingleVaultPage() {
   const { chainId, vaultAddress } = Route.useParams()
   const vaultChainId = Number(chainId) as ChainId
   const { assets: tokenAssets } = useTokenAssetsContext()
+  const [activeVaultPageTab, setActiveVaultPageTab] = React.useState<VaultPageTab>('overview')
 
   const {
     vaultDetails,
+    kongSnapshot,
+    vaultSnapshotTimestampUtc,
     apyWeeklyData,
     apyMonthlyData,
     aprOracleAprData,
@@ -44,13 +63,11 @@ function SingleVaultPage() {
     blacklistReason
   } = useVaultPageData({ vaultAddress, vaultChainId })
 
-  // Transform main info panel data
   const mainInfoPanelData = useMainInfoPanelData({
     vaultDetails,
     tokenAssets
   })
 
-  // Process chart data
   const { transformedAprApyData, transformedTvlData, transformedPpsData } = useChartData({
     apyWeeklyData,
     apyMonthlyData,
@@ -112,8 +129,18 @@ function SingleVaultPage() {
   }, [mainInfoPanelData, latestDerivedApy, legacyVault, yDaemonForwardApyFormatted, oracleOneDayApy])
 
   const overrideItems = React.useMemo(() => getVaultOverrideDisplayItems(overrideConfig), [overrideConfig])
+  const vaultAtAGlanceItems = React.useMemo(
+    () => (mainInfoPanelProps ? getVaultAtAGlanceItems(mainInfoPanelProps) : []),
+    [mainInfoPanelProps]
+  )
 
-  // Ensure we have vault details and main info panel data
+  const { data: reallocationData } = useReallocationData(
+    vaultAddress,
+    vaultChainId,
+    vaultDetails,
+    vaultSnapshotTimestampUtc
+  )
+
   if (!vaultDetails || !mainInfoPanelProps) {
     return (
       <VaultPageLayout isLoading={true} hasErrors={false}>
@@ -124,8 +151,7 @@ function SingleVaultPage() {
 
   return (
     <VaultPageLayout isLoading={isInitialLoading} hasErrors={hasErrors}>
-      <VaultPageBreadcrumb vaultName={vaultDetails.name} />
-      <div className="relative">
+      <div className={`relative flex flex-1 flex-col ${mainInfoPanelProps.yearnVaultLink ? 'pb-20 md:pb-0' : ''}`}>
         {isBlacklisted && <div className="absolute inset-0 z-20 rounded-lg bg-white/40 backdrop-blur-sm" />}
         {isBlacklisted && (
           <div className="relative z-30 flex items-start gap-3 border border-amber-300 bg-amber-50 px-4 py-3 text-amber-800">
@@ -158,24 +184,88 @@ function SingleVaultPage() {
             </div>
           </div>
         )}
-        <div className={`space-y-0 ${isBlacklisted ? 'relative z-10 pointer-events-none select-none' : ''}`}>
-          <MainInfoPanel {...mainInfoPanelProps} />
-          <Suspense fallback={null}>
-            <ChartsPanel
-              aprApyData={transformedAprApyData}
-              tvlData={transformedTvlData}
-              ppsData={transformedPpsData}
-              isLoading={chartsLoading}
-              hasErrors={chartsError}
-            />
-          </Suspense>
-          <StrategiesPanel
-            vaultChainId={vaultChainId}
-            vaultDetails={vaultDetails}
-            aboutDescription={mainInfoPanelProps.description}
-            aboutLink={mainInfoPanelProps.yearnVaultLink}
-          />
+        <div
+          className={`flex flex-1 flex-col space-y-0 ${isBlacklisted ? 'relative z-10 pointer-events-none select-none' : ''}`}
+        >
+          <Tabs
+            value={activeVaultPageTab}
+            className="flex w-full flex-1 flex-col bg-transparent"
+            onValueChange={(value) => setActiveVaultPageTab(value as VaultPageTab)}
+          >
+            <div className="bg-white md:sticky md:top-[54px] md:z-20">
+              <VaultPageBreadcrumb vaultName={vaultDetails.name} />
+              <MainInfoPanel
+                {...mainInfoPanelProps}
+                navigation={
+                  <TabsList className="flex h-auto max-w-full flex-wrap justify-center overflow-visible bg-transparent p-0 md:justify-end">
+                    {vaultPageTabs.map((tab) => (
+                      <TabsTrigger key={tab.value} value={tab.value} className={vaultPageTabTriggerClassName}>
+                        {tab.label}
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+                }
+              />
+            </div>
+
+            <TabsContent value="overview" className={vaultPageTabContentClassName}>
+              <VaultOverviewTab
+                vaultChainId={vaultChainId}
+                vaultDetails={vaultDetails}
+                description={mainInfoPanelProps.description}
+                aprApyData={transformedAprApyData}
+                tvlData={transformedTvlData}
+                isChartsLoading={chartsLoading}
+                hasChartsError={chartsError}
+                atAGlanceItems={vaultAtAGlanceItems}
+              />
+            </TabsContent>
+
+            <TabsContent value="charts" className={vaultPageTabContentClassName}>
+              <Suspense fallback={null}>
+                <ChartsPanel
+                  aprApyData={transformedAprApyData}
+                  tvlData={transformedTvlData}
+                  ppsData={transformedPpsData}
+                  isLoading={chartsLoading}
+                  hasErrors={chartsError}
+                />
+              </Suspense>
+            </TabsContent>
+
+            <TabsContent value="strategy-info" className={vaultPageTabContentClassName}>
+              <StrategiesPanel
+                vaultChainId={vaultChainId}
+                vaultDetails={vaultDetails}
+                kongSnapshot={kongSnapshot}
+                reallocationData={reallocationData}
+              />
+            </TabsContent>
+
+            <TabsContent value="vault-events" className={vaultPageTabContentClassName}>
+              <VaultEventsTabs vaultChainId={vaultChainId} vaultDetails={vaultDetails} />
+            </TabsContent>
+
+            <TabsContent value="vault-data" className={vaultPageTabContentClassName}>
+              <div className="border border-border bg-white">
+                <KongDataTab snapshot={kongSnapshot} />
+              </div>
+            </TabsContent>
+          </Tabs>
         </div>
+        {mainInfoPanelProps.yearnVaultLink ? (
+          <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-white px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] md:hidden">
+            <a
+              className="mx-auto flex h-11 max-w-[1400px] items-center justify-center rounded-none bg-[#0657f9] px-4 text-sm font-medium text-white transition-colors hover:bg-[#0657f9]/90"
+              href={mainInfoPanelProps.yearnVaultLink}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Go to Vault
+              <ExternalLink className="ml-2 h-4 w-4" />
+            </a>
+          </div>
+        ) : null}
       </div>
     </VaultPageLayout>
   )

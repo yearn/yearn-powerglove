@@ -28,8 +28,10 @@ interface TimeseriesQueryResult {
 interface UseVaultPageDataReturn {
   // Vault data
   vaultDetails: VaultExtended | null
+  kongSnapshot: KongVaultSnapshot | null
   vaultLoading: boolean
   vaultError: Error | undefined
+  vaultSnapshotTimestampUtc: string | null
 
   // Chart data (raw)
   apyWeeklyData: TimeseriesQueryResult | undefined
@@ -100,6 +102,22 @@ export function useVaultPageData({ vaultAddress, vaultChainId }: UseVaultPageDat
 
     return applyVaultOverride(mapKongSnapshotToVaultExtended(snapshotData, baseVault))
   }, [snapshotData, baseVault])
+
+  const vaultSnapshotTimestampUtc = useMemo(() => {
+    const snapshotBlockTime = snapshotData?.blockTime
+    if (snapshotBlockTime === null || snapshotBlockTime === undefined) {
+      return null
+    }
+
+    const numericBlockTime =
+      typeof snapshotBlockTime === 'string' ? Number.parseInt(snapshotBlockTime, 10) : Number(snapshotBlockTime)
+
+    if (!Number.isFinite(numericBlockTime) || numericBlockTime <= 0) {
+      return null
+    }
+
+    return new Date(numericBlockTime * 1000).toISOString()
+  }, [snapshotData?.blockTime])
 
   const isV3Vault = Boolean(
     vaultDetails?.v3 || snapshotData?.apiVersion?.startsWith('3') || snapshotData?.apiVersion?.startsWith('~3')
@@ -182,8 +200,10 @@ export function useVaultPageData({ vaultAddress, vaultChainId }: UseVaultPageDat
   return {
     // Vault data
     vaultDetails,
+    kongSnapshot: snapshotData ?? null,
     vaultLoading,
     vaultError: snapshotError ?? undefined,
+    vaultSnapshotTimestampUtc,
 
     // Chart data
     apyWeeklyData,

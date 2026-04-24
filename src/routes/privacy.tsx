@@ -2,9 +2,9 @@ import { createFileRoute } from '@tanstack/react-router'
 
 function PrivacyPage() {
   return (
-    <div className="h-full overflow-y-auto">
-      <div className="container mx-auto max-w-4xl px-4">
-        <div className="bg-white border p-8 pb-16">
+    <div className="flex min-h-full w-full flex-1 overflow-y-auto">
+      <div className="min-h-full w-full border-x border-border bg-white px-[4.5rem] py-8 sm:px-[7.5rem] lg:px-48 xl:px-60">
+        <div className="">
           <h1 className="text-3xl font-bold text-gray-900 mb-6">Privacy Policy</h1>
 
           <div className="prose prose-gray max-w-none space-y-6 text-gray-700 text-sm">

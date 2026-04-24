@@ -1,49 +1,12 @@
 import React from 'react'
 import { Cell, Label, Pie, PieChart, Tooltip } from 'recharts'
 import type { NameType, Payload, ValueType } from 'recharts/types/component/DefaultTooltipContent'
+import { useRootDarkMode } from '@/hooks/useRootDarkMode'
+import { buildBlueShadePalette } from '@/lib/theme-blue-palette'
 import type { StrategyAllocationChartDatum } from '@/types/dataTypes'
-
-const LIGHT_MODE_COLORS = ['#0657f9', '#3d7bfa', '#5c93fb', '#7aabfc', '#99c3fd', '#b8dbfe']
-const DARK_MODE_COLORS = ['#ff6ba5', '#ffb3d1', '#ff8fbb', '#ffd6e7', '#d21162', '#ff4d94']
 
 interface StrategyAllocationChartProps {
   allocationData: StrategyAllocationChartDatum[]
-}
-
-function isRootDarkMode(): boolean {
-  if (typeof document === 'undefined') {
-    return false
-  }
-
-  return document.documentElement.classList.contains('dark')
-}
-
-function useRootDarkMode(): boolean {
-  const [isDark, setIsDark] = React.useState(() => isRootDarkMode())
-
-  React.useEffect(() => {
-    if (typeof document === 'undefined') {
-      return undefined
-    }
-
-    const root = document.documentElement
-    const sync = () => setIsDark(root.classList.contains('dark'))
-    sync()
-
-    if (typeof MutationObserver === 'undefined') {
-      return undefined
-    }
-
-    const observer = new MutationObserver(sync)
-    observer.observe(root, {
-      attributes: true,
-      attributeFilter: ['class']
-    })
-
-    return () => observer.disconnect()
-  }, [])
-
-  return isDark
 }
 
 function AllocationTooltip({
@@ -111,8 +74,8 @@ function AllocationPie({
         minAngle={3}
         endAngle={-270}
       >
-        {allocationData.map(({ id }, index) => (
-          <Cell key={id} fill={colors[index % colors.length]} />
+        {allocationData.map(({ id, color }, index) => (
+          <Cell key={id} fill={color ?? colors[index % colors.length]} />
         ))}
         <Label
           content={() => (
@@ -138,8 +101,8 @@ function AllocationPie({
 
 export const StrategyAllocationChart: React.FC<StrategyAllocationChartProps> = React.memo(({ allocationData }) => {
   const isDark = useRootDarkMode()
-  const colors = isDark ? DARK_MODE_COLORS : LIGHT_MODE_COLORS
-  const strokeColor = isDark ? '#ff6ba5' : '#0657f9'
+  const colors = React.useMemo(() => buildBlueShadePalette(isDark), [isDark])
+  const strokeColor = colors[0] ?? (isDark ? 'hsl(220 74% 60%)' : 'hsl(220 72% 50%)')
 
   if (allocationData.length === 0) {
     return null
