@@ -4,7 +4,9 @@ import { useIsMobile } from '@/components/ui/use-mobile'
 import type { StrategySortColumn } from '@/hooks/useSortingAndFiltering'
 import { cn } from '@/lib/utils'
 import type { Strategy } from '@/types/dataTypes'
+import type { KongVaultSnapshotComposition } from '@/types/kong'
 import type { SortDirection } from '@/utils/sortingUtils'
+import type { NormalizationContext } from './KongDataTab'
 import { StrategyRow } from './StrategyRow'
 
 interface StrategyTableProps {
@@ -17,6 +19,8 @@ interface StrategyTableProps {
   onToggleRow: (id: number) => void
   showUnallocated: boolean
   onToggleUnallocated: () => void
+  strategyCompositionByAddress?: Map<string, KongVaultSnapshotComposition>
+  kongNormalizationContext?: NormalizationContext | null
 }
 
 export const StrategyTable: React.FC<StrategyTableProps> = React.memo(
@@ -29,7 +33,9 @@ export const StrategyTable: React.FC<StrategyTableProps> = React.memo(
     expandedRow,
     onToggleRow,
     showUnallocated,
-    onToggleUnallocated
+    onToggleUnallocated,
+    strategyCompositionByAddress,
+    kongNormalizationContext
   }) => {
     const isMobile = useIsMobile()
 
@@ -105,6 +111,8 @@ export const StrategyTable: React.FC<StrategyTableProps> = React.memo(
               strategy={strategy}
               isExpanded={expandedRow === strategy.id}
               onToggle={() => onToggleRow(strategy.id)}
+              composition={strategyCompositionByAddress?.get(strategy.details.vaultAddress.toLowerCase())}
+              kongNormalizationContext={kongNormalizationContext}
             />
           ))}
 
@@ -119,7 +127,7 @@ export const StrategyTable: React.FC<StrategyTableProps> = React.memo(
                   )}
                 </div>
                 <div className="ml-2 flex-1 text-sm font-medium">
-                  View unallocated strategies
+                  Unallocated Strategies
                   <span className="ml-2 text-xs font-normal text-[#808080]">({unallocatedStrategies.length})</span>
                 </div>
               </div>
@@ -131,6 +139,8 @@ export const StrategyTable: React.FC<StrategyTableProps> = React.memo(
                     isExpanded={expandedRow === strategy.id}
                     onToggle={() => onToggleRow(strategy.id)}
                     isUnallocated
+                    composition={strategyCompositionByAddress?.get(strategy.details.vaultAddress.toLowerCase())}
+                    kongNormalizationContext={kongNormalizationContext}
                   />
                 ))}
             </div>

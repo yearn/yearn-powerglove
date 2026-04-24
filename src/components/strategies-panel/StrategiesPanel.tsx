@@ -3,6 +3,7 @@ import { ReallocationChart, ReallocationStrategyTable } from '@/components/reall
 import StrategiesSkeleton from '@/components/strategies-panel/StrategiesSkeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useIsMobile } from '@/components/ui/use-mobile'
+import { CHAIN_ID_TO_BLOCK_EXPLORER, type ChainId } from '@/constants/chains'
 import { useRootDarkMode } from '@/hooks/useRootDarkMode'
 import { useSortingAndFiltering } from '@/hooks/useSortingAndFiltering'
 import { useStrategiesData } from '@/hooks/useStrategiesData'
@@ -14,15 +15,17 @@ import {
   getReallocationPanelLabels
 } from '@/lib/reallocation-panels'
 import { cn } from '@/lib/utils'
+import type { KongVaultSnapshot, KongVaultSnapshotComposition } from '@/types/kong'
 import type { ReallocationData } from '@/types/reallocationTypes'
 import type { VaultExtended } from '@/types/vaultTypes'
-import type { ChainId } from '../../constants/chains'
+import type { NormalizationContext } from './KongDataTab'
 import { StrategyAllocationChart } from './StrategyAllocationChart'
 import { StrategyTable } from './StrategyTable'
 
 interface StrategiesPanelProps {
   vaultChainId: ChainId
   vaultDetails: VaultExtended
+  kongSnapshot?: KongVaultSnapshot | null
   aboutDescription?: string
   aboutLink?: string
   reallocationData?: ReallocationData | null
@@ -35,14 +38,23 @@ const ABOUT_TAB_TEXT = `No additional vault description is currently available.`
 const tabTriggerClassName =
   'shrink-0 rounded-none border-b-2 border-transparent px-5 py-2.5 text-sm text-muted-foreground data-[state=active]:border-[#0657f9] data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none'
 
+const parseKongDecimals = (value: unknown): number | null => {
+  const numeric = typeof value === 'number' ? value : Number(value)
+  return Number.isInteger(numeric) && numeric >= 0 && numeric <= 36 ? numeric : null
+}
+
+const getCompositionAddress = (composition: KongVaultSnapshotComposition): string | null => {
+  return composition.address ?? composition.strategy ?? null
+}
+
 export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
-  ({ vaultChainId, vaultDetails, aboutDescription, aboutLink, reallocationData }) => {
+  ({ vaultChainId, vaultDetails, kongSnapshot, aboutDescription, aboutLink, reallocationData }) => {
     const strategiesData = useStrategiesData(vaultChainId, vaultDetails)
     const sortingState = useSortingAndFiltering(strategiesData.strategies)
 
     const [expandedRow, setExpandedRow] = useState<number | null>(null)
     const [activeMainTab, setActiveMainTab] = useState<StrategyInfoTab>('current-strategies')
-    const [showUnallocated, setShowUnallocated] = useState<boolean>(false)
+    const [showUnallocated, setShowUnallocated] = useState<boolean>(true)
     const [activeReallocationIndex, setActiveReallocationIndex] = useState<number>(0)
     const isMobile = useIsMobile()
     const isDark = useRootDarkMode()
@@ -51,6 +63,50 @@ export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
     const latestReallocationPanelId = reallocationData?.panels.length
       ? reallocationData.panels[reallocationData.panels.length - 1]?.id
       : undefined
+
+    const strategyCompositionByAddress = React.useMemo(() => {
+      const map = new Map<string, KongVaultSnapshotComposition>()
+
+      for (const composition of kongSnapshot?.composition ?? []) {
+        const address = getCompositionAddress(composition)
+        if (address) {
+          map.set(address.toLowerCase(), composition)
+        }
+      }
+
+      return map
+    }, [kongSnapshot])
+
+    const kongNormalizationContext = React.useMemo<NormalizationContext | null>(() => {
+      if (!kongSnapshot) {
+        return null
+      }
+
+      const assetDecimals = parseKongDecimals(kongSnapshot.asset?.decimals)
+      const vaultDecimals = parseKongDecimals(kongSnapshot.decimals) ?? assetDecimals
+      const strategyNameByAddress: Record<string, string> = {}
+
+      for (const composition of kongSnapshot.composition ?? []) {
+        const address = getCompositionAddress(composition)
+        if (address && composition.name?.trim()) {
+          strategyNameByAddress[address.toLowerCase()] = composition.name.trim()
+        }
+      }
+
+      for (const strategy of strategiesData.strategies) {
+        strategyNameByAddress[strategy.details.vaultAddress.toLowerCase()] = strategy.name
+      }
+
+      return {
+        assetDecimals,
+        assetSymbol: kongSnapshot.asset?.symbol?.trim() || null,
+        blockExplorerBaseUrl: CHAIN_ID_TO_BLOCK_EXPLORER[kongSnapshot.chainId as ChainId]?.replace(/\/+$/, '') ?? null,
+        chainId: kongSnapshot.chainId,
+        strategyNameByAddress,
+        vaultDecimals,
+        vaultSymbol: kongSnapshot.symbol?.trim() || null
+      }
+    }, [kongSnapshot, strategiesData.strategies])
 
     const mainTabs = React.useMemo(() => {
       const list: Array<{ value: StrategyInfoTab; label: string }> = [
@@ -186,6 +242,8 @@ export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
               onToggleRow={toggleRow}
               showUnallocated={showUnallocated}
               onToggleUnallocated={() => setShowUnallocated(!showUnallocated)}
+              strategyCompositionByAddress={strategyCompositionByAddress}
+              kongNormalizationContext={kongNormalizationContext}
             />
           </div>
         </div>

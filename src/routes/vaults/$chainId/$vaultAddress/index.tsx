@@ -145,7 +145,7 @@ function SingleVaultPage() {
   return (
     <VaultPageLayout isLoading={isInitialLoading} hasErrors={hasErrors}>
       <VaultPageBreadcrumb vaultName={vaultDetails.name} />
-      <div className="relative">
+      <div className="relative flex flex-1 flex-col">
         {isBlacklisted && <div className="absolute inset-0 z-20 rounded-lg bg-white/40 backdrop-blur-sm" />}
         {isBlacklisted && (
           <div className="relative z-30 flex items-start gap-3 border border-amber-300 bg-amber-50 px-4 py-3 text-amber-800">
@@ -178,11 +178,13 @@ function SingleVaultPage() {
             </div>
           </div>
         )}
-        <div className={`space-y-0 ${isBlacklisted ? 'relative z-10 pointer-events-none select-none' : ''}`}>
+        <div
+          className={`flex flex-1 flex-col space-y-0 ${isBlacklisted ? 'relative z-10 pointer-events-none select-none' : ''}`}
+        >
           <MainInfoPanel {...mainInfoPanelProps} />
           <Tabs
             value={activeVaultPageTab}
-            className="w-full"
+            className="flex w-full flex-1 flex-col bg-white"
             onValueChange={(value) => setActiveVaultPageTab(value as VaultPageTab)}
           >
             <div className="border-x border-b border-border bg-white">
@@ -195,7 +197,7 @@ function SingleVaultPage() {
               </TabsList>
             </div>
 
-            <TabsContent value="charts" className="mt-0">
+            <TabsContent value="charts" className="mt-0 flex-1">
               <Suspense fallback={null}>
                 <ChartsPanel
                   aprApyData={transformedAprApyData}
@@ -207,21 +209,22 @@ function SingleVaultPage() {
               </Suspense>
             </TabsContent>
 
-            <TabsContent value="strategy-info" className="mt-0">
+            <TabsContent value="strategy-info" className="mt-0 flex-1">
               <StrategiesPanel
                 vaultChainId={vaultChainId}
                 vaultDetails={vaultDetails}
+                kongSnapshot={kongSnapshot}
                 aboutDescription={mainInfoPanelProps.description}
                 aboutLink={mainInfoPanelProps.yearnVaultLink}
                 reallocationData={reallocationData}
               />
             </TabsContent>
 
-            <TabsContent value="vault-events" className="mt-0">
+            <TabsContent value="vault-events" className="mt-0 flex-1">
               <VaultEventsTabs vaultChainId={vaultChainId} vaultDetails={vaultDetails} />
             </TabsContent>
 
-            <TabsContent value="vault-data" className="mt-0">
+            <TabsContent value="vault-data" className="mt-0 flex-1">
               <div className="border-x border-b border-border bg-white">
                 <KongDataTab snapshot={kongSnapshot} />
               </div>
