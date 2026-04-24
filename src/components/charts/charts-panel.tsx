@@ -53,6 +53,9 @@ const chartTabs: Array<{
   { value: 'historical-tvl', label: 'Historical TVL', mobileLabel: 'TVL' }
 ]
 
+const chartTabTriggerClassName =
+  'shrink-0 rounded-none border-b-2 border-transparent px-5 py-2.5 text-sm text-muted-foreground data-[state=active]:border-[#0657f9] data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none'
+
 const timeframes = [
   { label: '30 Days', mobileLabel: '30D', value: '30d' },
   { label: '90 Days', mobileLabel: '90D', value: '90d' },
@@ -383,14 +386,10 @@ export function ChartsPanel(data: ChartData) {
           }}
         >
           <div className="border-b border-border">
-            <div className="px-4 pt-4 sm:px-6">
-              <TabsList className="grid h-auto w-full grid-cols-3 gap-0 bg-transparent p-0">
+            <div className="px-0 pt-3">
+              <TabsList className="flex h-auto w-full justify-start overflow-x-auto bg-transparent p-0">
                 {chartTabs.map((tab) => (
-                  <TabsTrigger
-                    key={tab.value}
-                    value={tab.value}
-                    className="flex min-w-0 rounded-none border border-border px-2 py-3 text-center text-sm data-[state=active]:border-[#0657f9] data-[state=active]:bg-[#0657f9]/5 data-[state=active]:text-foreground data-[state=active]:shadow-none sm:border-x-0 sm:border-t-0 sm:border-b-2 sm:px-4"
-                  >
+                  <TabsTrigger key={tab.value} value={tab.value} className={chartTabTriggerClassName}>
                     {tab.mobileLabel}
                   </TabsTrigger>
                 ))}
@@ -421,14 +420,10 @@ export function ChartsPanel(data: ChartData) {
         }}
       >
         <div className="border-b border-border">
-          <div className="px-4 pt-4 sm:px-6">
-            <TabsList className="grid h-auto w-fit grid-cols-3 gap-0 bg-transparent p-0">
+          <div className="px-0 pt-3">
+            <TabsList className="flex h-auto w-full justify-start overflow-x-auto bg-transparent p-0">
               {chartTabs.map((tab) => (
-                <TabsTrigger
-                  key={tab.value}
-                  value={tab.value}
-                  className="rounded-none border-b-2 border-transparent px-4 py-2 text-left text-sm data-[state=active]:border-[#0657f9] data-[state=active]:bg-transparent data-[state=active]:shadow-none"
-                >
+                <TabsTrigger key={tab.value} value={tab.value} className={chartTabTriggerClassName}>
                   {tab.label}
                 </TabsTrigger>
               ))}

@@ -35,6 +35,7 @@ const vaultPageTabs: Array<{ value: VaultPageTab; label: string }> = [
 
 const vaultPageTabTriggerClassName =
   'shrink-0 rounded-none border-b-2 border-transparent px-5 py-3 text-sm font-medium text-muted-foreground data-[state=active]:border-[#0657f9] data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none'
+const vaultPageTabContentClassName = 'mt-3 flex-1 bg-white'
 
 function SingleVaultPage() {
   const { chainId, vaultAddress } = Route.useParams()
@@ -184,7 +185,7 @@ function SingleVaultPage() {
           <MainInfoPanel {...mainInfoPanelProps} />
           <Tabs
             value={activeVaultPageTab}
-            className="flex w-full flex-1 flex-col bg-white"
+            className="flex w-full flex-1 flex-col bg-transparent"
             onValueChange={(value) => setActiveVaultPageTab(value as VaultPageTab)}
           >
             <div className="border-x border-b border-border bg-white">
@@ -197,7 +198,7 @@ function SingleVaultPage() {
               </TabsList>
             </div>
 
-            <TabsContent value="charts" className="mt-0 flex-1">
+            <TabsContent value="charts" className={vaultPageTabContentClassName}>
               <Suspense fallback={null}>
                 <ChartsPanel
                   aprApyData={transformedAprApyData}
@@ -209,7 +210,7 @@ function SingleVaultPage() {
               </Suspense>
             </TabsContent>
 
-            <TabsContent value="strategy-info" className="mt-0 flex-1">
+            <TabsContent value="strategy-info" className={vaultPageTabContentClassName}>
               <StrategiesPanel
                 vaultChainId={vaultChainId}
                 vaultDetails={vaultDetails}
@@ -220,11 +221,11 @@ function SingleVaultPage() {
               />
             </TabsContent>
 
-            <TabsContent value="vault-events" className="mt-0 flex-1">
+            <TabsContent value="vault-events" className={vaultPageTabContentClassName}>
               <VaultEventsTabs vaultChainId={vaultChainId} vaultDetails={vaultDetails} />
             </TabsContent>
 
-            <TabsContent value="vault-data" className="mt-0 flex-1">
+            <TabsContent value="vault-data" className={vaultPageTabContentClassName}>
               <div className="border-x border-b border-border bg-white">
                 <KongDataTab snapshot={kongSnapshot} />
               </div>
