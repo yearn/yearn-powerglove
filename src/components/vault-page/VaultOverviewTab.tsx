@@ -289,7 +289,7 @@ export const VaultOverviewTab: React.FC<VaultOverviewTabProps> = React.memo(
             {hasChartIssue ? (
               <div className="border border-[#e6e7eb] p-4 text-sm text-[#808080]">Chart data is unavailable.</div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-4 pt-8">
                 <OverviewChartCard type="apy" aprApyData={aprApyData} tvlData={tvlData} isLoading={isChartsLoading} />
                 <OverviewChartCard type="tvl" aprApyData={aprApyData} tvlData={tvlData} isLoading={isChartsLoading} />
               </div>
