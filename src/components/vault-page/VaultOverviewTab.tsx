@@ -2,6 +2,7 @@ import React from 'react'
 import APYChart from '@/components/charts/APYChart'
 import { FixedHeightChartContainer } from '@/components/charts/chart-container'
 import TVLChart from '@/components/charts/TVLChart'
+import { VaultAtAGlance, type VaultAtAGlanceItem } from '@/components/main-info-panel'
 import { ChartErrorBoundary } from '@/components/utils/ErrorBoundary'
 import type { ChainId } from '@/constants/chains'
 import { useStrategiesData } from '@/hooks/useStrategiesData'
@@ -17,6 +18,7 @@ interface VaultOverviewTabProps {
   tvlData: tvlChartData | null
   isChartsLoading?: boolean
   hasChartsError?: boolean
+  atAGlanceItems?: VaultAtAGlanceItem[]
 }
 
 const overviewChartHeightClassName = 'h-44 sm:h-52'
@@ -149,7 +151,8 @@ export const VaultOverviewTab: React.FC<VaultOverviewTabProps> = React.memo(
     aprApyData,
     tvlData,
     isChartsLoading = false,
-    hasChartsError = false
+    hasChartsError = false,
+    atAGlanceItems = []
   }) => {
     const strategiesData = useStrategiesData(vaultChainId, vaultDetails)
 
@@ -210,7 +213,14 @@ export const VaultOverviewTab: React.FC<VaultOverviewTabProps> = React.memo(
       <div className="border border-border bg-white">
         <div className="grid gap-8 p-4 sm:p-6 lg:grid-cols-2 lg:gap-14 xl:gap-20">
           <div className="min-w-0">
-            <section className="pb-6">
+            {atAGlanceItems.length > 0 ? (
+              <section className="border-b border-[#e6e7eb] pb-6 md:hidden">
+                <h2 className="text-base font-semibold text-[#111111]">At a Glance</h2>
+                <VaultAtAGlance items={atAGlanceItems} className="mt-4 gap-x-4 gap-y-3" />
+              </section>
+            ) : null}
+
+            <section className="pb-6 pt-6 md:pt-0">
               <h2 className="text-lg font-semibold text-[#111111]">Overview</h2>
               <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-[#4f4f4f]">
                 {description || 'No vault description is currently available.'}
