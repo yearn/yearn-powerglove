@@ -6,7 +6,7 @@ import { StrategiesPanel } from '@/components/strategies-panel/index'
 import { KongDataTab } from '@/components/strategies-panel/KongDataTab'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { VaultEventsTabs } from '@/components/vault-events'
-import { VaultPageBreadcrumb, VaultPageLayout } from '@/components/vault-page'
+import { VaultOverviewTab, VaultPageBreadcrumb, VaultPageLayout } from '@/components/vault-page'
 import type { ChainId } from '@/constants/chains'
 import { useTokenAssetsContext } from '@/contexts/useTokenAssets'
 import { useAprOracle } from '@/hooks/useAprOracle'
@@ -24,9 +24,10 @@ const ChartsPanel = lazy(() =>
   }))
 )
 
-type VaultPageTab = 'charts' | 'strategy-info' | 'vault-events' | 'vault-data'
+type VaultPageTab = 'overview' | 'charts' | 'strategy-info' | 'vault-events' | 'vault-data'
 
 const vaultPageTabs: Array<{ value: VaultPageTab; label: string }> = [
+  { value: 'overview', label: 'Overview' },
   { value: 'charts', label: 'Charts' },
   { value: 'strategy-info', label: 'Strategy Info' },
   { value: 'vault-events', label: 'Vault Events' },
@@ -34,14 +35,14 @@ const vaultPageTabs: Array<{ value: VaultPageTab; label: string }> = [
 ]
 
 const vaultPageTabTriggerClassName =
-  'shrink-0 rounded-none border-b-2 border-transparent px-5 py-3 text-sm font-medium text-muted-foreground data-[state=active]:border-[#0657f9] data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none'
+  'rounded-none border-b-2 border-transparent px-5 py-3 text-sm font-medium text-muted-foreground data-[state=active]:border-[#0657f9] data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none'
 const vaultPageTabContentClassName = 'mt-3 flex-1 bg-white'
 
 function SingleVaultPage() {
   const { chainId, vaultAddress } = Route.useParams()
   const vaultChainId = Number(chainId) as ChainId
   const { assets: tokenAssets } = useTokenAssetsContext()
-  const [activeVaultPageTab, setActiveVaultPageTab] = React.useState<VaultPageTab>('charts')
+  const [activeVaultPageTab, setActiveVaultPageTab] = React.useState<VaultPageTab>('overview')
 
   const {
     vaultDetails,
@@ -182,21 +183,35 @@ function SingleVaultPage() {
         <div
           className={`flex flex-1 flex-col space-y-0 ${isBlacklisted ? 'relative z-10 pointer-events-none select-none' : ''}`}
         >
-          <MainInfoPanel {...mainInfoPanelProps} />
           <Tabs
             value={activeVaultPageTab}
             className="flex w-full flex-1 flex-col bg-transparent"
             onValueChange={(value) => setActiveVaultPageTab(value as VaultPageTab)}
           >
-            <div className="border-x border-b border-border bg-white">
-              <TabsList className="flex h-auto w-full justify-start overflow-x-auto bg-transparent p-0">
-                {vaultPageTabs.map((tab) => (
-                  <TabsTrigger key={tab.value} value={tab.value} className={vaultPageTabTriggerClassName}>
-                    {tab.label}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </div>
+            <MainInfoPanel
+              {...mainInfoPanelProps}
+              navigation={
+                <TabsList className="flex h-auto max-w-full flex-wrap justify-end overflow-visible bg-transparent p-0">
+                  {vaultPageTabs.map((tab) => (
+                    <TabsTrigger key={tab.value} value={tab.value} className={vaultPageTabTriggerClassName}>
+                      {tab.label}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              }
+            />
+
+            <TabsContent value="overview" className={vaultPageTabContentClassName}>
+              <VaultOverviewTab
+                vaultChainId={vaultChainId}
+                vaultDetails={vaultDetails}
+                description={mainInfoPanelProps.description}
+                aprApyData={transformedAprApyData}
+                tvlData={transformedTvlData}
+                isChartsLoading={chartsLoading}
+                hasChartsError={chartsError}
+              />
+            </TabsContent>
 
             <TabsContent value="charts" className={vaultPageTabContentClassName}>
               <Suspense fallback={null}>
