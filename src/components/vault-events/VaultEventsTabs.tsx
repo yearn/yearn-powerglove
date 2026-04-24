@@ -30,7 +30,7 @@ export const VaultEventsTabs: React.FC<VaultEventsTabsProps> = React.memo(({ vau
   if (!hasEventsSource) {
     return (
       <div className="w-full">
-        <div className="mx-auto w-full border-b border-border bg-white px-6 py-12 sm:border-x">
+        <div className="mx-auto w-full border-y border-border bg-white px-6 py-12 sm:border-x">
           <div className="mx-auto max-w-xl text-center">
             <p className="text-sm text-muted-foreground">
               Vault events require VITE_PUBLIC_ENVIO_GRAPHQL_URL to be configured.
@@ -43,7 +43,7 @@ export const VaultEventsTabs: React.FC<VaultEventsTabsProps> = React.memo(({ vau
 
   return (
     <div className="w-full">
-      <div className="mx-auto w-full border-b border-border bg-white sm:border-x">
+      <div className="mx-auto w-full border-y border-border bg-white sm:border-x">
         <Tabs value={activeTab} className="w-full" onValueChange={(value) => setActiveTab(value as VaultEventsTab)}>
           <div className="border-b border-border">
             <div className="px-0 pt-3">

@@ -51,7 +51,7 @@ type PanelAnimation = {
 }
 
 const VIEWBOX_WIDTH = 1500
-const VIEWBOX_HEIGHT = 900
+const VIEWBOX_HEIGHT = 600
 const NODE_WIDTH = 22
 const BEFORE_NODE_X = 28
 const AFTER_NODE_X = VIEWBOX_WIDTH - BEFORE_NODE_X - NODE_WIDTH
@@ -59,7 +59,7 @@ const CHART_TOP = 48
 const CHART_BOTTOM = 48
 const NODE_LABEL_PADDING = 20
 const SCENE_TRANSITION_MS = 380
-const SIDE_SCENE_SHIFT_PX = 980
+const SIDE_SCENE_SHIFT_PX = 1030
 const FAR_SCENE_SHIFT_PX = 1960
 const SIDE_SCENE_OPACITY = 0.4
 
@@ -710,7 +710,7 @@ export const ReallocationChart: React.FC<ReallocationChartProps> = React.memo(
           </div>
         </div>
 
-        <div className="relative h-[460px] w-full overflow-hidden sm:h-[560px] lg:h-[620px]">
+        <div className="relative h-[320px] w-full overflow-hidden sm:h-[390px] lg:h-[435px]">
           {visibleSceneIndices.map((sceneIndex) => {
             const panel = panels[sceneIndex]
             if (!panel) {

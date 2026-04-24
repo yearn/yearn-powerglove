@@ -10,8 +10,6 @@ import { useStrategiesData } from '@/hooks/useStrategiesData'
 import {
   buildComparisonStrategies,
   buildReallocationColorMap,
-  buildStateAllocationChartData,
-  formatReallocationTimestamp,
   getReallocationPanelLabels
 } from '@/lib/reallocation-panels'
 import { cn } from '@/lib/utils'
@@ -114,7 +112,7 @@ export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
       ]
 
       if (hasReallocation) {
-        list.push({ value: 'current-reallocation', label: 'Current Reallocation' })
+        list.push({ value: 'current-reallocation', label: 'Strategy Reallocation History' })
       }
 
       if (isMobile && hasAbout) {
@@ -178,14 +176,6 @@ export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
       }
 
       return buildComparisonStrategies(activeReallocationPanel, reallocationColorByStrategyKey)
-    }, [activeReallocationPanel, reallocationColorByStrategyKey])
-
-    const activeReallocationAllocationData = React.useMemo(() => {
-      if (!activeReallocationPanel) {
-        return []
-      }
-
-      return buildStateAllocationChartData(activeReallocationPanel.afterState, reallocationColorByStrategyKey)
     }, [activeReallocationPanel, reallocationColorByStrategyKey])
 
     const toggleRow = (index: number) => {
@@ -255,10 +245,6 @@ export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
 
       return (
         <div className="space-y-6 px-4 py-4">
-          <div className="text-[11px] font-medium uppercase tracking-[0.08em] text-[#808080]">
-            Recent reallocation timeline
-          </div>
-
           <ReallocationChart
             panels={reallocationData.panels}
             activePanelIndex={activeReallocationIndex}
@@ -266,31 +252,13 @@ export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
             colorByStrategyKey={reallocationColorByStrategyKey}
           />
 
-          <div className="flex flex-col pb-4 lg:flex-row lg:gap-6">
-            <div className="order-2 w-full lg:order-1 lg:basis-3/4">
-              <ReallocationStrategyTable
-                strategies={activeReallocationStrategies}
-                chainId={reallocationData.chainId}
-                beforeLabel={reallocationPanelLabels.beforeLabel}
-                afterLabel={reallocationPanelLabels.afterLabel}
-              />
-            </div>
-
-            <div className="order-1 w-full border-b border-border px-4 py-4 lg:order-2 lg:basis-1/4 lg:border-b-0 lg:px-0 lg:py-0">
-              <div className="text-[11px] font-medium uppercase tracking-[0.08em] text-[#808080]">
-                {reallocationPanelLabels.afterLabel} allocation
-              </div>
-              <div className="text-xs text-[#808080]">
-                {formatReallocationTimestamp(activeReallocationPanel.afterTimestampUtc)}
-              </div>
-              {activeReallocationAllocationData.length > 0 ? (
-                <StrategyAllocationChart allocationData={activeReallocationAllocationData} />
-              ) : (
-                <div className="flex h-[220px] items-center justify-center text-sm text-[#808080]">
-                  No allocation summary available for this panel
-                </div>
-              )}
-            </div>
+          <div className="pb-4">
+            <ReallocationStrategyTable
+              strategies={activeReallocationStrategies}
+              chainId={reallocationData.chainId}
+              beforeLabel={reallocationPanelLabels.beforeLabel}
+              afterLabel={reallocationPanelLabels.afterLabel}
+            />
           </div>
         </div>
       )
@@ -316,7 +284,7 @@ export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
 
     return (
       <div className="w-full">
-        <div className="mx-auto w-full border-b border-border bg-white sm:border-x">
+        <div className="mx-auto w-full border-y border-border bg-white sm:border-x">
           <Tabs
             value={activeMainTab}
             className="w-full"

@@ -12,7 +12,7 @@ const ChartSkeleton: React.FC = () => {
   ]
 
   return (
-    <div className="bg-white sm:border-x sm:border-border">
+    <div className="border-x border-t border-border bg-white">
       <Tabs defaultValue="historical-apy" className="w-full">
         <div className="border-b border-border">
           <div className="px-4 pt-4 sm:px-6">

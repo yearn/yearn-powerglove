@@ -127,8 +127,8 @@ export function useStrategiesData(vaultChainId: ChainId, vaultDetails: VaultExte
       const strategyUsdValue = resolveStrategyAllocationAmountUsd(strategy)
       const hasAllocation = hasAllocatedDebt(strategy)
       const allocationPercent = hasAllocation ? strategy.debtRatio / 100 : 0
-      const displayApr = strategy.estimatedApy ?? strategy.netApr ?? 0
-      const estimatedAPY = isLegacyVault || !hasAllocation ? ' - ' : formatApyDisplay(displayApr)
+      const displayApr = strategy.estimatedApy ?? strategy.netApr
+      const estimatedAPY = isLegacyVault || displayApr === null ? ' - ' : formatApyDisplay(displayApr)
 
       const tokenIconUri =
         tokenAssets.find((token) => token.address.toLowerCase() === linkedVault?.asset?.address?.toLowerCase())
