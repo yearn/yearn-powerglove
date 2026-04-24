@@ -238,8 +238,6 @@ function SingleVaultPage() {
                 vaultChainId={vaultChainId}
                 vaultDetails={vaultDetails}
                 kongSnapshot={kongSnapshot}
-                aboutDescription={mainInfoPanelProps.description}
-                aboutLink={mainInfoPanelProps.yearnVaultLink}
                 reallocationData={reallocationData}
               />
             </TabsContent>
