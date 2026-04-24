@@ -3,7 +3,7 @@ import React from 'react'
 import type { ChainId } from '@/constants/chains'
 import { useVaultManagementEvents } from '@/hooks/useVaultManagementEvents'
 import { fetchStrategyDisplayNames } from '@/lib/kong-strategy-names'
-import { fetchVaultUserEvents } from '@/lib/vault-events'
+import { fetchVaultUserEventsForTransactions } from '@/lib/vault-events'
 import { buildVaultManagementTimelineItems } from '@/lib/vault-management-display'
 import type { VaultDerivedStrategy } from '@/types/vaultTypes'
 import { VaultDebtReallocationRow } from './VaultDebtReallocationRow'
@@ -31,22 +31,15 @@ export const VaultManagementEventsPanel: React.FC<VaultManagementEventsPanelProp
       countsByType,
       availableEventTypeOptions,
       isLoading,
+      isLoadingMore: isManagementEventsLoadingMore,
+      hasMoreEvents: hasMoreManagementEvents,
       error,
+      loadMoreEvents: loadMoreManagementEvents,
       eventType,
       setEventType,
       currentPage,
       setCurrentPage
     } = useVaultManagementEvents(vaultAddress, vaultChainId)
-
-    const {
-      data: userEvents = [],
-      isLoading: isUserEventsLoading,
-      error: userEventsError
-    } = useQuery({
-      queryKey: ['envio', 'vault-user-events', vaultChainId, vaultAddress.toLowerCase()],
-      queryFn: () => fetchVaultUserEvents(vaultAddress, vaultChainId),
-      staleTime: 60 * 1000
-    })
 
     const baseStrategyNamesByAddress = React.useMemo(() => {
       const byAddress: Record<string, string> = {}
@@ -105,7 +98,41 @@ export const VaultManagementEventsPanel: React.FC<VaultManagementEventsPanelProp
       return merged
     }, [baseStrategyNamesByAddress, fetchedStrategyNamesByAddress])
 
-    const isTimelineLoading = isLoading || isUserEventsLoading
+    const managementTransactionHashes = React.useMemo(() => {
+      const transactionHashesByKey = new Map<string, string>()
+
+      for (const event of allEvents) {
+        if (event.transactionHash) {
+          transactionHashesByKey.set(event.transactionHash.toLowerCase(), event.transactionHash)
+        }
+      }
+
+      return [...transactionHashesByKey.values()].sort()
+    }, [allEvents])
+
+    const managementTransactionHashKey = managementTransactionHashes.join(',')
+
+    const {
+      data: userEvents = [],
+      error: userEventsError,
+      isFetching: isUserEventContextFetching
+    } = useQuery({
+      queryKey: [
+        'envio',
+        'vault-management-user-event-context',
+        vaultChainId,
+        vaultAddress.toLowerCase(),
+        managementTransactionHashKey
+      ],
+      queryFn: () => fetchVaultUserEventsForTransactions(vaultAddress, vaultChainId, managementTransactionHashes),
+      enabled: managementTransactionHashes.length > 0,
+      staleTime: 60 * 1000
+    })
+
+    const isUserEventContextLoading = managementTransactionHashes.length > 0 && isUserEventContextFetching
+    const isTimelineLoading = isLoading || isUserEventContextLoading
+    const isTimelineLoadingMore = isManagementEventsLoadingMore
+    const hasMoreTimelineItems = hasMoreManagementEvents
 
     const timelineItems = React.useMemo(() => {
       if (isTimelineLoading) {
@@ -126,9 +153,32 @@ export const VaultManagementEventsPanel: React.FC<VaultManagementEventsPanelProp
       [currentPage, timelineItems]
     )
 
-    const resolvedUserEventsError =
-      userEventsError instanceof Error ? userEventsError : userEventsError ? new Error(String(userEventsError)) : null
-    const resolvedError = error ?? resolvedUserEventsError
+    const loadMoreTimelineItems = React.useCallback(async () => {
+      if (!hasMoreManagementEvents) {
+        return 0
+      }
+
+      return loadMoreManagementEvents()
+    }, [hasMoreManagementEvents, loadMoreManagementEvents])
+
+    const handleNextPage = React.useCallback(async () => {
+      if (currentPage < totalPages) {
+        setCurrentPage((page) => Math.min(totalPages, page + 1))
+        return
+      }
+
+      if (!hasMoreTimelineItems) {
+        return
+      }
+
+      const loadedCount = await loadMoreTimelineItems()
+      if (loadedCount > 0) {
+        setCurrentPage((page) => page + 1)
+      }
+    }, [currentPage, hasMoreTimelineItems, loadMoreTimelineItems, setCurrentPage, totalPages])
+
+    const hasUserEventContextError = Boolean(userEventsError)
+    const resolvedError = error
 
     if (resolvedError) {
       return (
@@ -158,18 +208,22 @@ export const VaultManagementEventsPanel: React.FC<VaultManagementEventsPanelProp
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="flex flex-wrap items-center gap-4 text-xs text-[#808080]">
             <span>
-              <span className="font-semibold text-black">{allEventCount}</span> management events
+              <span className="font-semibold text-black">{allEventCount}</span> management events loaded
             </span>
             {rawFilteredCount !== activeTypeCount ? (
               <span>
-                <span className="font-semibold text-black">{activeTypeCount}</span> timeline entries after grouping
+                <span className="font-semibold text-black">{activeTypeCount}</span> loaded timeline entries after
+                grouping
               </span>
             ) : null}
             {eventType !== 'all' ? (
               <span>
-                <span className="font-semibold text-black">{activeTypeCount}</span> matching current filter
+                <span className="font-semibold text-black">{activeTypeCount}</span> loaded entries matching current
+                filter
               </span>
             ) : null}
+            {hasMoreTimelineItems ? <span>More events available</span> : null}
+            {hasUserEventContextError ? <span>User-event context unavailable</span> : null}
           </div>
           <div className="flex-1" />
           <div className="flex items-center gap-2">
@@ -230,16 +284,17 @@ export const VaultManagementEventsPanel: React.FC<VaultManagementEventsPanelProp
           </div>
         )}
 
-        {totalPages > 1 ? (
+        {totalPages > 1 || hasMoreTimelineItems ? (
           <div className="mt-3 flex items-center justify-between text-xs text-[#808080]">
             <span>
               Page {currentPage} of {totalPages}
+              {hasMoreTimelineItems ? '+' : ''}
             </span>
             <div className="flex items-center gap-1">
               <button
                 type="button"
                 onClick={() => setCurrentPage(1)}
-                disabled={currentPage === 1}
+                disabled={currentPage === 1 || isTimelineLoadingMore}
                 className="rounded border border-border px-2 py-1 disabled:opacity-50 hover:bg-gray-50"
               >
                 First
@@ -247,27 +302,38 @@ export const VaultManagementEventsPanel: React.FC<VaultManagementEventsPanelProp
               <button
                 type="button"
                 onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-                disabled={currentPage === 1}
+                disabled={currentPage === 1 || isTimelineLoadingMore}
                 className="rounded border border-border px-2 py-1 disabled:opacity-50 hover:bg-gray-50"
               >
                 Prev
               </button>
               <button
                 type="button"
-                onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
-                disabled={currentPage === totalPages}
+                onClick={handleNextPage}
+                disabled={isTimelineLoadingMore || (currentPage === totalPages && !hasMoreTimelineItems)}
                 className="rounded border border-border px-2 py-1 disabled:opacity-50 hover:bg-gray-50"
               >
-                Next
+                {isTimelineLoadingMore && currentPage === totalPages ? 'Loading...' : 'Next'}
               </button>
-              <button
-                type="button"
-                onClick={() => setCurrentPage(totalPages)}
-                disabled={currentPage === totalPages}
-                className="rounded border border-border px-2 py-1 disabled:opacity-50 hover:bg-gray-50"
-              >
-                Last
-              </button>
+              {hasMoreTimelineItems ? (
+                <button
+                  type="button"
+                  onClick={() => void loadMoreTimelineItems()}
+                  disabled={isTimelineLoadingMore}
+                  className="rounded border border-border px-2 py-1 disabled:opacity-50 hover:bg-gray-50"
+                >
+                  {isTimelineLoadingMore ? 'Loading...' : 'Load more'}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage(totalPages)}
+                  disabled={currentPage === totalPages || isTimelineLoadingMore}
+                  className="rounded border border-border px-2 py-1 disabled:opacity-50 hover:bg-gray-50"
+                >
+                  Last
+                </button>
+              )}
             </div>
           </div>
         ) : null}

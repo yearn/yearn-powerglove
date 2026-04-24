@@ -22,14 +22,42 @@ export const VaultEventsPanel: React.FC<VaultEventsPanelProps> = React.memo(
       depositCount,
       withdrawCount,
       transferCount,
+      pendingEventTypes,
       isLoading,
+      isLoadingMore,
+      hasMoreEvents,
       error,
+      loadMoreEvents,
       eventType,
       setEventType,
       currentPage,
       setCurrentPage,
       totalPages
     } = useVaultEvents(vaultAddress, vaultChainId)
+
+    const pendingEventTypeLabels = React.useMemo(
+      () =>
+        USER_EVENT_TYPE_OPTIONS.filter(
+          (option) => option.value !== 'all' && pendingEventTypes.includes(option.value)
+        ).map((option) => option.label),
+      [pendingEventTypes]
+    )
+
+    const handleNextPage = React.useCallback(async () => {
+      if (currentPage < totalPages) {
+        setCurrentPage((page) => Math.min(totalPages, page + 1))
+        return
+      }
+
+      if (!hasMoreEvents) {
+        return
+      }
+
+      const loadedCount = await loadMoreEvents()
+      if (loadedCount > 0) {
+        setCurrentPage((page) => page + 1)
+      }
+    }, [currentPage, hasMoreEvents, loadMoreEvents, setCurrentPage, totalPages])
 
     if (error) {
       return (
@@ -56,14 +84,16 @@ export const VaultEventsPanel: React.FC<VaultEventsPanelProps> = React.memo(
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
           <div className="flex items-center gap-4 text-xs text-[#808080]">
             <span>
-              <span className="font-semibold text-black">{depositCount}</span> deposits
+              <span className="font-semibold text-black">{depositCount}</span> deposits loaded
             </span>
             <span>
-              <span className="font-semibold text-black">{withdrawCount}</span> withdrawals
+              <span className="font-semibold text-black">{withdrawCount}</span> withdrawals loaded
             </span>
             <span>
-              <span className="font-semibold text-black">{transferCount}</span> transfers
+              <span className="font-semibold text-black">{transferCount}</span> transfers loaded
             </span>
+            {hasMoreEvents ? <span>More events available</span> : null}
+            {pendingEventTypeLabels.length > 0 ? <span>Loading {pendingEventTypeLabels.join(', ')}</span> : null}
           </div>
           <div className="flex-1" />
           <div className="flex items-center gap-2">
@@ -104,16 +134,17 @@ export const VaultEventsPanel: React.FC<VaultEventsPanelProps> = React.memo(
           </div>
         )}
 
-        {totalPages > 1 && (
+        {(totalPages > 1 || hasMoreEvents) && (
           <div className="flex items-center justify-between mt-3 text-xs text-[#808080]">
             <span>
               Page {currentPage} of {totalPages}
+              {hasMoreEvents ? '+' : ''}
             </span>
             <div className="flex items-center gap-1">
               <button
                 type="button"
                 onClick={() => setCurrentPage(1)}
-                disabled={currentPage === 1}
+                disabled={currentPage === 1 || isLoadingMore}
                 className="px-2 py-1 border border-border rounded disabled:opacity-50 hover:bg-gray-50"
               >
                 First
@@ -121,27 +152,38 @@ export const VaultEventsPanel: React.FC<VaultEventsPanelProps> = React.memo(
               <button
                 type="button"
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
+                disabled={currentPage === 1 || isLoadingMore}
                 className="px-2 py-1 border border-border rounded disabled:opacity-50 hover:bg-gray-50"
               >
                 Prev
               </button>
               <button
                 type="button"
-                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
+                onClick={handleNextPage}
+                disabled={isLoadingMore || (currentPage === totalPages && !hasMoreEvents)}
                 className="px-2 py-1 border border-border rounded disabled:opacity-50 hover:bg-gray-50"
               >
-                Next
+                {isLoadingMore && currentPage === totalPages ? 'Loading...' : 'Next'}
               </button>
-              <button
-                type="button"
-                onClick={() => setCurrentPage(totalPages)}
-                disabled={currentPage === totalPages}
-                className="px-2 py-1 border border-border rounded disabled:opacity-50 hover:bg-gray-50"
-              >
-                Last
-              </button>
+              {hasMoreEvents ? (
+                <button
+                  type="button"
+                  onClick={() => void loadMoreEvents()}
+                  disabled={isLoadingMore}
+                  className="px-2 py-1 border border-border rounded disabled:opacity-50 hover:bg-gray-50"
+                >
+                  {isLoadingMore ? 'Loading...' : 'Load more'}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage(totalPages)}
+                  disabled={currentPage === totalPages || isLoadingMore}
+                  className="px-2 py-1 border border-border rounded disabled:opacity-50 hover:bg-gray-50"
+                >
+                  Last
+                </button>
+              )}
             </div>
           </div>
         )}
