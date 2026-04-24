@@ -1,5 +1,6 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import React from 'react'
+import { useIsMobile } from '@/components/ui/use-mobile'
 import { useRootDarkMode } from '@/hooks/useRootDarkMode'
 import { formatPercent } from '@/lib/formatters'
 import {
@@ -191,7 +192,7 @@ function ReallocationSummary({
   className?: string
 }): React.ReactNode {
   return (
-    <div className={cn('min-w-0 space-y-1', align === 'right' && 'sm:text-right', className)}>
+    <div className={cn('min-w-0 space-y-1', align === 'right' && 'text-right', className)}>
       <div className="text-sm text-foreground">{label}</div>
       <div className="text-xs text-muted-foreground">{formatReallocationTimestamp(timestampUtc)}</div>
       <div className="text-xs text-muted-foreground">
@@ -299,15 +300,27 @@ function getSceneOpacity(slot: number): number {
   return 0
 }
 
-const ReallocationFlowScene: React.FC<{
+type ReallocationFlowSceneProps = {
   panel: ReallocationPanel
   sceneData: ReallocationSceneData
   colorByStrategyKey: Record<string, string>
   isDark: boolean
   hoverTarget: HoverTarget
+  fitToContainer?: boolean
   showLabels?: boolean
   setHoverTarget?: React.Dispatch<React.SetStateAction<HoverTarget>>
-}> = React.memo(({ panel, sceneData, colorByStrategyKey, isDark, hoverTarget, showLabels = true, setHoverTarget }) => {
+}
+
+function ReallocationFlowSceneComponent({
+  panel,
+  sceneData,
+  colorByStrategyKey,
+  isDark,
+  hoverTarget,
+  fitToContainer = false,
+  showLabels = true,
+  setHoverTarget
+}: ReallocationFlowSceneProps): React.ReactNode {
   const { graph, ribbons } = sceneData
   const interactive = Boolean(setHoverTarget)
   const gradientPrefix = React.useId().replace(/:/g, '-')
@@ -370,7 +383,7 @@ const ReallocationFlowScene: React.FC<{
   return (
     <svg
       viewBox={`0 0 ${VIEWBOX_WIDTH} ${VIEWBOX_HEIGHT}`}
-      className="block h-full w-auto max-w-none"
+      className={cn('block h-full', fitToContainer ? 'w-full max-w-full' : 'w-auto max-w-none')}
       preserveAspectRatio="xMidYMid meet"
       role="img"
       aria-label={`Reallocation flow for panel ${panel.id}`}
@@ -529,11 +542,14 @@ const ReallocationFlowScene: React.FC<{
       })}
     </svg>
   )
-})
+}
+
+const ReallocationFlowScene = React.memo(ReallocationFlowSceneComponent)
 
 export const ReallocationChart: React.FC<ReallocationChartProps> = React.memo(
   ({ panels, activePanelIndex, onActivePanelIndexChange, colorByStrategyKey }) => {
     const isDark = useRootDarkMode()
+    const isMobile = useIsMobile()
     const [hoverTarget, setHoverTarget] = React.useState<HoverTarget>(null)
     const [stablePanelIndex, setStablePanelIndex] = React.useState(() => clampPanelIndex(activePanelIndex, panels))
     const [transitionShift, setTransitionShift] = React.useState(0)
@@ -657,8 +673,8 @@ export const ReallocationChart: React.FC<ReallocationChartProps> = React.memo(
     return (
       <div className="overflow-hidden rounded-lg border border-border bg-card">
         <div className="border-b border-border px-4 py-3">
-          <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] lg:grid-cols-[minmax(150px,auto)_minmax(180px,1fr)_minmax(180px,1fr)_auto] lg:items-start lg:gap-6">
-            <div className="min-w-0">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-[minmax(0,1fr)_auto] lg:grid-cols-[minmax(150px,auto)_minmax(180px,1fr)_minmax(180px,1fr)_auto] lg:items-start lg:gap-6">
+            <div className="col-span-2 min-w-0 sm:col-span-1">
               <div className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
                 Reallocation Flow
               </div>
@@ -673,7 +689,7 @@ export const ReallocationChart: React.FC<ReallocationChartProps> = React.memo(
               vaultAprPct={beforeVaultAprPct}
               vaultAprDeltaPct={null}
               deltaColor={deltaColor}
-              className="sm:col-start-1 sm:row-start-2 lg:col-start-2 lg:row-start-1"
+              className="col-start-1 row-start-2 sm:col-start-1 sm:row-start-2 lg:col-start-2 lg:row-start-1"
             />
             <ReallocationSummary
               label={afterLabel}
@@ -682,11 +698,11 @@ export const ReallocationChart: React.FC<ReallocationChartProps> = React.memo(
               vaultAprDeltaPct={vaultAprDeltaPct}
               deltaColor={deltaColor}
               align="right"
-              className="sm:col-start-2 sm:row-start-2 lg:col-start-3 lg:row-start-1"
+              className="col-start-2 row-start-2 sm:col-start-2 sm:row-start-2 lg:col-start-3 lg:row-start-1"
             />
 
             {panels.length > 1 && (
-              <div className="flex items-center gap-2 sm:justify-self-end lg:col-start-4 lg:row-start-1">
+              <div className="col-span-2 row-start-3 flex items-center gap-2 sm:col-span-1 sm:col-start-2 sm:row-start-1 sm:justify-self-end lg:col-start-4 lg:row-start-1">
                 <button
                   type="button"
                   onClick={() => onActivePanelIndexChange(clampPanelIndex(resolvedPanelIndex - 1, panels))}
@@ -710,7 +726,7 @@ export const ReallocationChart: React.FC<ReallocationChartProps> = React.memo(
           </div>
         </div>
 
-        <div className="relative h-[320px] w-full overflow-hidden sm:h-[390px] lg:h-[435px]">
+        <div className="relative h-[150px] w-full overflow-hidden sm:h-[230px] md:h-[390px] lg:h-[435px]">
           {visibleSceneIndices.map((sceneIndex) => {
             const panel = panels[sceneIndex]
             if (!panel) {
@@ -729,11 +745,14 @@ export const ReallocationChart: React.FC<ReallocationChartProps> = React.memo(
               <div
                 key={panel.id}
                 className={cn(
-                  'absolute inset-y-0 left-1/2 flex items-stretch justify-center',
+                  'absolute inset-y-0 flex items-stretch justify-center',
+                  isMobile ? 'left-0 right-0' : 'left-1/2',
                   distance > 0 && 'pointer-events-none select-none'
                 )}
                 style={{
-                  transform: `translateX(-50%) translateX(${getSceneOffset(slot)}) scale(${getSceneScale(slot)})`,
+                  transform: isMobile
+                    ? `translateX(${getSceneOffset(slot)}) scale(${getSceneScale(slot)})`
+                    : `translateX(-50%) translateX(${getSceneOffset(slot)}) scale(${getSceneScale(slot)})`,
                   opacity: getSceneOpacity(slot),
                   zIndex: distance === 0 ? 30 : distance === 1 ? 20 : 10,
                   filter: distance === 0 ? 'none' : 'saturate(0.9)',
@@ -746,7 +765,8 @@ export const ReallocationChart: React.FC<ReallocationChartProps> = React.memo(
                   colorByStrategyKey={colorByStrategyKey}
                   isDark={isDark}
                   hoverTarget={distance === 0 ? hoverTarget : null}
-                  showLabels={distance === 0}
+                  fitToContainer={isMobile}
+                  showLabels={distance === 0 && !isMobile}
                   setHoverTarget={distance === 0 && !isAnimating ? setHoverTarget : undefined}
                 />
               </div>

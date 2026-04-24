@@ -1,7 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { ExternalLink } from 'lucide-react'
 import React, { lazy, Suspense } from 'react'
 import type { Address } from 'viem'
-import { MainInfoPanel } from '@/components/main-info-panel'
+import { getVaultAtAGlanceItems, MainInfoPanel } from '@/components/main-info-panel'
 import { StrategiesPanel } from '@/components/strategies-panel/index'
 import { KongDataTab } from '@/components/strategies-panel/KongDataTab'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -35,7 +36,7 @@ const vaultPageTabs: Array<{ value: VaultPageTab; label: string }> = [
 ]
 
 const vaultPageTabTriggerClassName =
-  'rounded-none border-b-2 border-transparent px-5 py-3 text-sm font-medium text-muted-foreground data-[state=active]:border-[#0657f9] data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none'
+  'rounded-none border-b-2 border-transparent px-3 py-3 text-sm font-medium text-muted-foreground data-[state=active]:border-[#0657f9] data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none md:px-5'
 const vaultPageTabContentClassName = 'mt-3 flex-1 bg-white'
 
 function SingleVaultPage() {
@@ -128,6 +129,10 @@ function SingleVaultPage() {
   }, [mainInfoPanelData, latestDerivedApy, legacyVault, yDaemonForwardApyFormatted, oracleOneDayApy])
 
   const overrideItems = React.useMemo(() => getVaultOverrideDisplayItems(overrideConfig), [overrideConfig])
+  const vaultAtAGlanceItems = React.useMemo(
+    () => (mainInfoPanelProps ? getVaultAtAGlanceItems(mainInfoPanelProps) : []),
+    [mainInfoPanelProps]
+  )
 
   const { data: reallocationData } = useReallocationData(
     vaultAddress,
@@ -146,7 +151,7 @@ function SingleVaultPage() {
 
   return (
     <VaultPageLayout isLoading={isInitialLoading} hasErrors={hasErrors}>
-      <div className="relative flex flex-1 flex-col">
+      <div className={`relative flex flex-1 flex-col ${mainInfoPanelProps.yearnVaultLink ? 'pb-20 md:pb-0' : ''}`}>
         {isBlacklisted && <div className="absolute inset-0 z-20 rounded-lg bg-white/40 backdrop-blur-sm" />}
         {isBlacklisted && (
           <div className="relative z-30 flex items-start gap-3 border border-amber-300 bg-amber-50 px-4 py-3 text-amber-800">
@@ -187,12 +192,12 @@ function SingleVaultPage() {
             className="flex w-full flex-1 flex-col bg-transparent"
             onValueChange={(value) => setActiveVaultPageTab(value as VaultPageTab)}
           >
-            <div className="sticky top-[104px] z-20 bg-white sm:top-[54px]">
+            <div className="bg-white md:sticky md:top-[54px] md:z-20">
               <VaultPageBreadcrumb vaultName={vaultDetails.name} />
               <MainInfoPanel
                 {...mainInfoPanelProps}
                 navigation={
-                  <TabsList className="flex h-auto max-w-full flex-wrap justify-end overflow-visible bg-transparent p-0">
+                  <TabsList className="flex h-auto max-w-full flex-wrap justify-center overflow-visible bg-transparent p-0 md:justify-end">
                     {vaultPageTabs.map((tab) => (
                       <TabsTrigger key={tab.value} value={tab.value} className={vaultPageTabTriggerClassName}>
                         {tab.label}
@@ -212,6 +217,7 @@ function SingleVaultPage() {
                 tvlData={transformedTvlData}
                 isChartsLoading={chartsLoading}
                 hasChartsError={chartsError}
+                atAGlanceItems={vaultAtAGlanceItems}
               />
             </TabsContent>
 
@@ -249,6 +255,19 @@ function SingleVaultPage() {
             </TabsContent>
           </Tabs>
         </div>
+        {mainInfoPanelProps.yearnVaultLink ? (
+          <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-white px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] md:hidden">
+            <a
+              className="mx-auto flex h-11 max-w-[1400px] items-center justify-center rounded-none bg-[#0657f9] px-4 text-sm font-medium text-white transition-colors hover:bg-[#0657f9]/90"
+              href={mainInfoPanelProps.yearnVaultLink}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Go to Vault
+              <ExternalLink className="ml-2 h-4 w-4" />
+            </a>
+          </div>
+        ) : null}
       </div>
     </VaultPageLayout>
   )
