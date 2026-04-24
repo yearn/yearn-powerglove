@@ -1,6 +1,5 @@
 import type React from 'react'
 import { FixedHeightChartContainer } from '@/components/charts/chart-container'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 const ChartSkeleton: React.FC = () => {
   // Define timeframe options to match the real component
@@ -13,68 +12,34 @@ const ChartSkeleton: React.FC = () => {
 
   return (
     <div className="border-x border-t border-border bg-white">
-      <Tabs defaultValue="historical-apy" className="w-full">
-        <div className="border-b border-border">
-          <div className="px-4 pt-4 sm:px-6">
-            <TabsList className="grid w-full grid-cols-3 bg-transparent p-0">
-              <TabsTrigger
-                value="historical-apy"
-                className="rounded-none border border-border px-2 py-3 text-xs data-[state=active]:border-[#0657f9] data-[state=active]:bg-transparent data-[state=active]:shadow-none sm:border-x-0 sm:border-t-0 sm:border-b-2 sm:px-4 sm:text-sm"
-              >
-                Performance
-              </TabsTrigger>
-              <TabsTrigger
-                value="historical-pps"
-                className="rounded-none border border-border px-2 py-3 text-xs data-[state=active]:border-[#0657f9] data-[state=active]:bg-transparent data-[state=active]:shadow-none sm:border-x-0 sm:border-t-0 sm:border-b-2 sm:px-4 sm:text-sm"
-              >
-                Share Growth
-              </TabsTrigger>
-              <TabsTrigger
-                value="historical-tvl"
-                className="rounded-none border border-border px-2 py-3 text-xs data-[state=active]:border-[#0657f9] data-[state=active]:bg-transparent data-[state=active]:shadow-none sm:border-x-0 sm:border-t-0 sm:border-b-2 sm:px-4 sm:text-sm"
-              >
-                TVL
-              </TabsTrigger>
-            </TabsList>
+      <div className="border-b border-border p-4 sm:flex sm:items-center sm:justify-between sm:gap-4 sm:p-6">
+        <div>
+          <div className="mb-2 h-4 w-20 animate-pulse rounded bg-gray-200"></div>
+          <div className="h-3 w-64 animate-pulse rounded bg-gray-200"></div>
+        </div>
+        <div className="mt-4 grid grid-cols-2 gap-2 sm:mt-0 sm:flex sm:flex-wrap">
+          <div className="h-10 rounded-md bg-gray-200 animate-pulse sm:hidden"></div>
+          <div className="h-10 rounded-md bg-gray-200 animate-pulse sm:hidden"></div>
+          <div className="hidden sm:contents">
+            {timeframes.map((tf) => (
+              <div key={tf.value} className="h-9 w-20 rounded bg-gray-200 animate-pulse"></div>
+            ))}
           </div>
         </div>
+      </div>
 
-        <div className="p-4 sm:p-6">
-          <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <div className="h-4 bg-gray-200 rounded w-64 mb-2 animate-pulse"></div>
-              <div className="h-3 bg-gray-200 rounded w-80 animate-pulse"></div>
-            </div>
-            <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-              <div className="h-10 rounded-md bg-gray-200 animate-pulse"></div>
-              <div className="h-10 rounded-md bg-gray-200 animate-pulse"></div>
-              <div className="hidden sm:contents">
-                {timeframes.map((tf) => (
-                  <div key={tf.value} className="h-7 w-16 rounded bg-gray-200 animate-pulse"></div>
-                ))}
-              </div>
-            </div>
+      {['performance', 'share-growth', 'tvl'].map((section) => (
+        <section key={section} className="border-b border-border p-4 last:border-b-0 sm:p-6">
+          <div className="mb-4">
+            <div className="h-4 bg-gray-200 rounded w-64 mb-2 animate-pulse"></div>
+            <div className="h-3 bg-gray-200 rounded w-80 max-w-full animate-pulse"></div>
           </div>
 
-          <TabsContent value="historical-apy" className="mt-0">
-            <FixedHeightChartContainer>
-              <SkeletonChart />
-            </FixedHeightChartContainer>
-          </TabsContent>
-
-          <TabsContent value="historical-pps" className="mt-0">
-            <FixedHeightChartContainer>
-              <SkeletonChart />
-            </FixedHeightChartContainer>
-          </TabsContent>
-
-          <TabsContent value="historical-tvl" className="mt-0">
-            <FixedHeightChartContainer>
-              <SkeletonChart />
-            </FixedHeightChartContainer>
-          </TabsContent>
-        </div>
-      </Tabs>
+          <FixedHeightChartContainer>
+            <SkeletonChart />
+          </FixedHeightChartContainer>
+        </section>
+      ))}
     </div>
   )
 }

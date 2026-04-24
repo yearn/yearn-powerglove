@@ -1,8 +1,6 @@
 import React, { useState } from 'react'
 import { ReallocationChart, ReallocationStrategyTable } from '@/components/reallocation-panel'
 import StrategiesSkeleton from '@/components/strategies-panel/StrategiesSkeleton'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { useIsMobile } from '@/components/ui/use-mobile'
 import { CHAIN_ID_TO_BLOCK_EXPLORER, type ChainId } from '@/constants/chains'
 import { useRootDarkMode } from '@/hooks/useRootDarkMode'
 import { useSortingAndFiltering } from '@/hooks/useSortingAndFiltering'
@@ -24,17 +22,8 @@ interface StrategiesPanelProps {
   vaultChainId: ChainId
   vaultDetails: VaultExtended
   kongSnapshot?: KongVaultSnapshot | null
-  aboutDescription?: string
-  aboutLink?: string
   reallocationData?: ReallocationData | null
 }
-
-type StrategyInfoTab = 'current-strategies' | 'current-reallocation' | 'about'
-
-const ABOUT_TAB_TEXT = `No additional vault description is currently available.`
-
-const tabTriggerClassName =
-  'shrink-0 rounded-none border-b-2 border-transparent px-5 py-2.5 text-sm text-muted-foreground data-[state=active]:border-[#0657f9] data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none'
 
 const parseKongDecimals = (value: unknown): number | null => {
   const numeric = typeof value === 'number' ? value : Number(value)
@@ -46,17 +35,14 @@ const getCompositionAddress = (composition: KongVaultSnapshotComposition): strin
 }
 
 export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
-  ({ vaultChainId, vaultDetails, kongSnapshot, aboutDescription, aboutLink, reallocationData }) => {
+  ({ vaultChainId, vaultDetails, kongSnapshot, reallocationData }) => {
     const strategiesData = useStrategiesData(vaultChainId, vaultDetails)
     const sortingState = useSortingAndFiltering(strategiesData.strategies)
 
     const [expandedRow, setExpandedRow] = useState<number | null>(null)
-    const [activeMainTab, setActiveMainTab] = useState<StrategyInfoTab>('current-strategies')
     const [showUnallocated, setShowUnallocated] = useState<boolean>(true)
     const [activeReallocationIndex, setActiveReallocationIndex] = useState<number>(0)
-    const isMobile = useIsMobile()
     const isDark = useRootDarkMode()
-    const hasAbout = Boolean(aboutDescription?.trim())
     const hasReallocation = Boolean(reallocationData)
     const latestReallocationPanelId = reallocationData?.panels.length
       ? reallocationData.panels[reallocationData.panels.length - 1]?.id
@@ -105,28 +91,6 @@ export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
         vaultSymbol: kongSnapshot.symbol?.trim() || null
       }
     }, [kongSnapshot, strategiesData.strategies])
-
-    const mainTabs = React.useMemo(() => {
-      const list: Array<{ value: StrategyInfoTab; label: string }> = [
-        { value: 'current-strategies', label: 'Current Strategies' }
-      ]
-
-      if (hasReallocation) {
-        list.push({ value: 'current-reallocation', label: 'Strategy Reallocation History' })
-      }
-
-      if (isMobile && hasAbout) {
-        list.push({ value: 'about', label: 'About' })
-      }
-
-      return list
-    }, [hasReallocation, isMobile, hasAbout])
-
-    React.useEffect(() => {
-      if (!mainTabs.some((tab) => tab.value === activeMainTab)) {
-        setActiveMainTab('current-strategies')
-      }
-    }, [mainTabs, activeMainTab])
 
     React.useEffect(() => {
       if (!reallocationData?.panels.length) {
@@ -264,56 +228,24 @@ export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
       )
     }
 
-    const renderAboutContent = () => {
-      return (
-        <div className="flex flex-col gap-4 px-4 py-6 sm:px-6 sm:py-8">
-          <p className="text-sm leading-relaxed text-[#4f4f4f]">{hasAbout ? aboutDescription : ABOUT_TAB_TEXT}</p>
-          {aboutLink ? (
-            <a
-              className="inline-flex w-fit items-center gap-2 rounded-none bg-[#0657f9] px-4 py-2 text-white hover:bg-[#0657f9]/90"
-              href={aboutLink}
-              target="_blank"
-              rel="noreferrer"
-            >
-              Go to Vault
-            </a>
-          ) : null}
-        </div>
-      )
-    }
-
     return (
       <div className="w-full">
         <div className="mx-auto w-full border-y border-border bg-white sm:border-x">
-          <Tabs
-            value={activeMainTab}
-            className="w-full"
-            onValueChange={(value) => setActiveMainTab(value as StrategyInfoTab)}
-          >
-            <div className="border-b border-border">
-              <div className="px-0 pt-3">
-                <TabsList className="flex h-auto w-full justify-start overflow-x-auto bg-transparent p-0">
-                  {mainTabs.map((tab) => (
-                    <TabsTrigger key={tab.value} value={tab.value} className={tabTriggerClassName}>
-                      {tab.label}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-              </div>
+          <section>
+            <div className="border-b border-border px-4 py-3 sm:px-6">
+              <h2 className="text-base font-semibold text-[#111111]">Current Strategies</h2>
             </div>
+            {renderStrategiesContent()}
+          </section>
 
-            <TabsContent value="current-strategies" className="mt-0">
-              {renderStrategiesContent()}
-            </TabsContent>
-
-            <TabsContent value="current-reallocation" className="mt-0">
+          {hasReallocation ? (
+            <section className="border-t border-border">
+              <div className="border-b border-border px-4 py-3 sm:px-6">
+                <h2 className="text-base font-semibold text-[#111111]">Strategy Reallocation History</h2>
+              </div>
               {renderReallocationContent()}
-            </TabsContent>
-
-            <TabsContent value="about" className="mt-0">
-              {renderAboutContent()}
-            </TabsContent>
-          </Tabs>
+            </section>
+          ) : null}
         </div>
       </div>
     )
