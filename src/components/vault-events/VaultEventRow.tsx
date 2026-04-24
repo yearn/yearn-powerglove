@@ -1260,9 +1260,7 @@ export const VaultEventRow: React.FC<VaultEventRowProps> = React.memo(
                 isUserEvent ? display.iconBg : 'border border-border bg-white'
               }`}
             >
-              <span className={`${isUserEvent ? display.iconColor : 'text-[#4f4f4f]'} text-sm`}> 
-                {display.icon}
-              </span>
+              <span className={`${isUserEvent ? display.iconColor : 'text-[#4f4f4f]'} text-sm`}>{display.icon}</span>
             </div>
 
             <div className="min-w-0">

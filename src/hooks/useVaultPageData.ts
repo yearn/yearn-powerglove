@@ -28,6 +28,7 @@ interface TimeseriesQueryResult {
 interface UseVaultPageDataReturn {
   // Vault data
   vaultDetails: VaultExtended | null
+  kongSnapshot: KongVaultSnapshot | null
   vaultLoading: boolean
   vaultError: Error | undefined
   vaultSnapshotTimestampUtc: string | null
@@ -199,6 +200,7 @@ export function useVaultPageData({ vaultAddress, vaultChainId }: UseVaultPageDat
   return {
     // Vault data
     vaultDetails,
+    kongSnapshot: snapshotData ?? null,
     vaultLoading,
     vaultError: snapshotError ?? undefined,
     vaultSnapshotTimestampUtc,
