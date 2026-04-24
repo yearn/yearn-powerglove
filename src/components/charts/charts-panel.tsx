@@ -85,7 +85,7 @@ export function ChartsPanel(data: ChartData) {
 
   if (hasErrors) {
     return (
-      <div className="bg-white sm:border-x sm:border-border">
+      <div className="border-x border-t border-border bg-white">
         <div className="flex h-96 items-center justify-center">
           <div className="text-red-500">Error loading chart data</div>
         </div>
@@ -373,7 +373,7 @@ export function ChartsPanel(data: ChartData) {
 
   if (isMobile) {
     return (
-      <div className="bg-white border-x border-border">
+      <div className="border-x border-t border-border bg-white">
         <Tabs
           value={activeTab}
           className="w-full"
@@ -407,7 +407,7 @@ export function ChartsPanel(data: ChartData) {
   }
 
   return (
-    <div className="bg-white border-x border-border">
+    <div className="border-x border-t border-border bg-white">
       <Tabs
         value={activeTab}
         className="w-full"

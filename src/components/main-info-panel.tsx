@@ -55,7 +55,7 @@ export function MainInfoPanel(data: MainInfoPanelComponentProps) {
   ]
 
   return (
-    <div className="bg-white sm:border-x sm:border-border">
+    <div className="border-b border-border bg-white sm:border-x sm:border-border">
       <div className="grid grid-cols-1 gap-5 px-4 sm:px-6 md:grid-cols-2">
         <div className="min-w-0 pt-4">
           <div className="mb-2 flex flex-wrap items-center gap-2">

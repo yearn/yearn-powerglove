@@ -207,7 +207,7 @@ export const VaultOverviewTab: React.FC<VaultOverviewTabProps> = React.memo(
     ]
 
     return (
-      <div className="border-x border-b border-border bg-white">
+      <div className="border border-border bg-white">
         <div className="grid gap-8 p-4 sm:p-6 lg:grid-cols-2 lg:gap-14 xl:gap-20">
           <div className="min-w-0">
             <section className="pb-6">

@@ -33,5 +33,5 @@ export const VaultPageLayout = React.memo<VaultPageLayoutProps>(({ isLoading, ha
   }
 
   // Render content
-  return <main className="container flex flex-1 flex-col overflow-y-auto pt-0 pb-0">{children}</main>
+  return <main className="container flex flex-1 flex-col pt-0 pb-0">{children}</main>
 })

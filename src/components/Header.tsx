@@ -54,12 +54,16 @@ export default function Header() {
   )
 
   return (
-    <header className="sticky top-0 z-10 border-b border-border bg-white py-2">
-      <div className="container flex flex-col gap-3 px-4 sm:flex-row sm:items-center sm:justify-between sm:px-8">
+    <header className="sticky top-0 z-30 bg-[#f5f5f5]">
+      <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-3 border-x border-border bg-white px-4 py-2 sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <div className="flex items-center justify-between gap-3">
           <Link to="/" className="flex min-w-0 cursor-pointer items-center gap-2">
-            <img src="/logo.svg" alt="Yearn PowerGlove Logo" className="h-6 w-6 shrink-0" />
-            <span className="text-base font-bold sm:text-lg">Yearn PowerGlove</span>
+            <span
+              aria-hidden="true"
+              className="h-6 w-6 shrink-0 bg-[#0657f9] [mask-image:url('/yearn-link-icon.svg')] [mask-position:center] [mask-repeat:no-repeat] [mask-size:contain]"
+            />
+            <span className="sr-only">Yearn</span>
+            <span className="text-base font-bold text-[#0657f9] sm:text-lg">Yearn Analytics</span>
           </Link>
           <div className="md:hidden">{partnerButton}</div>
         </div>

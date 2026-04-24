@@ -177,6 +177,60 @@ export const VaultManagementEventsPanel: React.FC<VaultManagementEventsPanelProp
       }
     }, [currentPage, hasMoreTimelineItems, loadMoreTimelineItems, setCurrentPage, totalPages])
 
+    const showPaginationControls = totalPages > 1 || hasMoreTimelineItems
+
+    const renderPaginationControls = () => (
+      <div className="flex items-center gap-1 text-xs text-[#808080]">
+        <span className="whitespace-nowrap">
+          Page {currentPage} of {totalPages}
+          {hasMoreTimelineItems ? '+' : ''}
+        </span>
+        <button
+          type="button"
+          onClick={() => setCurrentPage(1)}
+          disabled={currentPage === 1 || isTimelineLoadingMore}
+          className="rounded border border-border px-2 py-1 disabled:opacity-50 hover:bg-gray-50"
+        >
+          First
+        </button>
+        <button
+          type="button"
+          onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+          disabled={currentPage === 1 || isTimelineLoadingMore}
+          className="rounded border border-border px-2 py-1 disabled:opacity-50 hover:bg-gray-50"
+        >
+          Prev
+        </button>
+        <button
+          type="button"
+          onClick={handleNextPage}
+          disabled={isTimelineLoadingMore || (currentPage === totalPages && !hasMoreTimelineItems)}
+          className="rounded border border-border px-2 py-1 disabled:opacity-50 hover:bg-gray-50"
+        >
+          {isTimelineLoadingMore && currentPage === totalPages ? 'Loading...' : 'Next'}
+        </button>
+        {hasMoreTimelineItems ? (
+          <button
+            type="button"
+            onClick={() => void loadMoreTimelineItems()}
+            disabled={isTimelineLoadingMore}
+            className="rounded border border-border px-2 py-1 disabled:opacity-50 hover:bg-gray-50"
+          >
+            {isTimelineLoadingMore ? 'Loading...' : 'Load more'}
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setCurrentPage(totalPages)}
+            disabled={currentPage === totalPages || isTimelineLoadingMore}
+            className="rounded border border-border px-2 py-1 disabled:opacity-50 hover:bg-gray-50"
+          >
+            Last
+          </button>
+        )}
+      </div>
+    )
+
     const hasUserEventContextError = Boolean(userEventsError)
     const resolvedError = error
 
@@ -226,22 +280,25 @@ export const VaultManagementEventsPanel: React.FC<VaultManagementEventsPanelProp
             {hasUserEventContextError ? <span>User-event context unavailable</span> : null}
           </div>
           <div className="flex-1" />
-          <div className="flex items-center gap-2">
-            <label className="text-xs text-[#808080]">Filter:</label>
-            <select
-              value={eventType}
-              onChange={(e) => {
-                setEventType(e.target.value as typeof eventType)
-                setCurrentPage(1)
-              }}
-              className="rounded border border-border bg-white px-2 py-1 text-xs"
-            >
-              {availableEventTypeOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-[#808080]">Filter:</label>
+              <select
+                value={eventType}
+                onChange={(e) => {
+                  setEventType(e.target.value as typeof eventType)
+                  setCurrentPage(1)
+                }}
+                className="rounded border border-border bg-white px-2 py-1 text-xs"
+              >
+                {availableEventTypeOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {showPaginationControls ? renderPaginationControls() : null}
           </div>
         </div>
 
@@ -250,7 +307,7 @@ export const VaultManagementEventsPanel: React.FC<VaultManagementEventsPanelProp
             <p className="text-sm text-gray-500">No management events match the selected filter.</p>
           </div>
         ) : (
-          <div className="overflow-hidden rounded-lg border border-border bg-white">
+          <div className="overflow-hidden bg-white">
             {paginatedTimelineItems.map((item) =>
               item.kind === 'reallocation' ? (
                 <VaultDebtReallocationRow
@@ -284,57 +341,10 @@ export const VaultManagementEventsPanel: React.FC<VaultManagementEventsPanelProp
           </div>
         )}
 
-        {totalPages > 1 || hasMoreTimelineItems ? (
+        {showPaginationControls ? (
           <div className="mt-3 flex items-center justify-between text-xs text-[#808080]">
-            <span>
-              Page {currentPage} of {totalPages}
-              {hasMoreTimelineItems ? '+' : ''}
-            </span>
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => setCurrentPage(1)}
-                disabled={currentPage === 1 || isTimelineLoadingMore}
-                className="rounded border border-border px-2 py-1 disabled:opacity-50 hover:bg-gray-50"
-              >
-                First
-              </button>
-              <button
-                type="button"
-                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-                disabled={currentPage === 1 || isTimelineLoadingMore}
-                className="rounded border border-border px-2 py-1 disabled:opacity-50 hover:bg-gray-50"
-              >
-                Prev
-              </button>
-              <button
-                type="button"
-                onClick={handleNextPage}
-                disabled={isTimelineLoadingMore || (currentPage === totalPages && !hasMoreTimelineItems)}
-                className="rounded border border-border px-2 py-1 disabled:opacity-50 hover:bg-gray-50"
-              >
-                {isTimelineLoadingMore && currentPage === totalPages ? 'Loading...' : 'Next'}
-              </button>
-              {hasMoreTimelineItems ? (
-                <button
-                  type="button"
-                  onClick={() => void loadMoreTimelineItems()}
-                  disabled={isTimelineLoadingMore}
-                  className="rounded border border-border px-2 py-1 disabled:opacity-50 hover:bg-gray-50"
-                >
-                  {isTimelineLoadingMore ? 'Loading...' : 'Load more'}
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setCurrentPage(totalPages)}
-                  disabled={currentPage === totalPages || isTimelineLoadingMore}
-                  className="rounded border border-border px-2 py-1 disabled:opacity-50 hover:bg-gray-50"
-                >
-                  Last
-                </button>
-              )}
-            </div>
+            <span />
+            {renderPaginationControls()}
           </div>
         ) : null}
       </div>

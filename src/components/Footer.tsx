@@ -2,8 +2,8 @@ import { ExternalLink } from 'lucide-react'
 
 export default function Footer() {
   return (
-    <footer className="mt-auto border-t border-border bg-white py-4">
-      <div className="container mx-auto max-w-[1400px] px-4 sm:px-8">
+    <footer className="mt-auto bg-[#f5f5f5]">
+      <div className="mx-auto w-full max-w-[1400px] border-x border-border bg-white px-4 py-4 sm:px-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
           <div className="flex items-center justify-center">
             <img src="/logo.svg" alt="Yearn PowerGlove Logo" className="w-6 h-6" />

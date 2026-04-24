@@ -146,7 +146,6 @@ function SingleVaultPage() {
 
   return (
     <VaultPageLayout isLoading={isInitialLoading} hasErrors={hasErrors}>
-      <VaultPageBreadcrumb vaultName={vaultDetails.name} />
       <div className="relative flex flex-1 flex-col">
         {isBlacklisted && <div className="absolute inset-0 z-20 rounded-lg bg-white/40 backdrop-blur-sm" />}
         {isBlacklisted && (
@@ -188,18 +187,21 @@ function SingleVaultPage() {
             className="flex w-full flex-1 flex-col bg-transparent"
             onValueChange={(value) => setActiveVaultPageTab(value as VaultPageTab)}
           >
-            <MainInfoPanel
-              {...mainInfoPanelProps}
-              navigation={
-                <TabsList className="flex h-auto max-w-full flex-wrap justify-end overflow-visible bg-transparent p-0">
-                  {vaultPageTabs.map((tab) => (
-                    <TabsTrigger key={tab.value} value={tab.value} className={vaultPageTabTriggerClassName}>
-                      {tab.label}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-              }
-            />
+            <div className="sticky top-[104px] z-20 bg-white sm:top-[54px]">
+              <VaultPageBreadcrumb vaultName={vaultDetails.name} />
+              <MainInfoPanel
+                {...mainInfoPanelProps}
+                navigation={
+                  <TabsList className="flex h-auto max-w-full flex-wrap justify-end overflow-visible bg-transparent p-0">
+                    {vaultPageTabs.map((tab) => (
+                      <TabsTrigger key={tab.value} value={tab.value} className={vaultPageTabTriggerClassName}>
+                        {tab.label}
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+                }
+              />
+            </div>
 
             <TabsContent value="overview" className={vaultPageTabContentClassName}>
               <VaultOverviewTab
@@ -241,7 +243,7 @@ function SingleVaultPage() {
             </TabsContent>
 
             <TabsContent value="vault-data" className={vaultPageTabContentClassName}>
-              <div className="border-x border-b border-border bg-white">
+              <div className="border border-border bg-white">
                 <KongDataTab snapshot={kongSnapshot} />
               </div>
             </TabsContent>
