@@ -57,7 +57,7 @@ export function MainInfoPanel(data: MainInfoPanelComponentProps) {
   return (
     <div className="bg-white sm:border-x sm:border-border">
       <div className="grid grid-cols-1 gap-5 px-4 sm:px-6 md:grid-cols-2">
-        <div className="min-w-0 pt-8">
+        <div className="min-w-0 pt-4">
           <div className="mb-2 flex flex-wrap items-center gap-2">
             <div className="text-sm text-gray-500">{data.vaultId}</div>
             <div className="bg-gray-100 text-xs inline-block px-2 py-1">Deployed: {data.deploymentDate}</div>
@@ -105,7 +105,7 @@ export function MainInfoPanel(data: MainInfoPanelComponentProps) {
       </div>
 
       {(data.navigation || data.yearnVaultLink) && (
-        <div className="flex flex-col gap-3 px-4 pt-3 sm:px-6 lg:flex-row lg:items-stretch lg:justify-between">
+        <div className="flex flex-col gap-3 px-4 pt-0 sm:px-6 lg:flex-row lg:items-stretch lg:justify-between">
           {data.navigation ? <div className="flex min-w-0 flex-1 justify-end">{data.navigation}</div> : <div />}
           {data.yearnVaultLink ? (
             <a
