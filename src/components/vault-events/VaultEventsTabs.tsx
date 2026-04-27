@@ -3,6 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { ChainId } from '@/constants/chains'
 import { isEnvioConfigured } from '@/lib/envio-client'
 import type { VaultExtended } from '@/types/vaultTypes'
+import { VaultActivitySummary } from './VaultActivitySummary'
 import { VaultEventsPanel } from './VaultEventsPanel'
 import { VaultManagementEventsPanel } from './VaultManagementEventsPanel'
 
@@ -27,62 +28,59 @@ export const VaultEventsTabs: React.FC<VaultEventsTabsProps> = React.memo(({ vau
     setContentMinHeight((currentHeight) => (nextHeight > currentHeight ? nextHeight : currentHeight))
   })
 
-  if (!hasEventsSource) {
-    return (
-      <div className="w-full">
-        <div className="mx-auto w-full border-y border-border bg-white px-6 py-12 sm:border-x">
-          <div className="mx-auto max-w-xl text-center">
-            <p className="text-sm text-muted-foreground">
-              Vault events require VITE_PUBLIC_ENVIO_GRAPHQL_URL to be configured.
-            </p>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="w-full">
       <div className="mx-auto w-full border-y border-border bg-white sm:border-x">
-        <Tabs value={activeTab} className="w-full" onValueChange={(value) => setActiveTab(value as VaultEventsTab)}>
-          <div className="border-b border-border">
-            <div className="px-0 pt-3">
-              <TabsList className="flex h-auto w-full justify-start overflow-x-auto bg-transparent p-0">
-                <TabsTrigger value="management" className={tabTriggerClassName}>
-                  Vault Management Events
-                </TabsTrigger>
-                <TabsTrigger value="historical" className={tabTriggerClassName}>
-                  Historical User Events
-                </TabsTrigger>
-              </TabsList>
+        <VaultActivitySummary vaultChainId={vaultChainId} vaultDetails={vaultDetails} />
+        {!hasEventsSource ? (
+          <div className="px-6 py-12">
+            <div className="mx-auto max-w-xl text-center">
+              <p className="text-sm text-muted-foreground">
+                Vault events require VITE_PUBLIC_ENVIO_GRAPHQL_URL to be configured.
+              </p>
             </div>
           </div>
+        ) : (
+          <Tabs value={activeTab} className="w-full" onValueChange={(value) => setActiveTab(value as VaultEventsTab)}>
+            <div className="border-b border-border">
+              <div className="px-0 pt-3">
+                <TabsList className="flex h-auto w-full justify-start overflow-x-auto bg-transparent p-0">
+                  <TabsTrigger value="management" className={tabTriggerClassName}>
+                    Vault Management Events
+                  </TabsTrigger>
+                  <TabsTrigger value="historical" className={tabTriggerClassName}>
+                    Historical User Events
+                  </TabsTrigger>
+                </TabsList>
+              </div>
+            </div>
 
-          <div ref={contentRef} style={contentMinHeight > 0 ? { minHeight: contentMinHeight } : undefined}>
-            <TabsContent value="management" className="mt-0">
-              <VaultManagementEventsPanel
-                vaultChainId={vaultChainId}
-                vaultAddress={vaultDetails.address}
-                assetSymbol={vaultDetails.asset?.symbol}
-                assetDecimals={vaultDetails.asset?.decimals}
-                shareSymbol={vaultDetails.symbol}
-                shareDecimals={vaultDetails.decimals ?? vaultDetails.asset?.decimals}
-                strategyDetails={vaultDetails.strategyDetails}
-              />
-            </TabsContent>
+            <div ref={contentRef} style={contentMinHeight > 0 ? { minHeight: contentMinHeight } : undefined}>
+              <TabsContent value="management" className="mt-0">
+                <VaultManagementEventsPanel
+                  vaultChainId={vaultChainId}
+                  vaultAddress={vaultDetails.address}
+                  assetSymbol={vaultDetails.asset?.symbol}
+                  assetDecimals={vaultDetails.asset?.decimals}
+                  shareSymbol={vaultDetails.symbol}
+                  shareDecimals={vaultDetails.decimals ?? vaultDetails.asset?.decimals}
+                  strategyDetails={vaultDetails.strategyDetails}
+                />
+              </TabsContent>
 
-            <TabsContent value="historical" className="mt-0">
-              <VaultEventsPanel
-                vaultChainId={vaultChainId}
-                vaultAddress={vaultDetails.address}
-                assetSymbol={vaultDetails.asset?.symbol}
-                assetDecimals={vaultDetails.asset?.decimals}
-                shareSymbol={vaultDetails.symbol}
-                shareDecimals={vaultDetails.decimals ?? vaultDetails.asset?.decimals}
-              />
-            </TabsContent>
-          </div>
-        </Tabs>
+              <TabsContent value="historical" className="mt-0">
+                <VaultEventsPanel
+                  vaultChainId={vaultChainId}
+                  vaultAddress={vaultDetails.address}
+                  assetSymbol={vaultDetails.asset?.symbol}
+                  assetDecimals={vaultDetails.asset?.decimals}
+                  shareSymbol={vaultDetails.symbol}
+                  shareDecimals={vaultDetails.decimals ?? vaultDetails.asset?.decimals}
+                />
+              </TabsContent>
+            </div>
+          </Tabs>
+        )}
       </div>
     </div>
   )

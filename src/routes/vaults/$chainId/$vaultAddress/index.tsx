@@ -133,6 +133,7 @@ function SingleVaultPage() {
     () => (mainInfoPanelProps ? getVaultAtAGlanceItems(mainInfoPanelProps) : []),
     [mainInfoPanelProps]
   )
+  const showMobileVaultCta = Boolean(mainInfoPanelProps?.yearnVaultLink && activeVaultPageTab !== 'vault-events')
 
   const { data: reallocationData } = useReallocationData(
     vaultAddress,
@@ -151,7 +152,7 @@ function SingleVaultPage() {
 
   return (
     <VaultPageLayout isLoading={isInitialLoading} hasErrors={hasErrors}>
-      <div className={`relative flex flex-1 flex-col ${mainInfoPanelProps.yearnVaultLink ? 'pb-20 md:pb-0' : ''}`}>
+      <div className={`relative flex flex-1 flex-col ${showMobileVaultCta ? 'pb-20 md:pb-0' : ''}`}>
         {isBlacklisted && <div className="absolute inset-0 z-20 rounded-lg bg-white/40 backdrop-blur-sm" />}
         {isBlacklisted && (
           <div className="relative z-30 flex items-start gap-3 border border-amber-300 bg-amber-50 px-4 py-3 text-amber-800">
@@ -227,6 +228,8 @@ function SingleVaultPage() {
                   aprApyData={transformedAprApyData}
                   tvlData={transformedTvlData}
                   ppsData={transformedPpsData}
+                  vaultAddress={vaultDetails.address}
+                  vaultChainId={vaultChainId}
                   isLoading={chartsLoading}
                   hasErrors={chartsError}
                 />
@@ -253,7 +256,7 @@ function SingleVaultPage() {
             </TabsContent>
           </Tabs>
         </div>
-        {mainInfoPanelProps.yearnVaultLink ? (
+        {showMobileVaultCta && mainInfoPanelProps.yearnVaultLink ? (
           <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-white px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] md:hidden">
             <a
               className="mx-auto flex h-11 max-w-[1400px] items-center justify-center rounded-none bg-[#0657f9] px-4 text-sm font-medium text-white transition-colors hover:bg-[#0657f9]/90"

@@ -1,3 +1,4 @@
+export { VaultActivitySummary } from './VaultActivitySummary'
 export { VaultEventRow } from './VaultEventRow'
 export { VaultEventsPanel } from './VaultEventsPanel'
 export { VaultEventsTabs } from './VaultEventsTabs'

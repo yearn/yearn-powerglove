@@ -11,6 +11,9 @@ import { FixedHeightChartContainer } from '@/components/charts/chart-container'
 import { calculatePpsPeriodApy, getTimeframeLimit } from '@/components/charts/chart-utils'
 import PPSChart from '@/components/charts/PPSChart'
 import TVLChart from '@/components/charts/TVLChart'
+import VaultActivityChart from '@/components/charts/VaultActivityChart'
+import VaultLockedProfitChart from '@/components/charts/VaultLockedProfitChart'
+import VaultLockedSharesChart from '@/components/charts/VaultLockedSharesChart'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -22,17 +25,26 @@ import {
 } from '@/components/ui/dialog'
 import { useIsMobile } from '@/components/ui/use-mobile'
 import { ChartErrorBoundary } from '@/components/utils/ErrorBoundary'
+import { useVaultActivityData } from '@/hooks/useVaultActivityData'
 import type { aprApyChartData, ppsChartData, tvlChartData } from '@/types/dataTypes'
 
 type ChartData = {
   aprApyData: aprApyChartData | null
   tvlData: tvlChartData | null
   ppsData: ppsChartData | null
+  vaultAddress?: string
+  vaultChainId?: number
   isLoading?: boolean
   hasErrors?: boolean
 }
 
-type ChartTab = 'historical-apy' | 'historical-pps' | 'historical-tvl'
+type ChartTab =
+  | 'historical-apy'
+  | 'harvest-unlock'
+  | 'locked-profit'
+  | 'locked-shares'
+  | 'historical-pps'
+  | 'historical-tvl'
 
 const chartSections: Array<{
   value: ChartTab
@@ -41,6 +53,18 @@ const chartSections: Array<{
   {
     value: 'historical-apy',
     label: 'Historical Performance'
+  },
+  {
+    value: 'harvest-unlock',
+    label: 'Harvest and Unlocking'
+  },
+  {
+    value: 'locked-profit',
+    label: 'Locked Profit Release'
+  },
+  {
+    value: 'locked-shares',
+    label: 'Locked Shares Release'
   },
   {
     value: 'historical-pps',
@@ -60,7 +84,12 @@ type Timeframe = (typeof timeframes)[number]
 
 export function ChartsPanel(data: ChartData) {
   const isMobile = useIsMobile()
-  const { aprApyData, tvlData, ppsData, isLoading = false, hasErrors = false } = data
+  const { aprApyData, tvlData, ppsData, vaultAddress, vaultChainId, isLoading = false, hasErrors = false } = data
+  const {
+    data: activityData,
+    isLoading: isActivityLoading,
+    error: activityError
+  } = useVaultActivityData(vaultAddress, vaultChainId)
   const [timeframe, setTimeframe] = useState<Timeframe>(timeframes[3])
   const [apyVisibleSeries, setApyVisibleSeries] = useState<APYVisibleSeries>(() =>
     buildApyVisibleSeries({
@@ -117,6 +146,21 @@ export function ChartsPanel(data: ChartData) {
       description: `Price Per Share values over ${timeframe.label}.`,
       mobileDescription: `Track share price growth over ${timeframe.mobileLabel}.`
     },
+    'harvest-unlock': {
+      title: 'Harvest and Unlocking',
+      description: `Harvest event markers and profit unlock state over ${timeframe.label}.`,
+      mobileDescription: `Review harvests and unlock state over ${timeframe.mobileLabel}.`
+    },
+    'locked-profit': {
+      title: 'Locked Profit Release',
+      description: `Harvest event markers and remaining locked profit over ${timeframe.label}.`,
+      mobileDescription: `Review remaining locked profit over ${timeframe.mobileLabel}.`
+    },
+    'locked-shares': {
+      title: 'Locked Shares Release',
+      description: `Harvest event markers and remaining locked shares over ${timeframe.label}.`,
+      mobileDescription: `Review remaining locked shares over ${timeframe.mobileLabel}.`
+    },
     'historical-tvl': {
       title: 'Total Value Deposited',
       description: `Value deposited in vault over ${timeframe.label}.`,
@@ -129,6 +173,9 @@ export function ChartsPanel(data: ChartData) {
   const desktopAlignedChartBottom = 16
   const chartOverlayYAxisWidthByTab = {
     'historical-apy': 60,
+    'harvest-unlock': 68,
+    'locked-profit': 68,
+    'locked-shares': 68,
     'historical-pps': 60,
     'historical-tvl': 68
   } satisfies Record<ChartTab, number>
@@ -191,6 +238,45 @@ export function ChartsPanel(data: ChartData) {
                 </ChartErrorBoundary>
               </div>
             )}
+          </FixedHeightChartContainer>
+        )
+      case 'harvest-unlock':
+        return (
+          <FixedHeightChartContainer heightClassName={chartHeightClassName}>
+            <ChartErrorBoundary>
+              <VaultActivityChart
+                activityData={activityData}
+                timeframe={timeframe.value}
+                isLoading={isActivityLoading}
+                error={activityError}
+              />
+            </ChartErrorBoundary>
+          </FixedHeightChartContainer>
+        )
+      case 'locked-profit':
+        return (
+          <FixedHeightChartContainer heightClassName={chartHeightClassName}>
+            <ChartErrorBoundary>
+              <VaultLockedProfitChart
+                activityData={activityData}
+                timeframe={timeframe.value}
+                isLoading={isActivityLoading}
+                error={activityError}
+              />
+            </ChartErrorBoundary>
+          </FixedHeightChartContainer>
+        )
+      case 'locked-shares':
+        return (
+          <FixedHeightChartContainer heightClassName={chartHeightClassName}>
+            <ChartErrorBoundary>
+              <VaultLockedSharesChart
+                activityData={activityData}
+                timeframe={timeframe.value}
+                isLoading={isActivityLoading}
+                error={activityError}
+              />
+            </ChartErrorBoundary>
           </FixedHeightChartContainer>
         )
       case 'historical-tvl':
@@ -356,7 +442,7 @@ export function ChartsPanel(data: ChartData) {
       <div className="border-b border-border p-4 sm:flex sm:items-center sm:justify-between sm:gap-4 sm:p-6">
         <div>
           <h2 className="text-base font-semibold text-[#111111]">Charts</h2>
-          <p className="mt-1 text-xs text-gray-500">Historical performance, share growth, and TVL.</p>
+          <p className="mt-1 text-xs text-gray-500">Historical performance, harvest activity, share growth, and TVL.</p>
         </div>
         <div className="mt-4 sm:mt-0 sm:shrink-0">{chartControls}</div>
       </div>
