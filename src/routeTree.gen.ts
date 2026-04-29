@@ -11,6 +11,7 @@
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
+import { Route as StatsImport } from './routes/stats'
 import { Route as PrivacyImport } from './routes/privacy'
 import { Route as DisclaimerImport } from './routes/disclaimer'
 import { Route as AboutImport } from './routes/about'
@@ -18,6 +19,12 @@ import { Route as IndexImport } from './routes/index'
 import { Route as VaultsChainIdVaultAddressIndexImport } from './routes/vaults/$chainId/$vaultAddress/index'
 
 // Create/Update Routes
+
+const StatsRoute = StatsImport.update({
+  id: '/stats',
+  path: '/stats',
+  getParentRoute: () => rootRoute,
+} as any)
 
 const PrivacyRoute = PrivacyImport.update({
   id: '/privacy',
@@ -82,6 +89,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PrivacyImport
       parentRoute: typeof rootRoute
     }
+    '/stats': {
+      id: '/stats'
+      path: '/stats'
+      fullPath: '/stats'
+      preLoaderRoute: typeof StatsImport
+      parentRoute: typeof rootRoute
+    }
     '/vaults/$chainId/$vaultAddress/': {
       id: '/vaults/$chainId/$vaultAddress/'
       path: '/vaults/$chainId/$vaultAddress'
@@ -99,6 +113,7 @@ export interface FileRoutesByFullPath {
   '/about': typeof AboutRoute
   '/disclaimer': typeof DisclaimerRoute
   '/privacy': typeof PrivacyRoute
+  '/stats': typeof StatsRoute
   '/vaults/$chainId/$vaultAddress': typeof VaultsChainIdVaultAddressIndexRoute
 }
 
@@ -107,6 +122,7 @@ export interface FileRoutesByTo {
   '/about': typeof AboutRoute
   '/disclaimer': typeof DisclaimerRoute
   '/privacy': typeof PrivacyRoute
+  '/stats': typeof StatsRoute
   '/vaults/$chainId/$vaultAddress': typeof VaultsChainIdVaultAddressIndexRoute
 }
 
@@ -116,6 +132,7 @@ export interface FileRoutesById {
   '/about': typeof AboutRoute
   '/disclaimer': typeof DisclaimerRoute
   '/privacy': typeof PrivacyRoute
+  '/stats': typeof StatsRoute
   '/vaults/$chainId/$vaultAddress/': typeof VaultsChainIdVaultAddressIndexRoute
 }
 
@@ -126,6 +143,7 @@ export interface FileRouteTypes {
     | '/about'
     | '/disclaimer'
     | '/privacy'
+    | '/stats'
     | '/vaults/$chainId/$vaultAddress'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -133,6 +151,7 @@ export interface FileRouteTypes {
     | '/about'
     | '/disclaimer'
     | '/privacy'
+    | '/stats'
     | '/vaults/$chainId/$vaultAddress'
   id:
     | '__root__'
@@ -140,6 +159,7 @@ export interface FileRouteTypes {
     | '/about'
     | '/disclaimer'
     | '/privacy'
+    | '/stats'
     | '/vaults/$chainId/$vaultAddress/'
   fileRoutesById: FileRoutesById
 }
@@ -149,6 +169,7 @@ export interface RootRouteChildren {
   AboutRoute: typeof AboutRoute
   DisclaimerRoute: typeof DisclaimerRoute
   PrivacyRoute: typeof PrivacyRoute
+  StatsRoute: typeof StatsRoute
   VaultsChainIdVaultAddressIndexRoute: typeof VaultsChainIdVaultAddressIndexRoute
 }
 
@@ -157,6 +178,7 @@ const rootRouteChildren: RootRouteChildren = {
   AboutRoute: AboutRoute,
   DisclaimerRoute: DisclaimerRoute,
   PrivacyRoute: PrivacyRoute,
+  StatsRoute: StatsRoute,
   VaultsChainIdVaultAddressIndexRoute: VaultsChainIdVaultAddressIndexRoute,
 }
 
@@ -174,6 +196,7 @@ export const routeTree = rootRoute
         "/about",
         "/disclaimer",
         "/privacy",
+        "/stats",
         "/vaults/$chainId/$vaultAddress/"
       ]
     },
@@ -188,6 +211,9 @@ export const routeTree = rootRoute
     },
     "/privacy": {
       "filePath": "privacy.tsx"
+    },
+    "/stats": {
+      "filePath": "stats.tsx"
     },
     "/vaults/$chainId/$vaultAddress/": {
       "filePath": "vaults/$chainId/$vaultAddress/index.tsx"

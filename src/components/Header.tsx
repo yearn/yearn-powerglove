@@ -4,6 +4,9 @@ import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { useVaults } from '@/contexts/useVaults'
 
+const headerNavLinkClassName =
+  'rounded-none border-b-2 border-transparent px-3 py-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground'
+
 export default function Header() {
   const { vaults } = useVaults()
   const pathname = useRouterState({ select: (state) => state.location.pathname })
@@ -11,7 +14,7 @@ export default function Header() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
-  const hideMobileSearch = pathname === '/'
+  const hideMobileSearch = pathname === '/' || pathname === '/stats'
 
   // Filter vaults based on the search term
   const filteredVaults = vaults.filter(
@@ -55,67 +58,107 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-30 bg-[#f5f5f5]">
-      <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-3 border-x border-border bg-white px-4 py-2 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-        <div className="flex items-center justify-between gap-3">
-          <Link to="/" className="flex min-w-0 cursor-pointer items-center gap-2">
-            <span
-              aria-hidden="true"
-              className="h-6 w-6 shrink-0 bg-[#0657f9] [mask-image:url('/yearn-link-icon.svg')] [mask-position:center] [mask-repeat:no-repeat] [mask-size:contain]"
-            />
-            <span className="sr-only">Yearn</span>
-            <span className="text-base font-bold text-[#0657f9] sm:text-lg">Yearn Analytics</span>
-          </Link>
-          <div className="md:hidden">{partnerButton}</div>
-        </div>
+      <div className="mx-auto flex w-full max-w-[1400px] flex-col border-x border-border bg-white px-4 py-2 sm:px-6">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex min-w-0 items-center justify-between gap-3 lg:justify-start">
+            <div className="flex min-w-0 items-center gap-2 sm:gap-4">
+              <Link to="/" className="flex min-w-0 cursor-pointer items-center gap-2">
+                <span
+                  aria-hidden="true"
+                  className="h-6 w-6 shrink-0 bg-[#0657f9] [mask-image:url('/yearn-link-icon.svg')] [mask-position:center] [mask-repeat:no-repeat] [mask-size:contain]"
+                />
+                <span className="sr-only">Yearn</span>
+                <span className="text-base font-bold text-[#0657f9] sm:text-lg">Yearn Analytics</span>
+              </Link>
 
-        <div className="flex w-full items-center gap-3 md:w-auto">
-          <div
-            className={
-              hideMobileSearch ? 'relative hidden w-full md:block md:w-[300px]' : 'relative w-full md:w-[300px]'
-            }
-          >
-            <input
-              ref={searchInputRef}
-              type="text"
-              placeholder="Search vaults..."
-              value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value)
-                setIsDropdownOpen(true)
-              }}
-              onFocus={() => setIsDropdownOpen(true)}
-              className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
-            />
-            {isDropdownOpen && searchTerm && (
-              <div
-                ref={dropdownRef}
-                className="absolute left-0 right-0 top-[calc(100%+0.25rem)] z-20 overflow-y-auto rounded border border-gray-300 bg-white shadow-md"
-                style={{
-                  maxHeight: '50vh'
-                }}
-              >
-                {filteredVaults.map((vault) => (
-                  <Link
-                    key={vault.address}
-                    to="/vaults/$chainId/$vaultAddress"
-                    params={{
-                      chainId: vault.chainId.toString(),
-                      vaultAddress: vault.address
-                    }}
-                    className="flex cursor-pointer items-center gap-2 px-4 py-2 hover:bg-gray-100"
-                    onClick={() => {
-                      setIsDropdownOpen(false)
-                      setSearchTerm('')
-                    }}
-                  >
-                    <span>{vault.name}</span>
-                    <span className="text-sm text-gray-600">{vault.apiVersion}</span>
-                  </Link>
-                ))}
-              </div>
-            )}
+              <nav className="hidden items-center gap-1 lg:flex" aria-label="Primary">
+                <Link
+                  to="/"
+                  className={headerNavLinkClassName}
+                  activeProps={{ className: `${headerNavLinkClassName} border-[#0657f9] text-foreground` }}
+                  activeOptions={{ exact: true }}
+                >
+                  Vault List
+                </Link>
+                <Link
+                  to="/stats"
+                  className={headerNavLinkClassName}
+                  activeProps={{ className: `${headerNavLinkClassName} border-[#0657f9] text-foreground` }}
+                >
+                  Stats
+                </Link>
+              </nav>
+            </div>
+
+            <div className="md:hidden">{partnerButton}</div>
           </div>
-          <div className="hidden md:block">{partnerButton}</div>
+
+          <div className="flex w-full items-center gap-3 lg:w-auto">
+            <nav className="flex items-center gap-1 border-b border-border lg:hidden" aria-label="Primary">
+              <Link
+                to="/"
+                className={headerNavLinkClassName}
+                activeProps={{ className: `${headerNavLinkClassName} border-[#0657f9] text-foreground` }}
+                activeOptions={{ exact: true }}
+              >
+                Vault List
+              </Link>
+              <Link
+                to="/stats"
+                className={headerNavLinkClassName}
+                activeProps={{ className: `${headerNavLinkClassName} border-[#0657f9] text-foreground` }}
+              >
+                Stats
+              </Link>
+            </nav>
+            <div
+              className={
+                hideMobileSearch ? 'relative hidden w-full md:block md:w-[300px]' : 'relative w-full md:w-[300px]'
+              }
+            >
+              <input
+                ref={searchInputRef}
+                type="text"
+                placeholder="Search vaults..."
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value)
+                  setIsDropdownOpen(true)
+                }}
+                onFocus={() => setIsDropdownOpen(true)}
+                className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+              />
+              {isDropdownOpen && searchTerm && (
+                <div
+                  ref={dropdownRef}
+                  className="absolute left-0 right-0 top-[calc(100%+0.25rem)] z-20 overflow-y-auto rounded border border-gray-300 bg-white shadow-md"
+                  style={{
+                    maxHeight: '50vh'
+                  }}
+                >
+                  {filteredVaults.map((vault) => (
+                    <Link
+                      key={vault.address}
+                      to="/vaults/$chainId/$vaultAddress"
+                      params={{
+                        chainId: vault.chainId.toString(),
+                        vaultAddress: vault.address
+                      }}
+                      className="flex cursor-pointer items-center gap-2 px-4 py-2 hover:bg-gray-100"
+                      onClick={() => {
+                        setIsDropdownOpen(false)
+                        setSearchTerm('')
+                      }}
+                    >
+                      <span>{vault.name}</span>
+                      <span className="text-sm text-gray-600">{vault.apiVersion}</span>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="hidden md:block">{partnerButton}</div>
+          </div>
         </div>
       </div>
     </header>
