@@ -54,6 +54,9 @@ function SingleVaultPage() {
     aprOracleAprData,
     tvlData,
     ppsData,
+    reportHistoryData,
+    reportHistoryLoading,
+    reportHistoryError,
     isInitialLoading,
     hasErrors,
     chartsLoading,
@@ -68,12 +71,13 @@ function SingleVaultPage() {
     tokenAssets
   })
 
-  const { transformedAprApyData, transformedTvlData, transformedPpsData } = useChartData({
+  const { transformedAprApyData, transformedTvlData, transformedPpsData, transformedVaultEarningsData } = useChartData({
     apyWeeklyData,
     apyMonthlyData,
     aprOracleAprData,
     tvlData,
     ppsData,
+    reportHistoryData,
     isLoading: chartsLoading,
     hasErrors: chartsError
   })
@@ -227,6 +231,9 @@ function SingleVaultPage() {
                   aprApyData={transformedAprApyData}
                   tvlData={transformedTvlData}
                   ppsData={transformedPpsData}
+                  vaultEarningsData={transformedVaultEarningsData}
+                  reportHistoryLoading={reportHistoryLoading}
+                  reportHistoryError={Boolean(reportHistoryError)}
                   isLoading={chartsLoading}
                   hasErrors={chartsError}
                 />

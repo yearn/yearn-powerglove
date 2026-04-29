@@ -9,6 +9,7 @@ import ChartSkeleton from '@/components/charts/ChartSkeleton'
 import ChartsLoader from '@/components/charts/ChartsLoader'
 import { FixedHeightChartContainer } from '@/components/charts/chart-container'
 import { calculatePpsPeriodApy, getTimeframeLimit } from '@/components/charts/chart-utils'
+import LifetimeEarningsChart from '@/components/charts/LifetimeEarningsChart'
 import PPSChart from '@/components/charts/PPSChart'
 import TVLChart from '@/components/charts/TVLChart'
 import { Button } from '@/components/ui/button'
@@ -22,17 +23,20 @@ import {
 } from '@/components/ui/dialog'
 import { useIsMobile } from '@/components/ui/use-mobile'
 import { ChartErrorBoundary } from '@/components/utils/ErrorBoundary'
-import type { aprApyChartData, ppsChartData, tvlChartData } from '@/types/dataTypes'
+import type { aprApyChartData, ppsChartData, tvlChartData, vaultEarningsChartData } from '@/types/dataTypes'
 
 type ChartData = {
   aprApyData: aprApyChartData | null
   tvlData: tvlChartData | null
   ppsData: ppsChartData | null
+  vaultEarningsData: vaultEarningsChartData | null
+  reportHistoryLoading?: boolean
+  reportHistoryError?: boolean
   isLoading?: boolean
   hasErrors?: boolean
 }
 
-type ChartTab = 'historical-apy' | 'historical-pps' | 'historical-tvl'
+type ChartTab = 'historical-apy' | 'historical-pps' | 'historical-tvl' | 'lifetime-earnings'
 
 const chartSections: Array<{
   value: ChartTab
@@ -46,7 +50,8 @@ const chartSections: Array<{
     value: 'historical-pps',
     label: 'Historical Share Growth'
   },
-  { value: 'historical-tvl', label: 'Historical TVL' }
+  { value: 'historical-tvl', label: 'Historical TVL' },
+  { value: 'lifetime-earnings', label: 'Lifetime Earnings' }
 ]
 
 const timeframes = [
@@ -60,7 +65,16 @@ type Timeframe = (typeof timeframes)[number]
 
 export function ChartsPanel(data: ChartData) {
   const isMobile = useIsMobile()
-  const { aprApyData, tvlData, ppsData, isLoading = false, hasErrors = false } = data
+  const {
+    aprApyData,
+    tvlData,
+    ppsData,
+    vaultEarningsData,
+    reportHistoryLoading = false,
+    reportHistoryError = false,
+    isLoading = false,
+    hasErrors = false
+  } = data
   const [timeframe, setTimeframe] = useState<Timeframe>(timeframes[3])
   const [apyVisibleSeries, setApyVisibleSeries] = useState<APYVisibleSeries>(() =>
     buildApyVisibleSeries({
@@ -121,6 +135,11 @@ export function ChartsPanel(data: ChartData) {
       title: 'Total Value Deposited',
       description: `Value deposited in vault over ${timeframe.label}.`,
       mobileDescription: `Review TVL changes over ${timeframe.mobileLabel}.`
+    },
+    'lifetime-earnings': {
+      title: 'Lifetime Earnings',
+      description: 'Cumulative USD earnings from StrategyReported history, with fees shown when available.',
+      mobileDescription: 'Review cumulative report-history earnings.'
     }
   } satisfies Record<ChartTab, { title: string; description: string; mobileDescription: string }>
 
@@ -130,7 +149,8 @@ export function ChartsPanel(data: ChartData) {
   const chartOverlayYAxisWidthByTab = {
     'historical-apy': 60,
     'historical-pps': 60,
-    'historical-tvl': 68
+    'historical-tvl': 68,
+    'lifetime-earnings': 72
   } satisfies Record<ChartTab, number>
 
   const renderChartBody = (chartType: ChartTab) => {
@@ -216,6 +236,34 @@ export function ChartsPanel(data: ChartData) {
                       oracleApr: false,
                       oracleApy30dAvg: false
                     }}
+                  />
+                </ChartErrorBoundary>
+              </div>
+            )}
+          </FixedHeightChartContainer>
+        )
+      case 'lifetime-earnings':
+        return (
+          <FixedHeightChartContainer heightClassName={chartHeightClassName}>
+            <ChartErrorBoundary>
+              {reportHistoryError ? (
+                <div className="flex h-full items-center justify-center text-sm text-red-500">Unable to load report history.</div>
+              ) : reportHistoryLoading && !vaultEarningsData ? (
+                <div className="flex h-full items-center justify-center text-sm text-muted-foreground">Loading report history…</div>
+              ) : (
+                <LifetimeEarningsChart chartData={vaultEarningsData ?? []} timeframe={timeframe.value} />
+              )}
+            </ChartErrorBoundary>
+            {showGhostedOverlay && (
+              <div className="pointer-events-none absolute inset-0 opacity-10">
+                <ChartErrorBoundary>
+                  <PPSChart
+                    chartData={ppsData}
+                    timeframe={timeframe.value}
+                    hideAxes={true}
+                    hideTooltip={true}
+                    chartMargin={{ bottom: desktopAlignedChartBottom }}
+                    yAxisWidth={chartOverlayYAxisWidthByTab[chartType]}
                   />
                 </ChartErrorBoundary>
               </div>
@@ -356,7 +404,7 @@ export function ChartsPanel(data: ChartData) {
       <div className="border-b border-border p-4 sm:flex sm:items-center sm:justify-between sm:gap-4 sm:p-6">
         <div>
           <h2 className="text-base font-semibold text-[#111111]">Charts</h2>
-          <p className="mt-1 text-xs text-gray-500">Historical performance, share growth, and TVL.</p>
+          <p className="mt-1 text-xs text-gray-500">Historical performance, share growth, TVL, and lifetime earnings.</p>
         </div>
         <div className="mt-4 sm:mt-0 sm:shrink-0">{chartControls}</div>
       </div>

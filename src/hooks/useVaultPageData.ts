@@ -6,7 +6,8 @@ import { useVaults } from '@/contexts/useVaults'
 import { useRestTimeseries } from '@/hooks/useRestTimeseries'
 import { fetchKongVaultSnapshotRaw } from '@/lib/kong-vault-client'
 import { mapKongSnapshotToVaultExtended } from '@/lib/kong-vault-derivation'
-import type { TimeseriesDataPoint } from '@/types/dataTypes'
+import { fetchVaultReports } from '@/lib/vault-reports-client'
+import type { TimeseriesDataPoint, VaultReportHistoryEntry } from '@/types/dataTypes'
 import type { KongVaultSnapshot } from '@/types/kong'
 import type { Vault, VaultExtended } from '@/types/vaultTypes'
 import {
@@ -25,6 +26,10 @@ interface TimeseriesQueryResult {
   timeseries: TimeseriesDataPoint[]
 }
 
+interface ReportHistoryQueryResult {
+  vaultReports: VaultReportHistoryEntry[]
+}
+
 interface UseVaultPageDataReturn {
   // Vault data
   vaultDetails: VaultExtended | null
@@ -39,6 +44,9 @@ interface UseVaultPageDataReturn {
   aprOracleAprData: TimeseriesQueryResult | undefined
   tvlData: TimeseriesQueryResult | undefined
   ppsData: TimeseriesQueryResult | undefined
+  reportHistoryData: ReportHistoryQueryResult | undefined
+  reportHistoryLoading: boolean
+  reportHistoryError: Error | null
 
   // Chart loading states
   chartsLoading: boolean
@@ -179,6 +187,27 @@ export function useVaultPageData({ vaultAddress, vaultChainId }: UseVaultPageDat
     components: ['humanized']
   })
 
+  const {
+    data: reportHistoryEntries,
+    isLoading: reportHistoryLoading,
+    error: reportHistoryError
+  } = useQuery<VaultReportHistoryEntry[], Error>({
+    queryKey: ['kong', 'vault', 'reports', vaultChainId, normalizedAddress],
+    queryFn: () => fetchVaultReports(vaultChainId, vaultAddress),
+    staleTime: 5 * 60 * 1000,
+    enabled: Boolean(vaultAddress)
+  })
+
+  const reportHistoryData = useMemo<ReportHistoryQueryResult | undefined>(() => {
+    if (!reportHistoryEntries) {
+      return undefined
+    }
+
+    return {
+      vaultReports: reportHistoryEntries
+    }
+  }, [reportHistoryEntries])
+
   // Calculate combined loading states
   const chartsLoading = useMemo(() => {
     // `aprOracleApyLoading` is intentionally excluded since it's optional overlay data.
@@ -211,6 +240,9 @@ export function useVaultPageData({ vaultAddress, vaultChainId }: UseVaultPageDat
     aprOracleAprData,
     tvlData,
     ppsData,
+    reportHistoryData,
+    reportHistoryLoading,
+    reportHistoryError: reportHistoryError ?? null,
 
     // Chart loading states
     chartsLoading,

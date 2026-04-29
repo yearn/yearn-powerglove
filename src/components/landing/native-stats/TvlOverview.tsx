@@ -109,7 +109,7 @@ export function TvlOverview() {
             {fmt(totalOverlap)}
           </div>
           <div className="sub">
-            {fmt(data.overlapAmount)} auto+registry + {fmt(data.crossChainOverlap)} cross-chain
+            {fmt(data.overlapAmount)} auto+registry + {fmt(data.crossChainOverlap)} excluded cross-chain
           </div>
         </div>
 
@@ -143,10 +143,7 @@ export function TvlOverview() {
             </span>
           </div>
           <div className="value text-dim">{fmt(data.retiredTvl)}</div>
-          <div className="sub">
-            {retiredVaultCountIncluded} retired vaults included in this calculation
-            {data.crossChainOverlap > 0 ? ` · ${fmt(data.crossChainOverlap)} later deducted as cross-chain overlap` : ""}
-          </div>
+          <div className="sub">{retiredVaultCountIncluded} retired vaults included in this calculation</div>
         </button>
       </div>
 
@@ -233,7 +230,7 @@ export function TvlOverview() {
           <DialogHeader>
             <DialogTitle>Retired vaults included in Retired TVL</DialogTitle>
             <DialogDescription>
-              {fmt(data.retiredTvl)} across {retiredVaultCountIncluded} retired vaults before any separate cross-chain overlap deduction.
+              {fmt(data.retiredTvl)} across {retiredVaultCountIncluded} retired vaults after excluding cross-chain migrated vaults.
             </DialogDescription>
           </DialogHeader>
 
@@ -260,10 +257,7 @@ export function TvlOverview() {
                       {CHAIN_NAMES[vault.chainId] ?? `Chain ${vault.chainId}`} · {vault.address}
                     </div>
                   </div>
-                  <div className="text-xs uppercase tracking-[0.12em] text-muted-foreground">
-                    {vault.category}
-                    {vault.isCrossChainOverlap ? " · cross-chain deducted" : ""}
-                  </div>
+                  <div className="text-xs uppercase tracking-[0.12em] text-muted-foreground">{vault.category}</div>
                   <div className="text-right font-medium tabular-nums">{fmt(vault.tvlUsd)}</div>
                 </div>
               ))}

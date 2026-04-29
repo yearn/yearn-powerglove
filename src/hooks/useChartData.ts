@@ -6,10 +6,21 @@ import {
   formatUnixTimestamp,
   getEarliestAndLatestTimestamps
 } from '@/lib/utils'
-import type { aprApyChartData, ppsChartData, TimeseriesDataPoint, tvlChartData } from '@/types/dataTypes'
+import type {
+  aprApyChartData,
+  ppsChartData,
+  TimeseriesDataPoint,
+  tvlChartData,
+  VaultReportHistoryEntry,
+  vaultEarningsChartData
+} from '@/types/dataTypes'
 
 interface TimeseriesQueryResult {
   timeseries: TimeseriesDataPoint[]
+}
+
+interface ReportHistoryQueryResult {
+  vaultReports: VaultReportHistoryEntry[]
 }
 
 /**
@@ -66,6 +77,7 @@ interface UseChartDataProps {
   aprOracleAprData?: TimeseriesQueryResult | undefined
   tvlData: TimeseriesQueryResult | undefined
   ppsData: TimeseriesQueryResult | undefined
+  reportHistoryData?: ReportHistoryQueryResult | undefined
   isLoading: boolean
   hasErrors: boolean
 }
@@ -74,6 +86,7 @@ interface UseChartDataReturn {
   transformedAprApyData: aprApyChartData | null
   transformedTvlData: tvlChartData | null
   transformedPpsData: ppsChartData | null
+  transformedVaultEarningsData: vaultEarningsChartData | null
 }
 
 /**
@@ -86,6 +99,7 @@ export function useChartData({
   aprOracleAprData,
   tvlData,
   ppsData,
+  reportHistoryData,
   isLoading,
   hasErrors
 }: UseChartDataProps): UseChartDataReturn {
@@ -95,7 +109,8 @@ export function useChartData({
       return {
         transformedAprApyData: null,
         transformedTvlData: null,
-        transformedPpsData: null
+        transformedPpsData: null,
+        transformedVaultEarningsData: null
       }
     }
 
@@ -119,7 +134,8 @@ export function useChartData({
       return {
         transformedAprApyData: [],
         transformedTvlData: [],
-        transformedPpsData: []
+        transformedPpsData: [],
+        transformedVaultEarningsData: []
       }
     }
 
@@ -161,10 +177,57 @@ export function useChartData({
         oracleApr30dAvgValues[index] !== null ? convertAprToApy(oracleApr30dAvgValues[index]!) * 100 : null
     }))
 
+    const rawReportHistory = reportHistoryData?.vaultReports ?? []
+    const normalizedReportHistory = rawReportHistory
+      .map((report) => {
+        const time = Number(report.blockTime)
+        if (!Number.isFinite(time) || time <= 0) {
+          return null
+        }
+
+        return {
+          time,
+          totalGainUsd: typeof report.totalGainUsd === 'number' && Number.isFinite(report.totalGainUsd) ? report.totalGainUsd : null,
+          totalFeesUsd: typeof report.totalFeesUsd === 'number' && Number.isFinite(report.totalFeesUsd) ? report.totalFeesUsd : null,
+          aprNet: typeof report.apr?.net === 'number' && Number.isFinite(report.apr.net) ? report.apr.net : null
+        }
+      })
+      .filter((report): report is { time: number; totalGainUsd: number | null; totalFeesUsd: number | null; aprNet: number | null } => report !== null)
+      .sort((a, b) => a.time - b.time)
+
+    const transformedVaultEarningsData: vaultEarningsChartData = []
+    let cumulativeGainUsd = 0
+    let cumulativeFeesUsd = 0
+    let hasGainSeries = false
+    let hasFeesSeries = false
+
+    normalizedReportHistory.forEach((report) => {
+      if (report.totalGainUsd !== null) {
+        cumulativeGainUsd += report.totalGainUsd
+        hasGainSeries = true
+      }
+      if (report.totalFeesUsd !== null) {
+        cumulativeFeesUsd += report.totalFeesUsd
+        hasFeesSeries = true
+      }
+
+      transformedVaultEarningsData.push({
+        date: formatUnixTimestamp(report.time),
+        time: report.time,
+        cumulativeGainUsd: hasGainSeries ? cumulativeGainUsd : null,
+        cumulativeFeesUsd: hasFeesSeries ? cumulativeFeesUsd : null,
+        lifetimeEarningsUsd: hasGainSeries ? cumulativeGainUsd : hasFeesSeries ? cumulativeFeesUsd : null,
+        reportGainUsd: report.totalGainUsd,
+        reportFeesUsd: report.totalFeesUsd,
+        aprNet: report.aprNet !== null ? report.aprNet * 100 : null
+      })
+    })
+
     return {
       transformedAprApyData,
       transformedTvlData,
-      transformedPpsData
+      transformedPpsData,
+      transformedVaultEarningsData
     }
-  }, [apyWeeklyData, apyMonthlyData, aprOracleAprData, tvlData, ppsData, isLoading, hasErrors])
+  }, [apyWeeklyData, apyMonthlyData, aprOracleAprData, tvlData, ppsData, reportHistoryData, isLoading, hasErrors])
 }

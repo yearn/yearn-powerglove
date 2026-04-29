@@ -68,6 +68,30 @@ export type aprApyChartData = {
   oracleApy30dAvg?: number | null
 }[]
 
+export interface VaultReportHistoryEntry {
+  blockTime: string
+  apr?: {
+    net?: number | null
+  } | null
+  totalGain?: string | null
+  totalGainUsd?: number | null
+  totalFees?: string | null
+  totalFeesUsd?: number | null
+  eventName?: string | null
+  transactionHash?: string | null
+}
+
+export type vaultEarningsChartData = {
+  date: string
+  time: number
+  cumulativeGainUsd: number | null
+  cumulativeFeesUsd: number | null
+  lifetimeEarningsUsd: number | null
+  reportGainUsd: number | null
+  reportFeesUsd: number | null
+  aprNet: number | null
+}[]
+
 type StrategyDetails = {
   chainId: ChainId
   vaultAddress: string
