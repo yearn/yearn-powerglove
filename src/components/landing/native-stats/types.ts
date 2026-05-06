@@ -11,14 +11,14 @@ export interface RetiredVaultSummary {
 
 export interface TvlSummary {
   totalTvl: number
-  activeTvl: number
-  retiredTvl: number
+  activeVaultTvl: number
+  retiredVaultTvl: number
   v1Tvl: number
   v2Tvl: number
   v3Tvl: number
   curationTvl: number
-  overlapAmount: number
-  crossChainOverlap: number
+  overlapExcluded: number
+  vaultBridgeExcluded: number
   crossChainOverlapByCategory: Record<VaultCategory, number>
   overlapByChain: Record<string, number>
   crossChainOverlapByChain: Record<string, number>
@@ -35,6 +35,28 @@ export interface TvlSummary {
     active: number
     retired: number
   }
+}
+
+export interface TvlHistoryChartRow {
+  timestamp: number
+  [seriesName: string]: number
+}
+
+export interface TvlHistoryRun {
+  id: number
+  createdAt: string
+  mode: string
+  groupBy: string
+  interval: string
+  range: { from: number; to: number }
+  maxVaults: number | null
+  top: number | null
+  pointCount: number
+  query: Record<string, unknown>
+  meta: Record<string, unknown>
+  series: string[]
+  points: Array<{ timestamp: number; series: string; tvlUsd: number }>
+  chart: TvlHistoryChartRow[]
 }
 
 export interface GapComponent {

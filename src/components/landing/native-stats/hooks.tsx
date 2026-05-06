@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 're
 
 const LOCAL_API_BASE = 'http://127.0.0.1:5456'
 
-export function resolveStatsApiBase() {
+export function resolveStatsApiBase(): string | null {
   const configuredUrl = import.meta.env.VITE_PUBLIC_YEARN_METRICS_API_URL?.trim()
 
   if (configuredUrl) {
@@ -14,12 +14,19 @@ export function resolveStatsApiBase() {
     if (hostname === '127.0.0.1' || hostname === 'localhost') {
       return LOCAL_API_BASE
     }
+
+    if (hostname.endsWith('.ts.net')) {
+      return ''
+    }
   }
 
-  return ''
+  return null
 }
 
-export const API_BASE = resolveStatsApiBase()
+const resolvedStatsApiBase = resolveStatsApiBase()
+
+export const API_BASE = resolvedStatsApiBase ?? ''
+export const HAS_STATS_API = resolvedStatsApiBase !== null
 
 const fetchCache = new Map<string, { data: unknown; timestamp: number }>()
 const inFlightFetches = new Map<string, Promise<{ payload: unknown; timestamp: number }>>()

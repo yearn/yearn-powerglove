@@ -6,8 +6,10 @@ import { useVaults } from '@/contexts/useVaults'
 import { useRestTimeseries } from '@/hooks/useRestTimeseries'
 import { fetchKongVaultSnapshotRaw } from '@/lib/kong-vault-client'
 import { mapKongSnapshotToVaultExtended } from '@/lib/kong-vault-derivation'
+import { fetchVaultManagementEvents } from '@/lib/vault-events'
 import { fetchVaultReports } from '@/lib/vault-reports-client'
 import type { TimeseriesDataPoint, VaultReportHistoryEntry } from '@/types/dataTypes'
+import type { VaultManagementEvent } from '@/types/vaultEventTypes'
 import type { KongVaultSnapshot } from '@/types/kong'
 import type { Vault, VaultExtended } from '@/types/vaultTypes'
 import {
@@ -43,10 +45,14 @@ interface UseVaultPageDataReturn {
   apyMonthlyData: TimeseriesQueryResult | undefined
   aprOracleAprData: TimeseriesQueryResult | undefined
   tvlData: TimeseriesQueryResult | undefined
+  underlyingTvlData: TimeseriesQueryResult | undefined
   ppsData: TimeseriesQueryResult | undefined
   reportHistoryData: ReportHistoryQueryResult | undefined
   reportHistoryLoading: boolean
   reportHistoryError: Error | null
+  managementEventsData: VaultManagementEvent[] | undefined
+  managementEventsLoading: boolean
+  managementEventsError: Error | null
 
   // Chart loading states
   chartsLoading: boolean
@@ -175,6 +181,17 @@ export function useVaultPageData({ vaultAddress, vaultChainId }: UseVaultPageDat
     address: vaultAddress
   })
 
+  const {
+    data: underlyingTvlData,
+    isLoading: underlyingTvlLoading,
+    error: underlyingTvlError
+  } = useRestTimeseries({
+    segment: 'tvl',
+    chainId: vaultChainId,
+    address: vaultAddress,
+    components: ['totalAssets']
+  })
+
   // Fetch PPS data from REST API
   const {
     data: ppsData,
@@ -198,6 +215,17 @@ export function useVaultPageData({ vaultAddress, vaultChainId }: UseVaultPageDat
     enabled: Boolean(vaultAddress)
   })
 
+  const {
+    data: managementEventsData,
+    isLoading: managementEventsLoading,
+    error: managementEventsError
+  } = useQuery<VaultManagementEvent[], Error>({
+    queryKey: ['envio', 'vault', 'management-events', vaultChainId, normalizedAddress],
+    queryFn: () => fetchVaultManagementEvents(vaultAddress, vaultChainId),
+    staleTime: 5 * 60 * 1000,
+    enabled: Boolean(vaultAddress)
+  })
+
   const reportHistoryData = useMemo<ReportHistoryQueryResult | undefined>(() => {
     if (!reportHistoryEntries) {
       return undefined
@@ -211,14 +239,14 @@ export function useVaultPageData({ vaultAddress, vaultChainId }: UseVaultPageDat
   // Calculate combined loading states
   const chartsLoading = useMemo(() => {
     // `aprOracleApyLoading` is intentionally excluded since it's optional overlay data.
-    return apyWeeklyLoading || apyMonthlyLoading || tvlLoading || ppsLoading
-  }, [apyWeeklyLoading, apyMonthlyLoading, tvlLoading, ppsLoading])
+    return apyWeeklyLoading || apyMonthlyLoading || tvlLoading || underlyingTvlLoading || ppsLoading
+  }, [apyWeeklyLoading, apyMonthlyLoading, tvlLoading, underlyingTvlLoading, ppsLoading])
 
   // Calculate combined error states
   const chartsError = useMemo(() => {
     // `aprOracleApyError` is intentionally excluded since it's optional overlay data.
-    return !!apyWeeklyError || !!apyMonthlyError || !!tvlError || !!ppsError
-  }, [apyWeeklyError, apyMonthlyError, tvlError, ppsError])
+    return !!apyWeeklyError || !!apyMonthlyError || !!tvlError || !!underlyingTvlError || !!ppsError
+  }, [apyWeeklyError, apyMonthlyError, tvlError, underlyingTvlError, ppsError])
 
   // Initial loading only waits for vault data (charts can load separately)
   const isInitialLoading = vaultLoading
@@ -239,10 +267,14 @@ export function useVaultPageData({ vaultAddress, vaultChainId }: UseVaultPageDat
     apyMonthlyData,
     aprOracleAprData,
     tvlData,
+    underlyingTvlData,
     ppsData,
     reportHistoryData,
     reportHistoryLoading,
     reportHistoryError: reportHistoryError ?? null,
+    managementEventsData,
+    managementEventsLoading,
+    managementEventsError: managementEventsError ?? null,
 
     // Chart loading states
     chartsLoading,

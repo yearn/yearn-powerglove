@@ -107,8 +107,11 @@ export const queryReports = gql`
       apr {
         net
       }
+      gainUsd
+      lossUsd
       totalGain
       totalGainUsd
+      protocolFeesUsd
       totalFees
       totalFeesUsd
       eventName

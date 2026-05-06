@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { formatUnits } from 'viem'
 import {
   calculateAprFromPps,
   calculateApyFromApr,
@@ -12,8 +13,10 @@ import type {
   TimeseriesDataPoint,
   tvlChartData,
   VaultReportHistoryEntry,
-  vaultEarningsChartData
+  vaultEarningsChartData,
+  vaultEventProfitChartData
 } from '@/types/dataTypes'
+import type { VaultManagementEvent } from '@/types/vaultEventTypes'
 
 interface TimeseriesQueryResult {
   timeseries: TimeseriesDataPoint[]
@@ -21,6 +24,19 @@ interface TimeseriesQueryResult {
 
 interface ReportHistoryQueryResult {
   vaultReports: VaultReportHistoryEntry[]
+}
+
+const parseEventUnits = (value: string | undefined, decimals: number): number | null => {
+  if (!value) {
+    return null
+  }
+
+  try {
+    const parsed = Number(formatUnits(BigInt(value), decimals))
+    return Number.isFinite(parsed) ? parsed : null
+  } catch {
+    return null
+  }
 }
 
 /**
@@ -76,8 +92,11 @@ interface UseChartDataProps {
   apyMonthlyData: TimeseriesQueryResult | undefined
   aprOracleAprData?: TimeseriesQueryResult | undefined
   tvlData: TimeseriesQueryResult | undefined
+  underlyingTvlData?: TimeseriesQueryResult | undefined
   ppsData: TimeseriesQueryResult | undefined
   reportHistoryData?: ReportHistoryQueryResult | undefined
+  managementEventsData?: VaultManagementEvent[] | undefined
+  assetDecimals?: number
   isLoading: boolean
   hasErrors: boolean
 }
@@ -85,8 +104,10 @@ interface UseChartDataProps {
 interface UseChartDataReturn {
   transformedAprApyData: aprApyChartData | null
   transformedTvlData: tvlChartData | null
+  transformedUnderlyingTvlData: tvlChartData | null
   transformedPpsData: ppsChartData | null
   transformedVaultEarningsData: vaultEarningsChartData | null
+  transformedVaultEventProfitData: vaultEventProfitChartData | null
 }
 
 /**
@@ -98,8 +119,11 @@ export function useChartData({
   apyMonthlyData,
   aprOracleAprData,
   tvlData,
+  underlyingTvlData,
   ppsData,
   reportHistoryData,
+  managementEventsData,
+  assetDecimals = 18,
   isLoading,
   hasErrors
 }: UseChartDataProps): UseChartDataReturn {
@@ -109,8 +133,10 @@ export function useChartData({
       return {
         transformedAprApyData: null,
         transformedTvlData: null,
+        transformedUnderlyingTvlData: null,
         transformedPpsData: null,
-        transformedVaultEarningsData: null
+        transformedVaultEarningsData: null,
+        transformedVaultEventProfitData: null
       }
     }
 
@@ -118,6 +144,7 @@ export function useChartData({
     const apy7DayDataClean = apyWeeklyData.timeseries || []
     const apy30DayDataClean = apyMonthlyData.timeseries || []
     const tvlDataClean = tvlData.timeseries || []
+    const underlyingTvlDataClean = underlyingTvlData?.timeseries || []
     const ppsDataClean = ppsData.timeseries || []
     const oracleAprDataClean = aprOracleAprData?.timeseries || []
 
@@ -134,8 +161,10 @@ export function useChartData({
       return {
         transformedAprApyData: [],
         transformedTvlData: [],
+        transformedUnderlyingTvlData: [],
         transformedPpsData: [],
-        transformedVaultEarningsData: []
+        transformedVaultEarningsData: [],
+        transformedVaultEventProfitData: []
       }
     }
 
@@ -143,6 +172,7 @@ export function useChartData({
     const apy7DayFilled = fillMissingDailyData(apy7DayDataClean, earliest, latest)
     const apy30DayFilled = fillMissingDailyData(apy30DayDataClean, earliest, latest)
     const tvlFilled = fillMissingDailyData(tvlDataClean, earliest, latest)
+    const underlyingTvlFilled = fillMissingDailyData(underlyingTvlDataClean, earliest, latest)
     const ppsFilled = fillMissingDailyData(ppsDataClean, earliest, latest)
     const oracleAprFilled = fillMissingDailyData(oracleAprDataClean, earliest, latest)
 
@@ -155,6 +185,11 @@ export function useChartData({
 
     // Transform TVL data
     const transformedTvlData: tvlChartData = tvlFilled.map((dataPoint) => ({
+      date: formatUnixTimestamp(dataPoint.time),
+      TVL: dataPoint.value ?? null
+    }))
+
+    const transformedUnderlyingTvlData: tvlChartData = underlyingTvlFilled.map((dataPoint) => ({
       date: formatUnixTimestamp(dataPoint.time),
       TVL: dataPoint.value ?? null
     }))
@@ -185,14 +220,24 @@ export function useChartData({
           return null
         }
 
+        const gainUsd = typeof report.gainUsd === 'number' && Number.isFinite(report.gainUsd) ? report.gainUsd : null
+        const lossUsd = typeof report.lossUsd === 'number' && Number.isFinite(report.lossUsd) ? report.lossUsd : null
+        const reportProfitUsd = gainUsd !== null || lossUsd !== null ? (gainUsd ?? 0) - (lossUsd ?? 0) : null
+        const reportFeesUsd =
+          typeof report.totalFeesUsd === 'number' && Number.isFinite(report.totalFeesUsd)
+            ? report.totalFeesUsd
+            : typeof report.protocolFeesUsd === 'number' && Number.isFinite(report.protocolFeesUsd)
+              ? report.protocolFeesUsd
+              : null
+
         return {
           time,
-          totalGainUsd: typeof report.totalGainUsd === 'number' && Number.isFinite(report.totalGainUsd) ? report.totalGainUsd : null,
-          totalFeesUsd: typeof report.totalFeesUsd === 'number' && Number.isFinite(report.totalFeesUsd) ? report.totalFeesUsd : null,
+          reportProfitUsd,
+          reportFeesUsd,
           aprNet: typeof report.apr?.net === 'number' && Number.isFinite(report.apr.net) ? report.apr.net : null
         }
       })
-      .filter((report): report is { time: number; totalGainUsd: number | null; totalFeesUsd: number | null; aprNet: number | null } => report !== null)
+      .filter((report): report is { time: number; reportProfitUsd: number | null; reportFeesUsd: number | null; aprNet: number | null } => report !== null)
       .sort((a, b) => a.time - b.time)
 
     const transformedVaultEarningsData: vaultEarningsChartData = []
@@ -202,12 +247,12 @@ export function useChartData({
     let hasFeesSeries = false
 
     normalizedReportHistory.forEach((report) => {
-      if (report.totalGainUsd !== null) {
-        cumulativeGainUsd += report.totalGainUsd
+      if (report.reportProfitUsd !== null) {
+        cumulativeGainUsd += report.reportProfitUsd
         hasGainSeries = true
       }
-      if (report.totalFeesUsd !== null) {
-        cumulativeFeesUsd += report.totalFeesUsd
+      if (report.reportFeesUsd !== null) {
+        cumulativeFeesUsd += report.reportFeesUsd
         hasFeesSeries = true
       }
 
@@ -217,17 +262,68 @@ export function useChartData({
         cumulativeGainUsd: hasGainSeries ? cumulativeGainUsd : null,
         cumulativeFeesUsd: hasFeesSeries ? cumulativeFeesUsd : null,
         lifetimeEarningsUsd: hasGainSeries ? cumulativeGainUsd : hasFeesSeries ? cumulativeFeesUsd : null,
-        reportGainUsd: report.totalGainUsd,
-        reportFeesUsd: report.totalFeesUsd,
+        reportGainUsd: report.reportProfitUsd,
+        reportFeesUsd: report.reportFeesUsd,
         aprNet: report.aprNet !== null ? report.aprNet * 100 : null
+      })
+    })
+
+    const transformedVaultEventProfitData: vaultEventProfitChartData = []
+    const normalizedManagementReports = (managementEventsData ?? [])
+      .filter((event) => event.type === 'strategyReported' || event.type === 'v2StrategyReported')
+      .map((event) => {
+        const time = Number(event.blockTimestamp)
+        if (!Number.isFinite(time) || time <= 0) {
+          return null
+        }
+
+        const gain = parseEventUnits(event.gain, assetDecimals) ?? 0
+        const loss = parseEventUnits(event.loss, assetDecimals) ?? 0
+        const reportProfit = gain - loss
+        const reportFees = event.type === 'strategyReported' ? parseEventUnits(event.totalFees, assetDecimals) : null
+
+        return {
+          time,
+          reportProfit: Number.isFinite(reportProfit) ? reportProfit : null,
+          reportFees
+        }
+      })
+      .filter((report): report is { time: number; reportProfit: number | null; reportFees: number | null } => report !== null)
+      .sort((a, b) => a.time - b.time)
+
+    let cumulativeProfit = 0
+    let cumulativeFees = 0
+    let hasProfitSeries = false
+    let hasEventFeesSeries = false
+
+    normalizedManagementReports.forEach((report) => {
+      if (report.reportProfit !== null) {
+        cumulativeProfit += report.reportProfit
+        hasProfitSeries = true
+      }
+      if (report.reportFees !== null) {
+        cumulativeFees += report.reportFees
+        hasEventFeesSeries = true
+      }
+
+      transformedVaultEventProfitData.push({
+        date: formatUnixTimestamp(report.time),
+        time: report.time,
+        cumulativeProfit: hasProfitSeries ? cumulativeProfit : null,
+        cumulativeFees: hasEventFeesSeries ? cumulativeFees : null,
+        cumulativeNetAfterFees: hasProfitSeries ? cumulativeProfit - (hasEventFeesSeries ? cumulativeFees : 0) : null,
+        reportProfit: report.reportProfit,
+        reportFees: report.reportFees
       })
     })
 
     return {
       transformedAprApyData,
       transformedTvlData,
+      transformedUnderlyingTvlData,
       transformedPpsData,
-      transformedVaultEarningsData
+      transformedVaultEarningsData,
+      transformedVaultEventProfitData
     }
-  }, [apyWeeklyData, apyMonthlyData, aprOracleAprData, tvlData, ppsData, reportHistoryData, isLoading, hasErrors])
+  }, [apyWeeklyData, apyMonthlyData, aprOracleAprData, tvlData, underlyingTvlData, ppsData, reportHistoryData, managementEventsData, assetDecimals, isLoading, hasErrors])
 }

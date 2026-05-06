@@ -131,6 +131,47 @@ export const formatTvlDisplay = (value: number, options?: LocaleFormatOptions): 
   return `$${formatter.format(safeValue)}`
 }
 
+export const formatTokenDisplay = (value: number, options?: LocaleFormatOptions): string => {
+  if (value === Infinity || value === -Infinity) {
+    return '∞'
+  }
+
+  const safeValue = Number.isFinite(value) ? value : 0
+  const absValue = Math.abs(safeValue)
+  const locales = resolveLocales(options)
+
+  if (absValue >= 10000) {
+    const formatter = new Intl.NumberFormat(locales, {
+      notation: 'compact',
+      compactDisplay: 'short',
+      minimumSignificantDigits: 3,
+      maximumSignificantDigits: 3
+    })
+    return formatter.format(safeValue)
+  }
+
+  let minimumFractionDigits = 0
+  let maximumFractionDigits = 0
+
+  if (absValue < 1) {
+    minimumFractionDigits = 2
+    maximumFractionDigits = 4
+  } else if (absValue < 10) {
+    minimumFractionDigits = 2
+    maximumFractionDigits = 3
+  } else if (absValue < 100) {
+    minimumFractionDigits = 1
+    maximumFractionDigits = 2
+  }
+
+  const formatter = new Intl.NumberFormat(locales, {
+    minimumFractionDigits,
+    maximumFractionDigits
+  })
+
+  return formatter.format(safeValue)
+}
+
 const COMPACT_SCALE: Record<string, number> = {
   T: 1_000_000_000_000,
   B: 1_000_000_000,

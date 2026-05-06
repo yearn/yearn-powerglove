@@ -4,7 +4,7 @@ import { AuditPanel } from './AuditPanel'
 import { ComparisonPanel } from './ComparisonPanel'
 import { ErrorBoundary } from './ErrorBoundary'
 import { FeesPanel } from './FeesPanel'
-import { API_BASE, timeAgo } from './hooks'
+import { HAS_STATS_API, timeAgo } from './hooks'
 import { StatsContext, type StatsDensity } from './StatsContext'
 import { TvlOverview } from './TvlOverview'
 import './styles.css'
@@ -116,8 +116,8 @@ export function NativeStatsDashboard() {
             </TabsList>
 
             <div style={{ marginTop: '1rem' }}>
-              {!API_BASE ? <MissingApiNotice /> : null}
-              {API_BASE ? (
+              {!HAS_STATS_API ? <MissingApiNotice /> : null}
+              {HAS_STATS_API ? (
                 <>
                   <TabsContent value="overview" className="mt-0">
                     <ErrorBoundary>

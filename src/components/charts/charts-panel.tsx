@@ -9,9 +9,11 @@ import ChartSkeleton from '@/components/charts/ChartSkeleton'
 import ChartsLoader from '@/components/charts/ChartsLoader'
 import { FixedHeightChartContainer } from '@/components/charts/chart-container'
 import { calculatePpsPeriodApy, getTimeframeLimit } from '@/components/charts/chart-utils'
+import EnvioProfitChart from '@/components/charts/EnvioProfitChart'
 import LifetimeEarningsChart from '@/components/charts/LifetimeEarningsChart'
 import PPSChart from '@/components/charts/PPSChart'
 import TVLChart from '@/components/charts/TVLChart'
+import UnderlyingTvlChart from '@/components/charts/UnderlyingTvlChart'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -23,20 +25,31 @@ import {
 } from '@/components/ui/dialog'
 import { useIsMobile } from '@/components/ui/use-mobile'
 import { ChartErrorBoundary } from '@/components/utils/ErrorBoundary'
-import type { aprApyChartData, ppsChartData, tvlChartData, vaultEarningsChartData } from '@/types/dataTypes'
+import type {
+  aprApyChartData,
+  ppsChartData,
+  tvlChartData,
+  vaultEarningsChartData,
+  vaultEventProfitChartData
+} from '@/types/dataTypes'
 
 type ChartData = {
   aprApyData: aprApyChartData | null
   tvlData: tvlChartData | null
+  underlyingTvlData: tvlChartData | null
   ppsData: ppsChartData | null
   vaultEarningsData: vaultEarningsChartData | null
+  vaultEventProfitData: vaultEventProfitChartData | null
+  assetSymbol?: string
   reportHistoryLoading?: boolean
   reportHistoryError?: boolean
+  managementEventsLoading?: boolean
+  managementEventsError?: boolean
   isLoading?: boolean
   hasErrors?: boolean
 }
 
-type ChartTab = 'historical-apy' | 'historical-pps' | 'historical-tvl' | 'lifetime-earnings'
+type ChartTab = 'historical-apy' | 'historical-pps' | 'historical-tvl' | 'underlying-tvl' | 'lifetime-earnings' | 'envio-profit'
 
 const chartSections: Array<{
   value: ChartTab
@@ -51,7 +64,9 @@ const chartSections: Array<{
     label: 'Historical Share Growth'
   },
   { value: 'historical-tvl', label: 'Historical TVL' },
-  { value: 'lifetime-earnings', label: 'Lifetime Earnings' }
+  { value: 'underlying-tvl', label: 'Underlying TVL' },
+  { value: 'lifetime-earnings', label: 'Reported Profit / Fees' },
+  { value: 'envio-profit', label: 'Vault Event Profit / Fees' }
 ]
 
 const timeframes = [
@@ -68,10 +83,15 @@ export function ChartsPanel(data: ChartData) {
   const {
     aprApyData,
     tvlData,
+    underlyingTvlData,
     ppsData,
     vaultEarningsData,
+    vaultEventProfitData,
+    assetSymbol,
     reportHistoryLoading = false,
     reportHistoryError = false,
+    managementEventsLoading = false,
+    managementEventsError = false,
     isLoading = false,
     hasErrors = false
   } = data
@@ -99,7 +119,7 @@ export function ChartsPanel(data: ChartData) {
     )
   }
 
-  if (isLoading || !aprApyData || !tvlData || !ppsData) {
+  if (isLoading || !aprApyData || !tvlData || !underlyingTvlData || !ppsData) {
     return (
       <div className="relative">
         <ChartSkeleton />
@@ -119,6 +139,38 @@ export function ChartsPanel(data: ChartData) {
     hasOracleApy30dAvg
   })
   const selectedApySeriesCount = availableApySeries.filter((seriesKey) => apyVisibleSeries[seriesKey]).length
+  const hasVaultProfitSeries = (vaultEarningsData ?? []).some((point) => typeof point.cumulativeGainUsd === 'number')
+  const hasVaultFeesSeries = (vaultEarningsData ?? []).some((point) => typeof point.cumulativeFeesUsd === 'number')
+  const hasEnvioProfitSeries = (vaultEventProfitData ?? []).some((point) => typeof point.cumulativeProfit === 'number')
+  const hasEnvioFeesSeries = (vaultEventProfitData ?? []).some((point) => typeof point.cumulativeFees === 'number')
+
+  const lifetimeChartTitle = hasVaultProfitSeries
+    ? 'Cumulative Vault Profits'
+    : hasVaultFeesSeries
+      ? 'Cumulative Protocol Fees'
+      : 'Report History'
+  const lifetimeChartDescription = hasVaultProfitSeries
+    ? 'Cumulative profit reported back to this vault from StrategyReported history, with cumulative protocol fees overlaid when available.'
+    : hasVaultFeesSeries
+      ? 'Kong report history does not expose profit USD for this vault, so this chart currently shows cumulative protocol fees only.'
+      : 'No gain or fee USD values are currently available in Kong report history for this vault.'
+  const lifetimeChartMobileDescription = hasVaultProfitSeries
+    ? 'Review cumulative vault profit from report history.'
+    : hasVaultFeesSeries
+      ? 'Review cumulative protocol fees from report history.'
+      : 'No report-history USD values available yet.'
+
+  const envioChartTitle = hasEnvioProfitSeries ? 'Cumulative Vault Profit' : hasEnvioFeesSeries ? 'Cumulative Fees' : 'Vault Event Profit / Fees'
+  const envioChartDescription = hasEnvioProfitSeries
+    ? `Cumulative gain minus loss from Envio StrategyReported events in ${assetSymbol || 'underlying asset'} units, with cumulative fees overlaid when available.`
+    : hasEnvioFeesSeries
+      ? `Envio StrategyReported events expose cumulative fees for this vault in ${assetSymbol || 'underlying asset'} units, but no profit series was derived.`
+      : 'No StrategyReported profit or fee events are available yet from Envio for this vault.'
+  const envioChartMobileDescription = hasEnvioProfitSeries
+    ? `Review cumulative event-level profit in ${assetSymbol || 'asset'} units.`
+    : hasEnvioFeesSeries
+      ? `Review cumulative event-level fees in ${assetSymbol || 'asset'} units.`
+      : 'No Envio strategy report events available yet.'
 
   const chartInfo = {
     'historical-apy': {
@@ -136,10 +188,20 @@ export function ChartsPanel(data: ChartData) {
       description: `Value deposited in vault over ${timeframe.label}.`,
       mobileDescription: `Review TVL changes over ${timeframe.mobileLabel}.`
     },
+    'underlying-tvl': {
+      title: 'Underlying TVL',
+      description: `Underlying asset balance deposited in vault over ${timeframe.label}.`,
+      mobileDescription: `Review underlying TVL over ${timeframe.mobileLabel}.`
+    },
     'lifetime-earnings': {
-      title: 'Lifetime Earnings',
-      description: 'Cumulative USD earnings from StrategyReported history, with fees shown when available.',
-      mobileDescription: 'Review cumulative report-history earnings.'
+      title: lifetimeChartTitle,
+      description: lifetimeChartDescription,
+      mobileDescription: lifetimeChartMobileDescription
+    },
+    'envio-profit': {
+      title: envioChartTitle,
+      description: envioChartDescription,
+      mobileDescription: envioChartMobileDescription
     }
   } satisfies Record<ChartTab, { title: string; description: string; mobileDescription: string }>
 
@@ -150,7 +212,9 @@ export function ChartsPanel(data: ChartData) {
     'historical-apy': 60,
     'historical-pps': 60,
     'historical-tvl': 68,
-    'lifetime-earnings': 72
+    'underlying-tvl': 84,
+    'lifetime-earnings': 72,
+    'envio-profit': 72
   } satisfies Record<ChartTab, number>
 
   const renderChartBody = (chartType: ChartTab) => {
@@ -242,6 +306,14 @@ export function ChartsPanel(data: ChartData) {
             )}
           </FixedHeightChartContainer>
         )
+      case 'underlying-tvl':
+        return (
+          <FixedHeightChartContainer heightClassName={chartHeightClassName}>
+            <ChartErrorBoundary>
+              <UnderlyingTvlChart chartData={underlyingTvlData} timeframe={timeframe.value} assetSymbol={assetSymbol} />
+            </ChartErrorBoundary>
+          </FixedHeightChartContainer>
+        )
       case 'lifetime-earnings':
         return (
           <FixedHeightChartContainer heightClassName={chartHeightClassName}>
@@ -268,6 +340,20 @@ export function ChartsPanel(data: ChartData) {
                 </ChartErrorBoundary>
               </div>
             )}
+          </FixedHeightChartContainer>
+        )
+      case 'envio-profit':
+        return (
+          <FixedHeightChartContainer heightClassName={chartHeightClassName}>
+            <ChartErrorBoundary>
+              {managementEventsError ? (
+                <div className="flex h-full items-center justify-center text-sm text-red-500">Unable to load Envio strategy report events.</div>
+              ) : managementEventsLoading && !vaultEventProfitData ? (
+                <div className="flex h-full items-center justify-center text-sm text-muted-foreground">Loading Envio strategy report events…</div>
+              ) : (
+                <EnvioProfitChart chartData={vaultEventProfitData ?? []} timeframe={timeframe.value} assetSymbol={assetSymbol} />
+              )}
+            </ChartErrorBoundary>
           </FixedHeightChartContainer>
         )
       default:
@@ -404,7 +490,7 @@ export function ChartsPanel(data: ChartData) {
       <div className="border-b border-border p-4 sm:flex sm:items-center sm:justify-between sm:gap-4 sm:p-6">
         <div>
           <h2 className="text-base font-semibold text-[#111111]">Charts</h2>
-          <p className="mt-1 text-xs text-gray-500">Historical performance, share growth, TVL, and lifetime earnings.</p>
+          <p className="mt-1 text-xs text-gray-500">Historical performance, share growth, TVL, Kong report history, and Envio event profit/fee history.</p>
         </div>
         <div className="mt-4 sm:mt-0 sm:shrink-0">{chartControls}</div>
       </div>

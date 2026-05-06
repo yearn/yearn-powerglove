@@ -73,8 +73,11 @@ export interface VaultReportHistoryEntry {
   apr?: {
     net?: number | null
   } | null
+  gainUsd?: number | null
+  lossUsd?: number | null
   totalGain?: string | null
   totalGainUsd?: number | null
+  protocolFeesUsd?: number | null
   totalFees?: string | null
   totalFeesUsd?: number | null
   eventName?: string | null
@@ -90,6 +93,16 @@ export type vaultEarningsChartData = {
   reportGainUsd: number | null
   reportFeesUsd: number | null
   aprNet: number | null
+}[]
+
+export type vaultEventProfitChartData = {
+  date: string
+  time: number
+  cumulativeProfit: number | null
+  cumulativeFees: number | null
+  cumulativeNetAfterFees: number | null
+  reportProfit: number | null
+  reportFees: number | null
 }[]
 
 type StrategyDetails = {

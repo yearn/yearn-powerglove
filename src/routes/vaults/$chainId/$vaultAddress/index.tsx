@@ -53,10 +53,14 @@ function SingleVaultPage() {
     apyMonthlyData,
     aprOracleAprData,
     tvlData,
+    underlyingTvlData,
     ppsData,
     reportHistoryData,
     reportHistoryLoading,
     reportHistoryError,
+    managementEventsData,
+    managementEventsLoading,
+    managementEventsError,
     isInitialLoading,
     hasErrors,
     chartsLoading,
@@ -71,13 +75,23 @@ function SingleVaultPage() {
     tokenAssets
   })
 
-  const { transformedAprApyData, transformedTvlData, transformedPpsData, transformedVaultEarningsData } = useChartData({
+  const {
+    transformedAprApyData,
+    transformedTvlData,
+    transformedUnderlyingTvlData,
+    transformedPpsData,
+    transformedVaultEarningsData,
+    transformedVaultEventProfitData
+  } = useChartData({
     apyWeeklyData,
     apyMonthlyData,
     aprOracleAprData,
     tvlData,
+    underlyingTvlData,
     ppsData,
     reportHistoryData,
+    managementEventsData,
+    assetDecimals: vaultDetails?.asset?.decimals,
     isLoading: chartsLoading,
     hasErrors: chartsError
   })
@@ -230,10 +244,15 @@ function SingleVaultPage() {
                 <ChartsPanel
                   aprApyData={transformedAprApyData}
                   tvlData={transformedTvlData}
+                  underlyingTvlData={transformedUnderlyingTvlData}
                   ppsData={transformedPpsData}
                   vaultEarningsData={transformedVaultEarningsData}
+                  vaultEventProfitData={transformedVaultEventProfitData}
+                  assetSymbol={vaultDetails?.asset?.symbol}
                   reportHistoryLoading={reportHistoryLoading}
                   reportHistoryError={Boolean(reportHistoryError)}
+                  managementEventsLoading={managementEventsLoading}
+                  managementEventsError={Boolean(managementEventsError)}
                   isLoading={chartsLoading}
                   hasErrors={chartsError}
                 />
