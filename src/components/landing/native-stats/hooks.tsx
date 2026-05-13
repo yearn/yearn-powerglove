@@ -1,23 +1,17 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react'
 
-const LOCAL_API_BASE = 'http://127.0.0.1:5456'
-
 export function resolveStatsApiBase(): string | null {
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname
+    if (hostname === '127.0.0.1' || hostname === 'localhost' || hostname.endsWith('.ts.net')) {
+      return ''
+    }
+  }
+
   const configuredUrl = import.meta.env.VITE_PUBLIC_YEARN_METRICS_API_URL?.trim()
 
   if (configuredUrl) {
-    return configuredUrl
-  }
-
-  if (typeof window !== 'undefined') {
-    const hostname = window.location.hostname
-    if (hostname === '127.0.0.1' || hostname === 'localhost') {
-      return LOCAL_API_BASE
-    }
-
-    if (hostname.endsWith('.ts.net')) {
-      return ''
-    }
+    return configuredUrl.replace(/\/$/, '')
   }
 
   return null

@@ -11,6 +11,7 @@
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
+import { Route as TvlFlowImport } from './routes/tvl-flow'
 import { Route as StatsImport } from './routes/stats'
 import { Route as PrivacyImport } from './routes/privacy'
 import { Route as DisclaimerImport } from './routes/disclaimer'
@@ -19,6 +20,12 @@ import { Route as IndexImport } from './routes/index'
 import { Route as VaultsChainIdVaultAddressIndexImport } from './routes/vaults/$chainId/$vaultAddress/index'
 
 // Create/Update Routes
+
+const TvlFlowRoute = TvlFlowImport.update({
+  id: '/tvl-flow',
+  path: '/tvl-flow',
+  getParentRoute: () => rootRoute,
+} as any)
 
 const StatsRoute = StatsImport.update({
   id: '/stats',
@@ -96,6 +103,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StatsImport
       parentRoute: typeof rootRoute
     }
+    '/tvl-flow': {
+      id: '/tvl-flow'
+      path: '/tvl-flow'
+      fullPath: '/tvl-flow'
+      preLoaderRoute: typeof TvlFlowImport
+      parentRoute: typeof rootRoute
+    }
     '/vaults/$chainId/$vaultAddress/': {
       id: '/vaults/$chainId/$vaultAddress/'
       path: '/vaults/$chainId/$vaultAddress'
@@ -114,6 +128,7 @@ export interface FileRoutesByFullPath {
   '/disclaimer': typeof DisclaimerRoute
   '/privacy': typeof PrivacyRoute
   '/stats': typeof StatsRoute
+  '/tvl-flow': typeof TvlFlowRoute
   '/vaults/$chainId/$vaultAddress': typeof VaultsChainIdVaultAddressIndexRoute
 }
 
@@ -123,6 +138,7 @@ export interface FileRoutesByTo {
   '/disclaimer': typeof DisclaimerRoute
   '/privacy': typeof PrivacyRoute
   '/stats': typeof StatsRoute
+  '/tvl-flow': typeof TvlFlowRoute
   '/vaults/$chainId/$vaultAddress': typeof VaultsChainIdVaultAddressIndexRoute
 }
 
@@ -133,6 +149,7 @@ export interface FileRoutesById {
   '/disclaimer': typeof DisclaimerRoute
   '/privacy': typeof PrivacyRoute
   '/stats': typeof StatsRoute
+  '/tvl-flow': typeof TvlFlowRoute
   '/vaults/$chainId/$vaultAddress/': typeof VaultsChainIdVaultAddressIndexRoute
 }
 
@@ -144,6 +161,7 @@ export interface FileRouteTypes {
     | '/disclaimer'
     | '/privacy'
     | '/stats'
+    | '/tvl-flow'
     | '/vaults/$chainId/$vaultAddress'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -152,6 +170,7 @@ export interface FileRouteTypes {
     | '/disclaimer'
     | '/privacy'
     | '/stats'
+    | '/tvl-flow'
     | '/vaults/$chainId/$vaultAddress'
   id:
     | '__root__'
@@ -160,6 +179,7 @@ export interface FileRouteTypes {
     | '/disclaimer'
     | '/privacy'
     | '/stats'
+    | '/tvl-flow'
     | '/vaults/$chainId/$vaultAddress/'
   fileRoutesById: FileRoutesById
 }
@@ -170,6 +190,7 @@ export interface RootRouteChildren {
   DisclaimerRoute: typeof DisclaimerRoute
   PrivacyRoute: typeof PrivacyRoute
   StatsRoute: typeof StatsRoute
+  TvlFlowRoute: typeof TvlFlowRoute
   VaultsChainIdVaultAddressIndexRoute: typeof VaultsChainIdVaultAddressIndexRoute
 }
 
@@ -179,6 +200,7 @@ const rootRouteChildren: RootRouteChildren = {
   DisclaimerRoute: DisclaimerRoute,
   PrivacyRoute: PrivacyRoute,
   StatsRoute: StatsRoute,
+  TvlFlowRoute: TvlFlowRoute,
   VaultsChainIdVaultAddressIndexRoute: VaultsChainIdVaultAddressIndexRoute,
 }
 
@@ -197,6 +219,7 @@ export const routeTree = rootRoute
         "/disclaimer",
         "/privacy",
         "/stats",
+        "/tvl-flow",
         "/vaults/$chainId/$vaultAddress/"
       ]
     },
@@ -214,6 +237,9 @@ export const routeTree = rootRoute
     },
     "/stats": {
       "filePath": "stats.tsx"
+    },
+    "/tvl-flow": {
+      "filePath": "tvl-flow.tsx"
     },
     "/vaults/$chainId/$vaultAddress/": {
       "filePath": "vaults/$chainId/$vaultAddress/index.tsx"

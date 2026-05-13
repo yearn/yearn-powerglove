@@ -437,6 +437,15 @@
   padding: 1rem 1.25rem;
 }
 
+.pg-stats .spot-flow-node-action {
+  color: #9ca3af;
+  transition: color 120ms ease;
+}
+
+.pg-stats .spot-flow-node-action:hover {
+  color: #374151;
+}
+
 .pg-stats .skeleton {
   border-radius: 999px;
   background: linear-gradient(90deg, var(--surface-2), color-mix(in srgb, var(--surface-2) 65%, white), var(--surface-2));

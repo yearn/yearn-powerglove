@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useContext, useEffect, useMemo, useState } from "react";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import type { NameType, Payload, ValueType } from "recharts/types/component/DefaultTooltipContent";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useRootDarkMode } from "@/hooks/useRootDarkMode";
 import { buildBlueShadePalette } from "@/lib/theme-blue-palette";
@@ -29,7 +30,9 @@ function normalizeTvlSummary(data: LegacyTvlSummary): TvlSummary {
   };
 }
 
-const TVL_HISTORY_RUN_ID = 4;
+const TVL_HISTORY_TOP_SERIES_COUNT = 10;
+const TVL_HISTORY_REMAINING_SERIES = "Remaining vaults";
+const TVL_HISTORY_MIN_COMPLETE_SERIES_RATIO = 0.5;
 
 function formatDate(timestamp: number | string): string {
   return new Date(Number(timestamp) * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric" });
@@ -52,6 +55,23 @@ function hasSeriesValue(row: Record<string, unknown>, series: string): boolean {
   return typeof value === "number" && Number.isFinite(value);
 }
 
+function countSeriesValues(row: TvlHistoryRun["chart"][number]): number {
+  return Object.entries(row).filter(([key, value]) => key !== "timestamp" && typeof value === "number" && Number.isFinite(value)).length;
+}
+
+function filterPartialTerminalRows(rows: TvlHistoryRun["chart"], seriesCount: number): TvlHistoryRun["chart"] {
+  if (rows.length < 2 || seriesCount <= 0) return rows;
+
+  const minCompleteSeriesCount = Math.max(1, Math.floor(seriesCount * TVL_HISTORY_MIN_COMPLETE_SERIES_RATIO));
+  let endIndex = rows.length;
+
+  while (endIndex > 1 && countSeriesValues(rows[endIndex - 1]) < minCompleteSeriesCount) {
+    endIndex -= 1;
+  }
+
+  return rows.slice(0, endIndex);
+}
+
 function addZeroStartPoints(rows: TvlHistoryRun["chart"], seriesKeys: string[]): TvlHistoryRun["chart"] {
   const chartRows = rows.map((row) => ({ ...row }));
 
@@ -65,16 +85,131 @@ function addZeroStartPoints(rows: TvlHistoryRun["chart"], seriesKeys: string[]):
   return chartRows;
 }
 
+function getLatestSeriesValue(rows: TvlHistoryRun["chart"], series: string): number {
+  for (let index = rows.length - 1; index >= 0; index -= 1) {
+    const value = rows[index]?.[series];
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+  }
+
+  return 0;
+}
+
+function buildTopTvlHistoryChart(
+  rows: TvlHistoryRun["chart"],
+  seriesKeys: string[],
+): { rows: TvlHistoryRun["chart"]; series: string[] } {
+  const rankedSeries = [...seriesKeys].sort((a, b) => getLatestSeriesValue(rows, b) - getLatestSeriesValue(rows, a));
+  const topSeries = rankedSeries.slice(0, TVL_HISTORY_TOP_SERIES_COUNT);
+  const otherSeries = rankedSeries.slice(TVL_HISTORY_TOP_SERIES_COUNT);
+  const hasOtherSeries = otherSeries.length > 0;
+
+  const chartRows = rows.map((row) => {
+    const nextRow: TvlHistoryRun["chart"][number] = { timestamp: row.timestamp };
+
+    for (const series of topSeries) {
+      if (hasSeriesValue(row, series)) nextRow[series] = row[series];
+    }
+
+    if (hasOtherSeries) {
+      const otherTvl = otherSeries.reduce((sum, series) => {
+        const value = row[series];
+        return typeof value === "number" && Number.isFinite(value) ? sum + value : sum;
+      }, 0);
+
+      if (otherTvl > 0) nextRow[TVL_HISTORY_REMAINING_SERIES] = otherTvl;
+    }
+
+    return nextRow;
+  });
+
+  return {
+    rows: chartRows,
+    series: hasOtherSeries ? [...topSeries, TVL_HISTORY_REMAINING_SERIES] : topSeries,
+  };
+}
+
+function getStackRenderSeries(seriesKeys: string[]): string[] {
+  const topSeries = seriesKeys.filter((series) => series !== TVL_HISTORY_REMAINING_SERIES);
+  const hasRemainingVaults = seriesKeys.includes(TVL_HISTORY_REMAINING_SERIES);
+  return [...(hasRemainingVaults ? [TVL_HISTORY_REMAINING_SERIES] : []), ...topSeries.slice().reverse()];
+}
+
+function getNumberRecordValue(record: Record<string, unknown>, key: string): number | null {
+  const value = record[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function getCanonicalTotalByTimestamp(run: TvlHistoryRun | null): Record<number, number> {
+  if (!run) return {};
+
+  const currentSnapshot = run.meta.currentSnapshot;
+  if (!currentSnapshot || typeof currentSnapshot !== "object") return {};
+
+  const snapshotRecord = currentSnapshot as Record<string, unknown>;
+  const timestamp = getNumberRecordValue(snapshotRecord, "timestamp");
+  const adjustedTotal = getNumberRecordValue(snapshotRecord, "adjustedTotalTvlUsd") ?? getNumberRecordValue(run.meta, "adjustedTotalTvlUsd");
+
+  return timestamp && adjustedTotal !== null ? { [timestamp]: adjustedTotal } : {};
+}
+
+function TvlHistoryTooltip({
+  active,
+  label,
+  payload,
+  canonicalTotalByTimestamp,
+}: {
+  active?: boolean;
+  label?: number | string;
+  payload?: Payload<ValueType, NameType>[];
+  canonicalTotalByTimestamp: Record<number, number>;
+}) {
+  if (!active || !payload?.length) return null;
+
+  const rows = payload
+    .filter((item) => typeof item.value === "number" && Number.isFinite(item.value))
+    .map((item) => ({
+      name: String(item.name ?? item.dataKey ?? ""),
+      value: item.value as number,
+      color: item.color,
+    }))
+    .filter((item) => item.value > 0);
+  const summedTotal = rows.reduce((sum, item) => sum + item.value, 0);
+  const timestamp = Number(label);
+  const canonicalTotal = Number.isFinite(timestamp) ? canonicalTotalByTimestamp[timestamp] : undefined;
+  const total = canonicalTotal ?? summedTotal;
+
+  return (
+    <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: "0.65rem 0.75rem", minWidth: 220 }}>
+      <div className="mb-2 text-xs font-medium text-foreground">{label ? formatFullDate(label) : "TVL"}</div>
+      <div className="mb-2 flex items-center justify-between gap-4 border-b border-border pb-2 text-xs">
+        <span className="text-muted-foreground">Total TVL</span>
+        <span className="font-semibold tabular-nums text-foreground">{fmt(total)}</span>
+      </div>
+      <div className="flex max-h-64 flex-col gap-1 overflow-y-auto">
+        {rows.map((item) => (
+          <div key={item.name} className="flex items-center justify-between gap-4 text-xs">
+            <span className="inline-flex min-w-0 items-center gap-1.5 text-muted-foreground">
+              <span className="legend-dot" style={{ background: item.color }} />
+              <span className="truncate">{item.name}</span>
+            </span>
+            <span className="shrink-0 tabular-nums text-foreground">{fmt(item.value)}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function TvlOverview() {
   const { chainFilter, setLastFetchedAt } = useContext(StatsContext);
   const isDark = useRootDarkMode();
   const { data: rawData, loading, error, fetchedAt, retry } = useFetch<LegacyTvlSummary>("/api/tvl");
   const {
-    data: tvlHistory,
+    data: rawTvlHistory,
     loading: tvlHistoryLoading,
     error: tvlHistoryError,
     retry: retryTvlHistory,
-  } = useFetch<TvlHistoryRun>(`/api/tvl/history/runs/${TVL_HISTORY_RUN_ID}`);
+  } = useFetch<TvlHistoryRun>("/api/tvl/history/runs/latest");
   const [isRetiredVaultsOpen, setIsRetiredVaultsOpen] = useState(false);
   const [isTvlBreakdownOpen, setIsTvlBreakdownOpen] = useState(false);
   const data = useMemo(() => (rawData ? normalizeTvlSummary(rawData) : null), [rawData]);
@@ -116,14 +251,29 @@ export function TvlOverview() {
 
   const retiredVaults = useMemo(() => data?.retiredVaults ?? [], [data]);
   const retiredVaultCountIncluded = retiredVaults.length;
-  const tvlHistorySeries = tvlHistory?.series ?? [];
-  const tvlHistoryRows = useMemo(
-    () => (tvlHistory ? addZeroStartPoints(tvlHistory.chart, tvlHistorySeries) : []),
-    [tvlHistory, tvlHistorySeries],
+  const tvlHistoryChart = useMemo(() => {
+    if (!rawTvlHistory) return { rows: [], series: [] };
+    const completeRows = filterPartialTerminalRows(rawTvlHistory.chart, rawTvlHistory.series.length);
+    const topTvlHistory = buildTopTvlHistoryChart(completeRows, rawTvlHistory.series);
+    return {
+      rows: addZeroStartPoints(topTvlHistory.rows, topTvlHistory.series),
+      series: topTvlHistory.series,
+    };
+  }, [rawTvlHistory]);
+  const tvlHistoryRows = tvlHistoryChart.rows;
+  const tvlHistorySeries = tvlHistoryChart.series;
+  const tvlHistoryStackSeries = useMemo(() => getStackRenderSeries(tvlHistorySeries), [tvlHistorySeries]);
+  const tvlHistoryCanonicalTotalByTimestamp = useMemo(() => getCanonicalTotalByTimestamp(rawTvlHistory), [rawTvlHistory]);
+  const tvlHistoryColorBySeries = useMemo(
+    () =>
+      Object.fromEntries(
+        tvlHistorySeries.map((series, index) => [series, tvlHistoryColors[index % tvlHistoryColors.length]]),
+      ),
+    [tvlHistoryColors, tvlHistorySeries],
   );
   const hasTvlHistory = tvlHistoryRows.length > 0 && tvlHistorySeries.length > 0;
-  const tvlHistoryRangeLabel = tvlHistory ? `${formatFullDate(tvlHistory.range.from)} - ${formatFullDate(tvlHistory.range.to)}` : "-";
-  const warningCount = tvlHistory ? getWarningCount(tvlHistory.meta) : 0;
+  const tvlHistoryRangeLabel = rawTvlHistory ? `${formatFullDate(rawTvlHistory.range.from)} - ${formatFullDate(rawTvlHistory.range.to)}` : "-";
+  const warningCount = rawTvlHistory ? getWarningCount(rawTvlHistory.meta) : 0;
 
   if (loading) return <SkeletonCards count={1} />;
   if (error)
@@ -163,13 +313,13 @@ export function TvlOverview() {
         <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
           <div>
             <h2>TVL History</h2>
-            <div className="sub">Saved run grouped by {tvlHistory?.groupBy ?? "series"}</div>
+            <div className="sub">Saved run grouped by {rawTvlHistory?.groupBy ?? "series"}; top 10 by current TVL</div>
           </div>
-          {tvlHistory && (
+          {rawTvlHistory && (
             <div className="flex flex-wrap justify-end gap-x-4 gap-y-1 text-xs text-muted-foreground">
-              <span>Run #{tvlHistory.id}</span>
-              <span>{tvlHistory.interval}</span>
-              <span>{tvlHistory.pointCount.toLocaleString()} points</span>
+              <span>Run #{rawTvlHistory.id}</span>
+              <span>{rawTvlHistory.interval}</span>
+              <span>{rawTvlHistory.pointCount.toLocaleString()} points</span>
               <span>{tvlHistoryRangeLabel}</span>
               <span>{warningCount} warnings</span>
             </div>
@@ -216,19 +366,17 @@ export function TvlOverview() {
                     width={60}
                   />
                   <Tooltip
-                    contentStyle={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8 }}
-                    labelFormatter={(value: number) => formatFullDate(value)}
-                    formatter={(value: number, name: string) => [fmt(value), name]}
+                    content={<TvlHistoryTooltip canonicalTotalByTimestamp={tvlHistoryCanonicalTotalByTimestamp} />}
                     cursor={{ stroke: "rgba(17, 24, 39, 0.25)" }}
                   />
-                  {tvlHistorySeries.map((series, index) => (
+                  {tvlHistoryStackSeries.map((series) => (
                     <Area
                       key={series}
                       type="monotone"
                       dataKey={series}
                       stackId="tvl"
-                      stroke={tvlHistoryColors[index % tvlHistoryColors.length]}
-                      fill={tvlHistoryColors[index % tvlHistoryColors.length]}
+                      stroke={tvlHistoryColorBySeries[series]}
+                      fill={tvlHistoryColorBySeries[series]}
                       fillOpacity={0.35}
                       strokeWidth={1.5}
                       connectNulls
@@ -238,9 +386,9 @@ export function TvlOverview() {
               </ResponsiveContainer>
             </div>
             <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground">
-              {tvlHistorySeries.map((series, index) => (
+              {tvlHistorySeries.map((series) => (
                 <span key={series} className="inline-flex items-center gap-1.5">
-                  <span className="legend-dot" style={{ background: tvlHistoryColors[index % tvlHistoryColors.length] }} />
+                  <span className="legend-dot" style={{ background: tvlHistoryColorBySeries[series] }} />
                   {series}
                 </span>
               ))}
