@@ -1,9 +1,22 @@
 import { queryEnvio } from '@/lib/envio-client'
-import type { VaultActivityEvent, VaultEventType, VaultManagementEvent, VaultUserEvent } from '@/types/vaultEventTypes'
+import type {
+  VaultActivityEvent,
+  VaultEventType,
+  VaultManagementEvent,
+  VaultUserEvent,
+  VaultUserEventType
+} from '@/types/vaultEventTypes'
 
 const ENVIO_PAGE_SIZE = 250
+const ENVIO_TRANSACTION_HASH_CHUNK_SIZE = 100
 
 const VAULT_ADDRESS_WHERE = '{ vaultAddress: { _eq: $vaultAddress }, chainId: { _eq: $chainId } }'
+const VAULT_ADDRESS_AND_TRANSACTION_HASHES_WHERE = `{
+  _and: [
+    { vaultAddress: { _eq: $vaultAddress }, chainId: { _eq: $chainId } }
+    { transactionHash: { _in: $transactionHashes } }
+  ]
+}`
 const TIMELOCK_WHERE = `{
   _and: [
     { chainId: { _eq: $chainId } }
@@ -21,6 +34,12 @@ interface EnvioEventDefinition<T extends VaultActivityEvent> {
   where: string
   fields: readonly string[]
   map: (row: RawEventRecord) => T
+}
+
+export interface VaultEventsPage<T extends VaultActivityEvent> {
+  events: T[]
+  hasMore: boolean
+  nextOffset: number
 }
 
 function asString(value: unknown): string | undefined {
@@ -154,6 +173,18 @@ const USER_EVENT_DEFINITIONS: readonly EnvioEventDefinition<VaultUserEvent>[] = 
     })
   }
 ] as const
+
+const USER_EVENT_DEFINITIONS_BY_TYPE = new Map<VaultUserEventType, EnvioEventDefinition<VaultUserEvent>>(
+  USER_EVENT_DEFINITIONS.map((definition) => [definition.type, definition])
+)
+
+const MANAGEMENT_CONTEXT_USER_EVENT_DEFINITIONS: readonly EnvioEventDefinition<VaultUserEvent>[] =
+  USER_EVENT_DEFINITIONS.filter((definition) => definition.type === 'deposit' || definition.type === 'withdraw').map(
+    (definition) => ({
+      ...definition,
+      where: VAULT_ADDRESS_AND_TRANSACTION_HASHES_WHERE
+    })
+  )
 
 const MANAGEMENT_EVENT_DEFINITIONS: readonly EnvioEventDefinition<VaultManagementEvent>[] = [
   {
@@ -922,7 +953,8 @@ export const MANAGEMENT_EVENT_TYPE_OPTIONS = [
 
 function buildPaginatedEventQuery(
   queryName: string,
-  definitions: readonly EnvioEventDefinition<VaultActivityEvent>[]
+  definitions: readonly EnvioEventDefinition<VaultActivityEvent>[],
+  extraVariables = ''
 ): string {
   const sections = definitions
     .map(
@@ -939,10 +971,56 @@ function buildPaginatedEventQuery(
     .join('\n')
 
   return `
-    query ${queryName}($vaultAddress: String!, $chainId: Int!, $limit: Int!, $offset: Int!) {
+    query ${queryName}($vaultAddress: String!, $chainId: Int!, $limit: Int!, $offset: Int!${extraVariables}) {
       ${sections}
     }
   `
+}
+
+async function fetchEnvioEventsPage<T extends VaultActivityEvent>(
+  queryName: string,
+  definitions: readonly EnvioEventDefinition<T>[],
+  vaultAddress: string,
+  chainId: number,
+  offset = 0,
+  limit = ENVIO_PAGE_SIZE,
+  extraVariables: Record<string, unknown> = {},
+  extraQueryVariables = ''
+): Promise<VaultEventsPage<T>> {
+  const query = buildPaginatedEventQuery(
+    queryName,
+    definitions as readonly EnvioEventDefinition<VaultActivityEvent>[],
+    extraQueryVariables
+  )
+  const events: T[] = []
+
+  const data = await queryEnvio<Record<string, RawEventRecord[]>>(query, {
+    vaultAddress,
+    chainId,
+    limit,
+    offset,
+    ...extraVariables
+  })
+
+  let hasMore = false
+
+  for (const definition of definitions) {
+    const rows = Array.isArray(data[definition.alias]) ? data[definition.alias] : []
+
+    for (const row of rows) {
+      events.push(definition.map(row))
+    }
+
+    if (rows.length >= limit) {
+      hasMore = true
+    }
+  }
+
+  return {
+    events: sortEventsChronologically(events),
+    hasMore,
+    nextOffset: offset + limit
+  }
 }
 
 async function fetchPaginatedEnvioEvents<T extends VaultActivityEvent>(
@@ -951,34 +1029,17 @@ async function fetchPaginatedEnvioEvents<T extends VaultActivityEvent>(
   vaultAddress: string,
   chainId: number
 ): Promise<T[]> {
-  const query = buildPaginatedEventQuery(queryName, definitions as readonly EnvioEventDefinition<VaultActivityEvent>[])
   const events: T[] = []
 
-  for (let offset = 0; ; offset += ENVIO_PAGE_SIZE) {
-    const data = await queryEnvio<Record<string, RawEventRecord[]>>(query, {
-      vaultAddress,
-      chainId,
-      limit: ENVIO_PAGE_SIZE,
-      offset
-    })
+  for (let offset = 0; ; ) {
+    const page = await fetchEnvioEventsPage(queryName, definitions, vaultAddress, chainId, offset)
+    events.push(...page.events)
 
-    let hasMore = false
-
-    for (const definition of definitions) {
-      const rows = Array.isArray(data[definition.alias]) ? data[definition.alias] : []
-
-      for (const row of rows) {
-        events.push(definition.map(row))
-      }
-
-      if (rows.length >= ENVIO_PAGE_SIZE) {
-        hasMore = true
-      }
-    }
-
-    if (!hasMore) {
+    if (!page.hasMore) {
       break
     }
+
+    offset = page.nextOffset
   }
 
   return sortEventsChronologically(events)
@@ -1011,7 +1072,7 @@ export function sortEventsChronologically<T extends VaultActivityEvent>(events: 
   })
 }
 
-function dedupEvents(events: VaultUserEvent[]): VaultUserEvent[] {
+export function dedupVaultUserEvents(events: VaultUserEvent[]): VaultUserEvent[] {
   const seen = new Map<string, { index: number; priority: number }>()
   const deduped: VaultUserEvent[] = []
 
@@ -1042,7 +1103,94 @@ function dedupEvents(events: VaultUserEvent[]): VaultUserEvent[] {
 
 export async function fetchVaultUserEvents(vaultAddress: string, chainId: number): Promise<VaultUserEvent[]> {
   const events = await fetchPaginatedEnvioEvents('GetVaultUserEvents', USER_EVENT_DEFINITIONS, vaultAddress, chainId)
-  return dedupEvents(events)
+  return dedupVaultUserEvents(events)
+}
+
+export async function fetchVaultUserEventsPage(
+  vaultAddress: string,
+  chainId: number,
+  offset = 0
+): Promise<VaultEventsPage<VaultUserEvent>> {
+  const page = await fetchEnvioEventsPage('GetVaultUserEvents', USER_EVENT_DEFINITIONS, vaultAddress, chainId, offset)
+  return {
+    ...page,
+    events: dedupVaultUserEvents(page.events)
+  }
+}
+
+export async function fetchVaultUserEventsPageByType(
+  vaultAddress: string,
+  chainId: number,
+  eventType: VaultUserEventType,
+  offset = 0
+): Promise<VaultEventsPage<VaultUserEvent>> {
+  const definition = USER_EVENT_DEFINITIONS_BY_TYPE.get(eventType)
+  if (!definition) {
+    throw new Error(`Unsupported vault user event type: ${eventType}`)
+  }
+
+  const page = await fetchEnvioEventsPage('GetVaultUserEventsByType', [definition], vaultAddress, chainId, offset)
+  return {
+    ...page,
+    events: dedupVaultUserEvents(page.events)
+  }
+}
+
+export async function fetchVaultUserEventsForTransactions(
+  vaultAddress: string,
+  chainId: number,
+  transactionHashes: string[]
+): Promise<VaultUserEvent[]> {
+  const normalizedTransactionHashesByKey = new Map<string, string>()
+
+  for (const transactionHash of transactionHashes) {
+    if (!transactionHash) {
+      continue
+    }
+
+    normalizedTransactionHashesByKey.set(transactionHash.toLowerCase(), transactionHash)
+  }
+
+  const normalizedTransactionHashes = [...normalizedTransactionHashesByKey.values()]
+  if (normalizedTransactionHashes.length === 0) {
+    return []
+  }
+
+  const events: VaultUserEvent[] = []
+
+  for (
+    let chunkStart = 0;
+    chunkStart < normalizedTransactionHashes.length;
+    chunkStart += ENVIO_TRANSACTION_HASH_CHUNK_SIZE
+  ) {
+    const transactionHashChunk = normalizedTransactionHashes.slice(
+      chunkStart,
+      chunkStart + ENVIO_TRANSACTION_HASH_CHUNK_SIZE
+    )
+
+    for (let offset = 0; ; ) {
+      const page = await fetchEnvioEventsPage(
+        'GetVaultUserEventsForTransactions',
+        MANAGEMENT_CONTEXT_USER_EVENT_DEFINITIONS,
+        vaultAddress,
+        chainId,
+        offset,
+        ENVIO_PAGE_SIZE,
+        { transactionHashes: transactionHashChunk },
+        ', $transactionHashes: [String!]!'
+      )
+
+      events.push(...page.events)
+
+      if (!page.hasMore) {
+        break
+      }
+
+      offset = page.nextOffset
+    }
+  }
+
+  return dedupVaultUserEvents(sortEventsChronologically(events))
 }
 
 export async function fetchVaultManagementEvents(
@@ -1050,6 +1198,14 @@ export async function fetchVaultManagementEvents(
   chainId: number
 ): Promise<VaultManagementEvent[]> {
   return fetchPaginatedEnvioEvents('GetVaultManagementEvents', MANAGEMENT_EVENT_DEFINITIONS, vaultAddress, chainId)
+}
+
+export function fetchVaultManagementEventsPage(
+  vaultAddress: string,
+  chainId: number,
+  offset = 0
+): Promise<VaultEventsPage<VaultManagementEvent>> {
+  return fetchEnvioEventsPage('GetVaultManagementEvents', MANAGEMENT_EVENT_DEFINITIONS, vaultAddress, chainId, offset)
 }
 
 export const MANAGEMENT_EVENT_TYPES = MANAGEMENT_EVENT_DEFINITIONS.map((definition) => definition.type)

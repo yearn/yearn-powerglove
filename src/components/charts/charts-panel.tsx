@@ -20,7 +20,6 @@ import {
   DialogTitle,
   DialogTrigger
 } from '@/components/ui/dialog'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useIsMobile } from '@/components/ui/use-mobile'
 import { ChartErrorBoundary } from '@/components/utils/ErrorBoundary'
 import type { aprApyChartData, ppsChartData, tvlChartData } from '@/types/dataTypes'
@@ -35,22 +34,19 @@ type ChartData = {
 
 type ChartTab = 'historical-apy' | 'historical-pps' | 'historical-tvl'
 
-const chartTabs: Array<{
+const chartSections: Array<{
   value: ChartTab
   label: string
-  mobileLabel: string
 }> = [
   {
     value: 'historical-apy',
-    label: 'Historical Performance',
-    mobileLabel: 'Performance'
+    label: 'Historical Performance'
   },
   {
     value: 'historical-pps',
-    label: 'Historical Share Growth',
-    mobileLabel: 'Share Growth'
+    label: 'Historical Share Growth'
   },
-  { value: 'historical-tvl', label: 'Historical TVL', mobileLabel: 'TVL' }
+  { value: 'historical-tvl', label: 'Historical TVL' }
 ]
 
 const timeframes = [
@@ -64,7 +60,6 @@ type Timeframe = (typeof timeframes)[number]
 
 export function ChartsPanel(data: ChartData) {
   const isMobile = useIsMobile()
-  const [activeTab, setActiveTab] = useState<ChartTab>('historical-apy')
   const { aprApyData, tvlData, ppsData, isLoading = false, hasErrors = false } = data
   const [timeframe, setTimeframe] = useState<Timeframe>(timeframes[3])
   const [apyVisibleSeries, setApyVisibleSeries] = useState<APYVisibleSeries>(() =>
@@ -82,7 +77,7 @@ export function ChartsPanel(data: ChartData) {
 
   if (hasErrors) {
     return (
-      <div className="bg-white sm:border-x sm:border-border">
+      <div className="border-x border-t border-border bg-white">
         <div className="flex h-96 items-center justify-center">
           <div className="text-red-500">Error loading chart data</div>
         </div>
@@ -129,7 +124,6 @@ export function ChartsPanel(data: ChartData) {
     }
   } satisfies Record<ChartTab, { title: string; description: string; mobileDescription: string }>
 
-  const activeChartInfo = chartInfo[activeTab]
   const showGhostedOverlay = !isMobile
   const chartHeightClassName = isMobile ? 'h-[260px]' : 'h-[320px] lg:h-[400px]'
   const desktopAlignedChartBottom = 16
@@ -139,8 +133,8 @@ export function ChartsPanel(data: ChartData) {
     'historical-tvl': 68
   } satisfies Record<ChartTab, number>
 
-  const chartBody = (() => {
-    switch (activeTab) {
+  const renderChartBody = (chartType: ChartTab) => {
+    switch (chartType) {
       case 'historical-apy':
         return (
           <FixedHeightChartContainer heightClassName={chartHeightClassName}>
@@ -185,7 +179,7 @@ export function ChartsPanel(data: ChartData) {
                     hideAxes={true}
                     hideTooltip={true}
                     chartMargin={{ bottom: desktopAlignedChartBottom }}
-                    yAxisWidth={chartOverlayYAxisWidthByTab[activeTab]}
+                    yAxisWidth={chartOverlayYAxisWidthByTab[chartType]}
                     defaultVisibleSeries={{
                       sevenDayApy: false,
                       thirtyDayApy: false,
@@ -214,7 +208,7 @@ export function ChartsPanel(data: ChartData) {
                     hideAxes={true}
                     hideTooltip={true}
                     chartMargin={{ bottom: desktopAlignedChartBottom }}
-                    yAxisWidth={chartOverlayYAxisWidthByTab[activeTab]}
+                    yAxisWidth={chartOverlayYAxisWidthByTab[chartType]}
                     defaultVisibleSeries={{
                       sevenDayApy: false,
                       thirtyDayApy: true,
@@ -231,21 +225,7 @@ export function ChartsPanel(data: ChartData) {
       default:
         return null
     }
-  })()
-
-  const mobileChartDescription = (
-    <div className="space-y-1">
-      <div className="text-sm font-medium">{activeChartInfo.title}</div>
-      <div className="text-xs text-gray-500">{activeChartInfo.mobileDescription}</div>
-    </div>
-  )
-
-  const desktopChartDescription = (
-    <div className="space-y-1">
-      <div className="text-sm font-medium">{activeChartInfo.title}</div>
-      <div className="text-xs text-gray-500">{activeChartInfo.description}</div>
-    </div>
-  )
+  }
 
   const mobileChartControls = (
     <div className="flex flex-col gap-4">
@@ -263,7 +243,7 @@ export function ChartsPanel(data: ChartData) {
           <DialogContent className="max-w-[calc(100vw-2rem)] rounded-lg p-4 sm:max-w-sm">
             <DialogHeader>
               <DialogTitle>Timeframe</DialogTitle>
-              <DialogDescription>Choose the time window for the active chart.</DialogDescription>
+              <DialogDescription>Choose the time window for all charts.</DialogDescription>
             </DialogHeader>
             <div className="grid gap-2">
               {timeframes.map((tf) => (
@@ -291,19 +271,16 @@ export function ChartsPanel(data: ChartData) {
           <DialogTrigger asChild>
             <Button
               variant="outline"
-              disabled={activeTab !== 'historical-apy'}
-              className="flex h-auto flex-col items-start rounded-md border-border px-3 py-2 text-left disabled:opacity-40"
+              className="flex h-auto flex-col items-start rounded-md border-border px-3 py-2 text-left"
             >
               <span className="text-[11px] font-medium uppercase tracking-[0.08em] text-gray-500">Data</span>
-              <span className="text-sm text-foreground">
-                {activeTab === 'historical-apy' ? `${selectedApySeriesCount} series` : 'Unavailable'}
-              </span>
+              <span className="text-sm text-foreground">{selectedApySeriesCount} series</span>
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-[calc(100vw-2rem)] rounded-lg p-4 sm:max-w-sm">
             <DialogHeader>
               <DialogTitle>Data</DialogTitle>
-              <DialogDescription>Choose which APY series are visible on the chart.</DialogDescription>
+              <DialogDescription>Choose which APY series are visible on the performance chart.</DialogDescription>
             </DialogHeader>
             <APYSeriesSelector
               visibleSeries={apyVisibleSeries}
@@ -354,97 +331,36 @@ export function ChartsPanel(data: ChartData) {
     </div>
   )
 
-  const chartTabContent = (
-    <>
-      <TabsContent value="historical-apy" className="mt-0">
-        {activeTab === 'historical-apy' ? chartBody : null}
-      </TabsContent>
-      <TabsContent value="historical-pps" className="mt-0">
-        {activeTab === 'historical-pps' ? chartBody : null}
-      </TabsContent>
-      <TabsContent value="historical-tvl" className="mt-0">
-        {activeTab === 'historical-tvl' ? chartBody : null}
-      </TabsContent>
-    </>
-  )
+  const chartControls = isMobile ? mobileChartControls : desktopChartControls
 
-  if (isMobile) {
+  const renderChartSection = (chartType: ChartTab) => {
+    const info = chartInfo[chartType]
+    const description = isMobile ? info.mobileDescription : info.description
+
     return (
-      <div className="bg-white border-x border-border">
-        <Tabs
-          value={activeTab}
-          className="w-full"
-          onValueChange={(value) => {
-            const nextTab = value as ChartTab
-            setActiveTab(nextTab)
-            if (nextTab !== 'historical-apy') {
-              setIsDataDialogOpen(false)
-            }
-          }}
-        >
-          <div className="border-b border-border">
-            <div className="px-4 pt-4 sm:px-6">
-              <TabsList className="grid h-auto w-full grid-cols-3 gap-0 bg-transparent p-0">
-                {chartTabs.map((tab) => (
-                  <TabsTrigger
-                    key={tab.value}
-                    value={tab.value}
-                    className="flex min-w-0 rounded-none border border-border px-2 py-3 text-center text-sm data-[state=active]:border-[#0657f9] data-[state=active]:bg-[#0657f9]/5 data-[state=active]:text-foreground data-[state=active]:shadow-none sm:border-x-0 sm:border-t-0 sm:border-b-2 sm:px-4"
-                  >
-                    {tab.mobileLabel}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </div>
+      <section key={chartType} className="border-b border-border last:border-b-0">
+        <div className="space-y-4 p-4 sm:p-6">
+          <div className="space-y-1">
+            <h3 className="text-sm font-medium text-[#111111]">{info.title}</h3>
+            <p className="text-xs text-gray-500">{description}</p>
           </div>
-          <div className="space-y-4 p-4 sm:p-6">
-            <div className="border-b border-border pb-4">{mobileChartDescription}</div>
-            {chartTabContent}
-            {mobileChartControls}
-          </div>
-        </Tabs>
-      </div>
+          {renderChartBody(chartType)}
+          {chartType === 'historical-apy' && !isMobile ? desktopApySeriesControls : null}
+        </div>
+      </section>
     )
   }
 
   return (
-    <div className="bg-white border-x border-border">
-      <Tabs
-        value={activeTab}
-        className="w-full"
-        onValueChange={(value) => {
-          const nextTab = value as ChartTab
-          setActiveTab(nextTab)
-          if (nextTab !== 'historical-apy') {
-            setIsDataDialogOpen(false)
-          }
-        }}
-      >
-        <div className="border-b border-border">
-          <div className="px-4 pt-4 sm:px-6">
-            <TabsList className="grid h-auto w-fit grid-cols-3 gap-0 bg-transparent p-0">
-              {chartTabs.map((tab) => (
-                <TabsTrigger
-                  key={tab.value}
-                  value={tab.value}
-                  className="rounded-none border-b-2 border-transparent px-4 py-2 text-left text-sm data-[state=active]:border-[#0657f9] data-[state=active]:bg-transparent data-[state=active]:shadow-none"
-                >
-                  {tab.label}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </div>
+    <div className="border-x border-t border-border bg-white">
+      <div className="border-b border-border p-4 sm:flex sm:items-center sm:justify-between sm:gap-4 sm:p-6">
+        <div>
+          <h2 className="text-base font-semibold text-[#111111]">Charts</h2>
+          <p className="mt-1 text-xs text-gray-500">Historical performance, share growth, and TVL.</p>
         </div>
-
-        <div className="space-y-0 p-4 sm:p-6">
-          <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div className="space-y-1">{desktopChartDescription}</div>
-            <div className="shrink-0">{desktopChartControls}</div>
-          </div>
-          {chartTabContent}
-          {activeTab === 'historical-apy' && desktopApySeriesControls}
-        </div>
-      </Tabs>
+        <div className="mt-4 sm:mt-0 sm:shrink-0">{chartControls}</div>
+      </div>
+      {chartSections.map((section) => renderChartSection(section.value))}
     </div>
   )
 }

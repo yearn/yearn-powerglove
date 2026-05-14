@@ -17,7 +17,7 @@ const loadingRowKeys = [
 export const VaultEventsLoadingState: React.FC<VaultEventsLoadingStateProps> = React.memo(({ loadingState }) => {
   return (
     <div className="px-4 py-4">
-      <div className="relative overflow-hidden rounded-lg border border-border bg-white">
+      <div className="relative overflow-hidden bg-white">
         <div className="divide-y divide-border opacity-60">
           {loadingRowKeys.map((rowKey) => (
             <div key={rowKey} className="flex items-center gap-3 px-4 py-3">
