@@ -6,12 +6,15 @@ import { defineConfig } from 'vite'
 const allowedHosts = ['localhost', '127.0.0.1', 'dev-vm.tail197cc7.ts.net']
 const yearnMetricsApiTarget =
   process.env.VITE_YEARN_METRICS_API_TARGET || process.env.VITE_PUBLIC_YEARN_METRICS_API_URL || 'http://127.0.0.1:3456'
-const yearnMetricsApiProxy = {
-  '/api/tvl': {
-    target: yearnMetricsApiTarget,
-    changeOrigin: true
-  }
-}
+const yearnMetricsApiProxy = Object.fromEntries(
+  ['/api/audit', '/api/comparison', '/api/fees', '/api/profitability', '/api/tvl'].map((route) => [
+    route,
+    {
+      target: yearnMetricsApiTarget,
+      changeOrigin: true
+    }
+  ])
+)
 
 // https://vite.dev/config/
 export default defineConfig({
