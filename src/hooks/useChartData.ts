@@ -237,7 +237,16 @@ export function useChartData({
           aprNet: typeof report.apr?.net === 'number' && Number.isFinite(report.apr.net) ? report.apr.net : null
         }
       })
-      .filter((report): report is { time: number; reportProfitUsd: number | null; reportFeesUsd: number | null; aprNet: number | null } => report !== null)
+      .filter(
+        (
+          report
+        ): report is {
+          time: number
+          reportProfitUsd: number | null
+          reportFeesUsd: number | null
+          aprNet: number | null
+        } => report !== null
+      )
       .sort((a, b) => a.time - b.time)
 
     const transformedVaultEarningsData: vaultEarningsChartData = []
@@ -288,7 +297,9 @@ export function useChartData({
           reportFees
         }
       })
-      .filter((report): report is { time: number; reportProfit: number | null; reportFees: number | null } => report !== null)
+      .filter(
+        (report): report is { time: number; reportProfit: number | null; reportFees: number | null } => report !== null
+      )
       .sort((a, b) => a.time - b.time)
 
     let cumulativeProfit = 0
@@ -325,5 +336,17 @@ export function useChartData({
       transformedVaultEarningsData,
       transformedVaultEventProfitData
     }
-  }, [apyWeeklyData, apyMonthlyData, aprOracleAprData, tvlData, underlyingTvlData, ppsData, reportHistoryData, managementEventsData, assetDecimals, isLoading, hasErrors])
+  }, [
+    apyWeeklyData,
+    apyMonthlyData,
+    aprOracleAprData,
+    tvlData,
+    underlyingTvlData,
+    ppsData,
+    reportHistoryData,
+    managementEventsData,
+    assetDecimals,
+    isLoading,
+    hasErrors
+  ])
 }

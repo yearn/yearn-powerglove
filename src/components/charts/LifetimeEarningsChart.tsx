@@ -40,7 +40,11 @@ const LifetimeEarningsChart: React.FC<LifetimeEarningsChartProps> = React.memo(
     const primaryLabel = hasGainSeries ? 'Cumulative vault profits' : 'Cumulative protocol fees'
 
     if (filteredData.length === 0 || (!hasGainSeries && !hasFeesSeries)) {
-      return <div className="flex h-full items-center justify-center text-sm text-muted-foreground">No report history yet.</div>
+      return (
+        <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+          No report history yet.
+        </div>
+      )
     }
 
     return (

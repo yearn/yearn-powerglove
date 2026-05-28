@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type PointerEvent } from 'react'
+import { type PointerEvent, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { powergloveVaultPath, shortAddr, useFetch } from './hooks'
 import './styles.css'
 
@@ -81,7 +81,7 @@ const MOCK_NODES: SpotFlowNode[] = [
     category: 'v3',
     rawTvlUsd: 27_885_742.320085265,
     externalTvlUsd: 27_885_742.320085265,
-    isRetired: false,
+    isRetired: false
   },
   {
     id: 'usdc-2',
@@ -92,7 +92,7 @@ const MOCK_NODES: SpotFlowNode[] = [
     category: 'v3',
     rawTvlUsd: 1_167_684.2699072566,
     externalTvlUsd: 1_167_684.2699072566,
-    isRetired: false,
+    isRetired: false
   },
   {
     id: 'usdc-1-idle-usdc',
@@ -103,7 +103,7 @@ const MOCK_NODES: SpotFlowNode[] = [
     category: 'strategy',
     rawTvlUsd: 4_842.017439,
     externalTvlUsd: 4_842.017439,
-    isRetired: false,
+    isRetired: false
   },
   {
     id: 'usdc-2-idle-usdc',
@@ -114,7 +114,7 @@ const MOCK_NODES: SpotFlowNode[] = [
     category: 'strategy',
     rawTvlUsd: 169_500.982231,
     externalTvlUsd: 169_500.982231,
-    isRetired: false,
+    isRetired: false
   },
   {
     id: 'spark-usdc-lender',
@@ -125,7 +125,7 @@ const MOCK_NODES: SpotFlowNode[] = [
     category: 'strategy',
     rawTvlUsd: 484_496.5870153263,
     externalTvlUsd: 484_496.5870153263,
-    isRetired: false,
+    isRetired: false
   },
   {
     id: 'usdc-to-usds',
@@ -136,7 +136,7 @@ const MOCK_NODES: SpotFlowNode[] = [
     category: 'strategy',
     rawTvlUsd: 0,
     externalTvlUsd: 0,
-    isRetired: false,
+    isRetired: false
   },
   {
     id: 'usdc-to-susds',
@@ -147,7 +147,7 @@ const MOCK_NODES: SpotFlowNode[] = [
     category: 'strategy',
     rawTvlUsd: 27_396_850.684327465,
     externalTvlUsd: 27_396_850.684327465,
-    isRetired: false,
+    isRetired: false
   },
   {
     id: 'morpho-yearn-usdc',
@@ -158,7 +158,7 @@ const MOCK_NODES: SpotFlowNode[] = [
     category: 'strategy',
     externalTvlUsd: 0,
     rawTvlUsd: 0,
-    isRetired: false,
+    isRetired: false
   },
   {
     id: 'evk-eusdc-2',
@@ -169,7 +169,7 @@ const MOCK_NODES: SpotFlowNode[] = [
     category: 'strategy',
     rawTvlUsd: 0,
     externalTvlUsd: 0,
-    isRetired: false,
+    isRetired: false
   },
   {
     id: 'morpho-yearn-og-usdc',
@@ -180,8 +180,8 @@ const MOCK_NODES: SpotFlowNode[] = [
     category: 'strategy',
     rawTvlUsd: 324_822.46418023173,
     externalTvlUsd: 324_822.46418023173,
-    isRetired: false,
-  },
+    isRetired: false
+  }
 ]
 
 const MOCK_EDGES: SpotFlowEdge[] = [
@@ -191,7 +191,7 @@ const MOCK_EDGES: SpotFlowEdge[] = [
     targetNodeId: 'usdc-1-idle-usdc',
     holderAddress: '0xBe53A109B494E5c9f97b9Cd39Fe969BE68BF6204',
     kind: 'auto',
-    tvlUsd: 4_842.017439,
+    tvlUsd: 4_842.017439
   },
   {
     id: 'usdc-2-to-idle',
@@ -199,7 +199,7 @@ const MOCK_EDGES: SpotFlowEdge[] = [
     targetNodeId: 'usdc-2-idle-usdc',
     holderAddress: '0xAe7d8Db82480E6d8e3873ecbF22cf17b3D8A7308',
     kind: 'auto',
-    tvlUsd: 169_500.982231,
+    tvlUsd: 169_500.982231
   },
   {
     id: 'usdc-2-to-usdc-1',
@@ -207,7 +207,7 @@ const MOCK_EDGES: SpotFlowEdge[] = [
     targetNodeId: 'usdc-1',
     holderAddress: '0xBe53A109B494E5c9f97b9Cd39Fe969BE68BF6204',
     kind: 'auto',
-    tvlUsd: 673_413.6818027367,
+    tvlUsd: 673_413.6818027367
   },
   {
     id: 'usdc-2-to-evk-eusdc-2',
@@ -215,7 +215,7 @@ const MOCK_EDGES: SpotFlowEdge[] = [
     targetNodeId: 'evk-eusdc-2',
     holderAddress: '0xa08CEb657D9A8035A44A1b44b8d4C42eC31Dd4D4',
     kind: 'auto',
-    tvlUsd: 0,
+    tvlUsd: 0
   },
   {
     id: 'usdc-2-to-morpho-yearn-og-usdc',
@@ -223,7 +223,7 @@ const MOCK_EDGES: SpotFlowEdge[] = [
     targetNodeId: 'morpho-yearn-og-usdc',
     holderAddress: '0x0e297dE4005883C757c9F09fdF7cF1363C20e626',
     kind: 'auto',
-    tvlUsd: 324_822.46418023173,
+    tvlUsd: 324_822.46418023173
   },
   {
     id: 'usdc-1-to-spark-usdc-lender',
@@ -231,7 +231,7 @@ const MOCK_EDGES: SpotFlowEdge[] = [
     targetNodeId: 'spark-usdc-lender',
     holderAddress: '0x25f893276544d86a82b1ce407182836F45cb6673',
     kind: 'auto',
-    tvlUsd: 484_496.5870153263,
+    tvlUsd: 484_496.5870153263
   },
   {
     id: 'usdc-1-to-usdc-to-usds',
@@ -239,7 +239,7 @@ const MOCK_EDGES: SpotFlowEdge[] = [
     targetNodeId: 'usdc-to-usds',
     holderAddress: '0x39c0aEc5738ED939876245224aFc7E09C8480a52',
     kind: 'auto',
-    tvlUsd: 0,
+    tvlUsd: 0
   },
   {
     id: 'usdc-1-to-usdc-to-susds',
@@ -247,7 +247,7 @@ const MOCK_EDGES: SpotFlowEdge[] = [
     targetNodeId: 'usdc-to-susds',
     holderAddress: '0x7130570BCEfCedBe9d15B5b11A33006156460f8f',
     kind: 'auto',
-    tvlUsd: 27_396_850.684327465,
+    tvlUsd: 27_396_850.684327465
   },
   {
     id: 'usdc-1-to-morpho-yearn-usdc',
@@ -255,8 +255,8 @@ const MOCK_EDGES: SpotFlowEdge[] = [
     targetNodeId: 'morpho-yearn-usdc',
     holderAddress: '0xf1784A1bF0cBDE0F868838Dd093E65215343c4C0',
     kind: 'auto',
-    tvlUsd: 0,
-  },
+    tvlUsd: 0
+  }
 ]
 
 function layoutGraph(nodes: SpotFlowNode[], edges: SpotFlowEdge[], focusedNodeId: string | null): LayoutNode[] {
@@ -287,12 +287,14 @@ function layoutGraph(nodes: SpotFlowNode[], edges: SpotFlowEdge[], focusedNodeId
         const item = queue.shift()
         if (!item) break
 
-        const nextNodes = direction === 'upstream' ? parentsByNode.get(item.nodeId) ?? [] : childrenByNode.get(item.nodeId) ?? []
+        const nextNodes =
+          direction === 'upstream' ? (parentsByNode.get(item.nodeId) ?? []) : (childrenByNode.get(item.nodeId) ?? [])
         for (const nextNodeId of nextNodes) {
           const nextDistance = item.distance + 1
           const nextDepth = direction === 'upstream' ? -nextDistance : nextDistance
           const existingDepth = depthByNode.get(nextNodeId)
-          if (existingDepth === undefined || Math.abs(nextDepth) < Math.abs(existingDepth)) depthByNode.set(nextNodeId, nextDepth)
+          if (existingDepth === undefined || Math.abs(nextDepth) < Math.abs(existingDepth))
+            depthByNode.set(nextNodeId, nextDepth)
           if (seen.has(nextNodeId)) continue
           seen.add(nextNodeId)
           queue.push({ nodeId: nextNodeId, distance: nextDistance })
@@ -322,7 +324,7 @@ function layoutGraph(nodes: SpotFlowNode[], edges: SpotFlowEdge[], focusedNodeId
     outgoing: outgoing.get(node.id) ?? 0,
     depth: depthByNode.get(node.id) ?? 0,
     x: 0,
-    y: 0,
+    y: 0
   }))
 
   const connectedToFocus = new Set<string>()
@@ -413,8 +415,14 @@ function mapGraphResponse(data: TvlGraphResponse | null): {
   const rawBridgeExclusions = Array.isArray(data?.bridgeExclusions) ? data.bridgeExclusions : []
 
   if (rawNodes.length === 0) {
-    const totalRawTvlUsd = MOCK_NODES.filter((node) => node.nodeType === 'vault').reduce((sum, node) => sum + node.rawTvlUsd, 0)
-    const totalTvlUsd = MOCK_NODES.filter((node) => node.nodeType === 'vault').reduce((sum, node) => sum + node.externalTvlUsd, 0)
+    const totalRawTvlUsd = MOCK_NODES.filter((node) => node.nodeType === 'vault').reduce(
+      (sum, node) => sum + node.rawTvlUsd,
+      0
+    )
+    const totalTvlUsd = MOCK_NODES.filter((node) => node.nodeType === 'vault').reduce(
+      (sum, node) => sum + node.externalTvlUsd,
+      0
+    )
     return {
       nodes: MOCK_NODES,
       edges: MOCK_EDGES,
@@ -423,7 +431,7 @@ function mapGraphResponse(data: TvlGraphResponse | null): {
       totalTvlUsd,
       totalOverlapTvlUsd: totalRawTvlUsd - totalTvlUsd,
       snapshotAt: null,
-      isLive: false,
+      isLive: false
     }
   }
 
@@ -431,7 +439,8 @@ function mapGraphResponse(data: TvlGraphResponse | null): {
     const address = stringValue(node, ['address', 'vaultAddress'], `node-${index}`)
     const chainId = numberValue(node, ['chainId'], 1)
     const id = stringValue(node, ['id', 'nodeId', 'vaultId'], `${chainId}:${address.toLowerCase()}`)
-    const nodeType: SpotFlowNode['nodeType'] = stringValue(node, ['nodeType'], 'vault') === 'strategy' ? 'strategy' : 'vault'
+    const nodeType: SpotFlowNode['nodeType'] =
+      stringValue(node, ['nodeType'], 'vault') === 'strategy' ? 'strategy' : 'vault'
 
     return {
       id,
@@ -443,7 +452,7 @@ function mapGraphResponse(data: TvlGraphResponse | null): {
       rawTvlUsd: numberValue(node, ['rawTvlUsd', 'tvlUsd']),
       upstreamOwnedTvlUsd: numberValue(node, ['upstreamOwnedTvlUsd', 'ownedTvlUsd'], 0),
       externalTvlUsd: numberValue(node, ['externalTvlUsd', 'adjustedTvlUsd', 'rawTvlUsd', 'tvlUsd']),
-      isRetired: booleanValue(node, ['isRetired'], false),
+      isRetired: booleanValue(node, ['isRetired'], false)
     }
   })
 
@@ -460,8 +469,8 @@ function mapGraphResponse(data: TvlGraphResponse | null): {
         targetNodeId,
         holderAddress: stringValue(edge, ['holderAddress', 'holder', 'strategyAddress'], ''),
         kind: stringValue(edge, ['kind', 'type', 'edgeType'], 'auto'),
-        tvlUsd: numberValue(edge, ['tvlUsd', 'amountUsd', 'upstreamOwnedTvlUsd', 'value']),
-      },
+        tvlUsd: numberValue(edge, ['tvlUsd', 'amountUsd', 'upstreamOwnedTvlUsd', 'value'])
+      }
     ]
   })
 
@@ -472,11 +481,13 @@ function mapGraphResponse(data: TvlGraphResponse | null): {
     label: stringValue(exclusion, ['label'], 'Bridge exclusion'),
     chainId: numberValue(exclusion, ['chainId'], 1),
     targetChainId: numberValue(exclusion, ['targetChainId'], 0),
-    tvlUsd: numberValue(exclusion, ['tvlUsd', 'amountUsd']),
+    tvlUsd: numberValue(exclusion, ['tvlUsd', 'amountUsd'])
   }))
 
   const vaultNodes = nodes.filter((node) => node.nodeType === 'vault')
-  const computedRawTvl = vaultNodes.reduce((sum, node) => sum + node.rawTvlUsd, 0) + bridgeExclusions.reduce((sum, item) => sum + item.tvlUsd, 0)
+  const computedRawTvl =
+    vaultNodes.reduce((sum, node) => sum + node.rawTvlUsd, 0) +
+    bridgeExclusions.reduce((sum, item) => sum + item.tvlUsd, 0)
   const computedTvl = vaultNodes.reduce((sum, node) => sum + node.externalTvlUsd, 0)
 
   return {
@@ -485,9 +496,12 @@ function mapGraphResponse(data: TvlGraphResponse | null): {
     bridgeExclusions,
     totalRawTvlUsd: typeof data?.totalRawTvlUsd === 'number' ? data.totalRawTvlUsd : computedRawTvl,
     totalTvlUsd: typeof data?.totalTvlUsd === 'number' ? data.totalTvlUsd : computedTvl,
-    totalOverlapTvlUsd: typeof data?.totalOverlapTvlUsd === 'number' ? data.totalOverlapTvlUsd : Math.max(0, computedRawTvl - computedTvl),
+    totalOverlapTvlUsd:
+      typeof data?.totalOverlapTvlUsd === 'number'
+        ? data.totalOverlapTvlUsd
+        : Math.max(0, computedRawTvl - computedTvl),
     snapshotAt: typeof data?.snapshotAt === 'number' ? data.snapshotAt : null,
-    isLive: true,
+    isLive: true
   }
 }
 
@@ -496,7 +510,8 @@ function visibleGraphForFocus(
   edges: SpotFlowEdge[],
   focusedNodeId: string | null
 ): { nodeIds: Set<string>; edgeIds: Set<string> } {
-  if (!focusedNodeId) return { nodeIds: new Set(nodes.map((node) => node.id)), edgeIds: new Set(edges.map((edge) => edge.id)) }
+  if (!focusedNodeId)
+    return { nodeIds: new Set(nodes.map((node) => node.id)), edgeIds: new Set(edges.map((edge) => edge.id)) }
   const nodeIds = new Set(nodes.map((node) => node.id))
   const visibleIds = new Set([focusedNodeId])
   const visibleEdgeIds = new Set<string>()
@@ -517,7 +532,8 @@ function visibleGraphForFocus(
       const nodeId = queue.shift()
       if (!nodeId) continue
 
-      const nextEdges = direction === 'incoming' ? incomingByTarget.get(nodeId) ?? [] : outgoingBySource.get(nodeId) ?? []
+      const nextEdges =
+        direction === 'incoming' ? (incomingByTarget.get(nodeId) ?? []) : (outgoingBySource.get(nodeId) ?? [])
       for (const edge of nextEdges) {
         const nextNodeId = direction === 'incoming' ? edge.sourceNodeId : edge.targetNodeId
         visibleIds.add(nextNodeId)
@@ -535,7 +551,12 @@ function visibleGraphForFocus(
   return { nodeIds: visibleIds, edgeIds: visibleEdgeIds }
 }
 
-function centerVisibleTree(nodes: LayoutNode[], edges: SpotFlowEdge[], visibleGraph: { nodeIds: Set<string>; edgeIds: Set<string> }, focusNodeId: string | null): LayoutNode[] {
+function centerVisibleTree(
+  nodes: LayoutNode[],
+  edges: SpotFlowEdge[],
+  visibleGraph: { nodeIds: Set<string>; edgeIds: Set<string> },
+  focusNodeId: string | null
+): LayoutNode[] {
   const visibleNodeIds = visibleGraph.nodeIds
   const visibleNodes = nodes.filter((node) => visibleNodeIds.has(node.id))
   if (visibleNodes.length === 0) return nodes
@@ -553,12 +574,19 @@ function centerVisibleTree(nodes: LayoutNode[], edges: SpotFlowEdge[], visibleGr
   const upstream = new Map<string, string[]>()
 
   for (const edge of edges) {
-    if (!visibleGraph.edgeIds.has(edge.id) || !visibleNodeIds.has(edge.sourceNodeId) || !visibleNodeIds.has(edge.targetNodeId)) continue
+    if (
+      !visibleGraph.edgeIds.has(edge.id) ||
+      !visibleNodeIds.has(edge.sourceNodeId) ||
+      !visibleNodeIds.has(edge.targetNodeId)
+    )
+      continue
     const source = nodeById.get(edge.sourceNodeId)
     const target = nodeById.get(edge.targetNodeId)
     if (!source || !target) continue
-    if (target.depth > source.depth) downstream.set(edge.sourceNodeId, [...(downstream.get(edge.sourceNodeId) ?? []), edge.targetNodeId])
-    if (source.depth < target.depth) upstream.set(edge.targetNodeId, [...(upstream.get(edge.targetNodeId) ?? []), edge.sourceNodeId])
+    if (target.depth > source.depth)
+      downstream.set(edge.sourceNodeId, [...(downstream.get(edge.sourceNodeId) ?? []), edge.targetNodeId])
+    if (source.depth < target.depth)
+      upstream.set(edge.targetNodeId, [...(upstream.get(edge.targetNodeId) ?? []), edge.sourceNodeId])
   }
 
   const sortNodeIds = (nodeIds: string[]) =>
@@ -603,7 +631,7 @@ function centerVisibleTree(nodes: LayoutNode[], edges: SpotFlowEdge[], visibleGr
       if (!node || !allowedDepth(node.depth)) continue
       positioned.set(nodeId, {
         x: x + offsetX,
-        y: 32 + (node.depth - minDepth) * ROW_GAP,
+        y: 32 + (node.depth - minDepth) * ROW_GAP
       })
     }
   }
@@ -621,14 +649,14 @@ function centerVisibleTree(nodes: LayoutNode[], edges: SpotFlowEdge[], visibleGr
       .forEach((node, index) => {
         positioned.set(node.id, {
           x: startX + index * COLUMN_GAP,
-          y: 32 + (depth - minDepth) * ROW_GAP,
+          y: 32 + (depth - minDepth) * ROW_GAP
         })
       })
   }
 
   return nodes.map((node) => ({
     ...node,
-    ...(positioned.get(node.id) ?? {}),
+    ...(positioned.get(node.id) ?? {})
   }))
 }
 
@@ -639,7 +667,7 @@ function GraphCanvas({
   selectedNodeId,
   onSelectNode,
   onSetRootNode,
-  onMoveNode,
+  onMoveNode
 }: {
   nodes: LayoutNode[]
   edges: SpotFlowEdge[]
@@ -655,6 +683,8 @@ function GraphCanvas({
   const visibleNodes = positionedNodes.filter((node) => visibleGraph.nodeIds.has(node.id))
   const visibleEdges = edges.filter((edge) => visibleGraph.edgeIds.has(edge.id))
   const containerRef = useRef<HTMLDivElement | null>(null)
+  const arrowMarkerId = useId()
+  const previousFocusNodeId = useRef(focusNodeId)
   const [viewportSize, setViewportSize] = useState({ width: CANVAS_MIN_WIDTH, height: CANVAS_MIN_HEIGHT })
   const [zoom, setZoom] = useState(1)
   const [dragState, setDragState] = useState<{
@@ -672,7 +702,7 @@ function GraphCanvas({
       x: minX - CANVAS_PADDING,
       y: minY - CANVAS_PADDING,
       width: maxX - minX + CANVAS_PADDING * 2,
-      height: maxY - minY + CANVAS_PADDING * 2,
+      height: maxY - minY + CANVAS_PADDING * 2
     }
     const viewportAspect = viewportSize.width / viewportSize.height
     const measuredAspect = measuredBounds.width / measuredBounds.height
@@ -682,7 +712,7 @@ function GraphCanvas({
       return {
         ...measuredBounds,
         y: measuredBounds.y - (height - measuredBounds.height) / 2,
-        height,
+        height
       }
     }
 
@@ -690,7 +720,7 @@ function GraphCanvas({
     return {
       ...measuredBounds,
       x: measuredBounds.x - (width - measuredBounds.width) / 2,
-      width,
+      width
     }
   }, [viewportSize, visibleNodes])
   const viewBox = useMemo(() => {
@@ -700,13 +730,16 @@ function GraphCanvas({
       x: fittedBounds.x + (fittedBounds.width - width) / 2,
       y: fittedBounds.y + (fittedBounds.height - height) / 2,
       width,
-      height,
+      height
     }
   }, [fittedBounds, zoom])
 
   useEffect(() => {
-    setZoom(1)
-  }, [focusNodeId])
+    if (previousFocusNodeId.current !== focusNodeId) {
+      previousFocusNodeId.current = focusNodeId
+      setZoom(1)
+    }
+  })
 
   useEffect(() => {
     const element = containerRef.current
@@ -738,10 +771,18 @@ function GraphCanvas({
   return (
     <div ref={containerRef} className="relative border border-border bg-white">
       <div className="absolute right-3 top-3 z-10 flex items-center gap-1 border border-border bg-white/90 p-1">
-        <button type="button" className="page-btn px-2 py-1 text-xs" onClick={() => setZoom((value) => Math.min(3, value * 1.2))}>
+        <button
+          type="button"
+          className="page-btn px-2 py-1 text-xs"
+          onClick={() => setZoom((value) => Math.min(3, value * 1.2))}
+        >
           +
         </button>
-        <button type="button" className="page-btn px-2 py-1 text-xs" onClick={() => setZoom((value) => Math.max(0.35, value / 1.2))}>
+        <button
+          type="button"
+          className="page-btn px-2 py-1 text-xs"
+          onClick={() => setZoom((value) => Math.max(0.35, value / 1.2))}
+        >
           -
         </button>
         <button type="button" className="page-btn px-2 py-1 text-xs" onClick={() => setZoom(1)}>
@@ -757,7 +798,15 @@ function GraphCanvas({
         aria-label="TVL flow graph"
       >
         <defs>
-          <marker id="spot-flow-arrow" markerHeight="8" markerUnits="userSpaceOnUse" markerWidth="8" orient="auto" refX="7" refY="4">
+          <marker
+            id={arrowMarkerId}
+            markerHeight="8"
+            markerUnits="userSpaceOnUse"
+            markerWidth="8"
+            orient="auto"
+            refX="7"
+            refY="4"
+          >
             <path d="M0,0 L8,4 L0,8 Z" fill="#64748b" />
           </marker>
         </defs>
@@ -792,7 +841,7 @@ function GraphCanvas({
               <path
                 d={`M ${sourceX} ${sourceY} C ${sourceX} ${sourceY + curveOffset}, ${targetX} ${targetY - curveOffset}, ${targetX} ${targetY}`}
                 fill="none"
-                markerEnd="url(#spot-flow-arrow)"
+                markerEnd={`url(#${arrowMarkerId})`}
                 stroke={stroke}
                 strokeDasharray={strokeDasharray}
                 strokeLinecap="round"
@@ -822,10 +871,27 @@ function GraphCanvas({
           const isRoot = focusNodeId === node.id
           const isSelected = selectedNodeId === node.id
           const role = nodeRole(node)
-          const fill = isRoot ? 'rgba(6, 87, 249, 0.12)' : isSelected ? '#f8fafc' : node.nodeType === 'strategy' ? '#f8fafc' : '#ffffff'
-          const stroke = isRoot ? '#0657f9' : isSelected ? '#0f172a' : node.nodeType === 'strategy' ? '#64748b' : role === 'top' ? '#0f172a' : role === 'bottom' ? '#94a3b8' : '#cbd5e1'
+          const fill = isRoot
+            ? 'rgba(6, 87, 249, 0.12)'
+            : isSelected
+              ? '#f8fafc'
+              : node.nodeType === 'strategy'
+                ? '#f8fafc'
+                : '#ffffff'
+          const stroke = isRoot
+            ? '#0657f9'
+            : isSelected
+              ? '#0f172a'
+              : node.nodeType === 'strategy'
+                ? '#64748b'
+                : role === 'top'
+                  ? '#0f172a'
+                  : role === 'bottom'
+                    ? '#94a3b8'
+                    : '#cbd5e1'
 
           return (
+            // biome-ignore lint/a11y/useSemanticElements: SVG groups cannot be replaced with HTML buttons.
             <g
               key={node.id}
               transform={`translate(${node.x}, ${node.y})`}
@@ -839,7 +905,7 @@ function GraphCanvas({
                   nodeId: node.id,
                   pointerId: event.pointerId,
                   offsetX: point.x - node.x,
-                  offsetY: point.y - node.y,
+                  offsetY: point.y - node.y
                 })
                 onSelectNode(node.id)
               }}
@@ -848,7 +914,7 @@ function GraphCanvas({
                 const point = getSvgPoint(event)
                 onMoveNode(node.id, {
                   x: Math.max(0, point.x - dragState.offsetX),
-                  y: Math.max(0, point.y - dragState.offsetY),
+                  y: Math.max(0, point.y - dragState.offsetY)
                 })
               }}
               onPointerUp={(event) => {
@@ -865,7 +931,14 @@ function GraphCanvas({
               }}
               style={{ cursor: 'pointer' }}
             >
-              <rect width={NODE_WIDTH} height={NODE_HEIGHT} rx={6} fill={fill} stroke={stroke} strokeWidth={isRoot || isSelected ? 2 : 1} />
+              <rect
+                width={NODE_WIDTH}
+                height={NODE_HEIGHT}
+                rx={6}
+                fill={fill}
+                stroke={stroke}
+                strokeWidth={isRoot || isSelected ? 2 : 1}
+              />
               <text x={12} y={18} fill="#0f172a" fontSize={12} fontWeight={600}>
                 {node.name.length > 29 ? `${node.name.slice(0, 28)}...` : node.name}
               </text>
@@ -876,6 +949,7 @@ function GraphCanvas({
                 {isRoot ? 'root' : node.nodeType} · {role} · in {node.incoming} · out {node.outgoing}
               </text>
               {node.nodeType === 'vault' && !isRoot && (
+                // biome-ignore lint/a11y/useSemanticElements: SVG groups cannot be replaced with HTML buttons.
                 <g
                   className="spot-flow-node-action"
                   role="button"
@@ -899,7 +973,12 @@ function GraphCanvas({
                 >
                   <rect width={20} height={20} fill="transparent" />
                   <circle cx={10} cy={10} r={5} fill="none" stroke="currentColor" strokeWidth={1.5} />
-                  <path d="M10 3.5V6.5 M10 13.5V16.5 M3.5 10H6.5 M13.5 10H16.5" stroke="currentColor" strokeLinecap="round" strokeWidth={1.5} />
+                  <path
+                    d="M10 3.5V6.5 M10 13.5V16.5 M3.5 10H6.5 M13.5 10H16.5"
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeWidth={1.5}
+                  />
                   <title>Center graph on this vault</title>
                 </g>
               )}
@@ -916,8 +995,21 @@ function GraphCanvas({
                     style={{ cursor: 'pointer' }}
                   >
                     <rect width={20} height={20} fill="transparent" />
-                    <path d="M8 6H6.5A2.5 2.5 0 0 0 4 8.5v5A2.5 2.5 0 0 0 6.5 16h5A2.5 2.5 0 0 0 14 13.5V12" fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth={1.5} />
-                    <path d="M11 5h5v5 M16 5l-7 7" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} />
+                    <path
+                      d="M8 6H6.5A2.5 2.5 0 0 0 4 8.5v5A2.5 2.5 0 0 0 6.5 16h5A2.5 2.5 0 0 0 14 13.5V12"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeLinecap="round"
+                      strokeWidth={1.5}
+                    />
+                    <path
+                      d="M11 5h5v5 M16 5l-7 7"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.5}
+                    />
                     <title>Open vault page</title>
                   </a>
                 </g>
@@ -935,7 +1027,7 @@ function DetailPanel({
   nodes,
   edges,
   selectedNodeId,
-  onSelectNode,
+  onSelectNode
 }: {
   nodes: LayoutNode[]
   edges: SpotFlowEdge[]
@@ -943,7 +1035,7 @@ function DetailPanel({
   onSelectNode: (nodeId: string) => void
 }) {
   const nodeById = new Map(nodes.map((node) => [node.id, node]))
-  const selectedNode = selectedNodeId ? nodeById.get(selectedNodeId) ?? null : null
+  const selectedNode = selectedNodeId ? (nodeById.get(selectedNodeId) ?? null) : null
 
   if (!selectedNode) {
     return (
@@ -954,8 +1046,12 @@ function DetailPanel({
     )
   }
 
-  const incomingEdges = edges.filter((edge) => edge.targetNodeId === selectedNode.id).sort((a, b) => b.tvlUsd - a.tvlUsd)
-  const outgoingEdges = edges.filter((edge) => edge.sourceNodeId === selectedNode.id).sort((a, b) => b.tvlUsd - a.tvlUsd)
+  const incomingEdges = edges
+    .filter((edge) => edge.targetNodeId === selectedNode.id)
+    .sort((a, b) => b.tvlUsd - a.tvlUsd)
+  const outgoingEdges = edges
+    .filter((edge) => edge.sourceNodeId === selectedNode.id)
+    .sort((a, b) => b.tvlUsd - a.tvlUsd)
 
   return (
     <aside className="border border-border bg-white p-3">
@@ -996,11 +1092,16 @@ function DetailPanel({
                   onClick={() => onSelectNode(edge.sourceNodeId)}
                 >
                   <span className="block truncate">{source?.name ?? edge.sourceNodeId}</span>
-                  <span className="text-muted-foreground">{fmtFlowUsd(edge.tvlUsd)} · {edge.kind}{isDeductibleEdge(edge) ? ' · deducted' : ''}</span>
+                  <span className="text-muted-foreground">
+                    {fmtFlowUsd(edge.tvlUsd)} · {edge.kind}
+                    {isDeductibleEdge(edge) ? ' · deducted' : ''}
+                  </span>
                 </button>
               )
             })}
-            {incomingEdges.length === 0 && <div className="text-xs text-muted-foreground">No upstream Yearn-owned TVL.</div>}
+            {incomingEdges.length === 0 && (
+              <div className="text-xs text-muted-foreground">No upstream Yearn-owned TVL.</div>
+            )}
           </div>
         </div>
         <div>
@@ -1016,55 +1117,20 @@ function DetailPanel({
                   onClick={() => onSelectNode(edge.targetNodeId)}
                 >
                   <span className="block truncate">{target?.name ?? edge.targetNodeId}</span>
-                  <span className="text-muted-foreground">{fmtFlowUsd(edge.tvlUsd)} · {edge.kind}{isDeductibleEdge(edge) ? ' · deducted' : ''}</span>
+                  <span className="text-muted-foreground">
+                    {fmtFlowUsd(edge.tvlUsd)} · {edge.kind}
+                    {isDeductibleEdge(edge) ? ' · deducted' : ''}
+                  </span>
                 </button>
               )
             })}
-            {outgoingEdges.length === 0 && <div className="text-xs text-muted-foreground">No downstream allocation edges.</div>}
+            {outgoingEdges.length === 0 && (
+              <div className="text-xs text-muted-foreground">No downstream allocation edges.</div>
+            )}
           </div>
         </div>
       </div>
     </aside>
-  )
-}
-
-function BridgeExclusions({ items }: { items: BridgeExclusion[] }) {
-  if (items.length === 0) return null
-
-  const total = items.reduce((sum, item) => sum + item.tvlUsd, 0)
-  return (
-    <div className="card">
-      <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h2>Bridge Exclusions</h2>
-          <div className="sub">{fmtFlowUsd(total)} excluded before graph totals. These are metadata-only until the backend has concrete downstream vault targets.</div>
-        </div>
-      </div>
-      <div className="table-scroll">
-        <table>
-          <thead>
-            <tr>
-              <th>Vault</th>
-              <th>Route</th>
-              <th className="text-right">TVL</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.slice(0, 8).map((item) => (
-              <tr key={`${item.sourceNodeId}-${item.label}`}>
-                <td>
-                  <div className="font-medium">{item.name}</div>
-                  <div className="text-xs text-muted-foreground">{shortAddr(item.address)}</div>
-                </td>
-                <td>{item.chainId} {'->'} {item.targetChainId}</td>
-                <td className="text-right tabular-nums">{fmtFlowUsd(item.tvlUsd)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      {items.length > 8 && <div className="sub">Showing 8 of {items.length} bridge exclusions.</div>}
-    </div>
   )
 }
 
@@ -1094,7 +1160,7 @@ export function TvlFlowGraphTool() {
     .filter((node) => node.nodeType === 'vault' && connectedNodeIds.has(node.id))
     .sort((a, b) => b.rawTvlUsd - a.rawTvlUsd || a.name.localeCompare(b.name))
   const rootVaultExists = rootVaultNodeId ? rootVaultNodes.some((node) => node.id === rootVaultNodeId) : false
-  const effectiveRootVaultNodeId = rootVaultExists ? rootVaultNodeId : rootVaultNodes[0]?.id ?? null
+  const effectiveRootVaultNodeId = rootVaultExists ? rootVaultNodeId : (rootVaultNodes[0]?.id ?? null)
   const selectedNodeExists = selectedNodeId ? graphNodes.some((node) => node.id === selectedNodeId) : false
   const effectiveSelectedNodeId = selectedNodeExists ? selectedNodeId : effectiveRootVaultNodeId
   const displayEdges = graphEdges
@@ -1102,18 +1168,23 @@ export function TvlFlowGraphTool() {
     () =>
       layoutGraph(graphNodes, displayEdges, effectiveRootVaultNodeId).map((node) => ({
         ...node,
-        ...(manualPositions[node.id] ?? {}),
+        ...(manualPositions[node.id] ?? {})
       })),
     [displayEdges, effectiveRootVaultNodeId, graphNodes, manualPositions]
   )
   const branchGraph = visibleGraphForFocus(nodes, displayEdges, effectiveRootVaultNodeId)
   const branchNodes = nodes.filter((node) => branchGraph.nodeIds.has(node.id))
   const branchEdges = displayEdges.filter((edge) => branchGraph.edgeIds.has(edge.id))
-  const edgeKindCounts = graphEdges.reduce((counts, edge) => {
-    counts[edge.kind] = (counts[edge.kind] ?? 0) + 1
-    return counts
-  }, {} as Record<string, number>)
-  const selectedRootVault = effectiveRootVaultNodeId ? graph.nodes.find((node) => node.id === effectiveRootVaultNodeId) : null
+  const edgeKindCounts = graphEdges.reduce(
+    (counts, edge) => {
+      counts[edge.kind] = (counts[edge.kind] ?? 0) + 1
+      return counts
+    },
+    {} as Record<string, number>
+  )
+  const selectedRootVault = effectiveRootVaultNodeId
+    ? graph.nodes.find((node) => node.id === effectiveRootVaultNodeId)
+    : null
   const setRootVault = (nodeId: string) => {
     setRootVaultNodeId(nodeId)
     setSelectedNodeId(nodeId)
@@ -1155,12 +1226,20 @@ export function TvlFlowGraphTool() {
           <span>{selectedRootVault ? `${selectedRootVault.name} root` : 'No root vault selected'}</span>
           <span>{branchNodes.length} nodes</span>
           <span>{branchEdges.length} edges</span>
-          <span>{Object.entries(edgeKindCounts).map(([kind, count]) => `${kind} ${count}`).join(', ') || 'no edges'}</span>
+          <span>
+            {Object.entries(edgeKindCounts)
+              .map(([kind, count]) => `${kind} ${count}`)
+              .join(', ') || 'no edges'}
+          </span>
           {fetchedAt && <span>Fetched {new Date(fetchedAt).toLocaleTimeString()}</span>}
           {!graph.isLive && <span>Fixture fallback</span>}
         </div>
 
-        {loading && <div className="mb-3 border border-border bg-[var(--surface-2)] px-3 py-2 text-sm text-muted-foreground">Loading live TVL graph...</div>}
+        {loading && (
+          <div className="mb-3 border border-border bg-[var(--surface-2)] px-3 py-2 text-sm text-muted-foreground">
+            Loading live TVL graph...
+          </div>
+        )}
 
         {error && (
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3 border border-border bg-[var(--surface-2)] px-3 py-2 text-sm text-muted-foreground">
@@ -1186,7 +1265,12 @@ export function TvlFlowGraphTool() {
               onSelectNode={setSelectedNodeId}
               onSetRootNode={setRootVault}
             />
-            <DetailPanel nodes={branchNodes} edges={branchEdges} selectedNodeId={effectiveSelectedNodeId} onSelectNode={setSelectedNodeId} />
+            <DetailPanel
+              nodes={branchNodes}
+              edges={branchEdges}
+              selectedNodeId={effectiveSelectedNodeId}
+              onSelectNode={setSelectedNodeId}
+            />
           </div>
         )}
       </section>

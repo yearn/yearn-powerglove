@@ -9,8 +9,8 @@ import { mapKongSnapshotToVaultExtended } from '@/lib/kong-vault-derivation'
 import { fetchVaultManagementEvents } from '@/lib/vault-events'
 import { fetchVaultReports } from '@/lib/vault-reports-client'
 import type { TimeseriesDataPoint, VaultReportHistoryEntry } from '@/types/dataTypes'
-import type { VaultManagementEvent } from '@/types/vaultEventTypes'
 import type { KongVaultSnapshot } from '@/types/kong'
+import type { VaultManagementEvent } from '@/types/vaultEventTypes'
 import type { Vault, VaultExtended } from '@/types/vaultTypes'
 import {
   applyVaultOverride,

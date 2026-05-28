@@ -36,8 +36,8 @@ function MissingApiNotice() {
     <div className="card">
       <h2>Yearn Metrics API not configured</h2>
       <p className="text-dim" style={{ marginTop: '0.5rem', lineHeight: 1.6 }}>
-        Set <code>VITE_PUBLIC_YEARN_METRICS_API_URL</code> to a reachable yearn-metrics API base. On a forwarded local lane,
-        the expected value is usually <code>http://127.0.0.1:5456</code>.
+        Set <code>VITE_PUBLIC_YEARN_METRICS_API_URL</code> to a reachable yearn-metrics API base. On a forwarded local
+        lane, the expected value is usually <code>http://127.0.0.1:5456</code>.
       </p>
     </div>
   )
@@ -73,14 +73,18 @@ export function NativeStatsDashboard() {
                 </span>
               </span>
             )}
-            <select className="filter-select" value={chainFilter} onChange={(event) => setChainFilter(event.target.value)}>
+            <select
+              className="filter-select"
+              value={chainFilter}
+              onChange={(event) => setChainFilter(event.target.value)}
+            >
               {CHAINS.map((chain) => (
                 <option key={chain.id} value={chain.id}>
                   {chain.label}
                 </option>
               ))}
             </select>
-            <div className="density-toggle" role="group" aria-label="Table density">
+            <fieldset className="density-toggle" aria-label="Table density">
               <button
                 className={density === 'comfortable' ? 'active' : ''}
                 onClick={() => setDensity('comfortable')}
@@ -97,7 +101,7 @@ export function NativeStatsDashboard() {
               >
                 ☷
               </button>
-            </div>
+            </fieldset>
           </div>
         </div>
 

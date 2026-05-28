@@ -54,7 +54,7 @@
   padding: 0 1.5rem;
 }
 
-.pg-stats [role='tabpanel'] {
+.pg-stats [role="tabpanel"] {
   padding: 0 1.5rem 1.5rem;
 }
 
@@ -145,11 +145,21 @@
   margin-bottom: 1rem;
 }
 
-.pg-stats .metric-accent { border-color: var(--accent); }
-.pg-stats .metric-green { border-color: rgba(15,159,110,0.25); }
-.pg-stats .metric-red { border-color: rgba(220,38,38,0.25); }
-.pg-stats .metric-blue { border-color: rgba(37,99,235,0.25); }
-.pg-stats .metric-yellow { border-color: rgba(202,138,4,0.25); }
+.pg-stats .metric-accent {
+  border-color: var(--accent);
+}
+.pg-stats .metric-green {
+  border-color: rgba(15, 159, 110, 0.25);
+}
+.pg-stats .metric-red {
+  border-color: rgba(220, 38, 38, 0.25);
+}
+.pg-stats .metric-blue {
+  border-color: rgba(37, 99, 235, 0.25);
+}
+.pg-stats .metric-yellow {
+  border-color: rgba(202, 138, 4, 0.25);
+}
 
 .pg-stats .label {
   color: var(--text-2);
@@ -176,11 +186,21 @@
   font-size: 0.82rem;
 }
 
-.pg-stats .text-right { text-align: right; }
-.pg-stats .text-green { color: var(--green); }
-.pg-stats .text-red { color: var(--red); }
-.pg-stats .text-blue { color: var(--blue); }
-.pg-stats .text-yellow { color: var(--yellow); }
+.pg-stats .text-right {
+  text-align: right;
+}
+.pg-stats .text-green {
+  color: var(--green);
+}
+.pg-stats .text-red {
+  color: var(--red);
+}
+.pg-stats .text-blue {
+  color: var(--blue);
+}
+.pg-stats .text-yellow {
+  color: var(--yellow);
+}
 
 .pg-stats .composition-bar,
 .pg-stats .inline-bar-track {
@@ -289,10 +309,22 @@
   font-weight: 600;
 }
 
-.pg-stats .badge-v1 { background: rgba(100,116,139,0.12); color: #475569; }
-.pg-stats .badge-v2 { background: rgba(37,99,235,0.12); color: #1d4ed8; }
-.pg-stats .badge-v3 { background: rgba(15,159,110,0.12); color: #047857; }
-.pg-stats .badge-curation { background: rgba(202,138,4,0.12); color: #a16207; }
+.pg-stats .badge-v1 {
+  background: rgba(100, 116, 139, 0.12);
+  color: #475569;
+}
+.pg-stats .badge-v2 {
+  background: rgba(37, 99, 235, 0.12);
+  color: #1d4ed8;
+}
+.pg-stats .badge-v3 {
+  background: rgba(15, 159, 110, 0.12);
+  color: #047857;
+}
+.pg-stats .badge-curation {
+  background: rgba(202, 138, 4, 0.12);
+  color: #a16207;
+}
 
 .pg-stats .filter-bar {
   display: flex;
@@ -416,13 +448,27 @@
   text-align: right;
 }
 
-.pg-stats .audit-col-empty { color: var(--text-3); }
+.pg-stats .audit-col-empty {
+  color: var(--text-3);
+}
 .pg-stats .audit-toggle,
-.pg-stats .audit-toggle-placeholder { width: 14px; flex-shrink: 0; }
-.pg-stats .audit-cycle-tag { background: var(--red-dim); color: var(--red); }
+.pg-stats .audit-toggle-placeholder {
+  width: 14px;
+  flex-shrink: 0;
+}
+.pg-stats .audit-cycle-tag {
+  background: var(--red-dim);
+  color: var(--red);
+}
 .pg-stats .audit-overlap-count,
-.pg-stats .audit-vault-indicator { background: var(--accent-dim); color: var(--accent); }
-.pg-stats .audit-tvl { margin-left: auto; font-weight: 600; }
+.pg-stats .audit-vault-indicator {
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+.pg-stats .audit-tvl {
+  margin-left: auto;
+  font-weight: 600;
+}
 
 .pg-stats .skeleton-grid {
   display: grid;
@@ -448,19 +494,39 @@
 
 .pg-stats .skeleton {
   border-radius: 999px;
-  background: linear-gradient(90deg, var(--surface-2), color-mix(in srgb, var(--surface-2) 65%, white), var(--surface-2));
+  background: linear-gradient(
+    90deg,
+    var(--surface-2),
+    color-mix(in srgb, var(--surface-2) 65%, white),
+    var(--surface-2)
+  );
   background-size: 200% 100%;
   animation: pgStatsPulse 1.3s ease-in-out infinite;
 }
 
-.pg-stats .skeleton-line { height: 10px; }
-.pg-stats .skeleton-line-lg { height: 28px; margin-top: 0.8rem; }
-.pg-stats .skeleton-line-sm { height: 10px; margin-top: 0.8rem; width: 55%; }
-.pg-stats .skeleton-chart { height: 280px; }
+.pg-stats .skeleton-line {
+  height: 10px;
+}
+.pg-stats .skeleton-line-lg {
+  height: 28px;
+  margin-top: 0.8rem;
+}
+.pg-stats .skeleton-line-sm {
+  height: 10px;
+  margin-top: 0.8rem;
+  width: 55%;
+}
+.pg-stats .skeleton-chart {
+  height: 280px;
+}
 
 @keyframes pgStatsPulse {
-  0% { background-position: 0% 50%; }
-  100% { background-position: 200% 50%; }
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
 }
 
 @media (max-width: 900px) {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react'
+import { type KeyboardEvent, useCallback, useEffect, useRef, useState } from 'react'
 
 export function resolveStatsApiBase(): string | null {
   if (typeof window !== 'undefined') {
@@ -43,7 +43,6 @@ export function useFetch<T>(url: string) {
     return null
   })
   const requestIdRef = useRef(0)
-  const [retryCount, setRetryCount] = useState(0)
 
   const doFetch = useCallback(
     (bypassCache = false) => {
@@ -108,13 +107,13 @@ export function useFetch<T>(url: string) {
     return () => {
       requestIdRef.current += 1
     }
-  }, [doFetch, retryCount])
+  }, [doFetch])
 
   const retry = useCallback(() => {
     fetchCache.delete(url)
     setError(null)
-    setRetryCount((count) => count + 1)
-  }, [url])
+    doFetch(true)
+  }, [doFetch, url])
 
   const refresh = useCallback(() => {
     doFetch(true)
@@ -204,7 +203,18 @@ export const CAT_COLORS: Record<string, string> = {
   curation: '#f0b90b'
 }
 
-export const CHART_COLORS = ['#2ee6b6', '#3b82f6', '#f0b90b', '#f6465d', '#a78bfa', '#fb923c', '#848e9c', '#06b6d4', '#ec4899', '#84cc16']
+export const CHART_COLORS = [
+  '#2ee6b6',
+  '#3b82f6',
+  '#f0b90b',
+  '#f6465d',
+  '#a78bfa',
+  '#fb923c',
+  '#848e9c',
+  '#06b6d4',
+  '#ec4899',
+  '#84cc16'
+]
 
 export function useSort(defaultKey: string, defaultDir: 'asc' | 'desc' = 'desc') {
   const [sortKey, setSortKey] = useState(defaultKey)
@@ -288,10 +298,12 @@ export function exportCSV(filename: string, headers: string[], rows: (string | n
 }
 
 export function SkeletonCards({ count = 5 }: { count?: number }) {
+  const skeletonIds = Array.from({ length: count }, (_, index) => `skeleton-card-${index}`)
+
   return (
     <div className="skeleton-grid">
-      {Array.from({ length: count }).map((_, index) => (
-        <div key={index} className="skeleton-card">
+      {skeletonIds.map((id) => (
+        <div key={id} className="skeleton-card">
           <div className="skeleton skeleton-line" style={{ width: '40%' }} />
           <div className="skeleton skeleton-line-lg" />
           <div className="skeleton skeleton-line-sm" />
@@ -324,14 +336,26 @@ export function usePagination(totalItems: number, pageSize = 30) {
     totalPages <= 1
       ? null
       : () => (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', marginTop: '0.75rem' }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.75rem',
+              marginTop: '0.75rem'
+            }}
+          >
             <button className="page-btn" disabled={page === 0} onClick={() => setPage((current) => current - 1)}>
               Prev
             </button>
             <span className="text-dim" style={{ fontSize: '0.78rem' }}>
               {start + 1}–{Math.min(end, totalItems)} of {totalItems}
             </span>
-            <button className="page-btn" disabled={page >= totalPages - 1} onClick={() => setPage((current) => current + 1)}>
+            <button
+              className="page-btn"
+              disabled={page >= totalPages - 1}
+              onClick={() => setPage((current) => current + 1)}
+            >
               Next
             </button>
           </div>

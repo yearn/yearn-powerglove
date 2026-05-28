@@ -21,7 +21,9 @@ export default function AllVaultsPage() {
   if (error || assetsError) {
     return (
       <main className="min-h-screen w-full max-w-[1400px] border-x border-b border-border bg-white p-6 px-0 py-0">
-        <div className="px-6 py-6 text-red-500">Error loading vaults: {error?.message || assetsError?.message || 'Unknown error'}</div>
+        <div className="px-6 py-6 text-red-500">
+          Error loading vaults: {error?.message || assetsError?.message || 'Unknown error'}
+        </div>
       </main>
     )
   }

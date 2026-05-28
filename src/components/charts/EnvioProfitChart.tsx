@@ -41,7 +41,11 @@ const EnvioProfitChart: React.FC<EnvioProfitChartProps> = React.memo(
     const unitLabel = assetSymbol || 'asset units'
 
     if (filteredData.length === 0 || (!hasProfitSeries && !hasFeesSeries)) {
-      return <div className="flex h-full items-center justify-center text-sm text-muted-foreground">No StrategyReported events yet.</div>
+      return (
+        <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+          No StrategyReported events yet.
+        </div>
+      )
     }
 
     return (

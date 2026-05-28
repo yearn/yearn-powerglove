@@ -49,7 +49,13 @@ type ChartData = {
   hasErrors?: boolean
 }
 
-type ChartTab = 'historical-apy' | 'historical-pps' | 'historical-tvl' | 'underlying-tvl' | 'lifetime-earnings' | 'envio-profit'
+type ChartTab =
+  | 'historical-apy'
+  | 'historical-pps'
+  | 'historical-tvl'
+  | 'underlying-tvl'
+  | 'lifetime-earnings'
+  | 'envio-profit'
 
 const chartSections: Array<{
   value: ChartTab
@@ -160,7 +166,11 @@ export function ChartsPanel(data: ChartData) {
       ? 'Review cumulative protocol fees from report history.'
       : 'No report-history USD values available yet.'
 
-  const envioChartTitle = hasEnvioProfitSeries ? 'Cumulative Vault Profit' : hasEnvioFeesSeries ? 'Cumulative Fees' : 'Vault Event Profit / Fees'
+  const envioChartTitle = hasEnvioProfitSeries
+    ? 'Cumulative Vault Profit'
+    : hasEnvioFeesSeries
+      ? 'Cumulative Fees'
+      : 'Vault Event Profit / Fees'
   const envioChartDescription = hasEnvioProfitSeries
     ? `Cumulative gain minus loss from Envio StrategyReported events in ${assetSymbol || 'underlying asset'} units, with cumulative fees overlaid when available.`
     : hasEnvioFeesSeries
@@ -319,9 +329,13 @@ export function ChartsPanel(data: ChartData) {
           <FixedHeightChartContainer heightClassName={chartHeightClassName}>
             <ChartErrorBoundary>
               {reportHistoryError ? (
-                <div className="flex h-full items-center justify-center text-sm text-red-500">Unable to load report history.</div>
+                <div className="flex h-full items-center justify-center text-sm text-red-500">
+                  Unable to load report history.
+                </div>
               ) : reportHistoryLoading && !vaultEarningsData ? (
-                <div className="flex h-full items-center justify-center text-sm text-muted-foreground">Loading report history…</div>
+                <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                  Loading report history…
+                </div>
               ) : (
                 <LifetimeEarningsChart chartData={vaultEarningsData ?? []} timeframe={timeframe.value} />
               )}
@@ -347,11 +361,19 @@ export function ChartsPanel(data: ChartData) {
           <FixedHeightChartContainer heightClassName={chartHeightClassName}>
             <ChartErrorBoundary>
               {managementEventsError ? (
-                <div className="flex h-full items-center justify-center text-sm text-red-500">Unable to load Envio strategy report events.</div>
+                <div className="flex h-full items-center justify-center text-sm text-red-500">
+                  Unable to load Envio strategy report events.
+                </div>
               ) : managementEventsLoading && !vaultEventProfitData ? (
-                <div className="flex h-full items-center justify-center text-sm text-muted-foreground">Loading Envio strategy report events…</div>
+                <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                  Loading Envio strategy report events…
+                </div>
               ) : (
-                <EnvioProfitChart chartData={vaultEventProfitData ?? []} timeframe={timeframe.value} assetSymbol={assetSymbol} />
+                <EnvioProfitChart
+                  chartData={vaultEventProfitData ?? []}
+                  timeframe={timeframe.value}
+                  assetSymbol={assetSymbol}
+                />
               )}
             </ChartErrorBoundary>
           </FixedHeightChartContainer>
@@ -490,7 +512,9 @@ export function ChartsPanel(data: ChartData) {
       <div className="border-b border-border p-4 sm:flex sm:items-center sm:justify-between sm:gap-4 sm:p-6">
         <div>
           <h2 className="text-base font-semibold text-[#111111]">Charts</h2>
-          <p className="mt-1 text-xs text-gray-500">Historical performance, share growth, TVL, Kong report history, and Envio event profit/fee history.</p>
+          <p className="mt-1 text-xs text-gray-500">
+            Historical performance, share growth, TVL, Kong report history, and Envio event profit/fee history.
+          </p>
         </div>
         <div className="mt-4 sm:mt-0 sm:shrink-0">{chartControls}</div>
       </div>
