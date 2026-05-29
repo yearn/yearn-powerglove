@@ -253,7 +253,7 @@ export function TvlOverview() {
         ? Object.entries(data.tvlByChain)
             .filter(([chain]) => chainFilter === 'all' || chain === chainFilter)
             .map(([chain, rawTvl]) => {
-              const overlap = (data.overlapByChain[chain] || 0) + (data.crossChainOverlapByChain[chain] || 0)
+              const overlap = data.overlapByChain[chain] || 0
               return {
                 chain,
                 label: CHAIN_NAMES[Number(chain)] || CHAIN_SHORT[Number(chain)] || chain,

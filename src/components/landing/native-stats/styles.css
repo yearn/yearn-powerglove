@@ -426,9 +426,14 @@
 }
 
 .pg-stats .audit-vault-row:hover,
-.pg-stats .audit-strategy-row:hover,
-.pg-stats .audit-target-vault-row:hover {
+.pg-stats .audit-strategy-row:hover {
   background: var(--surface-hover);
+}
+
+.pg-stats .audit-zero-debt-row {
+  color: var(--text-3);
+  filter: grayscale(1);
+  opacity: 0.62;
 }
 
 .pg-stats .audit-vault-name,
@@ -441,7 +446,7 @@
 .pg-stats .audit-cols,
 .pg-stats .audit-cols-header {
   display: grid;
-  grid-template-columns: 80px 110px 110px 110px;
+  grid-template-columns: 80px 110px minmax(130px, 180px) 110px;
   gap: 0.5rem;
   margin-left: auto;
   align-items: center;
@@ -453,8 +458,11 @@
 }
 .pg-stats .audit-toggle,
 .pg-stats .audit-toggle-placeholder {
-  width: 14px;
+  display: inline-flex;
+  width: 16px;
   flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
 }
 .pg-stats .audit-cycle-tag {
   background: var(--red-dim);
@@ -464,6 +472,14 @@
 .pg-stats .audit-vault-indicator {
   background: var(--accent-dim);
   color: var(--accent);
+}
+.pg-stats .audit-overlap-tag {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--accent);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .pg-stats .audit-tvl {
   margin-left: auto;

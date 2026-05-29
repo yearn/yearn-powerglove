@@ -1,4 +1,5 @@
 import { Link } from '@tanstack/react-router'
+import { ChevronDown, ChevronRight } from 'lucide-react'
 import { useContext, useEffect, useMemo, useState } from 'react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import {
@@ -104,6 +105,17 @@ function computeCountedTvl(vault: AuditVault): number {
   return Math.max(0, vault.tvlUsd - overlapDeduction)
 }
 
+function computeStrategyCountedTvl(strategy: AuditStrategy): number {
+  return strategy.detectionMethod ? 0 : strategy.debtUsd
+}
+
+function getRegistryOverlapLabel(strategy: AuditStrategy, targetVault: AuditVault | null): string {
+  if (targetVault?.name) return `\u2192 ${targetVault.name}`
+  if (strategy.label) return `\u2192 ${strategy.label}`
+  if (strategy.targetVaultAddress) return `\u2192 ${shortAddr(strategy.targetVaultAddress)}`
+  return 'overlap (registry)'
+}
+
 /** Recursive strategy tree node */
 function StrategyNode({
   strategy,
@@ -124,11 +136,20 @@ function StrategyNode({
   const targetVault = strategy.targetVaultAddress
     ? vaultMap.get(`${strategy.targetVaultChainId}:${strategy.targetVaultAddress.toLowerCase()}`)
     : null
+  const resolvedTargetVault = targetVault ?? null
 
-  const hasTarget = targetVault != null
-  const targetKey = targetVault ? `${targetVault.chainId}:${targetVault.address.toLowerCase()}` : null
+  const targetKey = resolvedTargetVault
+    ? `${resolvedTargetVault.chainId}:${resolvedTargetVault.address.toLowerCase()}`
+    : null
   const isCycle = targetKey ? visited.has(targetKey) : false
   const isTopLevelTarget = targetKey ? topLevelAddresses.has(targetKey) : false
+  const strategyCountedTvl = computeStrategyCountedTvl(strategy)
+  const isZeroDebt = strategy.debtUsd <= 0
+  const shouldDisplayTargetVault = strategy.detectionMethod === 'auto' && resolvedTargetVault != null
+  const overlapLabel =
+    strategy.detectionMethod === 'registry' ? getRegistryOverlapLabel(strategy, resolvedTargetVault) : 'overlap (auto)'
+  const canExpandTarget =
+    resolvedTargetVault != null && !isCycle && !isTopLevelTarget && resolvedTargetVault.strategies.length > 0
 
   const nextVisited = targetKey
     ? (() => {
@@ -142,66 +163,43 @@ function StrategyNode({
     <div className="audit-strategy-node">
       {/* Strategy row */}
       <div
-        className={`audit-row audit-strategy-row${strategy.detectionMethod ? ' audit-strategy-deducted' : ''}`}
+        className={`audit-row audit-strategy-row${strategy.detectionMethod ? ' audit-strategy-deducted' : ''}${
+          isZeroDebt ? ' audit-zero-debt-row' : ''
+        }`}
         style={{
           paddingLeft: `${depth * 1.5 + 1.5}rem`,
           background: `rgba(46, 230, 182, ${0.015 + depth * 0.015})`,
-          cursor: hasTarget ? 'pointer' : 'default'
+          cursor: canExpandTarget ? 'pointer' : 'default'
         }}
-        onClick={() => hasTarget && setExpanded((e) => !e)}
+        onClick={() => canExpandTarget && setExpanded((e) => !e)}
       >
         <span className="text-dim" style={{ fontSize: '0.75rem', flexShrink: 0 }}>
           {isLast ? '\u2514\u2500' : '\u251C\u2500'}
         </span>
         <span style={{ color: 'var(--accent)', fontSize: '0.65rem', flexShrink: 0, opacity: 0.6 }}>{'\u2192'}</span>
-        {hasTarget && (
-          <span className="audit-toggle" style={{ width: 14 }}>
-            {expanded ? '\u25BC' : '\u25B6'}
+        {canExpandTarget && (
+          <span className="audit-toggle">
+            {expanded ? (
+              <ChevronDown className="h-4 w-4 text-[#4f4f4f]" />
+            ) : (
+              <ChevronRight className="h-4 w-4 text-[#4f4f4f]" />
+            )}
           </span>
         )}
-        <span className="audit-strategy-name" title={strategy.name || strategy.address}>
-          {strategy.name || shortAddr(strategy.address)}
-        </span>
-        {strategy.debtUsd > 0 && (
-          <span className={`audit-debt${!strategy.detectionMethod ? ' audit-debt-prominent' : ''}`}>
-            {fmt(strategy.debtUsd)}
-          </span>
-        )}
-        {strategy.detectionMethod && (
-          <span className={`audit-overlap-tag-prominent ${strategy.detectionMethod === 'auto' ? 'auto' : 'registry'}`}>
-            {strategy.detectionMethod === 'auto' ? 'overlap (auto)' : strategy.label || 'overlap (registry)'}
-          </span>
-        )}
-        {isCycle && <span className="audit-cycle-tag">cycle</span>}
-      </div>
-
-      {/* Target vault + its strategies (collapsed by default) */}
-      {expanded && hasTarget && targetVault && (
-        <>
-          <div
-            className={`audit-row audit-target-vault-row${strategy.detectionMethod ? ' audit-strategy-deducted' : ''}`}
-            style={{
-              paddingLeft: `${(depth + 1) * 1.5 + 1.5}rem`,
-              background: `rgba(46, 230, 182, ${0.015 + (depth + 1) * 0.015})`
-            }}
-          >
-            <span className="text-dim" style={{ fontSize: '0.75rem', flexShrink: 0 }}>
-              {'\u2514\u2500'}
-            </span>
-            <span style={{ color: 'var(--accent)', fontSize: '0.65rem', flexShrink: 0, opacity: 0.6 }}>{'\u2192'}</span>
-            <span className="audit-vault-indicator">VAULT</span>
+        {!canExpandTarget && <span className="audit-toggle-placeholder" />}
+        {shouldDisplayTargetVault ? (
+          <>
             <Link
-              to={powergloveVaultPath(targetVault.chainId, targetVault.address)}
+              to={powergloveVaultPath(resolvedTargetVault.chainId, resolvedTargetVault.address)}
               className="audit-vault-name"
-              title={targetVault.name || targetVault.address}
+              title={resolvedTargetVault.name || resolvedTargetVault.address}
               onClick={(e) => e.stopPropagation()}
             >
-              {targetVault.name || shortAddr(targetVault.address)}
+              {resolvedTargetVault.name || shortAddr(resolvedTargetVault.address)}
             </Link>
-            {categoryBadge(targetVault.category)}
-            {typeBadge(targetVault.vaultType)}
-            <span className="audit-tvl">{fmt(targetVault.tvlUsd)}</span>
-            {targetVault.isRetired && (
+            {categoryBadge(resolvedTargetVault.category)}
+            {typeBadge(resolvedTargetVault.vaultType)}
+            {resolvedTargetVault.isRetired && (
               <span
                 className="badge"
                 style={{
@@ -214,22 +212,56 @@ function StrategyNode({
                 retired
               </span>
             )}
-          </div>
-          {!isCycle &&
-            !isTopLevelTarget &&
-            targetVault.strategies.map((strat, i) => (
-              <StrategyNode
-                key={strat.address}
-                strategy={strat}
-                vaultMap={vaultMap}
-                depth={depth + 2}
-                visited={nextVisited}
-                topLevelAddresses={topLevelAddresses}
-                isLast={i === targetVault.strategies.length - 1}
-              />
-            ))}
-        </>
-      )}
+          </>
+        ) : (
+          <span className="audit-strategy-name" title={strategy.name || strategy.address}>
+            {strategy.name || shortAddr(strategy.address)}
+          </span>
+        )}
+        {isCycle && <span className="audit-cycle-tag">cycle</span>}
+
+        <span className="audit-cols">
+          <span className="audit-col-strats">
+            {resolvedTargetVault && resolvedTargetVault.strategies.length > 0 ? (
+              `${resolvedTargetVault.strategies.length} strat${resolvedTargetVault.strategies.length > 1 ? 's' : ''}`
+            ) : (
+              <span className="audit-col-empty">{'\u2014'}</span>
+            )}
+          </span>
+          <span className="audit-col-tvl" title="Debt allocated from the parent vault to this strategy">
+            {fmt(strategy.debtUsd)}
+          </span>
+          <span className="audit-col-overlaps">
+            {strategy.detectionMethod ? (
+              <span
+                className={`audit-overlap-tag ${strategy.detectionMethod === 'auto' ? 'auto' : 'registry'}`}
+                title={overlapLabel}
+              >
+                {overlapLabel}
+              </span>
+            ) : (
+              <span className="audit-col-empty">{'\u2014'}</span>
+            )}
+          </span>
+          <span className="audit-col-counted" title="Value counted from this strategy after overlap deductions">
+            {fmt(strategyCountedTvl)}
+          </span>
+        </span>
+      </div>
+
+      {expanded &&
+        canExpandTarget &&
+        resolvedTargetVault.strategies.map((strat, i) => (
+          <StrategyNode
+            key={strat.address}
+            strategy={strat}
+            vaultMap={vaultMap}
+            depth={depth + 1}
+            visited={nextVisited}
+            topLevelAddresses={topLevelAddresses}
+            isLast={i === resolvedTargetVault.strategies.length - 1}
+          />
+        ))}
     </div>
   )
 }
@@ -253,7 +285,6 @@ function VaultNode({
   visited.add(`${vault.chainId}:${vault.address.toLowerCase()}`)
 
   const countedTvl = computeCountedTvl(vault)
-  const hasDeduction = countedTvl < vault.tvlUsd - 1 // $1 tolerance for rounding
 
   return (
     <div className={`audit-vault-node${hasOverlap ? ' has-overlap' : ''}`}>
@@ -262,7 +293,15 @@ function VaultNode({
         onClick={() => hasStrategies && setExpanded((e) => !e)}
         style={{ cursor: hasStrategies ? 'pointer' : 'default' }}
       >
-        {hasStrategies && <span className="audit-toggle">{expanded ? '\u25BC' : '\u25B6'}</span>}
+        {hasStrategies && (
+          <span className="audit-toggle">
+            {expanded ? (
+              <ChevronDown className="h-4 w-4 text-[#4f4f4f]" />
+            ) : (
+              <ChevronRight className="h-4 w-4 text-[#4f4f4f]" />
+            )}
+          </span>
+        )}
         {!hasStrategies && <span className="audit-toggle-placeholder" />}
 
         <Link
@@ -311,7 +350,7 @@ function VaultNode({
             )}
           </span>
           <span className="audit-col-counted" title="TVL after deducting overlap from this vault's strategies">
-            {hasDeduction ? fmt(countedTvl) : fmt(vault.tvlUsd)}
+            {fmt(countedTvl)}
           </span>
         </span>
       </div>
@@ -518,7 +557,7 @@ export function AuditPanel() {
           <span style={{ fontWeight: 600 }}>Vault</span>
           <span className="audit-cols audit-cols-header">
             <span className="audit-col-strats">Strats</span>
-            <span className="audit-col-tvl">Vault TVL</span>
+            <span className="audit-col-tvl">Debt</span>
             <span className="audit-col-overlaps">Overlaps</span>
             <span className="audit-col-counted">Counted</span>
           </span>
