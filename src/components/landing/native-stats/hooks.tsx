@@ -197,23 +197,23 @@ export const CHAIN_COLORS: Record<number, string> = {
 }
 
 export const CAT_COLORS: Record<string, string> = {
-  v1: '#848e9c',
-  v2: '#3b82f6',
-  v3: '#0ecb81',
-  curation: '#f0b90b'
+  v1: '#808080',
+  v2: '#46a2ff',
+  v3: '#16a34a',
+  curation: '#a16207'
 }
 
 export const CHART_COLORS = [
-  '#2ee6b6',
-  '#3b82f6',
-  '#f0b90b',
-  '#f6465d',
-  '#a78bfa',
-  '#fb923c',
-  '#848e9c',
-  '#06b6d4',
-  '#ec4899',
-  '#84cc16'
+  '#0657f9',
+  '#46a2ff',
+  '#94adf2',
+  '#16a34a',
+  '#a16207',
+  '#7f1d1d',
+  '#808080',
+  '#4f4f4f',
+  '#b8c7f5',
+  '#c6d9ff'
 ]
 
 export function useSort(defaultKey: string, defaultDir: 'asc' | 'desc' = 'desc') {

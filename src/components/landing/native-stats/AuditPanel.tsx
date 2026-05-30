@@ -173,7 +173,7 @@ function StrategyNode({
         className={`audit-row audit-strategy-row${strategy.detectionMethod ? ' audit-strategy-deducted' : ''}`}
         style={{
           paddingLeft: `${depth * 1.5 + 1.5}rem`,
-          background: `rgba(46, 230, 182, ${0.015 + depth * 0.015})`,
+          background: depth > 0 ? 'var(--surface-2)' : 'var(--surface)',
           cursor: canExpandTarget ? 'pointer' : 'default'
         }}
         onClick={() => canExpandTarget && setExpanded((e) => !e)}

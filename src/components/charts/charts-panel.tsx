@@ -14,6 +14,7 @@ import LifetimeEarningsChart from '@/components/charts/LifetimeEarningsChart'
 import PPSChart from '@/components/charts/PPSChart'
 import TVLChart from '@/components/charts/TVLChart'
 import UnderlyingTvlChart from '@/components/charts/UnderlyingTvlChart'
+import YvUsdDualLineChart from '@/components/charts/YvUsdDualLineChart'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -30,7 +31,8 @@ import type {
   ppsChartData,
   tvlChartData,
   vaultEarningsChartData,
-  vaultEventProfitChartData
+  vaultEventProfitChartData,
+  yvUsdChartData
 } from '@/types/dataTypes'
 
 type ChartData = {
@@ -47,15 +49,16 @@ type ChartData = {
   managementEventsError?: boolean
   isLoading?: boolean
   hasErrors?: boolean
+  chartHeaderStickyTop?: number
+  yvUsdChartData?: {
+    aprApyData: yvUsdChartData
+    lockedAprApyData: aprApyChartData
+    tvlData: yvUsdChartData
+    ppsData: yvUsdChartData
+  } | null
 }
 
-type ChartTab =
-  | 'historical-apy'
-  | 'historical-pps'
-  | 'historical-tvl'
-  | 'underlying-tvl'
-  | 'lifetime-earnings'
-  | 'envio-profit'
+type ChartTab = 'historical-apy' | 'historical-pps' | 'historical-tvl' | 'lifetime-earnings' | 'envio-profit'
 
 const chartSections: Array<{
   value: ChartTab
@@ -70,7 +73,6 @@ const chartSections: Array<{
     label: 'Historical Share Growth'
   },
   { value: 'historical-tvl', label: 'Historical TVL' },
-  { value: 'underlying-tvl', label: 'Underlying TVL' },
   { value: 'lifetime-earnings', label: 'Reported Profit / Fees' },
   { value: 'envio-profit', label: 'Vault Event Profit / Fees' }
 ]
@@ -83,6 +85,12 @@ const timeframes = [
 ] as const
 
 type Timeframe = (typeof timeframes)[number]
+type TvlView = 'total' | 'underlying'
+
+const tvlViewOptions = [
+  { label: 'Deposited value', mobileLabel: 'Value', value: 'total' },
+  { label: 'Underlying TVL', mobileLabel: 'Underlying', value: 'underlying' }
+] as const
 
 export function ChartsPanel(data: ChartData) {
   const isMobile = useIsMobile()
@@ -99,9 +107,12 @@ export function ChartsPanel(data: ChartData) {
     managementEventsLoading = false,
     managementEventsError = false,
     isLoading = false,
-    hasErrors = false
+    hasErrors = false,
+    chartHeaderStickyTop = 54,
+    yvUsdChartData
   } = data
   const [timeframe, setTimeframe] = useState<Timeframe>(timeframes[3])
+  const [tvlView, setTvlView] = useState<TvlView>('total')
   const [apyVisibleSeries, setApyVisibleSeries] = useState<APYVisibleSeries>(() =>
     buildApyVisibleSeries({
       derivedApy: false,
@@ -182,26 +193,42 @@ export function ChartsPanel(data: ChartData) {
       ? `Review cumulative event-level fees in ${assetSymbol || 'asset'} units.`
       : 'No Envio strategy report events available yet.'
 
+  const hasYvUsdChartData = Boolean(yvUsdChartData)
+
   const chartInfo = {
     'historical-apy': {
-      title: 'Vault Performance',
-      description: `1-Day, 7-Day, and 30-Day APYs over ${timeframe.label}.`,
-      mobileDescription: `Compare APY trends over ${timeframe.mobileLabel}.`
+      title: hasYvUsdChartData ? 'yvUSD Performance' : 'Vault Performance',
+      description: hasYvUsdChartData
+        ? `Unlocked and locked APY over ${timeframe.label}.`
+        : `1-Day, 7-Day, and 30-Day APYs over ${timeframe.label}.`,
+      mobileDescription: hasYvUsdChartData
+        ? `Compare locked and unlocked APY over ${timeframe.mobileLabel}.`
+        : `Compare APY trends over ${timeframe.mobileLabel}.`
     },
     'historical-pps': {
-      title: 'Vault Share Growth',
-      description: `Price Per Share values over ${timeframe.label}.`,
-      mobileDescription: `Track share price growth over ${timeframe.mobileLabel}.`
+      title: hasYvUsdChartData ? 'yvUSD Share Growth' : 'Vault Share Growth',
+      description: hasYvUsdChartData
+        ? `Unlocked and locked share values in yvUSD terms over ${timeframe.label}.`
+        : `Price Per Share values over ${timeframe.label}.`,
+      mobileDescription: hasYvUsdChartData
+        ? `Track locked and unlocked share growth over ${timeframe.mobileLabel}.`
+        : `Track share price growth over ${timeframe.mobileLabel}.`
     },
     'historical-tvl': {
-      title: 'Total Value Deposited',
-      description: `Value deposited in vault over ${timeframe.label}.`,
-      mobileDescription: `Review TVL changes over ${timeframe.mobileLabel}.`
-    },
-    'underlying-tvl': {
-      title: 'Underlying TVL',
-      description: `Underlying asset balance deposited in vault over ${timeframe.label}.`,
-      mobileDescription: `Review underlying TVL over ${timeframe.mobileLabel}.`
+      title:
+        tvlView === 'underlying' ? 'Underlying TVL' : hasYvUsdChartData ? 'yvUSD Deposits' : 'Total Value Deposited',
+      description:
+        tvlView === 'underlying'
+          ? `Underlying asset balance deposited in vault over ${timeframe.label}.`
+          : hasYvUsdChartData
+            ? `Unlocked and locked deposits over ${timeframe.label}.`
+            : `Value deposited in vault over ${timeframe.label}.`,
+      mobileDescription:
+        tvlView === 'underlying'
+          ? `Review underlying TVL over ${timeframe.mobileLabel}.`
+          : hasYvUsdChartData
+            ? `Review locked and unlocked TVL over ${timeframe.mobileLabel}.`
+            : `Review TVL changes over ${timeframe.mobileLabel}.`
     },
     'lifetime-earnings': {
       title: lifetimeChartTitle,
@@ -222,7 +249,6 @@ export function ChartsPanel(data: ChartData) {
     'historical-apy': 60,
     'historical-pps': 60,
     'historical-tvl': 68,
-    'underlying-tvl': 84,
     'lifetime-earnings': 72,
     'envio-profit': 72
   } satisfies Record<ChartTab, number>
@@ -230,6 +256,25 @@ export function ChartsPanel(data: ChartData) {
   const renderChartBody = (chartType: ChartTab) => {
     switch (chartType) {
       case 'historical-apy':
+        if (yvUsdChartData) {
+          return (
+            <FixedHeightChartContainer heightClassName={chartHeightClassName}>
+              <ChartErrorBoundary>
+                <APYChart
+                  chartData={aprApyData}
+                  comparisonChartData={yvUsdChartData.lockedAprApyData}
+                  comparisonLabel="Locked yvUSD"
+                  timeframe={timeframe.value}
+                  visibleSeries={apyVisibleSeries}
+                  onVisibleSeriesChange={setApyVisibleSeries}
+                  hideSeriesControls={true}
+                  ppsPeriodApy={ppsPeriodApy}
+                />
+              </ChartErrorBoundary>
+            </FixedHeightChartContainer>
+          )
+        }
+
         return (
           <FixedHeightChartContainer heightClassName={chartHeightClassName}>
             <ChartErrorBoundary>
@@ -259,6 +304,16 @@ export function ChartsPanel(data: ChartData) {
           </FixedHeightChartContainer>
         )
       case 'historical-pps':
+        if (yvUsdChartData) {
+          return (
+            <FixedHeightChartContainer heightClassName={chartHeightClassName}>
+              <ChartErrorBoundary>
+                <YvUsdDualLineChart chartData={yvUsdChartData.ppsData} timeframe={timeframe.value} valueType="pps" />
+              </ChartErrorBoundary>
+            </FixedHeightChartContainer>
+          )
+        }
+
         return (
           <FixedHeightChartContainer heightClassName={chartHeightClassName}>
             <ChartErrorBoundary>
@@ -288,6 +343,30 @@ export function ChartsPanel(data: ChartData) {
           </FixedHeightChartContainer>
         )
       case 'historical-tvl':
+        if (tvlView === 'underlying') {
+          return (
+            <FixedHeightChartContainer heightClassName={chartHeightClassName}>
+              <ChartErrorBoundary>
+                <UnderlyingTvlChart
+                  chartData={underlyingTvlData}
+                  timeframe={timeframe.value}
+                  assetSymbol={assetSymbol}
+                />
+              </ChartErrorBoundary>
+            </FixedHeightChartContainer>
+          )
+        }
+
+        if (yvUsdChartData) {
+          return (
+            <FixedHeightChartContainer heightClassName={chartHeightClassName}>
+              <ChartErrorBoundary>
+                <YvUsdDualLineChart chartData={yvUsdChartData.tvlData} timeframe={timeframe.value} valueType="tvl" />
+              </ChartErrorBoundary>
+            </FixedHeightChartContainer>
+          )
+        }
+
         return (
           <FixedHeightChartContainer heightClassName={chartHeightClassName}>
             <ChartErrorBoundary>
@@ -314,14 +393,6 @@ export function ChartsPanel(data: ChartData) {
                 </ChartErrorBoundary>
               </div>
             )}
-          </FixedHeightChartContainer>
-        )
-      case 'underlying-tvl':
-        return (
-          <FixedHeightChartContainer heightClassName={chartHeightClassName}>
-            <ChartErrorBoundary>
-              <UnderlyingTvlChart chartData={underlyingTvlData} timeframe={timeframe.value} assetSymbol={assetSymbol} />
-            </ChartErrorBoundary>
           </FixedHeightChartContainer>
         )
       case 'lifetime-earnings':
@@ -487,6 +558,25 @@ export function ChartsPanel(data: ChartData) {
     </div>
   )
 
+  const tvlViewControls = (
+    <div className="inline-grid grid-cols-2 rounded-md border border-border bg-white p-0.5">
+      {tvlViewOptions.map((option) => (
+        <button
+          key={option.value}
+          type="button"
+          onClick={() => setTvlView(option.value)}
+          className={`min-w-0 rounded-[4px] px-2.5 py-1.5 text-xs font-medium transition-colors sm:px-3 ${
+            tvlView === option.value
+              ? 'bg-[#0657f9] text-white'
+              : 'text-gray-600 hover:bg-gray-100 hover:text-[#111111]'
+          }`}
+        >
+          {isMobile ? option.mobileLabel : option.label}
+        </button>
+      ))}
+    </div>
+  )
+
   const chartControls = isMobile ? mobileChartControls : desktopChartControls
 
   const renderChartSection = (chartType: ChartTab) => {
@@ -496,9 +586,12 @@ export function ChartsPanel(data: ChartData) {
     return (
       <section key={chartType} className="border-b border-border last:border-b-0">
         <div className="space-y-4 p-4 sm:p-6">
-          <div className="space-y-1">
-            <h3 className="text-sm font-medium text-[#111111]">{info.title}</h3>
-            <p className="text-xs text-gray-500">{description}</p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="space-y-1">
+              <h3 className="text-sm font-medium text-[#111111]">{info.title}</h3>
+              <p className="text-xs text-gray-500">{description}</p>
+            </div>
+            {chartType === 'historical-tvl' ? <div className="shrink-0">{tvlViewControls}</div> : null}
           </div>
           {renderChartBody(chartType)}
           {chartType === 'historical-apy' && !isMobile ? desktopApySeriesControls : null}
@@ -509,7 +602,10 @@ export function ChartsPanel(data: ChartData) {
 
   return (
     <div className="border-x border-t border-border bg-white">
-      <div className="border-b border-border p-4 sm:flex sm:items-center sm:justify-between sm:gap-4 sm:p-6">
+      <div
+        className="sticky z-10 border-b border-border bg-white px-4 py-2 sm:flex sm:items-center sm:justify-between sm:gap-4 sm:px-6"
+        style={{ top: chartHeaderStickyTop }}
+      >
         <div>
           <h2 className="text-base font-semibold text-[#111111]">Charts</h2>
           <p className="mt-1 text-xs text-gray-500">

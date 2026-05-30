@@ -1,3 +1,4 @@
+import { List, Rows3 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AuditPanel } from './AuditPanel'
@@ -56,13 +57,11 @@ export function NativeStatsDashboard() {
 
   return (
     <StatsContext.Provider value={contextValue}>
-      <section className="pg-stats rounded-none border-x border-b border-border bg-white">
+      <section className="pg-stats">
         <div className="top-bar">
           <div>
-            <div className="top-bar-title">{STATS_TABS.find((item) => item.key === tab)?.label}</div>
-            <div className="text-dim" style={{ fontSize: '0.78rem', marginTop: '0.2rem' }}>
-              Native Powerglove port of the Yearn Metrics dashboard
-            </div>
+            <div className="top-bar-title">Yearn Metrics</div>
+            <div className="top-bar-subtitle">TVL, fees, curation, and DefiLlama reconciliation</div>
           </div>
           <div className="toolbar-right">
             {lastFetchedAt && (
@@ -86,40 +85,40 @@ export function NativeStatsDashboard() {
             </select>
             <fieldset className="density-toggle" aria-label="Table density">
               <button
+                type="button"
                 className={density === 'comfortable' ? 'active' : ''}
                 onClick={() => setDensity('comfortable')}
                 title="Comfortable"
                 aria-pressed={density === 'comfortable'}
               >
-                ☰
+                <Rows3 className="h-4 w-4" aria-hidden="true" />
+                <span className="sr-only">Comfortable density</span>
               </button>
               <button
+                type="button"
                 className={density === 'compact' ? 'active' : ''}
                 onClick={() => setDensity('compact')}
                 title="Compact"
                 aria-pressed={density === 'compact'}
               >
-                ☷
+                <List className="h-4 w-4" aria-hidden="true" />
+                <span className="sr-only">Compact density</span>
               </button>
             </fieldset>
           </div>
         </div>
 
-        <div className="toolbar" style={{ marginBottom: '1rem' }}>
+        <div className="stats-tabs-shell">
           <Tabs value={tab} onValueChange={(value) => setTab(value as StatsTab)} className="w-full">
-            <TabsList className="flex h-auto max-w-full flex-wrap justify-start overflow-visible bg-transparent p-0">
+            <TabsList className="stats-tabs-list">
               {STATS_TABS.map((item) => (
-                <TabsTrigger
-                  key={item.key}
-                  value={item.key}
-                  className="rounded-none border-b-2 border-transparent px-3 py-3 text-sm font-medium text-muted-foreground data-[state=active]:border-[#0657f9] data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none md:px-5"
-                >
+                <TabsTrigger key={item.key} value={item.key} className="stats-tab">
                   {item.label}
                 </TabsTrigger>
               ))}
             </TabsList>
 
-            <div style={{ marginTop: '1rem' }}>
+            <div className="stats-tab-panel">
               {!HAS_STATS_API ? <MissingApiNotice /> : null}
               {HAS_STATS_API ? (
                 <>

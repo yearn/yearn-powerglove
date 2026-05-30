@@ -114,10 +114,10 @@ interface ProfitabilitySummary {
 }
 
 const QUADRANT_LABELS: Record<Quadrant, { label: string; color: string; desc: string }> = {
-  high_tvl_high_yield: { label: 'Cash Cows', color: '#0ecb81', desc: 'Protect & maintain' },
-  high_tvl_low_yield: { label: 'Optimize', color: '#f0b90b', desc: 'Improve yield or migrate' },
-  low_tvl_high_yield: { label: 'Scale Up', color: '#3b82f6', desc: 'Drive more TVL' },
-  low_tvl_low_yield: { label: 'Review', color: '#848e9c', desc: 'Consider retirement' }
+  high_tvl_high_yield: { label: 'Cash Cows', color: '#16a34a', desc: 'Protect & maintain' },
+  high_tvl_low_yield: { label: 'Optimize', color: '#a16207', desc: 'Improve yield or migrate' },
+  low_tvl_high_yield: { label: 'Scale Up', color: '#0657f9', desc: 'Drive more TVL' },
+  low_tvl_low_yield: { label: 'Review', color: '#808080', desc: 'Consider retirement' }
 }
 
 function trendIcon(t: string | undefined) {
@@ -135,7 +135,7 @@ function ScatterTooltip({ active, payload }: any) {
       style={{
         background: 'var(--surface)',
         border: '1px solid var(--border)',
-        borderRadius: 8,
+        borderRadius: 4,
         padding: '0.7rem 0.85rem',
         fontSize: '0.78rem',
         lineHeight: 1.6,
@@ -400,16 +400,16 @@ export function FeesPanel() {
               <AreaChart data={filteredBuckets} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
                 <defs>
                   <linearGradient id={gradFeesId} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#0ecb81" stopOpacity={0.3} />
-                    <stop offset="100%" stopColor="#0ecb81" stopOpacity={0} />
+                    <stop offset="0%" stopColor="#16a34a" stopOpacity={0.22} />
+                    <stop offset="100%" stopColor="#16a34a" stopOpacity={0} />
                   </linearGradient>
                   <linearGradient id={gradMgmtId} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#f0b90b" stopOpacity={0.3} />
-                    <stop offset="100%" stopColor="#f0b90b" stopOpacity={0} />
+                    <stop offset="0%" stopColor="#94adf2" stopOpacity={0.24} />
+                    <stop offset="100%" stopColor="#94adf2" stopOpacity={0} />
                   </linearGradient>
                   <linearGradient id={gradGainsId} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.3} />
-                    <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
+                    <stop offset="0%" stopColor="#46a2ff" stopOpacity={0.24} />
+                    <stop offset="100%" stopColor="#46a2ff" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
@@ -427,7 +427,7 @@ export function FeesPanel() {
                   width={60}
                 />
                 <Tooltip
-                  contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8 }}
+                  contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 4 }}
                   labelStyle={{ color: 'var(--text)' }}
                   formatter={(value: number, name: string) => [
                     fmt(value, 2),
@@ -437,12 +437,12 @@ export function FeesPanel() {
                         ? 'Management Fees'
                         : 'Gains'
                   ]}
-                  cursor={{ stroke: 'rgba(46, 230, 182, 0.3)' }}
+                  cursor={{ stroke: 'rgba(6, 87, 249, 0.22)' }}
                 />
                 <Area
                   type="monotone"
                   dataKey="gains"
-                  stroke="#3b82f6"
+                  stroke="#46a2ff"
                   fill={`url(#${gradGainsId})`}
                   strokeWidth={2}
                   name="gains"
@@ -450,7 +450,7 @@ export function FeesPanel() {
                 <Area
                   type="monotone"
                   dataKey="performanceFeeRevenue"
-                  stroke="#0ecb81"
+                  stroke="#16a34a"
                   fill={`url(#${gradFeesId})`}
                   strokeWidth={2}
                   name="performanceFeeRevenue"
@@ -458,7 +458,7 @@ export function FeesPanel() {
                 <Area
                   type="monotone"
                   dataKey="managementFeeRevenue"
-                  stroke="#f0b90b"
+                  stroke="#94adf2"
                   fill={`url(#${gradMgmtId})`}
                   strokeWidth={2}
                   name="managementFeeRevenue"
@@ -475,7 +475,7 @@ export function FeesPanel() {
             <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               TVL vs Fee Yield
               {trendLine && (
-                <span style={{ fontSize: '0.75rem', color: '#f0b90b', fontWeight: 400 }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-3)', fontWeight: 400 }}>
                   R² = {trendLine.r2.toFixed(3)}
                 </span>
               )}
@@ -545,7 +545,7 @@ export function FeesPanel() {
                   <Tooltip content={<ScatterTooltip />} cursor={false} />
                   <Scatter data={scatterData}>
                     {scatterData.map((v) => {
-                      const qColor = QUADRANT_LABELS[v.quadrant]?.color || '#848e9c'
+                      const qColor = QUADRANT_LABELS[v.quadrant]?.color || '#808080'
                       return (
                         <Cell
                           key={`${v.address}-${v.chainId}`}
@@ -560,7 +560,7 @@ export function FeesPanel() {
                   {trendLine && (
                     <Scatter
                       data={trendLine.points}
-                      line={{ stroke: '#f0b90b', strokeWidth: 2, strokeDasharray: '6 3' }}
+                      line={{ stroke: '#a16207', strokeWidth: 2, strokeDasharray: '6 3' }}
                       shape={() => <></>}
                       isAnimationActive={false}
                       legendType="none"
@@ -681,7 +681,7 @@ export function FeesPanel() {
                                 <tr
                                   key={`${node.vault.chainId}-${node.vault.address}-${depth}`}
                                   style={{
-                                    background: `rgba(46, 230, 182, ${0.015 + depth * 0.015})`,
+                                    background: depth > 0 ? 'var(--surface-2)' : 'var(--surface)',
                                     opacity: rowOpacity
                                   }}
                                 >
@@ -749,9 +749,7 @@ export function FeesPanel() {
                               )
                             })}
                           {isOpen && (
-                            <tr
-                              style={{ background: 'rgba(46, 230, 182, 0.06)', borderTop: '1px solid var(--border)' }}
-                            >
+                            <tr style={{ background: 'var(--surface-2)', borderTop: '1px solid var(--border)' }}>
                               <td style={{ paddingLeft: '1rem' }}>
                                 <span
                                   style={{

@@ -105,6 +105,12 @@ export type vaultEventProfitChartData = {
   reportFees: number | null
 }[]
 
+export type yvUsdChartData = {
+  date: string
+  unlocked: number | null
+  locked: number | null
+}[]
+
 type StrategyDetails = {
   chainId: ChainId
   vaultAddress: string

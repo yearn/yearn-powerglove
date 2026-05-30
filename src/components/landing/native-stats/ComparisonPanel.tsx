@@ -5,7 +5,7 @@ import { StatsContext } from './StatsContext'
 import type { DefillamaComparison as Comparison } from './types'
 
 const TOOLTIP_STYLE = {
-  contentStyle: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8 },
+  contentStyle: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 4 },
   labelStyle: { color: 'var(--text)' },
   itemStyle: { color: 'var(--text-2)' }
 }
@@ -222,11 +222,11 @@ export function ComparisonPanel() {
               <Tooltip
                 formatter={(value: number) => fmt(value)}
                 {...TOOLTIP_STYLE}
-                cursor={{ fill: 'rgba(31, 38, 55, 0.4)' }}
+                cursor={{ fill: 'rgba(6, 87, 249, 0.08)' }}
               />
               <Legend wrapperStyle={{ fontSize: '0.75rem', color: 'var(--text-2)', paddingTop: 8 }} />
-              <Bar dataKey="Ours" fill="#2ee6b6" radius={[3, 3, 0, 0]} maxBarSize={36} />
-              <Bar dataKey="DefiLlama" fill="#3b82f6" radius={[3, 3, 0, 0]} maxBarSize={36} />
+              <Bar dataKey="Ours" fill="#0657f9" radius={[3, 3, 0, 0]} maxBarSize={36} />
+              <Bar dataKey="DefiLlama" fill="#94adf2" radius={[3, 3, 0, 0]} maxBarSize={36} />
             </BarChart>
           </ResponsiveContainer>
         </div>

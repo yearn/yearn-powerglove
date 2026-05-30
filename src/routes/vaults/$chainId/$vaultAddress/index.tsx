@@ -9,12 +9,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { VaultEventsTabs } from '@/components/vault-events'
 import { VaultOverviewTab, VaultPageBreadcrumb, VaultPageLayout } from '@/components/vault-page'
 import type { ChainId } from '@/constants/chains'
+import { isYvUsdAddress } from '@/constants/featuredVaults'
 import { useTokenAssetsContext } from '@/contexts/useTokenAssets'
 import { useAprOracle } from '@/hooks/useAprOracle'
 import { useChartData } from '@/hooks/useChartData'
 import { useMainInfoPanelData } from '@/hooks/useMainInfoPanelData'
 import { useReallocationData } from '@/hooks/useReallocationData'
 import { useVaultPageData } from '@/hooks/useVaultPageData'
+import { useYvUsdChartData } from '@/hooks/useYvUsdChartData'
 import { formatPercent } from '@/lib/formatters'
 import { isLegacyVaultType } from '@/utils/vaultDataUtils'
 import { getVaultOverrideDisplayItems } from '@/utils/vaultOverrides'
@@ -44,6 +46,8 @@ function SingleVaultPage() {
   const vaultChainId = Number(chainId) as ChainId
   const { assets: tokenAssets } = useTokenAssetsContext()
   const [activeVaultPageTab, setActiveVaultPageTab] = React.useState<VaultPageTab>('overview')
+  const [vaultHeaderElement, setVaultHeaderElement] = React.useState<HTMLDivElement | null>(null)
+  const [chartHeaderStickyTop, setChartHeaderStickyTop] = React.useState(54)
 
   const {
     vaultDetails,
@@ -94,6 +98,18 @@ function SingleVaultPage() {
     assetDecimals: vaultDetails?.asset?.decimals,
     isLoading: chartsLoading,
     hasErrors: chartsError
+  })
+
+  const isYvUsd = isYvUsdAddress(vaultChainId, vaultAddress)
+  const {
+    yvUsdChartData,
+    isLoading: yvUsdChartsLoading,
+    hasErrors: yvUsdChartsError
+  } = useYvUsdChartData({
+    enabled: isYvUsd,
+    unlockedAprApyData: transformedAprApyData,
+    unlockedTvlData: transformedTvlData,
+    unlockedPpsData: transformedPpsData
   })
 
   const { data: vaultAprOracle } = useAprOracle({
@@ -159,6 +175,25 @@ function SingleVaultPage() {
     vaultSnapshotTimestampUtc
   )
 
+  React.useLayoutEffect(() => {
+    if (!vaultHeaderElement) return
+
+    const updateChartHeaderOffset = () => {
+      const isDesktopSticky = window.matchMedia('(min-width: 768px)').matches
+      setChartHeaderStickyTop(isDesktopSticky ? 54 + Math.ceil(vaultHeaderElement.getBoundingClientRect().height) : 54)
+    }
+
+    updateChartHeaderOffset()
+    const resizeObserver = new ResizeObserver(updateChartHeaderOffset)
+    resizeObserver.observe(vaultHeaderElement)
+    window.addEventListener('resize', updateChartHeaderOffset)
+
+    return () => {
+      resizeObserver.disconnect()
+      window.removeEventListener('resize', updateChartHeaderOffset)
+    }
+  }, [vaultHeaderElement])
+
   if (!vaultDetails || !mainInfoPanelProps) {
     return (
       <VaultPageLayout isLoading={true} hasErrors={false}>
@@ -210,8 +245,8 @@ function SingleVaultPage() {
             className="flex w-full flex-1 flex-col bg-transparent"
             onValueChange={(value) => setActiveVaultPageTab(value as VaultPageTab)}
           >
-            <div className="bg-white md:sticky md:top-[54px] md:z-20">
-              <VaultPageBreadcrumb vaultName={vaultDetails.name} />
+            <div ref={setVaultHeaderElement} className="bg-white md:sticky md:top-[54px] md:z-20">
+              <VaultPageBreadcrumb vaultName={isYvUsd ? 'yvUSD' : vaultDetails.name} />
               <MainInfoPanel
                 {...mainInfoPanelProps}
                 navigation={
@@ -253,8 +288,10 @@ function SingleVaultPage() {
                   reportHistoryError={Boolean(reportHistoryError)}
                   managementEventsLoading={managementEventsLoading}
                   managementEventsError={Boolean(managementEventsError)}
-                  isLoading={chartsLoading}
-                  hasErrors={chartsError}
+                  yvUsdChartData={yvUsdChartData}
+                  chartHeaderStickyTop={chartHeaderStickyTop}
+                  isLoading={chartsLoading || yvUsdChartsLoading}
+                  hasErrors={chartsError || yvUsdChartsError}
                 />
               </Suspense>
             </TabsContent>

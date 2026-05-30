@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { isYvUsdAddress } from '@/constants/featuredVaults'
 import { formatPercentFromDecimal } from '@/lib/formatters'
 import type { MainInfoPanelProps } from '@/types/dataTypes'
 import type { TokenAsset } from '@/types/tokenAsset'
@@ -34,6 +35,7 @@ export function useMainInfoPanelData({
     const deploymentDate = formatVaultDate(vaultDetails.inceptTime)
 
     const vaultName = vaultDetails.name
+    const isYvUsd = isYvUsdAddress(vaultDetails.chainId, vaultDetails.address)
     const description = formatVaultDescription(vaultDetails.meta?.description)
     const chainId = vaultDetails.chainId
 
@@ -64,9 +66,9 @@ export function useMainInfoPanelData({
     const { blockExplorerLink, yearnVaultLink } = generateVaultLinks(vaultDetails)
 
     return {
-      vaultId: vaultDetails.symbol,
+      vaultId: isYvUsd ? 'yvUSD' : vaultDetails.symbol,
       deploymentDate,
-      vaultName,
+      vaultName: isYvUsd ? 'yvUSD' : vaultName,
       description,
       vaultToken,
       totalSupply,

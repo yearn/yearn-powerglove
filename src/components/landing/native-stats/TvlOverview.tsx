@@ -203,7 +203,7 @@ function TvlHistoryTooltip({
       style={{
         background: 'var(--surface)',
         border: '1px solid var(--border)',
-        borderRadius: 8,
+        borderRadius: 4,
         padding: '0.65rem 0.75rem',
         minWidth: 220
       }}
