@@ -33,6 +33,7 @@ interface AuditVault {
   vaultType: number | null
   tvlUsd: number
   isRetired: boolean
+  isHidden: boolean
   strategies: AuditStrategy[]
 }
 
@@ -54,6 +55,8 @@ interface AuditCrossChainVault {
   tvlUsd: number
   label: string
 }
+
+type AuditTypeFilter = 'all' | 'v3-allocator' | 'v3-strategy' | 'curation' | 'v2' | 'v1'
 
 interface OverlapStrategyDetail {
   sourceVaultAddress: string
@@ -109,6 +112,10 @@ function computeStrategyCountedTvl(strategy: AuditStrategy): number {
   return strategy.detectionMethod ? 0 : strategy.debtUsd
 }
 
+function visibleStrategies(strategies: AuditStrategy[]): AuditStrategy[] {
+  return strategies.filter((strategy) => strategy.debtUsd > 0)
+}
+
 function getRegistryOverlapLabel(strategy: AuditStrategy, targetVault: AuditVault | null): string {
   if (targetVault?.name) return `\u2192 ${targetVault.name}`
   if (strategy.label) return `\u2192 ${strategy.label}`
@@ -144,12 +151,12 @@ function StrategyNode({
   const isCycle = targetKey ? visited.has(targetKey) : false
   const isTopLevelTarget = targetKey ? topLevelAddresses.has(targetKey) : false
   const strategyCountedTvl = computeStrategyCountedTvl(strategy)
-  const isZeroDebt = strategy.debtUsd <= 0
   const shouldDisplayTargetVault = strategy.detectionMethod === 'auto' && resolvedTargetVault != null
   const overlapLabel =
     strategy.detectionMethod === 'registry' ? getRegistryOverlapLabel(strategy, resolvedTargetVault) : 'overlap (auto)'
+  const targetVisibleStrategies = resolvedTargetVault ? visibleStrategies(resolvedTargetVault.strategies) : []
   const canExpandTarget =
-    resolvedTargetVault != null && !isCycle && !isTopLevelTarget && resolvedTargetVault.strategies.length > 0
+    resolvedTargetVault != null && !isCycle && !isTopLevelTarget && targetVisibleStrategies.length > 0
 
   const nextVisited = targetKey
     ? (() => {
@@ -163,9 +170,7 @@ function StrategyNode({
     <div className="audit-strategy-node">
       {/* Strategy row */}
       <div
-        className={`audit-row audit-strategy-row${strategy.detectionMethod ? ' audit-strategy-deducted' : ''}${
-          isZeroDebt ? ' audit-zero-debt-row' : ''
-        }`}
+        className={`audit-row audit-strategy-row${strategy.detectionMethod ? ' audit-strategy-deducted' : ''}`}
         style={{
           paddingLeft: `${depth * 1.5 + 1.5}rem`,
           background: `rgba(46, 230, 182, ${0.015 + depth * 0.015})`,
@@ -212,6 +217,19 @@ function StrategyNode({
                 retired
               </span>
             )}
+            {resolvedTargetVault.isHidden && (
+              <span
+                className="badge"
+                style={{
+                  background: 'var(--surface-2)',
+                  color: 'var(--text-2)',
+                  fontSize: '0.6rem',
+                  padding: '0.05rem 0.35rem'
+                }}
+              >
+                hidden
+              </span>
+            )}
           </>
         ) : (
           <span className="audit-strategy-name" title={strategy.name || strategy.address}>
@@ -222,8 +240,8 @@ function StrategyNode({
 
         <span className="audit-cols">
           <span className="audit-col-strats">
-            {resolvedTargetVault && resolvedTargetVault.strategies.length > 0 ? (
-              `${resolvedTargetVault.strategies.length} strat${resolvedTargetVault.strategies.length > 1 ? 's' : ''}`
+            {targetVisibleStrategies.length > 0 ? (
+              `${targetVisibleStrategies.length} strat${targetVisibleStrategies.length > 1 ? 's' : ''}`
             ) : (
               <span className="audit-col-empty">{'\u2014'}</span>
             )}
@@ -251,7 +269,7 @@ function StrategyNode({
 
       {expanded &&
         canExpandTarget &&
-        resolvedTargetVault.strategies.map((strat, i) => (
+        targetVisibleStrategies.map((strat, i) => (
           <StrategyNode
             key={strat.address}
             strategy={strat}
@@ -259,7 +277,7 @@ function StrategyNode({
             depth={depth + 1}
             visited={nextVisited}
             topLevelAddresses={topLevelAddresses}
-            isLast={i === resolvedTargetVault.strategies.length - 1}
+            isLast={i === targetVisibleStrategies.length - 1}
           />
         ))}
     </div>
@@ -277,9 +295,10 @@ function VaultNode({
   topLevelAddresses: Set<string>
 }) {
   const [expanded, setExpanded] = useState(false)
-  const hasStrategies = vault.strategies.length > 0
-  const hasOverlap = vault.strategies.some((s) => s.targetVaultAddress != null)
-  const overlapCount = vault.strategies.filter((s) => s.targetVaultAddress != null).length
+  const vaultVisibleStrategies = visibleStrategies(vault.strategies)
+  const hasStrategies = vaultVisibleStrategies.length > 0
+  const hasOverlap = vaultVisibleStrategies.some((s) => s.targetVaultAddress != null)
+  const overlapCount = vaultVisibleStrategies.filter((s) => s.targetVaultAddress != null).length
 
   const visited = new Set<string>()
   visited.add(`${vault.chainId}:${vault.address.toLowerCase()}`)
@@ -334,10 +353,26 @@ function VaultNode({
           </span>
         )}
 
+        {vault.isHidden && (
+          <span
+            className="badge"
+            style={{
+              background: 'var(--surface-2)',
+              color: 'var(--text-2)',
+              fontSize: '0.6rem',
+              padding: '0.05rem 0.35rem'
+            }}
+          >
+            hidden
+          </span>
+        )}
+
         {/* ── Right-aligned columns: strats | TVL | overlaps | counted ── */}
         <span className="audit-cols">
           <span className="audit-col-strats">
-            {hasStrategies ? `${vault.strategies.length} strat${vault.strategies.length > 1 ? 's' : ''}` : '\u2014'}
+            {hasStrategies
+              ? `${vaultVisibleStrategies.length} strat${vaultVisibleStrategies.length > 1 ? 's' : ''}`
+              : '\u2014'}
           </span>
           <span className="audit-col-tvl">{fmt(vault.tvlUsd)}</span>
           <span className="audit-col-overlaps">
@@ -356,7 +391,7 @@ function VaultNode({
       </div>
 
       {expanded &&
-        vault.strategies.map((strat, i) => (
+        vaultVisibleStrategies.map((strat, i) => (
           <StrategyNode
             key={strat.address}
             strategy={strat}
@@ -364,7 +399,7 @@ function VaultNode({
             depth={1}
             visited={visited}
             topLevelAddresses={topLevelAddresses}
-            isLast={i === vault.strategies.length - 1}
+            isLast={i === vaultVisibleStrategies.length - 1}
           />
         ))}
     </div>
@@ -374,9 +409,7 @@ function VaultNode({
 export function AuditPanel() {
   const { chainFilter, setLastFetchedAt } = useContext(StatsContext)
   const [search, setSearch] = useState('')
-  const [showOverlapOnly, setShowOverlapOnly] = useState(false)
-  const [includeRetired, setIncludeRetired] = useState(false)
-  const [typeFilter, setTypeFilter] = useState('all')
+  const [typeFilter, setTypeFilter] = useState<AuditTypeFilter>('all')
   const [isStrategyOverlapOpen, setIsStrategyOverlapOpen] = useState(false)
   const [isCrossChainOverlapOpen, setIsCrossChainOverlapOpen] = useState(false)
   const debouncedSearch = useDebouncedValue(search)
@@ -407,6 +440,7 @@ export function AuditPanel() {
               targetVaultChainId: number
               detectionMethod: 'auto' | 'registry'
             } =>
+              strategy.debtUsd > 0 &&
               strategy.targetVaultAddress != null &&
               strategy.targetVaultChainId != null &&
               strategy.detectionMethod != null
@@ -441,13 +475,17 @@ export function AuditPanel() {
   const filteredVaults = useMemo(() => {
     if (!data) return []
     const typeFilterFn = (v: AuditVault) =>
-      typeFilter === 'curation'
-        ? v.category === 'curation'
-        : typeFilter === 'allocator'
-          ? v.vaultType === 1
-          : typeFilter === 'strategy'
-            ? v.vaultType === 2
-            : true
+      typeFilter === 'v3-allocator'
+        ? v.category === 'v3' && v.vaultType === 1
+        : typeFilter === 'v3-strategy'
+          ? v.category === 'v3' && v.vaultType === 2
+          : typeFilter === 'curation'
+            ? v.category === 'curation'
+            : typeFilter === 'v2'
+              ? v.category === 'v2'
+              : typeFilter === 'v1'
+                ? v.category === 'v1'
+                : true
 
     const searchFilterFn = debouncedSearch
       ? (
@@ -456,12 +494,8 @@ export function AuditPanel() {
         )(debouncedSearch.toLowerCase())
       : () => true
 
-    return data.vaults
-      .filter((v) => includeRetired || !v.isRetired)
-      .filter((v) => !showOverlapOnly || v.strategies.some((s) => s.targetVaultAddress != null))
-      .filter(typeFilterFn)
-      .filter(searchFilterFn)
-  }, [data, debouncedSearch, showOverlapOnly, includeRetired, typeFilter])
+    return data.vaults.filter(typeFilterFn).filter(searchFilterFn)
+  }, [data, debouncedSearch, typeFilter])
 
   // Set of top-level vault addresses for depth limiting
   const topLevelAddresses = useMemo(() => {
@@ -522,21 +556,17 @@ export function AuditPanel() {
 
       {/* ── Filter Bar ── */}
       <div className="filter-bar">
-        <label className={`filter-pill${showOverlapOnly ? ' active' : ''}`} style={{ cursor: 'pointer' }}>
-          <input type="checkbox" checked={showOverlapOnly} onChange={(e) => setShowOverlapOnly(e.target.checked)} />
-          Overlap only
-        </label>
-
-        <label className={`filter-pill${includeRetired ? ' active' : ''}`} style={{ cursor: 'pointer' }}>
-          <input type="checkbox" checked={includeRetired} onChange={(e) => setIncludeRetired(e.target.checked)} />
-          Include retired
-        </label>
-
-        <select className="filter-select" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
+        <select
+          className="filter-select"
+          value={typeFilter}
+          onChange={(e) => setTypeFilter(e.target.value as AuditTypeFilter)}
+        >
           <option value="all">All types</option>
+          <option value="v3-allocator">v3 allocator</option>
+          <option value="v3-strategy">v3 strategy</option>
           <option value="curation">Curation</option>
-          <option value="allocator">Allocator</option>
-          <option value="strategy">Strategy</option>
+          <option value="v2">v2</option>
+          <option value="v1">v1</option>
         </select>
 
         <input

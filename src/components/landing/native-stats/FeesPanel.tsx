@@ -1,3 +1,4 @@
+import { ChevronDown, ChevronRight } from 'lucide-react'
 import { Fragment, useContext, useEffect, useId, useMemo, useState } from 'react'
 import {
   Area,
@@ -189,15 +190,36 @@ function getSinceTs(days: number): number | null {
   return Math.floor((now.getTime() - days * 86_400_000) / 1000)
 }
 
+function vaultFeeKey(vault: { address: string; chainId: number }): string {
+  return `${vault.address.toLowerCase()}-${vault.chainId}`
+}
+
+function actualPerformanceFee(
+  vault: { address: string; chainId: number },
+  vaultFeeMap: Map<string, VaultFee>
+): number | null {
+  const fee = vaultFeeMap.get(vaultFeeKey(vault))
+  if (!fee || fee.reportCount <= 0) return null
+  return fee.performanceFeeRevenue
+}
+
+function ActualFeeCell({ value }: { value: number | null }) {
+  if (value === null) return <span className="text-dim">—</span>
+  return <span className="text-green">{fmt(value)}</span>
+}
+
 export function FeesPanel() {
   const { chainFilter, density, setLastFetchedAt } = useContext(StatsContext)
   const [timePreset, setTimePreset] = useState(4) // default "All"
 
   const sinceTs = getSinceTs(TIME_PRESETS[timePreset]?.days ?? 0)
   const sinceQ = sinceTs != null ? `?since=${sinceTs}` : ''
+  const vaultFeesQ = sinceTs != null ? `?since=${sinceTs}&includeRetired=true` : '?includeRetired=true'
   const { data: summary, loading: l1, fetchedAt } = useFetch<FeeSummary>(`/api/fees${sinceQ}`)
   const { data: history, loading: l2 } = useFetch<FeeHistory>('/api/fees/history?interval=monthly')
-  const { data: vaultData, loading: l3 } = useFetch<{ count: number; vaults: VaultFee[] }>(`/api/fees/vaults${sinceQ}`)
+  const { data: vaultData, loading: l3 } = useFetch<{ count: number; vaults: VaultFee[] }>(
+    `/api/fees/vaults${vaultFeesQ}`
+  )
   const { data: feeStack, error: feeStackError, retry: retryFeeStack } = useFetch<FeeStackSummary>('/api/fees/stack')
   const { data: profData } = useFetch<ProfitabilitySummary>('/api/profitability')
   const stackSort = useSort('feeCaptured')
@@ -236,30 +258,24 @@ export function FeesPanel() {
 
   const sortedStacks = useMemo(() => {
     if (!feeStack) return []
-    type ChainWithFee = FeeStackChain & { feeCaptured: number; trend: string | undefined }
+    type ChainWithFee = FeeStackChain & { actualFees: number | null; trend: string | undefined }
     const withFees: ChainWithFee[] = feeStack.chains
       .filter((c) => chainFilter === 'all' || String(c.root.vault.chainId) === chainFilter)
       .map((c) => {
-        const key = `${c.root.vault.address.toLowerCase()}-${c.root.vault.chainId}`
-        const matchedVault = vaultFeeMap.get(key)
-        const feeCaptured = matchedVault
-          ? matchedVault.totalFeeRevenue
-          : sinceTs != null
-            ? 0
-            : c.root.capitalUsd * (c.effectivePerfFee / 10000)
+        const key = vaultFeeKey(c.root.vault)
         return {
           ...c,
-          feeCaptured,
+          actualFees: actualPerformanceFee(c.root.vault, vaultFeeMap),
           trend: profTrendMap.get(key)
         }
       })
     return sortStacks(withFees, {
       name: (c) => c.root.vault.name || '',
       perfFee: (c) => c.root.perfFee,
-      feeCaptured: (c) => c.feeCaptured,
+      feeCaptured: (c) => c.actualFees ?? -1,
       effective: (c) => c.effectivePerfFee
     })
-  }, [feeStack, vaultFeeMap, profTrendMap, sortStacks, sinceTs, chainFilter])
+  }, [feeStack, vaultFeeMap, profTrendMap, sortStacks, chainFilter])
 
   const stackPagination = usePagination(sortedStacks.length, 30)
   const pagedStacks = sortedStacks.slice(stackPagination.start, stackPagination.end)
@@ -376,8 +392,8 @@ export function FeesPanel() {
       </div>
 
       {/* ---- Charts Row: Fee History + Scatter ---- */}
-      <div className="row">
-        <div className="card">
+      <div className={`row fee-chart-row${profData ? '' : ' single'}`}>
+        <div className="card fee-chart-card">
           <h2>Monthly Fee Revenue &amp; Gains</h2>
           <div className="chart-container" style={{ height: 320 }}>
             <ResponsiveContainer width="100%" height="100%">
@@ -455,7 +471,7 @@ export function FeesPanel() {
 
         {/* ---- TVL vs Fee Yield Scatter ---- */}
         {profData && (
-          <div className="card">
+          <div className="card fee-chart-card">
             <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               TVL vs Fee Yield
               {trendLine && (
@@ -574,7 +590,6 @@ export function FeesPanel() {
         feeStack &&
         feeStack.chains.length > 0 &&
         (() => {
-          const maxCap = Math.max(...sortedStacks.map((c) => c.root.capitalUsd), 1)
           return (
             <div className="card">
               <h2>Fee Analysis</h2>
@@ -584,11 +599,11 @@ export function FeesPanel() {
                   <div className="value">{feeStack.maxDepth}</div>
                 </div>
                 <div className="metric">
-                  <div className="label">Max Effective Fee</div>
+                  <div className="label">Max Effective Perf Fee</div>
                   <div className="value text-yellow">{bpsPct(feeStack.maxEffectivePerfFee)}</div>
                 </div>
                 <div className="metric">
-                  <div className="label">Avg Effective Fee</div>
+                  <div className="label">Avg Effective Perf Fee</div>
                   <div className="value">{bpsPct(feeStack.avgEffectivePerfFee)}</div>
                 </div>
                 <div className="metric">
@@ -602,8 +617,8 @@ export function FeesPanel() {
                     <tr>
                       <th {...stackSort.th('name', 'Vault')} />
                       <th {...stackSort.th('perfFee', 'Perf Fee', 'text-right')} />
-                      <th {...stackSort.th('feeCaptured', 'Fees Captured', 'text-right')} />
-                      <th {...stackSort.th('effective', 'Effective', 'text-right')} />
+                      <th {...stackSort.th('feeCaptured', 'Actual Fees', 'text-right')} />
+                      <th {...stackSort.th('effective', 'Effective Perf Fee', 'text-right')} />
                       <th style={{ textAlign: 'center', width: 60 }}>Trend</th>
                     </tr>
                   </thead>
@@ -612,14 +627,16 @@ export function FeesPanel() {
                       const realIdx = stackPagination.start + idx
                       const isOpen = expandedStack === realIdx
                       const rows = flattenTree(chain.root, 0, true)
-                      const feeCaptured = chain.feeCaptured
-                      const barPct = maxCap > 0 ? (chain.root.capitalUsd / maxCap) * 100 : 0
                       return (
                         <Fragment key={`stack-${realIdx}`}>
                           <tr onClick={() => setExpandedStack(isOpen ? null : realIdx)} style={{ cursor: 'pointer' }}>
                             <td>
-                              <span style={{ color: 'var(--text-3)', marginRight: 6, fontSize: '0.7rem' }}>
-                                {isOpen ? '\u25BC' : '\u25B6'}
+                              <span className="audit-toggle" style={{ marginRight: 6 }}>
+                                {isOpen ? (
+                                  <ChevronDown className="h-4 w-4 text-[#4f4f4f]" />
+                                ) : (
+                                  <ChevronRight className="h-4 w-4 text-[#4f4f4f]" />
+                                )}
                               </span>
                               <span style={{ fontWeight: 600 }}>
                                 {chain.root.vault.name?.slice(0, 30) || chain.root.vault.address.slice(0, 10)}
@@ -641,12 +658,7 @@ export function FeesPanel() {
                             </td>
                             <td className="text-right">{bpsPct(chain.root.perfFee)}</td>
                             <td className="text-right">
-                              <div className="inline-bar">
-                                <span className="text-green">{fmt(feeCaptured)}</span>
-                                <div className="inline-bar-track">
-                                  <div className="inline-bar-fill fill-green" style={{ width: `${barPct}%` }} />
-                                </div>
-                              </div>
+                              <ActualFeeCell value={chain.actualFees} />
                             </td>
                             <td className="text-right">
                               <span className="text-yellow" style={{ fontWeight: 600 }}>
@@ -664,7 +676,7 @@ export function FeesPanel() {
                               const isRoot = depth === 0
                               const isLeafStrategy = node.children.length === 0 && node.perfFee === 0 && !isRoot
                               const rowOpacity = isLeafStrategy ? 0.55 : 1
-                              const hopFee = node.capitalUsd * (node.perfFee / 10000)
+                              const nodeActualFees = actualPerformanceFee(node.vault, vaultFeeMap)
                               return (
                                 <tr
                                   key={`${node.vault.chainId}-${node.vault.address}-${depth}`}
@@ -714,11 +726,8 @@ export function FeesPanel() {
                                   >
                                     {bpsPct(node.perfFee)}
                                   </td>
-                                  <td
-                                    className="text-right"
-                                    style={{ color: hopFee > 0 ? 'var(--text-2)' : 'var(--text-3)' }}
-                                  >
-                                    {hopFee > 0 ? fmt(hopFee) : fmt(node.capitalUsd)}
+                                  <td className="text-right">
+                                    <ActualFeeCell value={nodeActualFees} />
                                   </td>
                                   <td className="text-right">
                                     {isRoot ? (
@@ -757,14 +766,15 @@ export function FeesPanel() {
                                 </span>
                               </td>
                               <td className="text-right">
+                                <span className="text-dim">—</span>
+                              </td>
+                              <td className="text-right">
+                                <span className="text-dim">—</span>
+                              </td>
+                              <td className="text-right">
                                 <span className="text-yellow" style={{ fontWeight: 600 }}>
                                   {bpsPct(chain.effectivePerfFee)}
                                 </span>
-                              </td>
-                              <td className="text-right text-green" style={{ fontWeight: 600 }}>
-                                {fmt(feeCaptured)}
-                              </td>
-                              <td className="text-right">
                                 <span className="text-dim" style={{ fontSize: '0.7rem' }}>
                                   weighted
                                 </span>
