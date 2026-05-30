@@ -1,0 +1,927 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Yearn Powerglove Design Guide</title>
+    <style>
+      @font-face {
+        font-family: "Aeonik";
+        src: url("/fonts/Aeonik-Regular.woff2") format("woff2");
+        font-weight: 400;
+        font-style: normal;
+        font-display: swap;
+      }
+
+      @font-face {
+        font-family: "Aeonik";
+        src: url("/fonts/Aeonik-Bold.woff2") format("woff2");
+        font-weight: 700;
+        font-style: normal;
+        font-display: swap;
+      }
+
+      @font-face {
+        font-family: "Aeonik Mono";
+        src: url("/fonts/AeonikMono-Regular.woff2") format("woff2");
+        font-weight: 400;
+        font-style: normal;
+        font-display: swap;
+      }
+
+      :root {
+        --yearn-blue: #0657f9;
+        --ink: #0a0a0a;
+        --body: #4f4f4f;
+        --muted: #808080;
+        --canvas: #f5f5f5;
+        --surface: #ffffff;
+        --line: #e5e5e5;
+        --soft-line: #f5f5f5;
+        --success: #16a34a;
+        --danger: #7f1d1d;
+        --chart-blue: #46a2ff;
+        --chart-lavender: #94adf2;
+        --shadow-overlay: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        background: var(--canvas);
+        color: var(--ink);
+        font-family: "Aeonik", sans-serif;
+        font-size: 14px;
+        line-height: 1.5;
+      }
+
+      a {
+        color: inherit;
+      }
+
+      .shell {
+        display: grid;
+        grid-template-columns: 264px minmax(0, 1fr);
+        min-height: 100vh;
+      }
+
+      .side {
+        position: sticky;
+        top: 0;
+        height: 100vh;
+        border-right: 1px solid var(--line);
+        background: var(--surface);
+        padding: 24px;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 36px;
+      }
+
+      .brand img {
+        width: 28px;
+        height: 28px;
+      }
+
+      .brand strong {
+        display: block;
+        font-size: 15px;
+        line-height: 1.2;
+      }
+
+      .brand span,
+      .eyebrow,
+      .meta,
+      .small {
+        color: var(--muted);
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .nav {
+        display: grid;
+        gap: 4px;
+      }
+
+      .nav a {
+        padding: 8px 0;
+        color: var(--body);
+        text-decoration: none;
+      }
+
+      .nav a:hover {
+        color: var(--yearn-blue);
+      }
+
+      main {
+        min-width: 0;
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 360px;
+        gap: 48px;
+        align-items: end;
+        min-height: 560px;
+        padding: 72px 56px 44px;
+        border-bottom: 1px solid var(--line);
+        background: var(--surface);
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin-top: 0;
+      }
+
+      h1 {
+        max-width: 760px;
+        margin-bottom: 24px;
+        font-size: clamp(42px, 7vw, 92px);
+        font-weight: 700;
+        line-height: 0.95;
+        letter-spacing: 0;
+      }
+
+      h2 {
+        margin-bottom: 18px;
+        font-size: 30px;
+        line-height: 1.1;
+      }
+
+      h3 {
+        margin-bottom: 10px;
+        font-size: 16px;
+        line-height: 1.3;
+      }
+
+      .hero-copy {
+        max-width: 680px;
+        margin-bottom: 0;
+        color: var(--body);
+        font-size: 18px;
+        line-height: 1.55;
+      }
+
+      .principles {
+        border: 1px solid var(--line);
+        background: var(--surface);
+      }
+
+      .principle {
+        padding: 18px;
+        border-top: 1px solid var(--line);
+      }
+
+      .principle:first-child {
+        border-top: 0;
+      }
+
+      .principle p {
+        margin-bottom: 0;
+        color: var(--body);
+      }
+
+      .section {
+        padding: 56px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .section-head {
+        display: grid;
+        grid-template-columns: 240px minmax(0, 1fr);
+        gap: 48px;
+        margin-bottom: 28px;
+      }
+
+      .section-head p {
+        max-width: 720px;
+        margin-bottom: 0;
+        color: var(--body);
+        font-size: 16px;
+      }
+
+      .grid {
+        display: grid;
+        gap: 16px;
+      }
+
+      .grid.cols-2 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .grid.cols-3 {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .panel {
+        border: 1px solid var(--line);
+        background: var(--surface);
+      }
+
+      .panel-pad {
+        padding: 24px;
+      }
+
+      .swatch {
+        display: grid;
+        grid-template-rows: 96px auto;
+        min-height: 168px;
+      }
+
+      .swatch-fill {
+        border-bottom: 1px solid var(--line);
+      }
+
+      .swatch-body {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 14px;
+      }
+
+      .token {
+        font-family: "Aeonik Mono", monospace;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .type-row {
+        display: grid;
+        grid-template-columns: 160px minmax(0, 1fr) 220px;
+        gap: 24px;
+        align-items: baseline;
+        padding: 22px 0;
+        border-top: 1px solid var(--line);
+      }
+
+      .type-row:first-child {
+        border-top: 0;
+      }
+
+      .sample-display {
+        font-size: 30px;
+        font-weight: 700;
+        line-height: 1.2;
+      }
+
+      .sample-headline {
+        font-size: 24px;
+        font-weight: 700;
+        line-height: 1.25;
+      }
+
+      .sample-title {
+        font-size: 16px;
+        font-weight: 700;
+      }
+
+      .sample-body {
+        max-width: 62ch;
+        color: var(--body);
+      }
+
+      .sample-label {
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .mono {
+        font-family: "Aeonik Mono", monospace;
+      }
+
+      .button-row,
+      .chip-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+      }
+
+      button,
+      input {
+        font: inherit;
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 40px;
+        padding: 8px 16px;
+        border: 0;
+        border-radius: 0;
+        background: var(--yearn-blue);
+        color: var(--surface);
+        cursor: pointer;
+        font-weight: 700;
+        transition: background-color 150ms ease-out;
+      }
+
+      .btn:hover {
+        background: rgb(6 87 249 / 0.9);
+      }
+
+      .btn-outline {
+        height: 36px;
+        border: 1px solid var(--yearn-blue);
+        background: var(--surface);
+        color: var(--yearn-blue);
+      }
+
+      .btn-ghost {
+        border: 1px solid var(--line);
+        background: var(--surface);
+        color: var(--body);
+      }
+
+      .btn:focus-visible,
+      .chip:focus-visible,
+      .field:focus-visible,
+      .vault-row:focus-visible {
+        outline: 2px solid var(--yearn-blue);
+        outline-offset: 2px;
+      }
+
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        height: 32px;
+        padding: 6px 12px;
+        border: 1px solid var(--line);
+        border-radius: 0;
+        background: var(--surface);
+        color: var(--body);
+        cursor: pointer;
+      }
+
+      .chip.active {
+        border-color: var(--yearn-blue);
+        background: rgb(6 87 249 / 0.08);
+        color: var(--yearn-blue);
+      }
+
+      .field {
+        width: min(100%, 340px);
+        height: 40px;
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        background: var(--surface);
+        color: var(--ink);
+        padding: 8px 12px;
+      }
+
+      .component-demo {
+        display: grid;
+        gap: 28px;
+      }
+
+      .browser {
+        overflow: hidden;
+        border: 1px solid var(--line);
+        background: var(--surface);
+      }
+
+      .browser-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .tabs {
+        display: flex;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .tab {
+        padding: 14px 18px 12px;
+        border-bottom: 2px solid transparent;
+        color: var(--muted);
+      }
+
+      .tab.active {
+        border-color: var(--yearn-blue);
+        color: var(--ink);
+        font-weight: 700;
+      }
+
+      .vault-table {
+        display: grid;
+      }
+
+      .vault-header,
+      .vault-row {
+        display: grid;
+        grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr;
+        gap: 16px;
+        align-items: center;
+      }
+
+      .vault-header {
+        padding: 12px 24px;
+        border-bottom: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .vault-row {
+        min-height: 50px;
+        padding: 8px 24px;
+        border-bottom: 1px solid var(--line);
+        color: var(--body);
+        text-decoration: none;
+      }
+
+      .vault-row:hover {
+        background: var(--canvas);
+      }
+
+      .vault-row strong {
+        color: var(--ink);
+      }
+
+      .right {
+        text-align: right;
+      }
+
+      .chart-card {
+        padding: 24px;
+        border: 1px solid var(--line);
+        background: var(--surface);
+      }
+
+      .chart {
+        width: 100%;
+        height: 220px;
+      }
+
+      .chart-grid {
+        stroke: var(--line);
+        stroke-width: 1;
+      }
+
+      .chart-line {
+        fill: none;
+        stroke: var(--chart-blue);
+        stroke-width: 3;
+      }
+
+      .chart-line.secondary {
+        stroke: var(--chart-lavender);
+        stroke-width: 2;
+        opacity: 0.45;
+      }
+
+      .dos {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+      }
+
+      .rule-list {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .rule-list li {
+        padding: 14px 0;
+        border-top: 1px solid var(--line);
+        color: var(--body);
+      }
+
+      .rule-list li:first-child {
+        border-top: 0;
+      }
+
+      .callout {
+        border: 1px solid var(--line);
+        background: var(--surface);
+        padding: 18px;
+      }
+
+      .callout strong {
+        display: block;
+        margin-bottom: 8px;
+      }
+
+      .overlay-demo {
+        position: relative;
+        min-height: 220px;
+        padding: 24px;
+        border: 1px solid var(--line);
+        background:
+          linear-gradient(var(--line) 1px, transparent 1px),
+          linear-gradient(90deg, var(--line) 1px, transparent 1px),
+          var(--surface);
+        background-size: 48px 48px;
+      }
+
+      .dropdown {
+        position: absolute;
+        right: 24px;
+        top: 54px;
+        width: 260px;
+        border: 1px solid var(--line);
+        background: var(--surface);
+        box-shadow: var(--shadow-overlay);
+      }
+
+      .dropdown div {
+        padding: 10px 12px;
+        border-top: 1px solid var(--line);
+      }
+
+      .dropdown div:first-child {
+        border-top: 0;
+      }
+
+      .mobile-card {
+        max-width: 380px;
+        border: 1px solid var(--line);
+        background: var(--surface);
+      }
+
+      .mobile-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1.8fr) 4.5rem 5rem;
+        gap: 12px;
+        align-items: center;
+        min-height: 72px;
+        padding: 10px 12px;
+        border-top: 1px solid var(--line);
+      }
+
+      .mobile-row:first-child {
+        border-top: 0;
+      }
+
+      .coin {
+        width: 32px;
+        height: 32px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: var(--surface);
+      }
+
+      .mobile-name {
+        display: flex;
+        min-width: 0;
+        gap: 10px;
+        align-items: center;
+      }
+
+      .truncate {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      @media (max-width: 960px) {
+        .shell {
+          display: block;
+        }
+
+        .side {
+          position: static;
+          height: auto;
+          padding: 16px;
+        }
+
+        .nav {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 12px;
+        }
+
+        .hero,
+        .section {
+          padding: 32px 18px;
+        }
+
+        .hero,
+        .section-head,
+        .grid.cols-2,
+        .grid.cols-3,
+        .dos {
+          grid-template-columns: 1fr;
+        }
+
+        .type-row {
+          grid-template-columns: 1fr;
+          gap: 8px;
+        }
+
+        .vault-header {
+          display: none;
+        }
+
+        .vault-row {
+          grid-template-columns: 1fr 1fr;
+          gap: 8px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="side">
+        <div class="brand">
+          <img src="/logo.svg" alt="Yearn logo" />
+          <div>
+            <strong>Powerglove</strong>
+            <span>Design Guide</span>
+          </div>
+        </div>
+        <nav class="nav" aria-label="Design guide sections">
+          <a href="#overview">Overview</a>
+          <a href="#colors">Colors</a>
+          <a href="#type">Typography</a>
+          <a href="#components">Components</a>
+          <a href="#patterns">Patterns</a>
+          <a href="#rules">Do's and Don'ts</a>
+        </nav>
+      </aside>
+
+      <main>
+        <section id="overview" class="hero">
+          <div>
+            <div class="eyebrow">The Analyst's Ledger</div>
+            <h1>Calm, sharp, editorial DeFi analysis.</h1>
+            <p class="hero-copy">
+              Yearn Powerglove is a dense product surface for power DeFi analysts and prosumers. It should feel
+              composed under pressure: white analytical surfaces, precise rows, rare blue emphasis, and enough visual
+              rhythm to keep serious data from becoming sludge.
+            </p>
+          </div>
+          <div class="principles">
+            <div class="principle">
+              <div class="eyebrow">Register</div>
+              <p>Product UI. Design serves repeated analysis, comparison, filtering, and vault-level investigation.</p>
+            </div>
+            <div class="principle">
+              <div class="eyebrow">Personality</div>
+              <p>Calm, sharp, editorial. Intelligent without theatrics, dense without clutter.</p>
+            </div>
+            <div class="principle">
+              <div class="eyebrow">Reject</div>
+              <p>Boring SaaS dashboards, overstuffed AI panels, gamified crypto noise.</p>
+            </div>
+          </div>
+        </section>
+
+        <section id="colors" class="section">
+          <div class="section-head">
+            <div>
+              <div class="eyebrow">01 Colors</div>
+              <h2>Blue earns its place.</h2>
+            </div>
+            <p>
+              White and gray carry the product. Ledger Blue is reserved for intent: action, selection, sorting,
+              loading, and navigational affordance.
+            </p>
+          </div>
+          <div class="grid cols-3">
+            <div class="panel swatch">
+              <div class="swatch-fill" style="background: var(--yearn-blue)"></div>
+              <div class="swatch-body"><strong>Ledger Blue</strong><span class="token">#0657f9</span></div>
+            </div>
+            <div class="panel swatch">
+              <div class="swatch-fill" style="background: var(--ink)"></div>
+              <div class="swatch-body"><strong>Ink</strong><span class="token">#0a0a0a</span></div>
+            </div>
+            <div class="panel swatch">
+              <div class="swatch-fill" style="background: var(--surface)"></div>
+              <div class="swatch-body"><strong>Surface</strong><span class="token">#ffffff</span></div>
+            </div>
+            <div class="panel swatch">
+              <div class="swatch-fill" style="background: var(--canvas)"></div>
+              <div class="swatch-body"><strong>Canvas</strong><span class="token">#f5f5f5</span></div>
+            </div>
+            <div class="panel swatch">
+              <div class="swatch-fill" style="background: var(--chart-blue)"></div>
+              <div class="swatch-body"><strong>Chart Blue</strong><span class="token">#46a2ff</span></div>
+            </div>
+            <div class="panel swatch">
+              <div class="swatch-fill" style="background: var(--chart-lavender)"></div>
+              <div class="swatch-body"><strong>Analyst Lavender</strong><span class="token">#94adf2</span></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="type" class="section">
+          <div class="section-head">
+            <div>
+              <div class="eyebrow">02 Typography</div>
+              <h2>A compact editorial scale.</h2>
+            </div>
+            <p>
+              Aeonik carries the interface with a clean product voice. Aeonik Mono is saved for addresses, hashes, and
+              technical values where mechanical texture helps scanning.
+            </p>
+          </div>
+          <div class="panel panel-pad">
+            <div class="type-row">
+              <div class="meta">Display</div>
+              <div class="sample-display">yvUSDC-1 Vault</div>
+              <div class="token">700 / 1.875rem / 1.2</div>
+            </div>
+            <div class="type-row">
+              <div class="meta">Headline</div>
+              <div class="sample-headline">Historical Performance</div>
+              <div class="token">700 / 1.5rem / 1.25</div>
+            </div>
+            <div class="type-row">
+              <div class="meta">Title</div>
+              <div class="sample-title">Strategy Allocation</div>
+              <div class="token">700 / 1rem / 1.4</div>
+            </div>
+            <div class="type-row">
+              <div class="meta">Body</div>
+              <div class="sample-body">
+                Compare APY trends, share growth, total value deposited, and management events without turning the
+                surface into a lecture.
+              </div>
+              <div class="token">400 / 0.875rem / 1.5</div>
+            </div>
+            <div class="type-row">
+              <div class="meta">Label</div>
+              <div class="sample-label">Allocation %</div>
+              <div class="token">700 / 0.6875rem / 0.08em</div>
+            </div>
+            <div class="type-row">
+              <div class="meta">Mono</div>
+              <div class="mono">0x7c9e...a481</div>
+              <div class="token">Aeonik Mono / 0.875rem</div>
+            </div>
+          </div>
+        </section>
+
+        <section id="components" class="section">
+          <div class="section-head">
+            <div>
+              <div class="eyebrow">03 Components</div>
+              <h2>Precise and restrained.</h2>
+            </div>
+            <p>
+              Controls stay rectangular, compact, and unsurprising. Visual interest comes from alignment and state, not
+              decorative styling.
+            </p>
+          </div>
+          <div class="grid cols-2">
+            <div class="panel panel-pad component-demo">
+              <h3>Buttons</h3>
+              <div class="button-row">
+                <button class="btn">Go to Vault</button>
+                <button class="btn btn-outline">Partner with us</button>
+                <button class="btn btn-ghost">View details</button>
+              </div>
+              <p class="small">0px radius for product actions. Blue only when the action earns it.</p>
+            </div>
+            <div class="panel panel-pad component-demo">
+              <h3>Filters and Fields</h3>
+              <input class="field" placeholder="Search vaults..." />
+              <div class="chip-row">
+                <button class="chip active">Ethereum</button>
+                <button class="chip">Arbitrum</button>
+                <button class="chip">Allocator</button>
+              </div>
+              <p class="small">Selected state uses border + tint + text, not color alone.</p>
+            </div>
+            <div class="panel panel-pad">
+              <h3>Elevation</h3>
+              <div class="overlay-demo">
+                <button class="btn btn-outline">Open search</button>
+                <div class="dropdown">
+                  <div><strong>yvUSDC-1</strong><br /><span class="small">Ethereum</span></div>
+                  <div><strong>yvWETH-1</strong><br /><span class="small">Base</span></div>
+                  <div><strong>yvDAI-1</strong><br /><span class="small">Optimism</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="panel panel-pad">
+              <h3>Mobile Row Density</h3>
+              <div class="mobile-card">
+                <div class="mobile-row">
+                  <div class="mobile-name"><div class="coin"></div><div class="truncate"><strong>yvUSDC-1</strong><br /><span class="small">Ethereum · USDC</span></div></div>
+                  <strong class="right">8.42%</strong>
+                  <strong class="right">$42.1M</strong>
+                </div>
+                <div class="mobile-row">
+                  <div class="mobile-name"><div class="coin"></div><div class="truncate"><strong>yvWETH-1</strong><br /><span class="small">Base · WETH</span></div></div>
+                  <strong class="right">4.18%</strong>
+                  <strong class="right">$18.7M</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="patterns" class="section">
+          <div class="section-head">
+            <div>
+              <div class="eyebrow">04 Patterns</div>
+              <h2>The product texture.</h2>
+            </div>
+            <p>
+              The table, chart, and panel rhythm is the identity. If these are composed, the app feels intelligent
+              without needing ornament.
+            </p>
+          </div>
+          <div class="browser">
+            <div class="browser-top">
+              <strong>Yearn Powerglove</strong>
+              <input class="field" placeholder="Search vaults..." />
+            </div>
+            <div class="tabs">
+              <div class="tab active">Historical Performance</div>
+              <div class="tab">Share Growth</div>
+              <div class="tab">TVL</div>
+            </div>
+            <div class="grid cols-2" style="gap: 0">
+              <div class="chart-card">
+                <div class="eyebrow">Vault Performance</div>
+                <svg class="chart" viewBox="0 0 520 220" role="img" aria-label="Sample chart">
+                  <line class="chart-grid" x1="0" y1="40" x2="520" y2="40"></line>
+                  <line class="chart-grid" x1="0" y1="95" x2="520" y2="95"></line>
+                  <line class="chart-grid" x1="0" y1="150" x2="520" y2="150"></line>
+                  <path class="chart-line secondary" d="M0 150 C80 130 110 150 170 120 S280 70 340 95 445 120 520 60"></path>
+                  <path class="chart-line" d="M0 165 C70 125 120 142 180 98 S300 92 355 58 445 86 520 36"></path>
+                </svg>
+              </div>
+              <div class="chart-card">
+                <div class="eyebrow">Rules in context</div>
+                <ul class="rule-list">
+                  <li>Blue marks active intent, never ambient decoration.</li>
+                  <li>Panels stay flat. Structure comes from rules and spacing.</li>
+                  <li>Charts label meaningful series and avoid color-only interpretation.</li>
+                </ul>
+              </div>
+            </div>
+            <div class="vault-table">
+              <div class="vault-header">
+                <span>Vault</span><span class="right">Chain</span><span class="right">Token</span><span class="right">Type</span><span class="right">APY</span><span class="right">TVL</span>
+              </div>
+              <a class="vault-row" href="#"><strong>yvUSDC-1</strong><span class="right">Ethereum</span><span class="right">USDC</span><span class="right">Allocator</span><strong class="right">8.42%</strong><strong class="right">$42.1M</strong></a>
+              <a class="vault-row" href="#"><strong>yvWETH-1</strong><span class="right">Base</span><span class="right">WETH</span><span class="right">Strategy</span><strong class="right">4.18%</strong><strong class="right">$18.7M</strong></a>
+              <a class="vault-row" href="#"><strong>yvDAI-1</strong><span class="right">Optimism</span><span class="right">DAI</span><span class="right">Allocator</span><strong class="right">5.09%</strong><strong class="right">$9.6M</strong></a>
+            </div>
+          </div>
+        </section>
+
+        <section id="rules" class="section">
+          <div class="section-head">
+            <div>
+              <div class="eyebrow">05 Guardrails</div>
+              <h2>What makes it Powerglove.</h2>
+            </div>
+            <p>
+              The guide is most useful when it says no. These are the rules that keep future UI from sliding into
+              generic crypto dashboard soup.
+            </p>
+          </div>
+          <div class="dos">
+            <div class="callout">
+              <strong>Do</strong>
+              <ul class="rule-list">
+                <li>Use borders, row height, and alignment before adding containers.</li>
+                <li>Keep tables and event streams dense, but edited.</li>
+                <li>Make focus states visible and chart states readable without color alone.</li>
+                <li>Use exact, terse copy for errors, empty states, and labels.</li>
+              </ul>
+            </div>
+            <div class="callout">
+              <strong>Don't</strong>
+              <ul class="rule-list">
+                <li>Do not create boring SaaS dashboard tropes.</li>
+                <li>Do not create generic overstuffed AI dashboard patterns.</li>
+                <li>Do not create gamified slop or neon crypto terminal clichés.</li>
+                <li>Do not use gradient text, glassmorphism, hero metrics, or identical card grids.</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>
