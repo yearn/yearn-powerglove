@@ -46,7 +46,12 @@ function SingleVaultPage() {
   const vaultChainId = Number(chainId) as ChainId
   const { assets: tokenAssets } = useTokenAssetsContext()
   const [activeVaultPageTab, setActiveVaultPageTab] = React.useState<VaultPageTab>('overview')
-  const [vaultHeaderElement, setVaultHeaderElement] = React.useState<HTMLDivElement | null>(null)
+  const [breadcrumbElement, setBreadcrumbElement] = React.useState<HTMLDivElement | null>(null)
+  const [primaryHeaderElement, setPrimaryHeaderElement] = React.useState<HTMLDivElement | null>(null)
+  const [tabsHeaderElement, setTabsHeaderElement] = React.useState<HTMLDivElement | null>(null)
+  const [siteHeaderHeight, setSiteHeaderHeight] = React.useState(54)
+  const [primaryHeaderStickyTop, setPrimaryHeaderStickyTop] = React.useState(54)
+  const [tabsHeaderStickyTop, setTabsHeaderStickyTop] = React.useState(54)
   const [chartHeaderStickyTop, setChartHeaderStickyTop] = React.useState(54)
 
   const {
@@ -176,23 +181,44 @@ function SingleVaultPage() {
   )
 
   React.useLayoutEffect(() => {
-    if (!vaultHeaderElement) return
+    const siteHeaderElement = document.querySelector('header')
 
-    const updateChartHeaderOffset = () => {
+    const updateStickyOffsets = () => {
       const isDesktopSticky = window.matchMedia('(min-width: 768px)').matches
-      setChartHeaderStickyTop(isDesktopSticky ? 54 + Math.ceil(vaultHeaderElement.getBoundingClientRect().height) : 54)
+      const nextSiteHeaderHeight = Math.ceil(siteHeaderElement?.getBoundingClientRect().height ?? 54)
+
+      setSiteHeaderHeight(nextSiteHeaderHeight)
+
+      if (!isDesktopSticky) {
+        setPrimaryHeaderStickyTop(nextSiteHeaderHeight)
+        setTabsHeaderStickyTop(nextSiteHeaderHeight)
+        setChartHeaderStickyTop(nextSiteHeaderHeight)
+        return
+      }
+
+      const breadcrumbHeight = Math.ceil(breadcrumbElement?.getBoundingClientRect().height ?? 0)
+      const primaryHeaderHeight = Math.ceil(primaryHeaderElement?.getBoundingClientRect().height ?? 0)
+      const tabsHeaderHeight = Math.ceil(tabsHeaderElement?.getBoundingClientRect().height ?? 0)
+      const nextPrimaryTop = nextSiteHeaderHeight + breadcrumbHeight
+      const nextTabsTop = nextPrimaryTop + primaryHeaderHeight
+
+      setPrimaryHeaderStickyTop(nextPrimaryTop)
+      setTabsHeaderStickyTop(nextTabsTop)
+      setChartHeaderStickyTop(nextTabsTop + tabsHeaderHeight)
     }
 
-    updateChartHeaderOffset()
-    const resizeObserver = new ResizeObserver(updateChartHeaderOffset)
-    resizeObserver.observe(vaultHeaderElement)
-    window.addEventListener('resize', updateChartHeaderOffset)
+    updateStickyOffsets()
+    const resizeObserver = new ResizeObserver(updateStickyOffsets)
+    ;[siteHeaderElement, breadcrumbElement, primaryHeaderElement, tabsHeaderElement].forEach((element) => {
+      if (element) resizeObserver.observe(element)
+    })
+    window.addEventListener('resize', updateStickyOffsets)
 
     return () => {
       resizeObserver.disconnect()
-      window.removeEventListener('resize', updateChartHeaderOffset)
+      window.removeEventListener('resize', updateStickyOffsets)
     }
-  }, [vaultHeaderElement])
+  }, [breadcrumbElement, primaryHeaderElement, tabsHeaderElement])
 
   if (!vaultDetails || !mainInfoPanelProps) {
     return (
@@ -245,21 +271,25 @@ function SingleVaultPage() {
             className="flex w-full flex-1 flex-col bg-transparent"
             onValueChange={(value) => setActiveVaultPageTab(value as VaultPageTab)}
           >
-            <div ref={setVaultHeaderElement} className="bg-white md:sticky md:top-[54px] md:z-20">
+            <div ref={setBreadcrumbElement} className="bg-white md:sticky md:z-20" style={{ top: siteHeaderHeight }}>
               <VaultPageBreadcrumb vaultName={isYvUsd ? 'yvUSD' : vaultDetails.name} />
-              <MainInfoPanel
-                {...mainInfoPanelProps}
-                navigation={
-                  <TabsList className="flex h-auto max-w-full flex-wrap justify-center overflow-visible bg-transparent p-0 md:justify-end">
-                    {vaultPageTabs.map((tab) => (
-                      <TabsTrigger key={tab.value} value={tab.value} className={vaultPageTabTriggerClassName}>
-                        {tab.label}
-                      </TabsTrigger>
-                    ))}
-                  </TabsList>
-                }
-              />
             </div>
+            <MainInfoPanel
+              {...mainInfoPanelProps}
+              primaryHeaderRef={setPrimaryHeaderElement}
+              tabsHeaderRef={setTabsHeaderElement}
+              primaryHeaderStickyTop={primaryHeaderStickyTop}
+              tabsHeaderStickyTop={tabsHeaderStickyTop}
+              navigation={
+                <TabsList className="flex h-auto max-w-full flex-wrap justify-center overflow-visible bg-transparent p-0 md:justify-end">
+                  {vaultPageTabs.map((tab) => (
+                    <TabsTrigger key={tab.value} value={tab.value} className={vaultPageTabTriggerClassName}>
+                      {tab.label}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              }
+            />
 
             <TabsContent value="overview" className={vaultPageTabContentClassName}>
               <VaultOverviewTab
