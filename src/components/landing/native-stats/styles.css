@@ -437,6 +437,19 @@
   height: 360px;
 }
 
+.pg-stats .tvl-history-chart .tvl-history-detail-area {
+  opacity: 0;
+  transition: opacity 320ms ease-out;
+}
+
+.pg-stats .tvl-history-chart.is-inspecting .tvl-history-detail-area {
+  opacity: 1;
+}
+
+.pg-stats .tvl-history-chart:not(.is-inspecting) .tvl-history-detail-area {
+  pointer-events: none;
+}
+
 .pg-stats .fee-chart-row {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

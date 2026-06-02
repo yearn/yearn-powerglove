@@ -130,7 +130,7 @@ export function MainInfoPanel(data: MainInfoPanelComponentProps) {
         <HeaderMetricGrid items={primaryMetricItems} className="grid-cols-3 md:grid-cols-4" minColumns={4} />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 bg-white px-4 pb-3 sm:border-x sm:border-border sm:px-6 md:grid-cols-[minmax(0,1fr)_minmax(36rem,0.95fr)]">
+      <div className="grid grid-cols-1 gap-4 bg-white px-4 pb-1 sm:border-x sm:border-border sm:px-6 md:grid-cols-[minmax(0,1fr)_minmax(36rem,0.95fr)]">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <div className="text-sm text-gray-500">{data.vaultId}</div>

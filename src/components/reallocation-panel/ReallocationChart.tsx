@@ -22,6 +22,7 @@ interface ReallocationChartProps {
 type Ribbon = {
   id: string
   path: string
+  renderY: number
   sourceColor: string
   sourceId: string
   sourceName: string
@@ -263,6 +264,7 @@ function buildRibbons(
             targetColor,
             targetId: targetNode.id,
             targetName: targetNode.displayName,
+            renderY: Math.min(sourceNode.localY, targetNode.localY),
             value: link.value
           }
         ]
@@ -359,16 +361,24 @@ function ReallocationFlowSceneComponent({
   }, [hoverTarget, interactive, ribbons])
 
   const visibleRibbons = React.useMemo(() => {
-    if (!hoverState) {
-      return ribbons
-    }
-
     return [...ribbons].sort((firstRibbon, secondRibbon) => {
+      const verticalOrder = firstRibbon.renderY - secondRibbon.renderY
+
+      if (!hoverState) {
+        return verticalOrder
+      }
+
       const firstIsFocused = hoverState.focusedRibbonIds.has(firstRibbon.id)
       const secondIsFocused = hoverState.focusedRibbonIds.has(secondRibbon.id)
-      return Number(firstIsFocused) - Number(secondIsFocused)
+      const focusOrder = Number(firstIsFocused) - Number(secondIsFocused)
+      return focusOrder || verticalOrder
     })
   }, [hoverState, ribbons])
+
+  const visibleNodes = React.useMemo(
+    () => [...graph.nodes].sort((firstNode, secondNode) => firstNode.localY - secondNode.localY),
+    [graph.nodes]
+  )
 
   const gradientIdByRibbonId = React.useMemo(() => {
     return new Map(ribbons.map((ribbon) => [ribbon.id, `${gradientPrefix}-${toSvgSafeId(ribbon.id)}`]))
@@ -467,7 +477,7 @@ function ReallocationFlowSceneComponent({
         )
       })}
 
-      {graph.nodes.map((node) => {
+      {visibleNodes.map((node) => {
         const color = colorByStrategyKey[node.id.replace(`${node.side}:`, '')] ?? '#9ca3af'
         const x = node.side === 'before' ? BEFORE_NODE_X : AFTER_NODE_X
         const y = CHART_TOP + node.localY * chartHeight
@@ -671,7 +681,7 @@ export const ReallocationChart: React.FC<ReallocationChartProps> = React.memo(
       vaultAprDeltaPct === null ? mutedTextColor : vaultAprDeltaPct >= 0 ? positiveDeltaColor : negativeDeltaColor
 
     return (
-      <div className="overflow-hidden rounded-lg border border-border bg-card">
+      <div className="isolate overflow-hidden rounded-lg border border-border bg-card">
         <div className="border-b border-border px-4 py-3">
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-[minmax(0,1fr)_auto] lg:grid-cols-[minmax(150px,auto)_minmax(180px,1fr)_minmax(180px,1fr)_auto] lg:items-start lg:gap-6">
             <div className="col-span-2 min-w-0 sm:col-span-1">

@@ -301,6 +301,8 @@ function SingleVaultPage() {
                 isChartsLoading={chartsLoading}
                 hasChartsError={chartsError}
                 atAGlanceItems={vaultAtAGlanceItems}
+                onJumpToCharts={() => setActiveVaultPageTab('charts')}
+                onJumpToStrategyInfo={() => setActiveVaultPageTab('strategy-info')}
               />
             </TabsContent>
 
@@ -332,16 +334,21 @@ function SingleVaultPage() {
                 vaultDetails={vaultDetails}
                 kongSnapshot={kongSnapshot}
                 reallocationData={reallocationData}
+                panelHeaderStickyTop={chartHeaderStickyTop}
               />
             </TabsContent>
 
             <TabsContent value="vault-events" className={vaultPageTabContentClassName}>
-              <VaultEventsTabs vaultChainId={vaultChainId} vaultDetails={vaultDetails} />
+              <VaultEventsTabs
+                vaultChainId={vaultChainId}
+                vaultDetails={vaultDetails}
+                panelHeaderStickyTop={chartHeaderStickyTop}
+              />
             </TabsContent>
 
             <TabsContent value="vault-data" className={vaultPageTabContentClassName}>
               <div className="border border-border bg-white">
-                <KongDataTab snapshot={kongSnapshot} />
+                <KongDataTab snapshot={kongSnapshot} panelHeaderStickyTop={chartHeaderStickyTop} />
               </div>
             </TabsContent>
           </Tabs>

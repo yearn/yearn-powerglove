@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { useVaults } from '@/contexts/useVaults'
 
 const headerNavLinkClassName =
-  'rounded-none border-b-2 border-transparent px-3 py-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground'
+  'rounded-none border-b-2 border-transparent px-3 pt-3.5 pb-2.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground'
 
 export default function Header() {
   const { vaults } = useVaults()

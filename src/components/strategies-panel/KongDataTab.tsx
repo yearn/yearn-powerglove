@@ -14,6 +14,7 @@ type StructuredRecord = {
 
 interface KongDataTabProps {
   snapshot: KongVaultSnapshot | null
+  panelHeaderStickyTop?: number
 }
 
 interface RowDefinition {
@@ -1344,7 +1345,7 @@ const DataRecord = ({
   )
 }
 
-export const KongDataTab: React.FC<KongDataTabProps> = React.memo(({ snapshot }) => {
+export const KongDataTab: React.FC<KongDataTabProps> = React.memo(({ snapshot, panelHeaderStickyTop = 54 }) => {
   const displayModel = React.useMemo(() => (snapshot ? buildDisplayModel(snapshot) : { items: [] }), [snapshot])
   const normalizationContext = React.useMemo(() => (snapshot ? getNormalizationContext(snapshot) : null), [snapshot])
   const endpointUrl = React.useMemo(
@@ -1378,33 +1379,29 @@ export const KongDataTab: React.FC<KongDataTabProps> = React.memo(({ snapshot })
   }
 
   return (
-    <div className="min-h-[24rem] bg-[hsl(var(--data-ledger-bg))] px-5 py-5 text-[hsl(var(--data-ledger-fg))] sm:px-6">
-      <div className="border-b border-[hsl(var(--data-ledger-border))] pb-4">
-        <div className="flex flex-col gap-3">
-          <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-            <div className="space-y-1">
-              <p className="text-[13px] uppercase tracking-[0.12em] text-[hsl(var(--data-ledger-muted))]">
-                Kong Snapshot
-              </p>
-            </div>
-          </div>
-
-          {endpointUrl && (
+    <div className="min-h-[24rem] bg-[hsl(var(--data-ledger-bg))] text-[hsl(var(--data-ledger-fg))]">
+      <div
+        className="sticky z-10 border-b border-[hsl(var(--data-ledger-border))] bg-[hsl(var(--data-ledger-bg))] px-5 py-2 sm:px-6"
+        style={{ top: panelHeaderStickyTop }}
+      >
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-base font-semibold text-[hsl(var(--data-ledger-fg))]">Kong Snapshot</h2>
+          {endpointUrl ? (
             <a
               href={endpointUrl}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex w-fit items-center gap-1.5 text-[13px] text-[hsl(var(--data-ledger-muted))] underline decoration-[hsl(var(--data-ledger-border))] underline-offset-4 transition-colors hover:text-[hsl(var(--data-ledger-fg))]"
+              className="inline-flex w-fit items-center gap-1.5 text-[13px] text-[hsl(var(--data-ledger-muted))] underline decoration-[hsl(var(--data-ledger-border))] underline-offset-4 transition-colors hover:text-[hsl(var(--data-ledger-fg))] sm:ml-auto"
             >
               <span>Query raw endpoint</span>
               <ExternalLink className="h-3.5 w-3.5 shrink-0" />
             </a>
-          )}
+          ) : null}
         </div>
       </div>
 
       {displayModel.items.length > 0 && (
-        <div className="divide-y divide-[hsl(var(--data-ledger-border-subtle))]">
+        <div className="divide-y divide-[hsl(var(--data-ledger-border-subtle))] px-5 sm:px-6">
           {displayModel.items.map((item) => {
             if (item.kind === 'row') {
               return (

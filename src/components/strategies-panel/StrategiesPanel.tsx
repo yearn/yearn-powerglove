@@ -23,6 +23,7 @@ interface StrategiesPanelProps {
   vaultDetails: VaultExtended
   kongSnapshot?: KongVaultSnapshot | null
   reallocationData?: ReallocationData | null
+  panelHeaderStickyTop?: number
 }
 
 const parseKongDecimals = (value: unknown): number | null => {
@@ -35,7 +36,7 @@ const getCompositionAddress = (composition: KongVaultSnapshotComposition): strin
 }
 
 export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
-  ({ vaultChainId, vaultDetails, kongSnapshot, reallocationData }) => {
+  ({ vaultChainId, vaultDetails, kongSnapshot, reallocationData, panelHeaderStickyTop = 54 }) => {
     const strategiesData = useStrategiesData(vaultChainId, vaultDetails)
     const sortingState = useSortingAndFiltering(strategiesData.strategies)
 
@@ -172,8 +173,8 @@ export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
       return (
         <div className="flex flex-col pb-4 lg:flex-row lg:gap-6">
           {strategiesData.allocationChartData.length > 0 && (
-            <div className="order-1 w-full border-b border-border px-4 py-4 lg:order-2 lg:basis-1/4 lg:border-b-0 lg:px-0 lg:py-0">
-              <div className="text-[11px] font-medium uppercase tracking-[0.08em] text-[#808080]">
+            <div className="order-1 w-full border-b border-border px-4 py-4 lg:order-2 lg:basis-1/4 lg:border-b-0 lg:px-0 lg:py-4">
+              <div className="text-[11px] font-medium tracking-[0.08em] text-[#808080]">
                 Allocation overview
               </div>
               <StrategyAllocationChart allocationData={strategiesData.allocationChartData} />
@@ -232,7 +233,10 @@ export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
       <div className="w-full">
         <div className="mx-auto w-full border-y border-border bg-white sm:border-x">
           <section>
-            <div className="border-b border-border px-4 py-3 sm:px-6">
+            <div
+              className="sticky z-10 border-b border-border bg-white px-4 py-2 sm:px-6"
+              style={{ top: panelHeaderStickyTop }}
+            >
               <h2 className="text-base font-semibold text-[#111111]">Current Strategies</h2>
             </div>
             {renderStrategiesContent()}
@@ -240,7 +244,10 @@ export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
 
           {hasReallocation ? (
             <section className="border-t border-border">
-              <div className="border-b border-border px-4 py-3 sm:px-6">
+              <div
+                className="sticky z-10 border-b border-border bg-white px-4 py-2 sm:px-6"
+                style={{ top: panelHeaderStickyTop }}
+              >
                 <h2 className="text-base font-semibold text-[#111111]">Strategy Reallocation History</h2>
               </div>
               {renderReallocationContent()}

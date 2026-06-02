@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router'
-import { useContext, useEffect, useMemo, useState } from 'react'
-import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { useContext, useEffect, useId, useMemo, useState } from 'react'
+import { Area, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import type { NameType, Payload, ValueType } from 'recharts/types/component/DefaultTooltipContent'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useRootDarkMode } from '@/hooks/useRootDarkMode'
@@ -45,6 +45,7 @@ function normalizeTvlSummary(data: LegacyTvlSummary): TvlSummary {
 
 const TVL_HISTORY_TOP_SERIES_COUNT = 10
 const TVL_HISTORY_REMAINING_SERIES = 'Remaining vaults'
+const TVL_HISTORY_TOTAL_SERIES = 'Total TVL'
 const TVL_HISTORY_MIN_COMPLETE_SERIES_RATIO = 0.5
 
 function formatDate(timestamp: number | string): string {
@@ -153,6 +154,17 @@ function getStackRenderSeries(seriesKeys: string[]): string[] {
   return [...(hasRemainingVaults ? [TVL_HISTORY_REMAINING_SERIES] : []), ...topSeries.slice().reverse()]
 }
 
+function addTotalTvlSeries(rows: TvlHistoryRun['chart'], seriesKeys: string[]): TvlHistoryRun['chart'] {
+  return rows.map((row) => {
+    const total = seriesKeys.reduce((sum, series) => {
+      const value = row[series]
+      return typeof value === 'number' && Number.isFinite(value) ? sum + value : sum
+    }, 0)
+
+    return { ...row, [TVL_HISTORY_TOTAL_SERIES]: total }
+  })
+}
+
 function getNumberRecordValue(record: Record<string, unknown>, key: string): number | null {
   const value = record[key]
   return typeof value === 'number' && Number.isFinite(value) ? value : null
@@ -192,7 +204,7 @@ function TvlHistoryTooltip({
       value: item.value as number,
       color: item.color
     }))
-    .filter((item) => item.value > 0)
+    .filter((item) => item.name !== TVL_HISTORY_TOTAL_SERIES && item.value > 0)
   const summedTotal = rows.reduce((sum, item) => sum + item.value, 0)
   const timestamp = Number(label)
   const canonicalTotal = Number.isFinite(timestamp) ? canonicalTotalByTimestamp[timestamp] : undefined
@@ -240,6 +252,8 @@ export function TvlOverview() {
   } = useFetch<TvlHistoryRun>('/api/tvl/history/runs/latest')
   const [isRetiredVaultsOpen, setIsRetiredVaultsOpen] = useState(false)
   const [isTvlBreakdownOpen, setIsTvlBreakdownOpen] = useState(false)
+  const [isTvlHistoryInspecting, setIsTvlHistoryInspecting] = useState(false)
+  const tvlHistoryTotalFillId = `tvl-history-total-fill-${useId().replace(/:/g, '')}`
   const data = useMemo(() => (rawData ? normalizeTvlSummary(rawData) : null), [rawData])
   const tvlHistoryColors = useMemo(() => buildBlueShadePalette(isDark), [isDark])
 
@@ -292,7 +306,10 @@ export function TvlOverview() {
       series: topTvlHistory.series
     }
   }, [rawTvlHistory])
-  const tvlHistoryRows = tvlHistoryChart.rows
+  const tvlHistoryRows = useMemo(
+    () => addTotalTvlSeries(tvlHistoryChart.rows, tvlHistoryChart.series),
+    [tvlHistoryChart.rows, tvlHistoryChart.series]
+  )
   const tvlHistorySeries = tvlHistoryChart.series
   const tvlHistoryStackSeries = useMemo(() => getStackRenderSeries(tvlHistorySeries), [tvlHistorySeries])
   const tvlHistoryCanonicalTotalByTimestamp = useMemo(
@@ -381,56 +398,83 @@ export function TvlOverview() {
         )}
 
         {!tvlHistoryLoading && !tvlHistoryError && hasTvlHistory && (
-          <>
-            <div className="chart-container" style={{ height: 320 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={tvlHistoryRows} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
-                  <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
-                  <XAxis
-                    dataKey="timestamp"
-                    tickFormatter={formatDate}
-                    tick={{ fill: 'var(--text-3)', fontSize: 11 }}
-                    axisLine={{ stroke: 'var(--border)' }}
-                    tickLine={false}
-                    interval={Math.max(0, Math.floor(tvlHistoryRows.length / 8) - 1)}
-                    minTickGap={16}
+          <div
+            className={`chart-container tvl-history-chart${isTvlHistoryInspecting ? ' is-inspecting' : ''}`}
+            style={{ height: 320 }}
+          >
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart
+                data={tvlHistoryRows}
+                margin={{ top: 8, right: 12, bottom: 0, left: 0 }}
+                onMouseMove={() => setIsTvlHistoryInspecting(true)}
+                onMouseLeave={() => setIsTvlHistoryInspecting(false)}
+              >
+                <defs>
+                  <linearGradient id={tvlHistoryTotalFillId} x1="0" x2="0" y1="0" y2="1">
+                    <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.18} />
+                    <stop offset="72%" stopColor="var(--accent)" stopOpacity={0.05} />
+                    <stop offset="100%" stopColor="var(--accent)" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
+                <XAxis
+                  dataKey="timestamp"
+                  tickFormatter={formatDate}
+                  tick={{ fill: 'var(--text-3)', fontSize: 11 }}
+                  axisLine={{ stroke: 'var(--border)' }}
+                  tickLine={false}
+                  interval={Math.max(0, Math.floor(tvlHistoryRows.length / 8) - 1)}
+                  minTickGap={16}
+                />
+                <YAxis
+                  tickFormatter={(value: number) => fmt(value, 0)}
+                  tick={{ fill: 'var(--text-3)', fontSize: 11 }}
+                  axisLine={false}
+                  tickLine={false}
+                  width={60}
+                />
+                <Tooltip
+                  content={<TvlHistoryTooltip canonicalTotalByTimestamp={tvlHistoryCanonicalTotalByTimestamp} />}
+                  cursor={{ stroke: 'rgba(17, 24, 39, 0.25)' }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey={TVL_HISTORY_TOTAL_SERIES}
+                  stroke="none"
+                  fill={`url(#${tvlHistoryTotalFillId})`}
+                  fillOpacity={1}
+                  connectNulls
+                  isAnimationActive={false}
+                />
+                {tvlHistoryStackSeries.map((series) => (
+                  <Area
+                    key={series}
+                    className="tvl-history-detail-area"
+                    type="monotone"
+                    dataKey={series}
+                    stackId="tvl"
+                    stroke={tvlHistoryColorBySeries[series]}
+                    fill={tvlHistoryColorBySeries[series]}
+                    fillOpacity={0.16}
+                    strokeOpacity={0.54}
+                    strokeWidth={1.25}
+                    connectNulls
+                    isAnimationActive={false}
                   />
-                  <YAxis
-                    tickFormatter={(value: number) => fmt(value, 0)}
-                    tick={{ fill: 'var(--text-3)', fontSize: 11 }}
-                    axisLine={false}
-                    tickLine={false}
-                    width={60}
-                  />
-                  <Tooltip
-                    content={<TvlHistoryTooltip canonicalTotalByTimestamp={tvlHistoryCanonicalTotalByTimestamp} />}
-                    cursor={{ stroke: 'rgba(17, 24, 39, 0.25)' }}
-                  />
-                  {tvlHistoryStackSeries.map((series) => (
-                    <Area
-                      key={series}
-                      type="monotone"
-                      dataKey={series}
-                      stackId="tvl"
-                      stroke={tvlHistoryColorBySeries[series]}
-                      fill={tvlHistoryColorBySeries[series]}
-                      fillOpacity={0.35}
-                      strokeWidth={1.5}
-                      connectNulls
-                    />
-                  ))}
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground">
-              {tvlHistorySeries.map((series) => (
-                <span key={series} className="inline-flex items-center gap-1.5">
-                  <span className="legend-dot" style={{ background: tvlHistoryColorBySeries[series] }} />
-                  {series}
-                </span>
-              ))}
-            </div>
-          </>
+                ))}
+                <Line
+                  type="monotone"
+                  dataKey={TVL_HISTORY_TOTAL_SERIES}
+                  stroke="var(--accent)"
+                  strokeWidth={2}
+                  dot={false}
+                  activeDot={{ r: 4, strokeWidth: 1.5, stroke: 'var(--surface)', fill: 'var(--accent)' }}
+                  connectNulls
+                  isAnimationActive={false}
+                />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
         )}
       </div>
 
