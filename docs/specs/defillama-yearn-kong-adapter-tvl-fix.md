@@ -91,7 +91,7 @@ query YearnVaults {
       currentDebtUsd
       maxDebt
     }
-    meta { isRetired }
+    meta { isRetired isHidden }
     strategies
   }
 }
@@ -103,9 +103,12 @@ Use Kong for:
 - Asset address and decimals.
 - Current strategy debts.
 - Retired status and vault type.
+- Hidden status, so bridge/migration/pre-deposit vaults can be reviewed or excluded deliberately.
 - Current TVL sanity checks.
 
 The adapter should still prefer on-chain reads for final DefiLlama balances where practical, using `totalAssets()` and `token()` / `asset()`. Kong provides discovery and graph structure; DefiLlama balances should remain token-balance based.
+
+Kong GraphQL `debts.currentDebt` should be treated as the primary edge amount for same-asset vault-to-vault deductions. The REST `/snapshot/:chainId/:address` composition endpoint is composed from Kong data and should not be required as an independent debt fallback unless a live GraphQL gap is found.
 
 ## Correct TVL Model
 
@@ -122,14 +125,16 @@ For each chain:
 
 1. Load Kong vaults for that chain.
 2. Exclude hardcoded blacklist and V1 from the V2/V3 path.
-3. Keep all positive-TVL V2/V3 vaults, including vaults whose address appears in another vault's `debts[].strategy`.
-4. Build `vaultByAddress`.
-5. Build incoming edges:
+3. Decide how to handle hidden vaults explicitly. Do not accidentally count hidden bridge, migration, or pre-deposit vaults just because Kong exposes them.
+4. Keep all positive-TVL V2/V3 vaults, including vaults whose address appears in another vault's `debts[].strategy`.
+5. Build `vaultByAddress`.
+6. Build incoming edges:
    - For every vault `parent`, for every `debt` in `parent.debts`.
    - If `debt.strategy` matches another counted vault on the same chain, add edge `parent -> child`.
-6. Count every vault's on-chain `totalAssets`.
-7. Subtract incoming edge amounts from the child vault, not the entire child vault.
-8. Add the adjusted child balance to DefiLlama balances.
+   - Use `debt.currentDebt` as the raw edge amount.
+7. Count every vault's on-chain `totalAssets`.
+8. Subtract incoming edge amounts from the child vault, not the entire child vault.
+9. Add the adjusted child balance to DefiLlama balances.
 
 Pseudo-code:
 
@@ -139,6 +144,7 @@ const countedVaults = kongVaults
   .filter(v => Number(v.tvl?.close ?? 0) > 0)
   .filter(v => !blacklist.includes(v.address.toLowerCase()))
   .filter(v => !v1VaultsLower.includes(v.address.toLowerCase()))
+  .filter(v => !shouldExcludeHiddenVault(v))
 
 const vaultByAddress = new Map(countedVaults.map(v => [v.address.toLowerCase(), v]))
 
@@ -171,6 +177,8 @@ for (const [i, vault] of countedVaults.entries()) {
 
 Important constraint: this direct raw subtraction is valid when the parent debt and child `totalAssets` use the same underlying asset units. For safety, only apply automatic edge subtraction when `parent.asset.address.toLowerCase() === child.asset.address.toLowerCase()`. If assets differ, do not use a raw-unit subtraction; either skip the edge and flag it, or handle it with explicit registry logic.
 
+If a same-asset edge has missing or zero `debt.currentDebt`, skip the edge and flag it in adapter tests or debug output rather than falling back to USD values for raw-token subtraction. USD debt can be useful for review, but the DefiLlama balance object needs token amounts.
+
 ## V1 Handling
 
 Keep the V1 path separate unless Kong adds an equivalent V1 discovery model. The current adapter already hardcodes V1 vaults and reads:
@@ -197,6 +205,7 @@ Add adapter tests or a local fixture that covers:
 4. Multiple parent vaults allocating to the same child sum incoming debt before deduction.
 5. Deduction is floored at zero.
 6. Different-asset parent/child edges are not subtracted by raw units.
+7. Hidden bridge/migration/pre-deposit vaults are excluded or explicitly reviewed, not counted accidentally.
 
 ## Expected Result
 
@@ -221,6 +230,7 @@ Before merging:
 - Confirm USDC-1 is included net of USDC-2's allocation.
 - Confirm strategy-only addresses such as `0x713...` and `0x25f...` are not independently counted.
 - Confirm no cross-chain raw-unit subtraction occurs.
+- Confirm hidden vault handling does not count bridge, migration, or pre-deposit vaults unintentionally.
 - Confirm Ethereum V1 behavior is unchanged unless LP unwrapping is intentionally included.
 
 ## Source Links

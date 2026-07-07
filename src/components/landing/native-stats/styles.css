@@ -540,7 +540,7 @@
 .pg-stats .audit-cols,
 .pg-stats .audit-cols-header {
   display: grid;
-  grid-template-columns: 80px 110px minmax(130px, 180px) 110px;
+  grid-template-columns: 80px 110px minmax(130px, 180px) 74px 110px;
   gap: 0.5rem;
   margin-left: auto;
   align-items: center;
@@ -574,6 +574,31 @@
   color: var(--accent);
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.pg-stats .audit-col-defillama {
+  min-width: 0;
+}
+.pg-stats .audit-dl-counted-tag,
+.pg-stats .audit-dl-missing-tag {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  padding: 0.1rem 0.35rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 1.1;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.pg-stats .audit-dl-counted-tag {
+  background: var(--surface-2);
+  color: var(--text-3);
+}
+.pg-stats .audit-dl-missing-tag {
+  background: var(--red-dim);
+  color: var(--red);
 }
 .pg-stats .audit-tvl {
   margin-left: auto;

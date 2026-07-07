@@ -11,7 +11,8 @@ import {
   SkeletonChart,
   shortAddr,
   useDebouncedValue,
-  useFetch
+  useFetch,
+  useSort
 } from './hooks'
 import { StatsContext } from './StatsContext'
 
@@ -54,6 +55,22 @@ interface AuditCrossChainVault {
   category: string
   tvlUsd: number
   label: string
+}
+
+interface DefillamaMissingVault {
+  chainId: number
+  chainName: string
+  vaultAddress: string
+  name?: string
+  category?: string
+  tvlUsd?: number
+  countedTvlUsd?: number
+}
+
+interface DefillamaComparableComparison {
+  diff: {
+    missingFromDefillama: DefillamaMissingVault[]
+  }
 }
 
 type AuditTypeFilter = 'all' | 'v3-allocator' | 'v3-strategy' | 'curation' | 'v2' | 'v1'
@@ -110,6 +127,10 @@ function computeCountedTvl(vault: AuditVault): number {
 
 function computeStrategyCountedTvl(strategy: AuditStrategy): number {
   return strategy.detectionMethod ? 0 : strategy.debtUsd
+}
+
+function vaultKey(chainId: number, address: string): string {
+  return `${chainId}:${address.toLowerCase()}`
 }
 
 function visibleStrategies(strategies: AuditStrategy[]): AuditStrategy[] {
@@ -288,11 +309,13 @@ function StrategyNode({
 function VaultNode({
   vault,
   vaultMap,
-  topLevelAddresses
+  topLevelAddresses,
+  missingFromDefillama
 }: {
   vault: AuditVault
   vaultMap: Map<string, AuditVault>
   topLevelAddresses: Set<string>
+  missingFromDefillama: DefillamaMissingVault | undefined
 }) {
   const [expanded, setExpanded] = useState(false)
   const vaultVisibleStrategies = visibleStrategies(vault.strategies)
@@ -304,6 +327,9 @@ function VaultNode({
   visited.add(`${vault.chainId}:${vault.address.toLowerCase()}`)
 
   const countedTvl = computeCountedTvl(vault)
+  const defillamaTitle = missingFromDefillama
+    ? `Counted locally but missing from DefiLlama comparable TVL (${fmt(missingFromDefillama.countedTvlUsd ?? countedTvl)})`
+    : 'Included in the DefiLlama comparable vault set'
 
   return (
     <div className={`audit-vault-node${hasOverlap ? ' has-overlap' : ''}`}>
@@ -384,6 +410,13 @@ function VaultNode({
               <span className="audit-col-empty">{'\u2014'}</span>
             )}
           </span>
+          <span className="audit-col-defillama" title={defillamaTitle}>
+            {missingFromDefillama ? (
+              <span className="audit-dl-missing-tag">local only</span>
+            ) : (
+              <span className="audit-dl-counted-tag">DL</span>
+            )}
+          </span>
           <span className="audit-col-counted" title="TVL after deducting overlap from this vault's strategies">
             {fmt(countedTvl)}
           </span>
@@ -413,9 +446,14 @@ export function AuditPanel() {
   const [isStrategyOverlapOpen, setIsStrategyOverlapOpen] = useState(false)
   const [isCrossChainOverlapOpen, setIsCrossChainOverlapOpen] = useState(false)
   const debouncedSearch = useDebouncedValue(search)
+  const vaultSort = useSort('debt')
+  const { sorted: sortVaults } = vaultSort
 
   const url = `/api/audit/tree${chainFilter !== 'all' ? `?chainId=${chainFilter}` : ''}`
   const { data, loading, fetchedAt } = useFetch<AuditTreeResponse>(url)
+  const { data: defillamaComparison } = useFetch<DefillamaComparableComparison>(
+    '/api/comparison/defillama-comparable?includeVaultBreakdown=false'
+  )
 
   useEffect(() => {
     if (fetchedAt) setLastFetchedAt(fetchedAt)
@@ -472,6 +510,13 @@ export function AuditPanel() {
     [data]
   )
 
+  const missingFromDefillamaByVault = useMemo(() => {
+    if (!defillamaComparison) return new Map<string, DefillamaMissingVault>()
+    return new Map(
+      defillamaComparison.diff.missingFromDefillama.map((vault) => [vaultKey(vault.chainId, vault.vaultAddress), vault])
+    )
+  }, [defillamaComparison])
+
   const filteredVaults = useMemo(() => {
     if (!data) return []
     const typeFilterFn = (v: AuditVault) =>
@@ -496,6 +541,29 @@ export function AuditPanel() {
 
     return data.vaults.filter(typeFilterFn).filter(searchFilterFn)
   }, [data, debouncedSearch, typeFilter])
+
+  const filteredMissingFromDefillama = useMemo(
+    () =>
+      filteredVaults
+        .map((vault) => missingFromDefillamaByVault.get(vaultKey(vault.chainId, vault.address)))
+        .filter((vault): vault is DefillamaMissingVault => vault != null),
+    [filteredVaults, missingFromDefillamaByVault]
+  )
+
+  const missingFromDefillamaTvl = useMemo(
+    () => filteredMissingFromDefillama.reduce((sum, vault) => sum + (vault.countedTvlUsd ?? 0), 0),
+    [filteredMissingFromDefillama]
+  )
+
+  const sortedVaults = useMemo(
+    () =>
+      sortVaults(filteredVaults, {
+        debt: (vault) => vault.tvlUsd,
+        counted: (vault) => computeCountedTvl(vault),
+        defillama: (vault) => (missingFromDefillamaByVault.has(vaultKey(vault.chainId, vault.address)) ? 1 : 0)
+      }),
+    [filteredVaults, missingFromDefillamaByVault, sortVaults]
+  )
 
   // Set of top-level vault addresses for depth limiting
   const topLevelAddresses = useMemo(() => {
@@ -577,7 +645,8 @@ export function AuditPanel() {
         />
 
         <span className="text-dim" style={{ fontSize: '0.78rem', marginLeft: 'auto' }}>
-          {filteredVaults.length} vaults
+          {filteredVaults.length} vaults · {filteredMissingFromDefillama.length} local-only ·{' '}
+          {fmt(missingFromDefillamaTvl)}
         </span>
       </div>
 
@@ -587,18 +656,20 @@ export function AuditPanel() {
           <span style={{ fontWeight: 600 }}>Vault</span>
           <span className="audit-cols audit-cols-header">
             <span className="audit-col-strats">Strats</span>
-            <span className="audit-col-tvl">Debt</span>
+            <span {...vaultSort.th('debt', 'Debt', 'audit-col-tvl')} />
             <span className="audit-col-overlaps">Overlaps</span>
-            <span className="audit-col-counted">Counted</span>
+            <span {...vaultSort.th('defillama', 'DL', 'audit-col-defillama')} />
+            <span {...vaultSort.th('counted', 'Counted', 'audit-col-counted')} />
           </span>
         </div>
 
-        {filteredVaults.map((vault) => (
+        {sortedVaults.map((vault) => (
           <VaultNode
             key={`${vault.chainId}:${vault.address}`}
             vault={vault}
             vaultMap={vaultMap}
             topLevelAddresses={topLevelAddresses}
+            missingFromDefillama={missingFromDefillamaByVault.get(vaultKey(vault.chainId, vault.address))}
           />
         ))}
 
