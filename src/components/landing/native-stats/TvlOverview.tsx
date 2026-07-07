@@ -1,8 +1,11 @@
 import { Link } from '@tanstack/react-router'
+import { BarChart3, Info, LineChart } from 'lucide-react'
 import { useContext, useEffect, useId, useMemo, useState } from 'react'
-import { Area, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { Area, Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import type { NameType, Payload, ValueType } from 'recharts/types/component/DefaultTooltipContent'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useRootDarkMode } from '@/hooks/useRootDarkMode'
 import { buildBlueShadePalette } from '@/lib/theme-blue-palette'
 import {
@@ -44,9 +47,24 @@ function normalizeTvlSummary(data: LegacyTvlSummary): TvlSummary {
 }
 
 const TVL_HISTORY_TOP_SERIES_COUNT = 10
-const TVL_HISTORY_REMAINING_SERIES = 'Remaining vaults'
+const TVL_HISTORY_REMAINING_VAULT_SERIES = 'Remaining vaults'
+const TVL_HISTORY_REMAINING_CHAIN_SERIES = 'Remaining chains'
 const TVL_HISTORY_TOTAL_SERIES = 'Total TVL'
 const TVL_HISTORY_MIN_COMPLETE_SERIES_RATIO = 0.5
+const DAY_SECONDS = 86_400
+
+type TvlHistoryBreakdown = 'vault' | 'chain'
+type TvlHistoryRange = '30d' | '90d' | '365d' | 'all'
+type TvlHistoryView = 'line' | 'bar'
+type TvlHistoryMode = 'raw' | 'external'
+type TvlHistoryInterval = 'daily' | '3day' | 'weekly'
+
+const TVL_HISTORY_RANGE_OPTIONS: Array<{ value: TvlHistoryRange; label: string; days?: number }> = [
+  { value: '30d', label: '30D', days: 30 },
+  { value: '90d', label: '90D', days: 90 },
+  { value: '365d', label: '365D', days: 365 },
+  { value: 'all', label: 'All Time' }
+]
 
 function formatDate(timestamp: number | string): string {
   return new Date(Number(timestamp) * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
@@ -66,6 +84,12 @@ function getWarningCount(meta: Record<string, unknown>): number {
   if (typeof warnings === 'number' && Number.isFinite(warnings)) return warnings
   if (typeof meta.warningCount === 'number' && Number.isFinite(meta.warningCount)) return meta.warningCount
   return 0
+}
+
+function formatHistoryGroup(groupBy: string | undefined): string {
+  if (groupBy === 'chain') return 'chain'
+  if (groupBy === 'vault') return 'vault'
+  return groupBy ?? 'series'
 }
 
 function hasSeriesValue(row: Record<string, unknown>, series: string): boolean {
@@ -92,6 +116,51 @@ function filterPartialTerminalRows(rows: TvlHistoryRun['chart'], seriesCount: nu
   return rows.slice(0, endIndex)
 }
 
+function filterRowsByRange(rows: TvlHistoryRun['chart'], range: TvlHistoryRange): TvlHistoryRun['chart'] {
+  const option = TVL_HISTORY_RANGE_OPTIONS.find((item) => item.value === range)
+  if (!option?.days || rows.length === 0) return rows
+
+  const latestTimestamp = rows.reduce((latest, row) => Math.max(latest, row.timestamp), 0)
+  const minTimestamp = latestTimestamp - option.days * DAY_SECONDS
+  return rows.filter((row) => row.timestamp >= minTimestamp)
+}
+
+function getHistoryInterval(range: TvlHistoryRange): TvlHistoryInterval {
+  if (range === '30d') return 'daily'
+  if (range === '90d') return '3day'
+  return 'weekly'
+}
+
+function getHistoryMode(range: TvlHistoryRange): TvlHistoryMode {
+  return range === '30d' || range === '90d' ? 'raw' : 'external'
+}
+
+function getLatestRowTotal(rows: TvlHistoryRun['chart'], seriesKeys: string[]): number {
+  for (let index = rows.length - 1; index >= 0; index -= 1) {
+    const total = seriesKeys.reduce((sum, series) => {
+      const value = rows[index]?.[series]
+      return typeof value === 'number' && Number.isFinite(value) ? sum + value : sum
+    }, 0)
+
+    if (total > 0) return total
+  }
+
+  return 0
+}
+
+function scaleRows(rows: TvlHistoryRun['chart'], seriesKeys: string[], scaleFactor: number): TvlHistoryRun['chart'] {
+  if (!Number.isFinite(scaleFactor) || Math.abs(scaleFactor - 1) < 0.000001) return rows
+
+  return rows.map((row) => {
+    const nextRow = { ...row }
+    for (const series of seriesKeys) {
+      const value = nextRow[series]
+      if (typeof value === 'number' && Number.isFinite(value)) nextRow[series] = value * scaleFactor
+    }
+    return nextRow
+  })
+}
+
 function addZeroStartPoints(rows: TvlHistoryRun['chart'], seriesKeys: string[]): TvlHistoryRun['chart'] {
   const chartRows = rows.map((row) => ({ ...row }))
 
@@ -116,7 +185,8 @@ function getLatestSeriesValue(rows: TvlHistoryRun['chart'], series: string): num
 
 function buildTopTvlHistoryChart(
   rows: TvlHistoryRun['chart'],
-  seriesKeys: string[]
+  seriesKeys: string[],
+  remainingSeries: string
 ): { rows: TvlHistoryRun['chart']; series: string[] } {
   const rankedSeries = [...seriesKeys].sort((a, b) => getLatestSeriesValue(rows, b) - getLatestSeriesValue(rows, a))
   const topSeries = rankedSeries.slice(0, TVL_HISTORY_TOP_SERIES_COUNT)
@@ -136,7 +206,7 @@ function buildTopTvlHistoryChart(
         return typeof value === 'number' && Number.isFinite(value) ? sum + value : sum
       }, 0)
 
-      if (otherTvl > 0) nextRow[TVL_HISTORY_REMAINING_SERIES] = otherTvl
+      if (otherTvl > 0) nextRow[remainingSeries] = otherTvl
     }
 
     return nextRow
@@ -144,14 +214,20 @@ function buildTopTvlHistoryChart(
 
   return {
     rows: chartRows,
-    series: hasOtherSeries ? [...topSeries, TVL_HISTORY_REMAINING_SERIES] : topSeries
+    series: hasOtherSeries ? [...topSeries, remainingSeries] : topSeries
   }
 }
 
-function getStackRenderSeries(seriesKeys: string[]): string[] {
-  const topSeries = seriesKeys.filter((series) => series !== TVL_HISTORY_REMAINING_SERIES)
-  const hasRemainingVaults = seriesKeys.includes(TVL_HISTORY_REMAINING_SERIES)
-  return [...(hasRemainingVaults ? [TVL_HISTORY_REMAINING_SERIES] : []), ...topSeries.slice().reverse()]
+function getStackRenderSeries(seriesKeys: string[], remainingSeries: string): string[] {
+  const topSeries = seriesKeys.filter((series) => series !== remainingSeries)
+  const hasRemainingSeries = seriesKeys.includes(remainingSeries)
+  return [...(hasRemainingSeries ? [remainingSeries] : []), ...topSeries.slice().reverse()]
+}
+
+function getHistoryBarSize(rowCount: number): number {
+  if (rowCount <= 12) return 34
+  if (rowCount <= 32) return 22
+  return 14
 }
 
 function addTotalTvlSeries(rows: TvlHistoryRun['chart'], seriesKeys: string[]): TvlHistoryRun['chart'] {
@@ -170,7 +246,7 @@ function getNumberRecordValue(record: Record<string, unknown>, key: string): num
   return typeof value === 'number' && Number.isFinite(value) ? value : null
 }
 
-function getCanonicalTotalByTimestamp(run: TvlHistoryRun | null): Record<number, number> {
+function getCanonicalTotalByTimestamp(run: TvlHistoryRun | null, scaleFactor = 1): Record<number, number> {
   if (!run) return {}
 
   const currentSnapshot = run.meta.currentSnapshot
@@ -181,7 +257,7 @@ function getCanonicalTotalByTimestamp(run: TvlHistoryRun | null): Record<number,
   const adjustedTotal =
     getNumberRecordValue(snapshotRecord, 'adjustedTotalTvlUsd') ?? getNumberRecordValue(run.meta, 'adjustedTotalTvlUsd')
 
-  return timestamp && adjustedTotal !== null ? { [timestamp]: adjustedTotal } : {}
+  return timestamp && adjustedTotal !== null ? { [timestamp]: adjustedTotal * scaleFactor } : {}
 }
 
 function TvlHistoryTooltip({
@@ -244,12 +320,18 @@ export function TvlOverview() {
   const { chainFilter, setLastFetchedAt } = useContext(StatsContext)
   const isDark = useRootDarkMode()
   const { data: rawData, loading, error, fetchedAt, retry } = useFetch<LegacyTvlSummary>('/api/tvl')
+  const [tvlHistoryBreakdown, setTvlHistoryBreakdown] = useState<TvlHistoryBreakdown>('vault')
+  const [tvlHistoryRange, setTvlHistoryRange] = useState<TvlHistoryRange>('all')
+  const [tvlHistoryView, setTvlHistoryView] = useState<TvlHistoryView>('line')
+  const tvlHistoryMode = getHistoryMode(tvlHistoryRange)
+  const tvlHistoryInterval = getHistoryInterval(tvlHistoryRange)
+  const tvlHistoryUrl = `/api/tvl/history/runs/latest?groupBy=${tvlHistoryBreakdown}&mode=${tvlHistoryMode}&interval=${tvlHistoryInterval}`
   const {
     data: rawTvlHistory,
     loading: tvlHistoryLoading,
     error: tvlHistoryError,
     retry: retryTvlHistory
-  } = useFetch<TvlHistoryRun>('/api/tvl/history/runs/latest')
+  } = useFetch<TvlHistoryRun>(tvlHistoryUrl)
   const [isRetiredVaultsOpen, setIsRetiredVaultsOpen] = useState(false)
   const [isTvlBreakdownOpen, setIsTvlBreakdownOpen] = useState(false)
   const [isTvlHistoryInspecting, setIsTvlHistoryInspecting] = useState(false)
@@ -297,24 +379,37 @@ export function TvlOverview() {
 
   const retiredVaults = useMemo(() => data?.retiredVaults ?? [], [data])
   const retiredVaultCountIncluded = retiredVaults.length
+  const tvlHistoryRemainingSeries =
+    tvlHistoryBreakdown === 'chain' ? TVL_HISTORY_REMAINING_CHAIN_SERIES : TVL_HISTORY_REMAINING_VAULT_SERIES
+  const tvlHistoryScaleFactor = useMemo(() => {
+    if (!rawTvlHistory || rawTvlHistory.mode !== 'raw' || !data?.totalTvl) return 1
+    const completeRows = filterPartialTerminalRows(rawTvlHistory.chart, rawTvlHistory.series.length)
+    const latestTotal = getLatestRowTotal(completeRows, rawTvlHistory.series)
+    return latestTotal > 0 ? data.totalTvl / latestTotal : 1
+  }, [data?.totalTvl, rawTvlHistory])
   const tvlHistoryChart = useMemo(() => {
     if (!rawTvlHistory) return { rows: [], series: [] }
     const completeRows = filterPartialTerminalRows(rawTvlHistory.chart, rawTvlHistory.series.length)
-    const topTvlHistory = buildTopTvlHistoryChart(completeRows, rawTvlHistory.series)
+    const scaledRows = scaleRows(completeRows, rawTvlHistory.series, tvlHistoryScaleFactor)
+    const topTvlHistory = buildTopTvlHistoryChart(scaledRows, rawTvlHistory.series, tvlHistoryRemainingSeries)
+    const rangedRows = filterRowsByRange(topTvlHistory.rows, tvlHistoryRange)
     return {
-      rows: addZeroStartPoints(topTvlHistory.rows, topTvlHistory.series),
+      rows: addZeroStartPoints(rangedRows, topTvlHistory.series),
       series: topTvlHistory.series
     }
-  }, [rawTvlHistory])
+  }, [rawTvlHistory, tvlHistoryRange, tvlHistoryRemainingSeries, tvlHistoryScaleFactor])
   const tvlHistoryRows = useMemo(
     () => addTotalTvlSeries(tvlHistoryChart.rows, tvlHistoryChart.series),
     [tvlHistoryChart.rows, tvlHistoryChart.series]
   )
   const tvlHistorySeries = tvlHistoryChart.series
-  const tvlHistoryStackSeries = useMemo(() => getStackRenderSeries(tvlHistorySeries), [tvlHistorySeries])
+  const tvlHistoryStackSeries = useMemo(
+    () => getStackRenderSeries(tvlHistorySeries, tvlHistoryRemainingSeries),
+    [tvlHistoryRemainingSeries, tvlHistorySeries]
+  )
   const tvlHistoryCanonicalTotalByTimestamp = useMemo(
-    () => getCanonicalTotalByTimestamp(rawTvlHistory),
-    [rawTvlHistory]
+    () => getCanonicalTotalByTimestamp(rawTvlHistory, tvlHistoryScaleFactor),
+    [rawTvlHistory, tvlHistoryScaleFactor]
   )
   const tvlHistoryColorBySeries = useMemo(
     () =>
@@ -328,6 +423,8 @@ export function TvlOverview() {
     ? `${formatFullDate(rawTvlHistory.range.from)} - ${formatFullDate(rawTvlHistory.range.to)}`
     : '-'
   const warningCount = rawTvlHistory ? getWarningCount(rawTvlHistory.meta) : 0
+  const tvlHistoryBarSize = getHistoryBarSize(tvlHistoryRows.length)
+  const tvlHistoryBreakdownLabel = tvlHistoryBreakdown === 'chain' ? 'chain' : 'vault'
 
   if (loading) return <SkeletonCards count={1} />
   if (error)
@@ -363,17 +460,102 @@ export function TvlOverview() {
         <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
           <div>
             <h2>TVL History</h2>
-            <div className="sub">Saved run grouped by {rawTvlHistory?.groupBy ?? 'series'}; top 10 by current TVL</div>
-          </div>
-          {rawTvlHistory && (
-            <div className="flex flex-wrap justify-end gap-x-4 gap-y-1 text-xs text-muted-foreground">
-              <span>Run #{rawTvlHistory.id}</span>
-              <span>{rawTvlHistory.interval}</span>
-              <span>{rawTvlHistory.pointCount.toLocaleString()} points</span>
-              <span>{tvlHistoryRangeLabel}</span>
-              <span>{warningCount} warnings</span>
+            <div className="sub">
+              Saved run grouped by {formatHistoryGroup(rawTvlHistory?.groupBy)}; top{' '}
+              {Math.min(TVL_HISTORY_TOP_SERIES_COUNT, tvlHistorySeries.length)} by current TVL
             </div>
-          )}
+          </div>
+          <div className="tvl-history-header-actions">
+            {rawTvlHistory && (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button type="button" className="tvl-history-icon-btn" aria-label="TVL history run details">
+                    <Info size={15} strokeWidth={1.8} />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="tvl-history-info-popover">
+                  <div className="label">Run details</div>
+                  <div className="mt-2 grid gap-2 text-xs">
+                    <div className="flex items-center justify-between gap-4">
+                      <span className="text-muted-foreground">Run</span>
+                      <span className="font-medium tabular-nums">#{rawTvlHistory.id}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-4">
+                      <span className="text-muted-foreground">Interval</span>
+                      <span className="font-medium">{rawTvlHistory.interval}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-4">
+                      <span className="text-muted-foreground">Mode</span>
+                      <span className="font-medium">{rawTvlHistory.mode}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-4">
+                      <span className="text-muted-foreground">Points</span>
+                      <span className="font-medium tabular-nums">{rawTvlHistory.pointCount.toLocaleString()}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-4">
+                      <span className="text-muted-foreground">Range</span>
+                      <span className="font-medium tabular-nums">{tvlHistoryRangeLabel}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-4">
+                      <span className="text-muted-foreground">Warnings</span>
+                      <span className="font-medium tabular-nums">{warningCount}</span>
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            )}
+          </div>
+        </div>
+
+        <div className="tvl-history-controls" aria-label="TVL history controls">
+          <Tabs
+            value={tvlHistoryBreakdown}
+            onValueChange={(value) => setTvlHistoryBreakdown(value as TvlHistoryBreakdown)}
+          >
+            <TabsList className="tvl-history-tabs" aria-label="TVL history breakdown">
+              <TabsTrigger className="tvl-history-tab" value="vault">
+                Vaults
+              </TabsTrigger>
+              <TabsTrigger className="tvl-history-tab" value="chain">
+                Chains
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          <div className="tvl-history-control-group" aria-label="TVL history time range">
+            {TVL_HISTORY_RANGE_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                className={tvlHistoryRange === option.value ? 'active' : undefined}
+                aria-pressed={tvlHistoryRange === option.value}
+                onClick={() => setTvlHistoryRange(option.value)}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="tvl-history-control-group icon-group" aria-label="TVL history chart type">
+            <button
+              type="button"
+              className={tvlHistoryView === 'line' ? 'active' : undefined}
+              aria-label={`Show ${tvlHistoryBreakdownLabel} TVL as lines`}
+              aria-pressed={tvlHistoryView === 'line'}
+              onClick={() => setTvlHistoryView('line')}
+            >
+              <LineChart size={15} strokeWidth={1.8} />
+            </button>
+            <button
+              type="button"
+              className={tvlHistoryView === 'bar' ? 'active' : undefined}
+              aria-label={`Show ${tvlHistoryBreakdownLabel} TVL as bars`}
+              aria-pressed={tvlHistoryView === 'bar'}
+              onClick={() => setTvlHistoryView('bar')}
+            >
+              <BarChart3 size={15} strokeWidth={1.8} />
+            </button>
+          </div>
         </div>
 
         {tvlHistoryLoading && (
@@ -435,43 +617,63 @@ export function TvlOverview() {
                 />
                 <Tooltip
                   content={<TvlHistoryTooltip canonicalTotalByTimestamp={tvlHistoryCanonicalTotalByTimestamp} />}
-                  cursor={{ stroke: 'rgba(17, 24, 39, 0.25)' }}
+                  cursor={
+                    tvlHistoryView === 'bar' ? { fill: 'rgba(6, 87, 249, 0.06)' } : { stroke: 'rgba(17, 24, 39, 0.25)' }
+                  }
                 />
-                <Area
-                  type="monotone"
-                  dataKey={TVL_HISTORY_TOTAL_SERIES}
-                  stroke="none"
-                  fill={`url(#${tvlHistoryTotalFillId})`}
-                  fillOpacity={1}
-                  connectNulls
-                  isAnimationActive={false}
-                />
-                {tvlHistoryStackSeries.map((series) => (
-                  <Area
-                    key={series}
-                    className="tvl-history-detail-area"
-                    type="monotone"
-                    dataKey={series}
-                    stackId="tvl"
-                    stroke={tvlHistoryColorBySeries[series]}
-                    fill={tvlHistoryColorBySeries[series]}
-                    fillOpacity={0.16}
-                    strokeOpacity={0.54}
-                    strokeWidth={1.25}
-                    connectNulls
-                    isAnimationActive={false}
-                  />
-                ))}
-                <Line
-                  type="monotone"
-                  dataKey={TVL_HISTORY_TOTAL_SERIES}
-                  stroke="var(--accent)"
-                  strokeWidth={2}
-                  dot={false}
-                  activeDot={{ r: 4, strokeWidth: 1.5, stroke: 'var(--surface)', fill: 'var(--accent)' }}
-                  connectNulls
-                  isAnimationActive={false}
-                />
+                {tvlHistoryView === 'line' && (
+                  <>
+                    <Area
+                      type="monotone"
+                      dataKey={TVL_HISTORY_TOTAL_SERIES}
+                      stroke="none"
+                      fill={`url(#${tvlHistoryTotalFillId})`}
+                      fillOpacity={1}
+                      connectNulls
+                      isAnimationActive={false}
+                    />
+                    {tvlHistoryStackSeries.map((series) => (
+                      <Area
+                        key={series}
+                        className="tvl-history-detail-area"
+                        type="monotone"
+                        dataKey={series}
+                        stackId="tvl"
+                        stroke={tvlHistoryColorBySeries[series]}
+                        fill={tvlHistoryColorBySeries[series]}
+                        fillOpacity={0.16}
+                        strokeOpacity={0.54}
+                        strokeWidth={1.25}
+                        connectNulls
+                        isAnimationActive={false}
+                      />
+                    ))}
+                    <Line
+                      type="monotone"
+                      dataKey={TVL_HISTORY_TOTAL_SERIES}
+                      stroke="var(--accent)"
+                      strokeWidth={2}
+                      dot={false}
+                      activeDot={{ r: 4, strokeWidth: 1.5, stroke: 'var(--surface)', fill: 'var(--accent)' }}
+                      connectNulls
+                      isAnimationActive={false}
+                    />
+                  </>
+                )}
+                {tvlHistoryView === 'bar' &&
+                  tvlHistoryStackSeries.map((series, index) => (
+                    <Bar
+                      key={series}
+                      dataKey={series}
+                      stackId="tvl"
+                      fill={tvlHistoryColorBySeries[series]}
+                      fillOpacity={series === tvlHistoryRemainingSeries ? 0.28 : 0.78}
+                      stroke="transparent"
+                      maxBarSize={tvlHistoryBarSize}
+                      radius={index === tvlHistoryStackSeries.length - 1 ? [3, 3, 0, 0] : [0, 0, 0, 0]}
+                      isAnimationActive={false}
+                    />
+                  ))}
               </ComposedChart>
             </ResponsiveContainer>
           </div>
