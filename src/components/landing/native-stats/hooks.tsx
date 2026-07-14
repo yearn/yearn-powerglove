@@ -3,7 +3,8 @@ import { type KeyboardEvent, useCallback, useEffect, useRef, useState } from 're
 export function resolveStatsApiBase(): string | null {
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname
-    if (hostname === '127.0.0.1' || hostname === 'localhost' || hostname.endsWith('.ts.net')) {
+    const isTailscaleIp = /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.\d{1,3}\.\d{1,3}$/.test(hostname)
+    if (hostname === '127.0.0.1' || hostname === 'localhost' || hostname.endsWith('.ts.net') || isTailscaleIp) {
       return ''
     }
   }

@@ -47,8 +47,8 @@ function normalizeTvlSummary(data: LegacyTvlSummary): TvlSummary {
 }
 
 const TVL_HISTORY_TOP_SERIES_COUNT = 10
-const TVL_HISTORY_REMAINING_VAULT_SERIES = 'Remaining vaults'
-const TVL_HISTORY_REMAINING_CHAIN_SERIES = 'Remaining chains'
+const TVL_HISTORY_REMAINING_VAULT_SERIES = 'All other vaults'
+const TVL_HISTORY_REMAINING_CHAIN_SERIES = 'All other chains'
 const TVL_HISTORY_TOTAL_SERIES = 'Total TVL'
 const TVL_HISTORY_MIN_COMPLETE_SERIES_RATIO = 0.5
 const DAY_SECONDS = 86_400
@@ -221,7 +221,7 @@ function buildTopTvlHistoryChart(
 function getStackRenderSeries(seriesKeys: string[], remainingSeries: string): string[] {
   const topSeries = seriesKeys.filter((series) => series !== remainingSeries)
   const hasRemainingSeries = seriesKeys.includes(remainingSeries)
-  return [...(hasRemainingSeries ? [remainingSeries] : []), ...topSeries.slice().reverse()]
+  return [...topSeries.slice().reverse(), ...(hasRemainingSeries ? [remainingSeries] : [])]
 }
 
 function getHistoryBarSize(rowCount: number): number {
@@ -264,16 +264,18 @@ function TvlHistoryTooltip({
   active,
   label,
   payload,
-  canonicalTotalByTimestamp
+  canonicalTotalByTimestamp,
+  remainingSeries
 }: {
   active?: boolean
   label?: number | string
   payload?: Payload<ValueType, NameType>[]
   canonicalTotalByTimestamp: Record<number, number>
+  remainingSeries: string
 }) {
   if (!active || !payload?.length) return null
 
-  const rows = payload
+  const payloadRows = payload
     .filter((item) => typeof item.value === 'number' && Number.isFinite(item.value))
     .map((item) => ({
       name: String(item.name ?? item.dataKey ?? ''),
@@ -281,6 +283,10 @@ function TvlHistoryTooltip({
       color: item.color
     }))
     .filter((item) => item.name !== TVL_HISTORY_TOTAL_SERIES && item.value > 0)
+  const rows = [
+    ...payloadRows.filter((item) => item.name === remainingSeries),
+    ...payloadRows.filter((item) => item.name !== remainingSeries).reverse()
+  ]
   const summedTotal = rows.reduce((sum, item) => sum + item.value, 0)
   const timestamp = Number(label)
   const canonicalTotal = Number.isFinite(timestamp) ? canonicalTotalByTimestamp[timestamp] : undefined
@@ -616,7 +622,12 @@ export function TvlOverview() {
                   width={60}
                 />
                 <Tooltip
-                  content={<TvlHistoryTooltip canonicalTotalByTimestamp={tvlHistoryCanonicalTotalByTimestamp} />}
+                  content={
+                    <TvlHistoryTooltip
+                      canonicalTotalByTimestamp={tvlHistoryCanonicalTotalByTimestamp}
+                      remainingSeries={tvlHistoryRemainingSeries}
+                    />
+                  }
                   cursor={
                     tvlHistoryView === 'bar' ? { fill: 'rgba(6, 87, 249, 0.06)' } : { stroke: 'rgba(17, 24, 39, 0.25)' }
                   }

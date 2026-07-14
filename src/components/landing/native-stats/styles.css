@@ -149,6 +149,10 @@
   margin-bottom: 1rem;
 }
 
+.pg-stats .audit-summary-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 .pg-stats .metric,
 .pg-stats .card {
   background: var(--surface);
@@ -359,6 +363,11 @@
   flex-wrap: wrap;
   gap: 0.6rem;
   margin-bottom: 1rem;
+}
+
+.pg-stats .audit-filter-summary {
+  margin-left: auto;
+  font-size: 0.78rem;
 }
 
 .pg-stats .filter-pill {
@@ -643,6 +652,10 @@
   background: var(--surface-hover);
 }
 
+.pg-stats .audit-strategy-row {
+  padding-left: var(--audit-strategy-indent, 1.5rem);
+}
+
 .pg-stats .audit-vault-name,
 .pg-stats .audit-strategy-name {
   color: var(--text);
@@ -778,6 +791,10 @@
 }
 
 @media (max-width: 900px) {
+  .pg-stats .audit-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .pg-stats .audit-cols,
   .pg-stats .audit-cols-header {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -790,5 +807,152 @@
 
   .pg-stats .fee-chart-row {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 700px) {
+  .pg-stats {
+    border-left: 0;
+    border-right: 0;
+  }
+
+  .pg-stats .top-bar,
+  .pg-stats .toolbar,
+  .pg-stats [role="tabpanel"],
+  .pg-stats .stats-tabs-list {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .pg-stats .toolbar-right {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .pg-stats .stats-tab {
+    padding: 0 0.7rem;
+  }
+
+  .pg-stats .metric-grid,
+  .pg-stats .audit-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pg-stats .metric,
+  .pg-stats .card {
+    padding: 0.85rem 1rem;
+  }
+
+  .pg-stats .filter-bar {
+    align-items: stretch;
+  }
+
+  .pg-stats .filter-select,
+  .pg-stats .search-input {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .pg-stats .audit-filter-summary {
+    width: 100%;
+    margin-left: 0;
+    font-size: 0.75rem;
+  }
+
+  .pg-stats .audit-tree {
+    overflow: visible;
+  }
+
+  .pg-stats .audit-tree-header {
+    display: none;
+  }
+
+  .pg-stats .audit-row {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 0.35rem 0.45rem;
+    padding: 0.75rem 0;
+  }
+
+  .pg-stats .audit-strategy-row {
+    padding-left: min(var(--audit-strategy-indent, 0.5rem), 0.75rem);
+  }
+
+  .pg-stats .audit-vault-name,
+  .pg-stats .audit-strategy-name {
+    min-width: 0;
+    flex: 1 1 calc(100% - 28px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .pg-stats .audit-vault-row > .text-dim,
+  .pg-stats .audit-vault-row > .badge,
+  .pg-stats .audit-strategy-row > .badge,
+  .pg-stats .audit-strategy-row > .audit-cycle-tag {
+    margin-top: -0.1rem;
+  }
+
+  .pg-stats .audit-cols {
+    flex: 0 0 100%;
+    width: 100%;
+    margin-top: 0.35rem;
+    margin-left: 0;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.45rem 0.75rem;
+    text-align: left;
+  }
+
+  .pg-stats .audit-cols > span {
+    display: flex;
+    min-width: 0;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+    border-top: 1px solid var(--border-light);
+    padding-top: 0.35rem;
+    overflow: hidden;
+  }
+
+  .pg-stats .audit-cols > span::before {
+    flex-shrink: 0;
+    color: var(--text-3);
+    font-size: 0.64rem;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    line-height: 1.2;
+    text-transform: uppercase;
+  }
+
+  .pg-stats .audit-col-strats::before {
+    content: "Strats";
+  }
+
+  .pg-stats .audit-col-tvl::before {
+    content: "Debt";
+  }
+
+  .pg-stats .audit-col-overlaps::before {
+    content: "Overlaps";
+  }
+
+  .pg-stats .audit-col-defillama::before {
+    content: "DL";
+  }
+
+  .pg-stats .audit-col-counted::before {
+    content: "Counted";
+  }
+
+  .pg-stats .audit-col-overlaps,
+  .pg-stats .audit-col-counted {
+    grid-column: span 2;
+  }
+
+  .pg-stats .audit-col-overlaps > *,
+  .pg-stats .audit-col-counted > *,
+  .pg-stats .audit-overlap-tag {
+    min-width: 0;
   }
 }

@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import { ChevronDown, ChevronRight } from 'lucide-react'
-import { useContext, useEffect, useMemo, useState } from 'react'
+import { type CSSProperties, useContext, useEffect, useMemo, useState } from 'react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import {
   CHAIN_NAMES,
@@ -179,6 +179,12 @@ function StrategyNode({
   const canExpandTarget =
     resolvedTargetVault != null && !isCycle && !isTopLevelTarget && targetVisibleStrategies.length > 0
 
+  const strategyRowStyle = {
+    '--audit-strategy-indent': `${depth * 1.5 + 1.5}rem`,
+    background: depth > 0 ? 'var(--surface-2)' : 'var(--surface)',
+    cursor: canExpandTarget ? 'pointer' : 'default'
+  } as CSSProperties
+
   const nextVisited = targetKey
     ? (() => {
         const s = new Set(visited)
@@ -192,11 +198,7 @@ function StrategyNode({
       {/* Strategy row */}
       <div
         className={`audit-row audit-strategy-row${strategy.detectionMethod ? ' audit-strategy-deducted' : ''}`}
-        style={{
-          paddingLeft: `${depth * 1.5 + 1.5}rem`,
-          background: depth > 0 ? 'var(--surface-2)' : 'var(--surface)',
-          cursor: canExpandTarget ? 'pointer' : 'default'
-        }}
+        style={strategyRowStyle}
         onClick={() => canExpandTarget && setExpanded((e) => !e)}
       >
         <span className="text-dim" style={{ fontSize: '0.75rem', flexShrink: 0 }}>
@@ -583,7 +585,7 @@ export function AuditPanel() {
   return (
     <>
       {/* ── Summary Metrics ── */}
-      <div className="metric-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+      <div className="metric-grid audit-summary-grid">
         <div className="metric metric-accent">
           <div className="label">Summed TVL (raw)</div>
           <div className="value">{fmt(data.summedTvl)}</div>
@@ -644,7 +646,7 @@ export function AuditPanel() {
           onChange={(e) => setSearch(e.target.value)}
         />
 
-        <span className="text-dim" style={{ fontSize: '0.78rem', marginLeft: 'auto' }}>
+        <span className="text-dim audit-filter-summary">
           {filteredVaults.length} vaults · {filteredMissingFromDefillama.length} local-only ·{' '}
           {fmt(missingFromDefillamaTvl)}
         </span>
