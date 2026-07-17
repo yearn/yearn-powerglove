@@ -57,6 +57,61 @@ describe('APYChart', () => {
     fireEvent.click(oracleApy30dCheckbox)
     expect(container.querySelector('path[stroke="var(--color-oracleApy30dAvg)"]')).toBeTruthy()
   })
+
+  it('shows estimated APY for both vaults and respects the vault scope', () => {
+    const data = [
+      { date: '2026-01-01', estimatedApy30dAvg: 5 },
+      { date: '2026-01-02', estimatedApy30dAvg: 6 }
+    ]
+    const lockedData = [
+      { date: '2026-01-01', estimatedApy30dAvg: 8 },
+      { date: '2026-01-02', estimatedApy30dAvg: 9 }
+    ]
+    const visibleSeries = {
+      derivedApy: false,
+      sevenDayApy: false,
+      thirtyDayApy: false,
+      ppsPeriodApy: false,
+      estimatedApy: false,
+      estimatedApy30dAvg: true,
+      oracleApr: false,
+      oracleApy30dAvg: false
+    }
+
+    const { container, rerender } = render(
+      <div style={{ width: '400px', height: '300px' }}>
+        <APYChart
+          chartData={data}
+          comparisonChartData={lockedData}
+          timeframe="30d"
+          visibleSeries={visibleSeries}
+          seriesScope="both"
+        />
+      </div>
+    )
+
+    expect(
+      container.querySelector('path[stroke="var(--color-estimatedApy30dAvg)"][stroke-dasharray="12 4"]')
+    ).toBeTruthy()
+    expect(
+      container.querySelector('path[stroke="var(--color-lockedestimatedApy30dAvg)"][stroke-dasharray="2 4"]')
+    ).toBeTruthy()
+
+    rerender(
+      <div style={{ width: '400px', height: '300px' }}>
+        <APYChart
+          chartData={data}
+          comparisonChartData={lockedData}
+          timeframe="30d"
+          visibleSeries={visibleSeries}
+          seriesScope="primary"
+        />
+      </div>
+    )
+
+    expect(container.querySelector('path[stroke="var(--color-estimatedApy30dAvg)"]')).toBeTruthy()
+    expect(container.querySelector('path[stroke="var(--color-lockedestimatedApy30dAvg)"]')).toBeNull()
+  })
 })
 
 describe('PPSChart', () => {

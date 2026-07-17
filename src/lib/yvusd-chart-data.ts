@@ -146,20 +146,25 @@ export const buildApyDataFromPpsSeries = (ppsData: ppsChartData): aprApyChartDat
   }))
 }
 
-export const mergeYvUsdApySeries = (
-  unlockedApyData: aprApyChartData | null,
-  lockedApyData: aprApyChartData
-): yvUsdChartData => {
-  if (!unlockedApyData) {
-    return []
-  }
+export const applyYvUsdEstimatedApySeries = (
+  baseApyData: aprApyChartData | null,
+  estimatedApyData: TimeseriesDataPoint[]
+): aprApyChartData => {
+  if (!baseApyData) return []
 
-  const lockedByDate = getValueByDate(lockedApyData)
+  const estimatedByDate = new Map(
+    estimatedApyData.map((point) => [formatUnixTimestamp(point.time), point.value !== null ? point.value * 100 : null])
+  )
+  const estimatedValues = baseApyData.map((point) => estimatedByDate.get(point.date) ?? null)
+  const estimatedApy30dAvg = estimatedValues.map((_, index) => {
+    const window = estimatedValues.slice(Math.max(0, index - 29), index + 1).filter((value) => value !== null)
+    return window.length > 0 ? window.reduce((sum, value) => sum + value, 0) / window.length : null
+  })
 
-  return unlockedApyData.map((unlockedPoint) => ({
-    date: unlockedPoint.date,
-    unlocked: unlockedPoint.oracleApy30dAvg ?? unlockedPoint.thirtyDayApy ?? unlockedPoint.derivedApy ?? null,
-    locked: lockedByDate.get(unlockedPoint.date)?.thirtyDayApy ?? null
+  return baseApyData.map((point, index) => ({
+    ...point,
+    estimatedApy: estimatedValues[index] ?? null,
+    estimatedApy30dAvg: estimatedApy30dAvg[index]
   }))
 }
 

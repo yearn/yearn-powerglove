@@ -1,6 +1,7 @@
 import { renderHook } from '@testing-library/react'
 import { getAddress } from 'viem'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { YVUSD_UNLOCKED_ADDRESS } from '@/constants/featuredVaults'
 import { useVaultPageData } from './useVaultPageData'
 
 const BLACKLISTED_ADDRESS = '0x1111111111111111111111111111111111111111'
@@ -87,6 +88,14 @@ describe('useVaultPageData', () => {
     expect(useQueryMock).toHaveBeenCalledWith(expect.objectContaining({ enabled: true }))
     expect(useRestTimeseriesMock).toHaveBeenCalledWith(
       expect.objectContaining({ enabled: true, segment: 'apy-historical' })
+    )
+  })
+
+  it('does not request the generic APR oracle timeseries for yvUSD', () => {
+    renderHook(() => useVaultPageData({ vaultAddress: YVUSD_UNLOCKED_ADDRESS, vaultChainId: 1 }))
+
+    expect(useRestTimeseriesMock).toHaveBeenCalledWith(
+      expect.objectContaining({ enabled: false, segment: 'apr-oracle' })
     )
   })
 })
