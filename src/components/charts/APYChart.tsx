@@ -12,6 +12,8 @@ export type APYSeriesKey =
   | 'sevenDayApy'
   | 'thirtyDayApy'
   | 'ppsPeriodApy'
+  | 'estimatedApy'
+  | 'estimatedApy30dAvg'
   | 'oracleApr'
   | 'oracleApy30dAvg'
 export type APYVisibleSeries = Record<APYSeriesKey, boolean>
@@ -21,12 +23,17 @@ const TOOLTIP_ORDER: Record<APYSeriesKey, number> = {
   sevenDayApy: 1,
   thirtyDayApy: 2,
   ppsPeriodApy: 3,
-  oracleApr: 4,
-  oracleApy30dAvg: 5
+  estimatedApy: 4,
+  estimatedApy30dAvg: 5,
+  oracleApr: 6,
+  oracleApy30dAvg: 7
 }
 
 const isDashedSeries = (seriesKey: APYSeriesKey) =>
-  seriesKey === 'thirtyDayApy' || seriesKey === 'ppsPeriodApy' || seriesKey === 'oracleApy30dAvg'
+  seriesKey === 'thirtyDayApy' ||
+  seriesKey === 'ppsPeriodApy' ||
+  seriesKey === 'estimatedApy30dAvg' ||
+  seriesKey === 'oracleApy30dAvg'
 
 const SERIES_BASE_CONFIG: Record<APYSeriesKey, { chartLabel: string; legendLabel: string; color: string }> = {
   derivedApy: {
@@ -49,6 +56,16 @@ const SERIES_BASE_CONFIG: Record<APYSeriesKey, { chartLabel: string; legendLabel
     legendLabel: 'Period APY',
     color: '#6d90f2'
   },
+  estimatedApy: {
+    chartLabel: 'Estimated APY %',
+    legendLabel: 'Estimated APY',
+    color: 'var(--chart-4)'
+  },
+  estimatedApy30dAvg: {
+    chartLabel: 'Estimated APY (30d avg) %',
+    legendLabel: 'Estimated APY (30d avg)',
+    color: 'var(--chart-4)'
+  },
   oracleApr: {
     chartLabel: 'Oracle APR %',
     legendLabel: 'Oracle APR',
@@ -66,6 +83,8 @@ const LOCKED_SERIES_COLORS: Record<APYSeriesKey, string> = {
   sevenDayApy: '#ffb3d1',
   thirtyDayApy: '#ff6ba5',
   ppsPeriodApy: '#ffd6e7',
+  estimatedApy: '#d21162',
+  estimatedApy30dAvg: 'var(--chart-4)',
   oracleApr: '#ff4d94',
   oracleApy30dAvg: '#d21162'
 }
@@ -75,6 +94,8 @@ const SERIES_ORDER: APYSeriesKey[] = [
   'sevenDayApy',
   'thirtyDayApy',
   'ppsPeriodApy',
+  'estimatedApy',
+  'estimatedApy30dAvg',
   'oracleApr',
   'oracleApy30dAvg'
 ]
@@ -84,6 +105,8 @@ export const buildApyVisibleSeries = (overrides?: Partial<Record<APYSeriesKey, b
   sevenDayApy: overrides?.sevenDayApy ?? true,
   thirtyDayApy: overrides?.thirtyDayApy ?? true,
   ppsPeriodApy: overrides?.ppsPeriodApy ?? true,
+  estimatedApy: overrides?.estimatedApy ?? false,
+  estimatedApy30dAvg: overrides?.estimatedApy30dAvg ?? false,
   oracleApr: overrides?.oracleApr ?? false,
   oracleApy30dAvg: overrides?.oracleApy30dAvg ?? false
 })
@@ -91,14 +114,20 @@ export const buildApyVisibleSeries = (overrides?: Partial<Record<APYSeriesKey, b
 export const getAvailableApySeries = ({
   hasPpsPeriodApy,
   hasOracleApr,
-  hasOracleApy30dAvg
+  hasOracleApy30dAvg,
+  hasEstimatedApy = false,
+  hasEstimatedApy30dAvg = false
 }: {
   hasPpsPeriodApy: boolean
   hasOracleApr: boolean
   hasOracleApy30dAvg: boolean
+  hasEstimatedApy?: boolean
+  hasEstimatedApy30dAvg?: boolean
 }): APYSeriesKey[] => {
   return SERIES_ORDER.filter((seriesKey) => {
     if (seriesKey === 'ppsPeriodApy') return hasPpsPeriodApy
+    if (seriesKey === 'estimatedApy') return hasEstimatedApy
+    if (seriesKey === 'estimatedApy30dAvg') return hasEstimatedApy30dAvg
     if (seriesKey === 'oracleApr') return hasOracleApr
     if (seriesKey === 'oracleApy30dAvg') return hasOracleApy30dAvg
     return true
@@ -124,6 +153,9 @@ interface APYChartProps {
   onVisibleSeriesChange?: (nextVisibleSeries: APYVisibleSeries) => void
   hideSeriesControls?: boolean
   ppsPeriodApy?: number | null
+  lockedPpsPeriodApy?: number | null
+  primaryLabel?: string
+  seriesScope?: 'both' | 'primary' | 'comparison'
 }
 
 interface APYSeriesSelectorProps {
@@ -132,6 +164,8 @@ interface APYSeriesSelectorProps {
   hasPpsPeriodApy: boolean
   hasOracleApr: boolean
   hasOracleApy30dAvg: boolean
+  hasEstimatedApy?: boolean
+  hasEstimatedApy30dAvg?: boolean
   className?: string
   itemClassName?: string
   idPrefix?: string
@@ -144,6 +178,8 @@ export function APYSeriesSelector({
   hasPpsPeriodApy,
   hasOracleApr,
   hasOracleApy30dAvg,
+  hasEstimatedApy = false,
+  hasEstimatedApy30dAvg = false,
   className,
   itemClassName,
   idPrefix = 'toggle',
@@ -165,7 +201,9 @@ export function APYSeriesSelector({
       {getAvailableApySeries({
         hasPpsPeriodApy,
         hasOracleApr,
-        hasOracleApy30dAvg
+        hasOracleApy30dAvg,
+        hasEstimatedApy,
+        hasEstimatedApy30dAvg
       }).map((seriesKey) => (
         <div key={seriesKey} className={cn('flex min-w-[8.75rem] items-center gap-2 sm:min-w-0', itemClassName)}>
           {compact ? (
@@ -222,7 +260,10 @@ export const APYChart: React.FC<APYChartProps> = React.memo(
     visibleSeries,
     onVisibleSeriesChange,
     hideSeriesControls,
-    ppsPeriodApy
+    ppsPeriodApy,
+    lockedPpsPeriodApy,
+    primaryLabel,
+    seriesScope = 'both'
   }) => {
     const isMobile = useIsMobile()
     const [internalVisibleSeries, setInternalVisibleSeries] = useState<APYVisibleSeries>(() =>
@@ -251,6 +292,21 @@ export const APYChart: React.FC<APYChartProps> = React.memo(
       return filteredData.some((point) => typeof point.oracleApy30dAvg === 'number')
     }, [filteredData])
 
+    const hasEstimatedApy = useMemo(
+      () =>
+        filteredData.some((point) => typeof point.estimatedApy === 'number') ||
+        (comparisonChartData ?? []).some((point) => typeof point.estimatedApy === 'number'),
+      [filteredData, comparisonChartData]
+    )
+    const hasEstimatedApy30dAvg = useMemo(
+      () =>
+        filteredData.some((point) => typeof point.estimatedApy30dAvg === 'number') ||
+        (comparisonChartData ?? []).some((point) => typeof point.estimatedApy30dAvg === 'number'),
+      [filteredData, comparisonChartData]
+    )
+    const showPrimary = seriesScope !== 'comparison'
+    const showComparison = seriesScope !== 'primary' && Boolean(comparisonChartData?.length)
+
     const comparisonByDate = useMemo(
       () => new Map((comparisonChartData ?? []).map((point) => [point.date, point])),
       [comparisonChartData]
@@ -270,9 +326,13 @@ export const APYChart: React.FC<APYChartProps> = React.memo(
             }
           }
 
+          if (typeof lockedPpsPeriodApy === 'number' && Number.isFinite(lockedPpsPeriodApy)) {
+            nextPoint.lockedPpsPeriodApy = lockedPpsPeriodApy
+          }
+
           return nextPoint
         }),
-      [filteredData, comparisonByDate, hasPpsPeriodApy, ppsPeriodApy]
+      [filteredData, comparisonByDate, hasPpsPeriodApy, ppsPeriodApy, lockedPpsPeriodApy]
     )
 
     const chartConfig = useMemo<ChartConfig>(() => {
@@ -286,8 +346,14 @@ export const APYChart: React.FC<APYChartProps> = React.memo(
         if (key === 'oracleApy30dAvg' && !hasOracleApy30dAvg) {
           return acc
         }
+        if (key === 'estimatedApy' && !hasEstimatedApy) {
+          return acc
+        }
+        if (key === 'estimatedApy30dAvg' && !hasEstimatedApy30dAvg) {
+          return acc
+        }
         acc[key] = {
-          label: meta.chartLabel,
+          label: primaryLabel ? `${primaryLabel} ${meta.chartLabel}` : meta.chartLabel,
           color: hideAxes ? 'black' : meta.color
         }
         if (comparisonChartData?.length) {
@@ -298,7 +364,17 @@ export const APYChart: React.FC<APYChartProps> = React.memo(
         }
         return acc
       }, {} as ChartConfig)
-    }, [hideAxes, hasPpsPeriodApy, hasOracleApr, hasOracleApy30dAvg, comparisonChartData?.length, comparisonLabel])
+    }, [
+      hideAxes,
+      hasPpsPeriodApy,
+      hasOracleApr,
+      hasOracleApy30dAvg,
+      hasEstimatedApy,
+      hasEstimatedApy30dAvg,
+      comparisonChartData?.length,
+      comparisonLabel,
+      primaryLabel
+    ])
 
     const getTimeframeLabel = (value: string) => {
       if (value === '30d') return '30D'
@@ -314,9 +390,10 @@ export const APYChart: React.FC<APYChartProps> = React.memo(
         return `${comparisonLabel} ${seriesConfig[unlockedSeriesKey]?.legendLabel ?? name}`
       }
       if (name === 'ppsPeriodApy') {
-        return `${getTimeframeLabel(timeframe)} APY`
+        return `${primaryLabel ? `${primaryLabel} ` : ''}${getTimeframeLabel(timeframe)} APY`
       }
-      return seriesConfig[name as APYSeriesKey]?.legendLabel || name
+      const label = seriesConfig[name as APYSeriesKey]?.legendLabel || name
+      return primaryLabel ? `${primaryLabel} ${label}` : label
     }
 
     const getTooltipSeriesKey = (dataKey: string): APYSeriesKey => {
@@ -330,6 +407,8 @@ export const APYChart: React.FC<APYChartProps> = React.memo(
     const renderSeriesLine = (seriesKey: APYSeriesKey, locked = false) => {
       const dataKey = locked ? `locked${seriesKey}` : seriesKey
       const colorKey = locked ? `locked${seriesKey}` : seriesKey
+      const strokeDasharray =
+        seriesKey === 'estimatedApy30dAvg' && locked ? '2 4' : isDashedSeries(seriesKey) ? '12 4' : undefined
 
       return (
         <Line
@@ -337,11 +416,11 @@ export const APYChart: React.FC<APYChartProps> = React.memo(
           type="monotone"
           dataKey={dataKey}
           stroke={`var(--color-${colorKey})`}
-          strokeDasharray={isDashedSeries(seriesKey) ? '12 4' : undefined}
+          strokeDasharray={strokeDasharray}
           strokeWidth={
             hideAxes
               ? 1
-              : seriesKey === 'oracleApy30dAvg'
+              : seriesKey === 'oracleApy30dAvg' || seriesKey === 'estimatedApy30dAvg'
                 ? 2.75
                 : seriesKey === 'thirtyDayApy'
                   ? 2.5
@@ -435,6 +514,8 @@ export const APYChart: React.FC<APYChartProps> = React.memo(
                           <div className="grid gap-1.5">
                             {sorted.map((item) => {
                               const seriesKey = getTooltipSeriesKey(String(item.dataKey))
+                              const isLockedEstimatedAverage =
+                                String(item.dataKey).startsWith('locked') && seriesKey === 'estimatedApy30dAvg'
                               const raw = item.value
                               const value = typeof raw === 'number' ? `${raw.toFixed(2)}%` : raw
 
@@ -460,7 +541,13 @@ export const APYChart: React.FC<APYChartProps> = React.memo(
                                         y2="3"
                                         stroke={color}
                                         strokeWidth="2"
-                                        strokeDasharray={isDashedSeries(seriesKey) ? '12 4' : undefined}
+                                        strokeDasharray={
+                                          isLockedEstimatedAverage
+                                            ? '2 4'
+                                            : isDashedSeries(seriesKey)
+                                              ? '12 4'
+                                              : undefined
+                                        }
                                         strokeLinecap="butt"
                                       />
                                     </svg>
@@ -478,33 +565,52 @@ export const APYChart: React.FC<APYChartProps> = React.memo(
                 )}
                 {resolvedVisibleSeries.sevenDayApy && (
                   <>
-                    {renderSeriesLine('sevenDayApy')}
-                    {comparisonChartData?.length ? renderSeriesLine('sevenDayApy', true) : null}
+                    {showPrimary ? renderSeriesLine('sevenDayApy') : null}
+                    {showComparison ? renderSeriesLine('sevenDayApy', true) : null}
                   </>
                 )}
                 {resolvedVisibleSeries.thirtyDayApy && (
                   <>
-                    {renderSeriesLine('thirtyDayApy')}
-                    {comparisonChartData?.length ? renderSeriesLine('thirtyDayApy', true) : null}
+                    {showPrimary ? renderSeriesLine('thirtyDayApy') : null}
+                    {showComparison ? renderSeriesLine('thirtyDayApy', true) : null}
                   </>
                 )}
-                {hasPpsPeriodApy && resolvedVisibleSeries.ppsPeriodApy && renderSeriesLine('ppsPeriodApy')}
+                {hasPpsPeriodApy && resolvedVisibleSeries.ppsPeriodApy && (
+                  <>
+                    {showPrimary ? renderSeriesLine('ppsPeriodApy') : null}
+                    {showComparison && typeof lockedPpsPeriodApy === 'number'
+                      ? renderSeriesLine('ppsPeriodApy', true)
+                      : null}
+                  </>
+                )}
                 {resolvedVisibleSeries.derivedApy && (
                   <>
-                    {renderSeriesLine('derivedApy')}
-                    {comparisonChartData?.length ? renderSeriesLine('derivedApy', true) : null}
+                    {showPrimary ? renderSeriesLine('derivedApy') : null}
+                    {showComparison ? renderSeriesLine('derivedApy', true) : null}
                   </>
                 )}
                 {hasOracleApr && resolvedVisibleSeries.oracleApr && (
                   <>
-                    {renderSeriesLine('oracleApr')}
-                    {comparisonChartData?.length ? renderSeriesLine('oracleApr', true) : null}
+                    {showPrimary ? renderSeriesLine('oracleApr') : null}
+                    {showComparison ? renderSeriesLine('oracleApr', true) : null}
                   </>
                 )}
                 {hasOracleApy30dAvg && resolvedVisibleSeries.oracleApy30dAvg && (
                   <>
-                    {renderSeriesLine('oracleApy30dAvg')}
-                    {comparisonChartData?.length ? renderSeriesLine('oracleApy30dAvg', true) : null}
+                    {showPrimary ? renderSeriesLine('oracleApy30dAvg') : null}
+                    {showComparison ? renderSeriesLine('oracleApy30dAvg', true) : null}
+                  </>
+                )}
+                {hasEstimatedApy && resolvedVisibleSeries.estimatedApy && (
+                  <>
+                    {showPrimary ? renderSeriesLine('estimatedApy') : null}
+                    {showComparison ? renderSeriesLine('estimatedApy', true) : null}
+                  </>
+                )}
+                {hasEstimatedApy30dAvg && resolvedVisibleSeries.estimatedApy30dAvg && (
+                  <>
+                    {showPrimary ? renderSeriesLine('estimatedApy30dAvg') : null}
+                    {showComparison ? renderSeriesLine('estimatedApy30dAvg', true) : null}
                   </>
                 )}
               </LineChart>
@@ -519,6 +625,8 @@ export const APYChart: React.FC<APYChartProps> = React.memo(
               hasPpsPeriodApy={hasPpsPeriodApy}
               hasOracleApr={hasOracleApr}
               hasOracleApy30dAvg={hasOracleApy30dAvg}
+              hasEstimatedApy={hasEstimatedApy}
+              hasEstimatedApy30dAvg={hasEstimatedApy30dAvg}
             />
           </div>
         )}

@@ -280,13 +280,14 @@ export function useVaultPageData({ vaultAddress, vaultChainId }: UseVaultPageDat
     enabled: canFetchVaultData
   })
 
-  // Fetch APR-oracle APR timeseries from REST API (v3 only)
+  // yvUSD uses its product-specific estimated APY series in useYvUsdChartData.
+  // Keep the generic APR-oracle overlay for every other v3 vault.
   const { data: aprOracleAprData } = useRestTimeseries({
     segment: 'apr-oracle',
     chainId: vaultChainId,
     address: yieldDataAddress,
     components: ['apr'],
-    enabled: canFetchVaultData && isV3Vault
+    enabled: canFetchVaultData && isV3Vault && !isYvUsd
   })
 
   // Fetch TVL data from REST API

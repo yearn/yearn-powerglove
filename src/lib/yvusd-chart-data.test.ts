@@ -1,8 +1,52 @@
 import { describe, expect, it } from 'vitest'
-import { buildApyDataFromPpsSeries, buildUnderlyingLockedPpsSeries, mergeYvUsdTvlSeries } from '@/lib/yvusd-chart-data'
-import type { ppsChartData, tvlChartData } from '@/types/dataTypes'
+import {
+  applyYvUsdEstimatedApySeries,
+  buildApyDataFromPpsSeries,
+  buildUnderlyingLockedPpsSeries,
+  mergeYvUsdTvlSeries
+} from '@/lib/yvusd-chart-data'
+import type { ppsChartData, TimeseriesDataPoint, tvlChartData } from '@/types/dataTypes'
 
 describe('yvUSD chart data helpers', () => {
+  it('adds estimated APY to an existing historical series', () => {
+    const point = (time: string, value: number): TimeseriesDataPoint => ({
+      label: 'yvusd-estimated-apr',
+      component: 'netAPY',
+      period: '1 day',
+      time,
+      value
+    })
+
+    expect(
+      applyYvUsdEstimatedApySeries(
+        [
+          { date: 'Jan 1, 2026', derivedApy: 4, derivedApr: 4, sevenDayApy: 4, thirtyDayApy: 4 },
+          { date: 'Jan 2, 2026', derivedApy: 5, derivedApr: 5, sevenDayApy: 5, thirtyDayApy: 5 }
+        ],
+        [point('1767225600', 0.05), point('1767312000', 0.06)]
+      )
+    ).toEqual([
+      {
+        date: 'Jan 1, 2026',
+        derivedApy: 4,
+        derivedApr: 4,
+        sevenDayApy: 4,
+        thirtyDayApy: 4,
+        estimatedApy: 5,
+        estimatedApy30dAvg: 5
+      },
+      {
+        date: 'Jan 2, 2026',
+        derivedApy: 5,
+        derivedApr: 5,
+        sevenDayApy: 5,
+        thirtyDayApy: 5,
+        estimatedApy: 6,
+        estimatedApy30dAvg: 5.5
+      }
+    ])
+  })
+
   it('converts locked PPS into underlying yvUSD terms', () => {
     const unlockedPps: ppsChartData = [
       { date: 'Jan 1, 2026', PPS: 1.1, time: 1767225600 },

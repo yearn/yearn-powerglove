@@ -34,8 +34,9 @@ type ChartData = {
   isLoading?: boolean
   hasErrors?: boolean
   yvUsdChartData?: {
-    aprApyData: yvUsdChartData
+    unlockedAprApyData: aprApyChartData
     lockedAprApyData: aprApyChartData
+    lockedPpsData: ppsChartData
     tvlData: yvUsdChartData
     ppsData: yvUsdChartData
   } | null
@@ -69,6 +70,40 @@ const timeframes = [
 ] as const
 
 type Timeframe = (typeof timeframes)[number]
+type YvUsdSeriesScope = 'primary' | 'both' | 'comparison'
+
+const yvUsdScopes: Array<{ value: YvUsdSeriesScope; label: string }> = [
+  { value: 'primary', label: 'Unlocked' },
+  { value: 'both', label: 'Both' },
+  { value: 'comparison', label: 'Locked' }
+]
+
+function YvUsdScopeControl({
+  value,
+  onChange
+}: {
+  value: YvUsdSeriesScope
+  onChange: (value: YvUsdSeriesScope) => void
+}) {
+  return (
+    <div className="flex items-center justify-center gap-1" aria-label="yvUSD vault series">
+      <span className="mr-2 text-[11px] font-medium uppercase tracking-[0.08em] text-gray-500">Vault</span>
+      {yvUsdScopes.map((scope) => (
+        <button
+          key={scope.value}
+          type="button"
+          aria-pressed={value === scope.value}
+          onClick={() => onChange(scope.value)}
+          className={`rounded-md px-3 py-2 text-xs font-medium transition-colors sm:text-sm ${
+            value === scope.value ? 'bg-[#0657f9] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
+        >
+          {scope.label}
+        </button>
+      ))}
+    </div>
+  )
+}
 
 export function ChartsPanel(data: ChartData) {
   const isMobile = useIsMobile()
@@ -81,10 +116,13 @@ export function ChartsPanel(data: ChartData) {
       sevenDayApy: false,
       thirtyDayApy: true,
       ppsPeriodApy: true,
+      estimatedApy: false,
+      estimatedApy30dAvg: true,
       oracleApr: false,
       oracleApy30dAvg: true
     })
   )
+  const [yvUsdSeriesScope, setYvUsdSeriesScope] = useState<YvUsdSeriesScope>('both')
   const [isTimeframeDialogOpen, setIsTimeframeDialogOpen] = useState(false)
   const [isDataDialogOpen, setIsDataDialogOpen] = useState(false)
 
@@ -107,15 +145,27 @@ export function ChartsPanel(data: ChartData) {
     )
   }
 
-  const filteredAprApyData = aprApyData.slice(-getTimeframeLimit(timeframe.value))
+  const activeAprApyData = yvUsdChartData?.unlockedAprApyData ?? aprApyData
+  const filteredAprApyData = activeAprApyData.slice(-getTimeframeLimit(timeframe.value))
   const ppsPeriodApy = calculatePpsPeriodApy(ppsData, timeframe.value)
+  const lockedPpsPeriodApy = yvUsdChartData
+    ? calculatePpsPeriodApy(yvUsdChartData.lockedPpsData, timeframe.value)
+    : null
   const hasPpsPeriodApy = typeof ppsPeriodApy === 'number'
   const hasOracleApr = filteredAprApyData.some((point) => typeof point.oracleApr === 'number')
   const hasOracleApy30dAvg = filteredAprApyData.some((point) => typeof point.oracleApy30dAvg === 'number')
+  const hasEstimatedApy =
+    filteredAprApyData.some((point) => typeof point.estimatedApy === 'number') ||
+    Boolean(yvUsdChartData?.lockedAprApyData.some((point) => typeof point.estimatedApy === 'number'))
+  const hasEstimatedApy30dAvg =
+    filteredAprApyData.some((point) => typeof point.estimatedApy30dAvg === 'number') ||
+    Boolean(yvUsdChartData?.lockedAprApyData.some((point) => typeof point.estimatedApy30dAvg === 'number'))
   const availableApySeries = getAvailableApySeries({
     hasPpsPeriodApy,
     hasOracleApr,
-    hasOracleApy30dAvg
+    hasOracleApy30dAvg,
+    hasEstimatedApy,
+    hasEstimatedApy30dAvg
   })
   const selectedApySeriesCount = availableApySeries.filter((seriesKey) => apyVisibleSeries[seriesKey]).length
 
@@ -125,10 +175,10 @@ export function ChartsPanel(data: ChartData) {
     'historical-apy': {
       title: hasYvUsdChartData ? 'yvUSD Performance' : 'Vault Performance',
       description: hasYvUsdChartData
-        ? `Unlocked and locked APY over ${timeframe.label}.`
+        ? `Historical and estimated APY for unlocked and locked yvUSD over ${timeframe.label}.`
         : `1-Day, 7-Day, and 30-Day APYs over ${timeframe.label}.`,
       mobileDescription: hasYvUsdChartData
-        ? `Compare locked and unlocked APY over ${timeframe.mobileLabel}.`
+        ? `Compare historical and estimated APY over ${timeframe.mobileLabel}.`
         : `Compare APY trends over ${timeframe.mobileLabel}.`
     },
     'historical-pps': {
@@ -169,14 +219,17 @@ export function ChartsPanel(data: ChartData) {
             <FixedHeightChartContainer heightClassName={chartHeightClassName}>
               <ChartErrorBoundary>
                 <APYChart
-                  chartData={aprApyData}
+                  chartData={yvUsdChartData.unlockedAprApyData}
                   comparisonChartData={yvUsdChartData.lockedAprApyData}
+                  primaryLabel="Unlocked yvUSD"
                   comparisonLabel="Locked yvUSD"
                   timeframe={timeframe.value}
                   visibleSeries={apyVisibleSeries}
                   onVisibleSeriesChange={setApyVisibleSeries}
                   hideSeriesControls={true}
                   ppsPeriodApy={ppsPeriodApy}
+                  lockedPpsPeriodApy={lockedPpsPeriodApy}
+                  seriesScope={yvUsdSeriesScope}
                 />
               </ChartErrorBoundary>
             </FixedHeightChartContainer>
@@ -310,6 +363,9 @@ export function ChartsPanel(data: ChartData) {
 
   const mobileChartControls = (
     <div className="flex flex-col gap-4">
+      {hasYvUsdChartData && activeTab === 'historical-apy' ? (
+        <YvUsdScopeControl value={yvUsdSeriesScope} onChange={setYvUsdSeriesScope} />
+      ) : null}
       <div className="grid w-full grid-cols-2 gap-2">
         <Dialog open={isTimeframeDialogOpen} onOpenChange={setIsTimeframeDialogOpen}>
           <DialogTrigger asChild>
@@ -372,6 +428,8 @@ export function ChartsPanel(data: ChartData) {
               hasPpsPeriodApy={hasPpsPeriodApy}
               hasOracleApr={hasOracleApr}
               hasOracleApy30dAvg={hasOracleApy30dAvg}
+              hasEstimatedApy={hasEstimatedApy}
+              hasEstimatedApy30dAvg={hasEstimatedApy30dAvg}
               className="grid gap-2 border-none bg-transparent p-0"
               itemClassName="min-w-0 rounded-md border border-border px-3 py-3"
               idPrefix="dialog-toggle"
@@ -407,6 +465,8 @@ export function ChartsPanel(data: ChartData) {
         hasPpsPeriodApy={hasPpsPeriodApy}
         hasOracleApr={hasOracleApr}
         hasOracleApy30dAvg={hasOracleApy30dAvg}
+        hasEstimatedApy={hasEstimatedApy}
+        hasEstimatedApy30dAvg={hasEstimatedApy30dAvg}
         compact={true}
         className="w-full justify-center bg-transparent p-0 text-xs sm:text-sm"
         itemClassName="min-w-0 rounded-md px-3 py-2"
@@ -503,7 +563,12 @@ export function ChartsPanel(data: ChartData) {
             <div className="shrink-0">{desktopChartControls}</div>
           </div>
           {chartTabContent}
-          {activeTab === 'historical-apy' && desktopApySeriesControls}
+          {activeTab === 'historical-apy' && (
+            <div className="space-y-3">
+              {hasYvUsdChartData ? <YvUsdScopeControl value={yvUsdSeriesScope} onChange={setYvUsdSeriesScope} /> : null}
+              {desktopApySeriesControls}
+            </div>
+          )}
         </div>
       </Tabs>
     </div>
