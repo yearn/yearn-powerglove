@@ -1,5 +1,20 @@
 import type { ChainId } from '../constants/chains'
 
+export type EstimatedApySource =
+  | 'oracle'
+  | '7day-hist'
+  | 'est-crv'
+  | 'est-aero'
+  | 'est-velo'
+  | 'est-katana'
+  | 'est-yvusd'
+  | 'unknown'
+
+export type PairedApyValues = {
+  locked: number | null
+  unlocked: number | null
+}
+
 export type VaultSimple = {
   address: string
   symbol: string
@@ -37,6 +52,11 @@ export type VaultSimple = {
   managementFee: number
   performanceFee: number
   forwardApyNet?: number | null
+  estimatedApySource?: EstimatedApySource | null
+  historicalWeeklyApy?: number | null
+  historicalMonthlyApy?: number | null
+  pairedEstimatedApy?: PairedApyValues
+  pairedThirtyDayApy?: PairedApyValues
   strategyForwardAprs?: Record<string, number | null>
   yvUsdStrategyApyByAddress?: Record<string, { apy: number; name?: string }>
 }

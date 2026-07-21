@@ -10,20 +10,18 @@ const ChartsPanel = lazy(() =>
   }))
 )
 
-import type { Address } from 'viem'
 import { StrategiesPanel } from '@/components/strategies-panel/index'
 import { VaultPageBreadcrumb, VaultPageLayout } from '@/components/vault-page'
 import { type ChainId, isSupportedChainId } from '@/constants/chains'
 import { isYvUsdAddress } from '@/constants/featuredVaults'
 import { useTokenAssetsContext } from '@/contexts/useTokenAssets'
-import { useAprOracle } from '@/hooks/useAprOracle'
 import { useChartData } from '@/hooks/useChartData'
 import { useMainInfoPanelData } from '@/hooks/useMainInfoPanelData'
 import { useReallocationData } from '@/hooks/useReallocationData'
 // Import our new data hooks and layout components
 import { useVaultPageData } from '@/hooks/useVaultPageData'
 import { useYvUsdChartData } from '@/hooks/useYvUsdChartData'
-import { formatPercent } from '@/lib/formatters'
+import { buildPairedApyDisplay, buildSingleApyDisplay } from '@/lib/apy-display'
 import { isLegacyVaultType } from '@/utils/vaultDataUtils'
 import { getVaultOverrideDisplayItems } from '@/utils/vaultOverrides'
 
@@ -177,8 +175,7 @@ function ValidVaultPage({ chainId, vaultAddress }: { chainId: string; vaultAddre
     chartsError,
     overrideConfig,
     isBlacklisted,
-    blacklistReason,
-    yieldDataAddress
+    blacklistReason
   } = useVaultPageData({ vaultAddress, vaultChainId })
 
   // Transform main info panel data
@@ -210,55 +207,33 @@ function ValidVaultPage({ chainId, vaultAddress }: { chainId: string; vaultAddre
     unlockedPpsData: transformedPpsData
   })
 
-  const { data: vaultAprOracle } = useAprOracle({
-    address: yieldDataAddress ? (yieldDataAddress as Address) : undefined,
-    chainId: vaultDetails?.v3 ? vaultChainId : undefined,
-    delta: 0n,
-    enabled: Boolean(vaultDetails?.v3)
-  })
-
-  const latestDerivedApy = React.useMemo(() => {
-    if (!transformedAprApyData) return null
-    for (let i = transformedAprApyData.length - 1; i >= 0; i--) {
-      const point = transformedAprApyData[i]
-      if (point?.derivedApy !== null && point?.derivedApy !== undefined) {
-        return point.derivedApy
-      }
-    }
-    return null
-  }, [transformedAprApyData])
-
   const legacyVault = vaultDetails ? isLegacyVaultType(vaultDetails) : false
-  const yDaemonForwardApy = legacyVault ? null : (vaultDetails?.forwardApyNet ?? null)
-  const oracleOneDayApy = vaultAprOracle?.current.formatted ?? null
-
-  const yDaemonForwardApyPercent = React.useMemo(() => {
-    if (yDaemonForwardApy === null || yDaemonForwardApy === undefined) {
-      return null
-    }
-    return yDaemonForwardApy * 100
-  }, [yDaemonForwardApy])
-
-  const yDaemonForwardApyFormatted = React.useMemo(() => {
-    if (yDaemonForwardApyPercent === null || yDaemonForwardApyPercent === undefined) {
-      return null
-    }
-    return formatPercent(yDaemonForwardApyPercent)
-  }, [yDaemonForwardApyPercent])
 
   const mainInfoPanelProps = React.useMemo(() => {
     if (!mainInfoPanelData) return null
-    const derivedApyFormatted = formatPercent(latestDerivedApy)
-    const thirtyDayFormatted = mainInfoPanelData.thirtyDayAPY
+    const pairedEstimatedApy = vaultDetails?.pairedEstimatedApy
+    const pairedThirtyDayApy = vaultDetails?.pairedThirtyDayApy
 
-    const finalOneDayApy = legacyVault ? ' - ' : (yDaemonForwardApyFormatted ?? oracleOneDayApy ?? derivedApyFormatted)
+    if (isYvUsd && pairedEstimatedApy && pairedThirtyDayApy) {
+      return {
+        ...mainInfoPanelData,
+        oneDayAPY: buildPairedApyDisplay(pairedEstimatedApy),
+        thirtyDayAPY: buildPairedApyDisplay(pairedThirtyDayApy)
+      }
+    }
 
     return {
       ...mainInfoPanelData,
-      oneDayAPY: finalOneDayApy,
-      thirtyDayAPY: thirtyDayFormatted
+      oneDayAPY: buildSingleApyDisplay(legacyVault ? null : vaultDetails?.forwardApyNet)
     }
-  }, [mainInfoPanelData, latestDerivedApy, legacyVault, yDaemonForwardApyFormatted, oracleOneDayApy])
+  }, [
+    mainInfoPanelData,
+    legacyVault,
+    isYvUsd,
+    vaultDetails?.forwardApyNet,
+    vaultDetails?.pairedEstimatedApy,
+    vaultDetails?.pairedThirtyDayApy
+  ])
 
   const { data: reallocationData } = useReallocationData(
     vaultAddress,

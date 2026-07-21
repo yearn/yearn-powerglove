@@ -1,5 +1,16 @@
 import type { ChainId } from '../constants/chains'
 
+export type ApyTooltipItem = {
+  label: string
+  value: string
+  detail?: string
+}
+
+export type ApyDisplayValue = {
+  display: string
+  tooltipItems?: ApyTooltipItem[]
+}
+
 export type MainInfoPanelProps = {
   vaultId: string
   deploymentDate: string
@@ -15,8 +26,8 @@ export type MainInfoPanelProps = {
     icon: string
     name: string
   }
-  oneDayAPY: string
-  thirtyDayAPY: string
+  oneDayAPY: ApyDisplayValue
+  thirtyDayAPY: ApyDisplayValue
   managementFee: string
   performanceFee: string
   apiVersion: string

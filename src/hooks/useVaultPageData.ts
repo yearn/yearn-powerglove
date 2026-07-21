@@ -9,7 +9,9 @@ import {
   isYvUsdAddress,
   YBOLD_CHAIN_ID,
   YBOLD_STAKING_ADDRESS,
-  YVUSD_DESCRIPTION
+  YVUSD_CHAIN_ID,
+  YVUSD_DESCRIPTION,
+  YVUSD_LOCKED_ADDRESS
 } from '@/constants/featuredVaults'
 import type { VaultOverrideConfig } from '@/constants/vaultOverrides'
 import { useVaults } from '@/contexts/useVaults'
@@ -87,7 +89,10 @@ const mergeYBoldDetails = (baseVault: VaultExtended, stakedVault: VaultExtended)
     performanceFee: stakedVault.fees?.performanceFee ?? baseVault.fees.performanceFee
   },
   performanceFee: stakedVault.performanceFee ?? baseVault.performanceFee,
-  forwardApyNet: stakedVault.forwardApyNet ?? baseVault.forwardApyNet,
+  forwardApyNet: stakedVault.historicalWeeklyApy ?? null,
+  estimatedApySource: stakedVault.historicalWeeklyApy != null ? '7day-hist' : null,
+  historicalWeeklyApy: stakedVault.historicalWeeklyApy ?? null,
+  historicalMonthlyApy: stakedVault.historicalMonthlyApy ?? null,
   strategyForwardAprs: stakedVault.strategyForwardAprs ?? baseVault.strategyForwardAprs
 })
 
@@ -114,24 +119,26 @@ const normalizeYvUsdDetails = (vault: VaultExtended): VaultExtended => ({
 
 const applyYvUsdAprData = (
   vault: VaultExtended,
+  lockedVault: VaultExtended | null,
   aprData: Awaited<ReturnType<typeof fetchYvUsdAprs>> | undefined
 ): VaultExtended => {
   const yvUsdVault = getYvUsdApiVault(aprData, vault.address)
-  if (!yvUsdVault) {
-    return vault
-  }
+  const lockedYvUsdVault = getYvUsdApiVault(aprData, YVUSD_LOCKED_ADDRESS)
+  const unlockedEstimatedApy = yvUsdVault?.apy ?? null
+  const lockedEstimatedApy = lockedYvUsdVault?.apy ?? null
 
   return {
     ...vault,
-    apy: {
-      ...vault.apy,
-      grossApr: yvUsdVault.apr ?? vault.apy?.grossApr ?? 0,
-      net: yvUsdVault.apy ?? vault.apy?.net ?? 0,
-      weeklyNet: yvUsdVault.apy ?? vault.apy?.weeklyNet,
-      monthlyNet: yvUsdVault.apy ?? vault.apy?.monthlyNet,
-      inceptionNet: vault.apy?.inceptionNet ?? yvUsdVault.apy ?? 0
+    forwardApyNet: unlockedEstimatedApy,
+    estimatedApySource: unlockedEstimatedApy !== null ? 'est-yvusd' : null,
+    pairedEstimatedApy: {
+      locked: lockedEstimatedApy,
+      unlocked: unlockedEstimatedApy
     },
-    forwardApyNet: yvUsdVault.apy ?? vault.forwardApyNet,
+    pairedThirtyDayApy: {
+      locked: lockedVault?.historicalMonthlyApy ?? null,
+      unlocked: vault.historicalMonthlyApy ?? null
+    },
     yvUsdStrategyApyByAddress: getYvUsdApiStrategyApyByAddress(yvUsdVault)
   }
 }
@@ -187,6 +194,13 @@ export function useVaultPageData({ vaultAddress, vaultChainId }: UseVaultPageDat
     enabled: canFetchVaultData && isYBold
   })
 
+  const { data: yvUsdLockedSnapshot } = useQuery<KongVaultSnapshot | null, Error>({
+    queryKey: ['kong', 'vault', 'snapshot', YVUSD_CHAIN_ID, YVUSD_LOCKED_ADDRESS.toLowerCase()],
+    queryFn: () => fetchKongVaultSnapshotRaw(YVUSD_CHAIN_ID, YVUSD_LOCKED_ADDRESS),
+    staleTime: 30 * 1000,
+    enabled: canFetchVaultData && isYvUsd
+  })
+
   const { data: yvUsdAprData } = useQuery({
     queryKey: ['yvusd', 'aprs'],
     queryFn: fetchYvUsdAprs,
@@ -206,8 +220,9 @@ export function useVaultPageData({ vaultAddress, vaultChainId }: UseVaultPageDat
       return null
     }
 
+    const lockedYvUsdVault = yvUsdLockedSnapshot ? mapKongSnapshotToVaultExtended(yvUsdLockedSnapshot, null) : null
     const normalizedBaseVault = isYvUsd
-      ? applyYvUsdAprData(normalizeYvUsdDetails(mappedBaseVault), yvUsdAprData)
+      ? applyYvUsdAprData(normalizeYvUsdDetails(mappedBaseVault), lockedYvUsdVault, yvUsdAprData)
       : mappedBaseVault
 
     if (!isYBold || !yBoldStakedSnapshot) {
@@ -217,7 +232,7 @@ export function useVaultPageData({ vaultAddress, vaultChainId }: UseVaultPageDat
     return applyVaultOverride(
       mergeYBoldDetails(normalizedBaseVault, mapKongSnapshotToVaultExtended(yBoldStakedSnapshot, null))
     )
-  }, [snapshotData, baseVault, isYBold, isYvUsd, yBoldStakedSnapshot, yvUsdAprData])
+  }, [snapshotData, baseVault, isYBold, isYvUsd, yBoldStakedSnapshot, yvUsdLockedSnapshot, yvUsdAprData])
 
   const vaultSnapshotTimestampUtc = useMemo(() => {
     const snapshotBlockTime = snapshotData?.blockTime

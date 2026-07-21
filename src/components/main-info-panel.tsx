@@ -1,7 +1,40 @@
 import { Check, Copy, ExternalLink } from 'lucide-react'
 import { useState } from 'react'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { useIsMobile } from '@/components/ui/use-mobile'
-import type { MainInfoPanelProps } from '@/types/dataTypes'
+import type { ApyDisplayValue, MainInfoPanelProps } from '@/types/dataTypes'
+
+const ApyMetricValue = ({ metric }: { metric: ApyDisplayValue }) => {
+  if (!metric.tooltipItems?.length) {
+    return <div className="tabular-nums">{metric.display}</div>
+  }
+
+  return (
+    <TooltipProvider delayDuration={200}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            className="border-b border-dotted border-gray-400 bg-transparent p-0 text-left tabular-nums outline-none focus-visible:border-[#0657f9] focus-visible:ring-2 focus-visible:ring-[#0657f9]/30"
+          >
+            {metric.display}
+          </button>
+        </TooltipTrigger>
+        <TooltipContent className="space-y-1.5">
+          {metric.tooltipItems.map((item) => (
+            <div key={item.label} className="flex min-w-48 items-center justify-between gap-5">
+              <span className="text-gray-500">{item.label}</span>
+              <span className="font-medium tabular-nums">
+                {item.value}
+                {item.detail ? <span className="ml-1.5 font-normal text-gray-500">({item.detail})</span> : null}
+              </span>
+            </div>
+          ))}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  )
+}
 
 export function MainInfoPanel(data: MainInfoPanelProps) {
   const [copied, setCopied] = useState(false)
@@ -80,10 +113,10 @@ export function MainInfoPanel(data: MainInfoPanelProps) {
 
           <div>
             <div className="text-sm text-gray-500 mb-1">Est. APY</div>
-            <div>{data.oneDayAPY}</div>
+            <ApyMetricValue metric={data.oneDayAPY} />
 
             <div className="text-sm text-gray-500 mt-4 mb-1">30-day APY</div>
-            <div>{data.thirtyDayAPY}</div>
+            <ApyMetricValue metric={data.thirtyDayAPY} />
 
             <div className="text-sm text-gray-500 mt-4 mb-1 flex items-center gap-1">
               Management Fee

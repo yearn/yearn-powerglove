@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { isYvUsdAddress } from '@/constants/featuredVaults'
-import { formatPercentFromDecimal } from '@/lib/formatters'
+import { buildSingleApyDisplay } from '@/lib/apy-display'
 import type { MainInfoPanelProps } from '@/types/dataTypes'
 import type { TokenAsset } from '@/types/tokenAsset'
 import type { VaultExtended } from '@/types/vaultTypes'
@@ -53,9 +53,9 @@ export function useMainInfoPanelData({
 
     // APY formatting
     const isLegacyVault = isLegacyVaultType(vaultDetails)
-    const forwardApyNet = isLegacyVault ? null : (vaultDetails?.forwardApyNet ?? vaultDetails?.apy?.net ?? null)
-    const oneDayAPY = isLegacyVault ? ' - ' : formatPercentFromDecimal(forwardApyNet)
-    const thirtyDayAPY = formatPercentFromDecimal(vaultDetails?.apy?.monthlyNet ?? vaultDetails?.apy?.inceptionNet)
+    const forwardApyNet = isLegacyVault ? null : (vaultDetails.forwardApyNet ?? null)
+    const oneDayAPY = buildSingleApyDisplay(isLegacyVault ? null : forwardApyNet)
+    const thirtyDayAPY = buildSingleApyDisplay(vaultDetails.apy?.monthlyNet)
 
     // Fee formatting
     const { managementFee, performanceFee } = formatVaultMetrics(vaultDetails)

@@ -61,12 +61,22 @@ const mergeYBoldVault = (baseVault: Vault, stakedVault: Vault): Vault => ({
     performanceFee: stakedVault.fees?.performanceFee ?? baseVault.fees.performanceFee
   },
   performanceFee: stakedVault.performanceFee ?? baseVault.performanceFee,
-  forwardApyNet: stakedVault.forwardApyNet ?? baseVault.forwardApyNet,
+  forwardApyNet: stakedVault.historicalWeeklyApy ?? null,
+  estimatedApySource: stakedVault.historicalWeeklyApy != null ? '7day-hist' : null,
+  historicalWeeklyApy: stakedVault.historicalWeeklyApy ?? null,
+  historicalMonthlyApy: stakedVault.historicalMonthlyApy ?? null,
   strategyForwardAprs: stakedVault.strategyForwardAprs ?? baseVault.strategyForwardAprs
 })
 
-const normalizeYvUsdVault = (vault: Vault, aprData?: YvUsdAprServiceResponse): Vault => {
+const normalizeYvUsdVault = (
+  vault: Vault,
+  lockedVault: Vault | undefined,
+  aprData?: YvUsdAprServiceResponse
+): Vault => {
   const yvUsdVault = getYvUsdApiVault(aprData, YVUSD_UNLOCKED_ADDRESS)
+  const lockedYvUsdVault = getYvUsdApiVault(aprData, YVUSD_LOCKED_ADDRESS)
+  const unlockedEstimatedApy = yvUsdVault?.apy ?? null
+  const lockedEstimatedApy = lockedYvUsdVault?.apy ?? null
 
   return {
     ...vault,
@@ -83,13 +93,23 @@ const normalizeYvUsdVault = (vault: Vault, aprData?: YvUsdAprServiceResponse): V
             inceptionNet: vault.apy?.inceptionNet ?? yvUsdVault.apy
           }
         : vault.apy,
-    forwardApyNet: yvUsdVault?.apy ?? vault.forwardApyNet
+    forwardApyNet: unlockedEstimatedApy,
+    estimatedApySource: unlockedEstimatedApy !== null ? 'est-yvusd' : null,
+    pairedEstimatedApy: {
+      locked: lockedEstimatedApy,
+      unlocked: unlockedEstimatedApy
+    },
+    pairedThirtyDayApy: {
+      locked: lockedVault?.historicalMonthlyApy ?? null,
+      unlocked: vault.historicalMonthlyApy ?? null
+    }
   }
 }
 
 export function combineFeaturedVaults(vaults: Vault[], yvUsdAprData?: YvUsdAprServiceResponse): Vault[] {
   const yBoldBase = vaults.find((vault) => isSameVault(vault, YBOLD_CHAIN_ID, YBOLD_VAULT_ADDRESS))
   const yBoldStaked = vaults.find((vault) => isSameVault(vault, YBOLD_CHAIN_ID, YBOLD_STAKING_ADDRESS))
+  const lockedYvUsd = vaults.find((vault) => isSameVault(vault, YVUSD_CHAIN_ID, YVUSD_LOCKED_ADDRESS))
 
   return vaults
     .filter((vault) => !isSameVault(vault, YBOLD_CHAIN_ID, YBOLD_STAKING_ADDRESS))
@@ -100,7 +120,7 @@ export function combineFeaturedVaults(vaults: Vault[], yvUsdAprData?: YvUsdAprSe
       }
 
       if (isSameVault(vault, YVUSD_CHAIN_ID, YVUSD_UNLOCKED_ADDRESS)) {
-        return normalizeYvUsdVault(vault, yvUsdAprData)
+        return normalizeYvUsdVault(vault, lockedYvUsd, yvUsdAprData)
       }
 
       return vault
