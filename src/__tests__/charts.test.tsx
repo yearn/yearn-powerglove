@@ -1,6 +1,7 @@
 import { fireEvent, render } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { APYChart } from '@/components/charts/APYChart'
+import { ChartsPanel } from '@/components/charts/charts-panel'
 import { PPSChart } from '@/components/charts/PPSChart'
 import { YvUsdTVLChart, YvUsdTvlTooltipContent } from '@/components/charts/YvUsdTVLChart'
 
@@ -111,6 +112,66 @@ describe('APYChart', () => {
 
     expect(container.querySelector('path[stroke="var(--color-estimatedApy30dAvg)"]')).toBeTruthy()
     expect(container.querySelector('path[stroke="var(--color-lockedestimatedApy30dAvg)"]')).toBeNull()
+  })
+})
+
+describe('ChartsPanel', () => {
+  const aprApyData = [
+    {
+      date: '2026-01-01',
+      sevenDayApy: 4,
+      thirtyDayApy: 5,
+      derivedApr: 6,
+      derivedApy: 6.2,
+      estimatedApy: 7,
+      estimatedApy30dAvg: 6.8
+    },
+    {
+      date: '2026-01-02',
+      sevenDayApy: 4.1,
+      thirtyDayApy: 5.1,
+      derivedApr: 6.1,
+      derivedApy: 6.3,
+      estimatedApy: 7.1,
+      estimatedApy30dAvg: 6.9
+    }
+  ]
+  const ppsData = [
+    { date: '2026-01-01', PPS: 1, time: 1_767_225_600 },
+    { date: '2026-01-02', PPS: 1.001, time: 1_767_312_000 }
+  ]
+  const tvlData = [
+    { date: '2026-01-01', TVL: 1_000_000 },
+    { date: '2026-01-02', TVL: 1_100_000 }
+  ]
+
+  it('removes Period APY from yvUSD only', () => {
+    const { queryByLabelText, unmount } = render(
+      <ChartsPanel
+        aprApyData={aprApyData}
+        ppsData={ppsData}
+        tvlData={tvlData}
+        yvUsdChartData={{
+          unlockedAprApyData: aprApyData,
+          lockedAprApyData: aprApyData,
+          lockedPpsData: ppsData,
+          ppsData: [
+            { date: '2026-01-01', unlocked: 1, locked: 1 },
+            { date: '2026-01-02', unlocked: 1.001, locked: 1.002 }
+          ],
+          tvlData: [
+            { date: '2026-01-01', unlocked: 750_000, locked: 250_000 },
+            { date: '2026-01-02', unlocked: 800_000, locked: 300_000 }
+          ]
+        }}
+      />
+    )
+
+    expect(queryByLabelText(/period apy/i)).toBeNull()
+    unmount()
+
+    const standardVault = render(<ChartsPanel aprApyData={aprApyData} ppsData={ppsData} tvlData={tvlData} />)
+    expect(standardVault.getByLabelText(/period apy/i)).toBeTruthy()
   })
 })
 

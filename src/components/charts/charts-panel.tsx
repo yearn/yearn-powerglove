@@ -147,10 +147,8 @@ export function ChartsPanel(data: ChartData) {
 
   const activeAprApyData = yvUsdChartData?.unlockedAprApyData ?? aprApyData
   const filteredAprApyData = activeAprApyData.slice(-getTimeframeLimit(timeframe.value))
-  const ppsPeriodApy = calculatePpsPeriodApy(ppsData, timeframe.value)
-  const lockedPpsPeriodApy = yvUsdChartData
-    ? calculatePpsPeriodApy(yvUsdChartData.lockedPpsData, timeframe.value)
-    : null
+  const hasYvUsdChartData = Boolean(yvUsdChartData)
+  const ppsPeriodApy = hasYvUsdChartData ? null : calculatePpsPeriodApy(ppsData, timeframe.value)
   const hasPpsPeriodApy = typeof ppsPeriodApy === 'number'
   const hasOracleApr = filteredAprApyData.some((point) => typeof point.oracleApr === 'number')
   const hasOracleApy30dAvg = filteredAprApyData.some((point) => typeof point.oracleApy30dAvg === 'number')
@@ -168,8 +166,6 @@ export function ChartsPanel(data: ChartData) {
     hasEstimatedApy30dAvg
   })
   const selectedApySeriesCount = availableApySeries.filter((seriesKey) => apyVisibleSeries[seriesKey]).length
-
-  const hasYvUsdChartData = Boolean(yvUsdChartData)
 
   const chartInfo = {
     'historical-apy': {
@@ -227,8 +223,6 @@ export function ChartsPanel(data: ChartData) {
                   visibleSeries={apyVisibleSeries}
                   onVisibleSeriesChange={setApyVisibleSeries}
                   hideSeriesControls={true}
-                  ppsPeriodApy={ppsPeriodApy}
-                  lockedPpsPeriodApy={lockedPpsPeriodApy}
                   seriesScope={yvUsdSeriesScope}
                 />
               </ChartErrorBoundary>
