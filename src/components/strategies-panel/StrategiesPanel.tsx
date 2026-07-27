@@ -123,7 +123,9 @@ export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
       if (!activeReallocationPanel) {
         return {
           beforeLabel: 'Before',
-          afterLabel: 'After'
+          afterLabel: 'After',
+          beforeAprLabel: 'Before APR',
+          afterAprLabel: 'After APR'
         }
       }
 
@@ -216,8 +218,14 @@ export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
           if (!reallocationData || !activeReallocationPanel) return null
           return (
             <div className="space-y-6 px-4 py-4">
-              <div className="text-[11px] font-medium uppercase tracking-[0.08em] text-[#808080]">
-                Recent reallocation timeline
+              <div>
+                <div className="text-[11px] font-medium uppercase tracking-[0.08em] text-[#808080]">
+                  Historical optimizer recommendations
+                </div>
+                <div className="mt-1 max-w-3xl text-xs leading-5 text-[#808080]">
+                  Each panel compares the modeled current and proposed debt allocation from one optimizer run. A
+                  recommendation is not evidence of execution without onchain reconciliation.
+                </div>
               </div>
 
               <ReallocationChart
@@ -234,6 +242,8 @@ export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
                     chainId={reallocationData.chainId}
                     beforeLabel={reallocationPanelLabels.beforeLabel}
                     afterLabel={reallocationPanelLabels.afterLabel}
+                    beforeAprLabel={reallocationPanelLabels.beforeAprLabel}
+                    afterAprLabel={reallocationPanelLabels.afterAprLabel}
                   />
                 </div>
 

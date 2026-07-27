@@ -60,7 +60,7 @@ const CHART_BOTTOM = 48
 const NODE_LABEL_PADDING = 20
 const SCENE_TRANSITION_MS = 380
 const SIDE_SCENE_SHIFT_PX = 980
-const FAR_SCENE_SHIFT_PX =1960
+const FAR_SCENE_SHIFT_PX = 1960
 const SIDE_SCENE_OPACITY = 0.4
 
 function toSvgSafeId(value: string): string {
@@ -85,12 +85,12 @@ function withAlpha(color: string, alpha: number): string {
   return `rgba(${red}, ${green}, ${blue}, ${alpha})`
 }
 
-function formatSignedPercent(value: number | null): string | null {
+function formatSignedPercentagePoints(value: number | null): string | null {
   if (value === null || !Number.isFinite(value)) {
     return null
   }
 
-  return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`
+  return `${value >= 0 ? '+' : ''}${value.toFixed(2)} pp`
 }
 
 function buildRibbonPath({
@@ -199,7 +199,7 @@ function ReallocationSummary({
         <span className="font-semibold text-foreground">{formatPercent(vaultAprPct)}</span>
         {vaultAprDeltaPct !== null ? (
           <span className="font-semibold" style={{ color: deltaColor }}>
-            {` (${formatSignedPercent(vaultAprDeltaPct)})`}
+            {` (${formatSignedPercentagePoints(vaultAprDeltaPct)})`}
           </span>
         ) : null}
       </div>
@@ -660,7 +660,7 @@ export const ReallocationChart: React.FC<ReallocationChartProps> = React.memo(
           <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] lg:grid-cols-[minmax(150px,auto)_minmax(180px,1fr)_minmax(180px,1fr)_auto] lg:items-start lg:gap-6">
             <div className="min-w-0">
               <div className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
-                Reallocation Flow
+                {activePanel.kind === 'current' ? 'Live allocation comparison' : 'Optimizer recommendation'}
               </div>
               <div className="text-xs text-muted-foreground">
                 Panel {resolvedPanelIndex + 1} of {panels.length}
