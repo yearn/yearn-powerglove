@@ -437,6 +437,10 @@ describe('ReallocationChart', () => {
 
     expect(screen.getByText(/\+0\.02 pp/)).toBeTruthy()
     expect(screen.queryByText(/\+0\.13/)).toBeNull()
+    expect(screen.getAllByText('Apr 20, 8:30 AM UTC')).toHaveLength(1)
+    expect(screen.queryByText('Current')).toBeNull()
+    expect(screen.queryByText('Proposed')).toBeNull()
+    expect(screen.getByText('→')).toBeTruthy()
 
     rerender(
       <ReallocationChart

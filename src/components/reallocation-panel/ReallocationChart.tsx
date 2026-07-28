@@ -207,6 +207,39 @@ function ReallocationSummary({
   )
 }
 
+function OptimizerRecommendationSummary({
+  timestampUtc,
+  currentVaultAprPct,
+  proposedVaultAprPct,
+  vaultAprDeltaPct,
+  deltaColor,
+  className
+}: {
+  timestampUtc: string | null
+  currentVaultAprPct: number | null
+  proposedVaultAprPct: number | null
+  vaultAprDeltaPct: number | null
+  deltaColor: string
+  className?: string
+}): React.ReactNode {
+  return (
+    <div className={cn('min-w-0 text-center', className)}>
+      <div className="text-sm font-medium text-foreground">{formatReallocationTimestamp(timestampUtc)}</div>
+      <div className="mt-1 flex flex-wrap items-baseline justify-center gap-x-1 text-xs text-muted-foreground">
+        <span>Vault APR/APY</span>
+        <span className="font-semibold text-foreground">{formatPercent(currentVaultAprPct)}</span>
+        <span aria-hidden="true">→</span>
+        <span className="font-semibold text-foreground">{formatPercent(proposedVaultAprPct)}</span>
+        {vaultAprDeltaPct !== null ? (
+          <span className="font-semibold" style={{ color: deltaColor }}>
+            {`(${formatSignedPercentagePoints(vaultAprDeltaPct)})`}
+          </span>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
 function buildRibbons(
   beforeState: ReallocationState,
   afterState: ReallocationState,
@@ -653,11 +686,19 @@ export const ReallocationChart: React.FC<ReallocationChartProps> = React.memo(
     const negativeDeltaColor = isDark ? '#fca5a5' : '#dc2626'
     const deltaColor =
       vaultAprDeltaPct === null ? mutedTextColor : vaultAprDeltaPct >= 0 ? positiveDeltaColor : negativeDeltaColor
+    const isOptimizerRecommendation = activePanel.kind !== 'current'
 
     return (
       <div className="overflow-hidden rounded-lg border border-border bg-card">
         <div className="border-b border-border px-4 py-3">
-          <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] lg:grid-cols-[minmax(150px,auto)_minmax(180px,1fr)_minmax(180px,1fr)_auto] lg:items-start lg:gap-6">
+          <div
+            className={cn(
+              'grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto]',
+              isOptimizerRecommendation
+                ? 'lg:grid-cols-[minmax(0,1fr)_minmax(280px,auto)_minmax(0,1fr)] lg:items-center lg:gap-6'
+                : 'lg:grid-cols-[minmax(150px,auto)_minmax(180px,1fr)_minmax(180px,1fr)_auto] lg:items-start lg:gap-6'
+            )}
+          >
             <div className="min-w-0">
               <div className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
                 {activePanel.kind === 'current' ? 'Live allocation comparison' : 'Optimizer recommendation'}
@@ -667,26 +708,44 @@ export const ReallocationChart: React.FC<ReallocationChartProps> = React.memo(
               </div>
             </div>
 
-            <ReallocationSummary
-              label={beforeLabel}
-              timestampUtc={activePanel.beforeTimestampUtc}
-              vaultAprPct={beforeVaultAprPct}
-              vaultAprDeltaPct={null}
-              deltaColor={deltaColor}
-              className="sm:col-start-1 sm:row-start-2 lg:col-start-2 lg:row-start-1"
-            />
-            <ReallocationSummary
-              label={afterLabel}
-              timestampUtc={activePanel.afterTimestampUtc}
-              vaultAprPct={afterVaultAprPct}
-              vaultAprDeltaPct={vaultAprDeltaPct}
-              deltaColor={deltaColor}
-              align="right"
-              className="sm:col-start-2 sm:row-start-2 lg:col-start-3 lg:row-start-1"
-            />
+            {isOptimizerRecommendation ? (
+              <OptimizerRecommendationSummary
+                timestampUtc={activePanel.afterTimestampUtc}
+                currentVaultAprPct={beforeVaultAprPct}
+                proposedVaultAprPct={afterVaultAprPct}
+                vaultAprDeltaPct={vaultAprDeltaPct}
+                deltaColor={deltaColor}
+                className="sm:col-span-2 sm:row-start-2 lg:col-span-1 lg:col-start-2 lg:row-start-1"
+              />
+            ) : (
+              <>
+                <ReallocationSummary
+                  label={beforeLabel}
+                  timestampUtc={activePanel.beforeTimestampUtc}
+                  vaultAprPct={beforeVaultAprPct}
+                  vaultAprDeltaPct={null}
+                  deltaColor={deltaColor}
+                  className="sm:col-start-1 sm:row-start-2 lg:col-start-2 lg:row-start-1"
+                />
+                <ReallocationSummary
+                  label={afterLabel}
+                  timestampUtc={activePanel.afterTimestampUtc}
+                  vaultAprPct={afterVaultAprPct}
+                  vaultAprDeltaPct={vaultAprDeltaPct}
+                  deltaColor={deltaColor}
+                  align="right"
+                  className="sm:col-start-2 sm:row-start-2 lg:col-start-3 lg:row-start-1"
+                />
+              </>
+            )}
 
             {panels.length > 1 && (
-              <div className="flex items-center gap-2 sm:justify-self-end lg:col-start-4 lg:row-start-1">
+              <div
+                className={cn(
+                  'flex items-center gap-2 sm:col-start-2 sm:row-start-1 sm:justify-self-end',
+                  isOptimizerRecommendation ? 'lg:col-start-3' : 'lg:col-start-4'
+                )}
+              >
                 <button
                   type="button"
                   onClick={() => onActivePanelIndexChange(clampPanelIndex(resolvedPanelIndex - 1, panels))}
