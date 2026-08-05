@@ -12,11 +12,17 @@ describe('vault overview APY display', () => {
   })
 
   it('exposes the estimate processing source on focus', async () => {
-    render(<DesktopApyValue metric={{ display: '5.00%', tooltipItems: [{ label: 'Processing', value: 'est-crv' }] }} />)
+    const { container } = render(
+      <div className="overflow-hidden">
+        <DesktopApyValue metric={{ display: '5.00%', tooltipItems: [{ label: 'Processing', value: 'est-crv' }] }} />
+      </div>
+    )
 
     fireEvent.focus(screen.getByText('5.00%'))
 
-    expect((await screen.findAllByText('Processing')).length).toBeGreaterThan(0)
+    const processingLabel = (await screen.findAllByText('Processing'))[0]
+    expect(processingLabel).toBeTruthy()
     expect(screen.getAllByText('est-crv').length).toBeGreaterThan(0)
+    expect(container.contains(processingLabel)).toBe(false)
   })
 })
