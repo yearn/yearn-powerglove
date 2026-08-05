@@ -105,6 +105,10 @@ temp/
 # Other misc
 /src/data
 
+# Generated QTOV research evidence. Manifests and schemas remain tracked.
+research/qtov/artifacts/
+docs/specs
+
 # TypeScript build info (incremental compilation cache)
 *.tsbuildinfo
 tsconfig.tsbuildinfo
