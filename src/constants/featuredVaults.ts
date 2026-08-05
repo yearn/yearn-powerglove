@@ -51,22 +51,27 @@ export const getVaultEventAddresses = (chainId: ChainId, address: string): strin
   return [address]
 }
 
-const mergeYBoldVault = (baseVault: Vault, stakedVault: Vault): Vault => ({
-  ...baseVault,
-  name: 'yBOLD',
-  symbol: 'yBOLD',
-  apy: stakedVault.apy ?? baseVault.apy,
-  fees: {
-    ...baseVault.fees,
-    performanceFee: stakedVault.fees?.performanceFee ?? baseVault.fees.performanceFee
-  },
-  performanceFee: stakedVault.performanceFee ?? baseVault.performanceFee,
-  forwardApyNet: stakedVault.historicalWeeklyApy ?? null,
-  estimatedApySource: stakedVault.historicalWeeklyApy != null ? '7day-hist' : null,
-  historicalWeeklyApy: stakedVault.historicalWeeklyApy ?? null,
-  historicalMonthlyApy: stakedVault.historicalMonthlyApy ?? null,
-  strategyForwardAprs: stakedVault.strategyForwardAprs ?? baseVault.strategyForwardAprs
-})
+const mergeYBoldVault = (baseVault: Vault, stakedVault: Vault): Vault => {
+  const weeklyApy = stakedVault.historicalWeeklyApy ?? null
+  const oracleApy = stakedVault.estimatedApySource === 'oracle' ? (stakedVault.forwardApyNet ?? null) : null
+
+  return {
+    ...baseVault,
+    name: 'yBOLD',
+    symbol: 'yBOLD',
+    apy: stakedVault.apy ?? baseVault.apy,
+    fees: {
+      ...baseVault.fees,
+      performanceFee: stakedVault.fees?.performanceFee ?? baseVault.fees.performanceFee
+    },
+    performanceFee: stakedVault.performanceFee ?? baseVault.performanceFee,
+    forwardApyNet: weeklyApy ?? oracleApy,
+    estimatedApySource: weeklyApy !== null ? '7day-hist' : oracleApy !== null ? 'oracle' : null,
+    historicalWeeklyApy: weeklyApy,
+    historicalMonthlyApy: stakedVault.historicalMonthlyApy ?? null,
+    strategyForwardAprs: stakedVault.strategyForwardAprs ?? baseVault.strategyForwardAprs
+  }
+}
 
 const normalizeYvUsdVault = (
   vault: Vault,
@@ -115,8 +120,10 @@ export function combineFeaturedVaults(vaults: Vault[], yvUsdAprData?: YvUsdAprSe
     .filter((vault) => !isSameVault(vault, YBOLD_CHAIN_ID, YBOLD_STAKING_ADDRESS))
     .filter((vault) => !isSameVault(vault, YVUSD_CHAIN_ID, YVUSD_LOCKED_ADDRESS))
     .map((vault) => {
-      if (isSameVault(vault, YBOLD_CHAIN_ID, YBOLD_VAULT_ADDRESS) && yBoldBase && yBoldStaked) {
-        return mergeYBoldVault(yBoldBase, yBoldStaked)
+      if (isSameVault(vault, YBOLD_CHAIN_ID, YBOLD_VAULT_ADDRESS) && yBoldBase) {
+        return yBoldStaked
+          ? mergeYBoldVault(yBoldBase, yBoldStaked)
+          : { ...yBoldBase, name: 'yBOLD', symbol: 'yBOLD', forwardApyNet: null, estimatedApySource: null }
       }
 
       if (isSameVault(vault, YVUSD_CHAIN_ID, YVUSD_UNLOCKED_ADDRESS)) {

@@ -79,22 +79,27 @@ const toBaseVaultExtended = (vault: Vault | null): VaultExtended | null => {
   }
 }
 
-const mergeYBoldDetails = (baseVault: VaultExtended, stakedVault: VaultExtended): VaultExtended => ({
-  ...baseVault,
-  name: 'yBOLD',
-  symbol: 'yBOLD',
-  apy: stakedVault.apy ?? baseVault.apy,
-  fees: {
-    ...baseVault.fees,
-    performanceFee: stakedVault.fees?.performanceFee ?? baseVault.fees.performanceFee
-  },
-  performanceFee: stakedVault.performanceFee ?? baseVault.performanceFee,
-  forwardApyNet: stakedVault.historicalWeeklyApy ?? null,
-  estimatedApySource: stakedVault.historicalWeeklyApy != null ? '7day-hist' : null,
-  historicalWeeklyApy: stakedVault.historicalWeeklyApy ?? null,
-  historicalMonthlyApy: stakedVault.historicalMonthlyApy ?? null,
-  strategyForwardAprs: stakedVault.strategyForwardAprs ?? baseVault.strategyForwardAprs
-})
+const mergeYBoldDetails = (baseVault: VaultExtended, stakedVault: VaultExtended): VaultExtended => {
+  const weeklyApy = stakedVault.historicalWeeklyApy ?? null
+  const oracleApy = stakedVault.estimatedApySource === 'oracle' ? (stakedVault.forwardApyNet ?? null) : null
+
+  return {
+    ...baseVault,
+    name: 'yBOLD',
+    symbol: 'yBOLD',
+    apy: stakedVault.apy ?? baseVault.apy,
+    fees: {
+      ...baseVault.fees,
+      performanceFee: stakedVault.fees?.performanceFee ?? baseVault.fees.performanceFee
+    },
+    performanceFee: stakedVault.performanceFee ?? baseVault.performanceFee,
+    forwardApyNet: weeklyApy ?? oracleApy,
+    estimatedApySource: weeklyApy !== null ? '7day-hist' : oracleApy !== null ? 'oracle' : null,
+    historicalWeeklyApy: weeklyApy,
+    historicalMonthlyApy: stakedVault.historicalMonthlyApy ?? null,
+    strategyForwardAprs: stakedVault.strategyForwardAprs ?? baseVault.strategyForwardAprs
+  }
+}
 
 const normalizeYvUsdDetails = (vault: VaultExtended): VaultExtended => ({
   ...vault,
@@ -225,8 +230,18 @@ export function useVaultPageData({ vaultAddress, vaultChainId }: UseVaultPageDat
       ? applyYvUsdAprData(normalizeYvUsdDetails(mappedBaseVault), lockedYvUsdVault, yvUsdAprData)
       : mappedBaseVault
 
-    if (!isYBold || !yBoldStakedSnapshot) {
+    if (!isYBold) {
       return applyVaultOverride(normalizedBaseVault)
+    }
+
+    if (!yBoldStakedSnapshot) {
+      return applyVaultOverride({
+        ...normalizedBaseVault,
+        name: 'yBOLD',
+        symbol: 'yBOLD',
+        forwardApyNet: null,
+        estimatedApySource: null
+      })
     }
 
     return applyVaultOverride(

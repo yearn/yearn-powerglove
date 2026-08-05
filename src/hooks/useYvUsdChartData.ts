@@ -66,26 +66,26 @@ export function useYvUsdChartData({
   unlockedTvlData,
   unlockedPpsData
 }: UseYvUsdChartDataProps): UseYvUsdChartDataReturn {
-  const {
-    data: unlockedEstimatedApyData,
-    loading: unlockedEstimatedApyLoading,
-    error: unlockedEstimatedApyError
-  } = useEstimatedApyTimeseries(YVUSD_UNLOCKED_ADDRESS, ESTIMATED_APY_LABEL, enabled)
+  const { data: unlockedEstimatedApyData } = useEstimatedApyTimeseries(
+    YVUSD_UNLOCKED_ADDRESS,
+    ESTIMATED_APY_LABEL,
+    enabled
+  )
 
-  const {
-    data: lockedEstimatedApyData,
-    loading: lockedEstimatedApyLoading,
-    error: lockedEstimatedApyError
-  } = useEstimatedApyTimeseries(YVUSD_LOCKED_ADDRESS, LOCKED_ESTIMATED_APY_LABEL, enabled)
+  const { data: lockedEstimatedApyData } = useEstimatedApyTimeseries(
+    YVUSD_LOCKED_ADDRESS,
+    LOCKED_ESTIMATED_APY_LABEL,
+    enabled
+  )
 
   // Kong currently stores the locked-address rows under the shared yvUSD label.
   // Prefer the dedicated label when it starts emitting, but retain the populated
   // address-scoped series in the meantime.
-  const {
-    data: lockedEstimatedApyFallbackData,
-    loading: lockedEstimatedApyFallbackLoading,
-    error: lockedEstimatedApyFallbackError
-  } = useEstimatedApyTimeseries(YVUSD_LOCKED_ADDRESS, ESTIMATED_APY_LABEL, enabled)
+  const { data: lockedEstimatedApyFallbackData } = useEstimatedApyTimeseries(
+    YVUSD_LOCKED_ADDRESS,
+    ESTIMATED_APY_LABEL,
+    enabled
+  )
 
   const {
     data: lockedTvlData,
@@ -119,22 +119,10 @@ export function useYvUsdChartData({
       }
     }
 
-    const isLoading =
-      unlockedEstimatedApyLoading ||
-      lockedEstimatedApyLoading ||
-      lockedEstimatedApyFallbackLoading ||
-      lockedTvlLoading ||
-      lockedPpsLoading
-    const hasEstimatedApyFallback = Boolean(lockedEstimatedApyFallbackData?.timeseries.length)
-    const hasErrors = Boolean(
-      unlockedEstimatedApyError ||
-        (lockedEstimatedApyError && !hasEstimatedApyFallback) ||
-        (lockedEstimatedApyFallbackError && !lockedEstimatedApyData?.timeseries.length) ||
-        lockedTvlError ||
-        lockedPpsError
-    )
+    const isLoading = lockedTvlLoading || lockedPpsLoading
+    const hasErrors = Boolean(lockedTvlError || lockedPpsError)
 
-    if (isLoading || hasErrors || !unlockedEstimatedApyData || !lockedTvlData || !lockedPpsData) {
+    if (isLoading || hasErrors || !lockedTvlData || !lockedPpsData) {
       return {
         yvUsdChartData: null,
         isLoading,
@@ -152,7 +140,10 @@ export function useYvUsdChartData({
 
     return {
       yvUsdChartData: {
-        unlockedAprApyData: applyYvUsdEstimatedApySeries(unlockedAprApyData, unlockedEstimatedApyData.timeseries),
+        unlockedAprApyData: applyYvUsdEstimatedApySeries(
+          unlockedAprApyData,
+          unlockedEstimatedApyData?.timeseries ?? []
+        ),
         lockedAprApyData: applyYvUsdEstimatedApySeries(lockedApySeries, lockedEstimatedApySeries),
         lockedPpsData: lockedUnderlyingPpsSeries,
         ppsData: mergeYvUsdPpsSeries(unlockedPpsData, lockedUnderlyingPpsSeries),
@@ -163,12 +154,6 @@ export function useYvUsdChartData({
     }
   }, [
     enabled,
-    unlockedEstimatedApyLoading,
-    lockedEstimatedApyLoading,
-    lockedEstimatedApyFallbackLoading,
-    unlockedEstimatedApyError,
-    lockedEstimatedApyError,
-    lockedEstimatedApyFallbackError,
     unlockedEstimatedApyData,
     lockedEstimatedApyData,
     lockedEstimatedApyFallbackData,
