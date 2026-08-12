@@ -23,11 +23,11 @@ export interface VaultFilteringState {
   filteredAndSortedVaults: VaultListData[]
 }
 
-const compareNumbers = (valueA: number, valueB: number): number => {
+const compareNumbers = (valueA: number, valueB: number, direction: number): number => {
   if (Number.isNaN(valueA) && Number.isNaN(valueB)) return 0
   if (Number.isNaN(valueA)) return 1
   if (Number.isNaN(valueB)) return -1
-  return valueA - valueB
+  return direction * (valueA - valueB)
 }
 
 export function sortVaults(
@@ -40,15 +40,19 @@ export function sortVaults(
     if (sortColumn === 'tvl') {
       const valueA = parseCompactDisplayNumber(a.tvl)
       const valueB = parseCompactDisplayNumber(b.tvl)
-      return direction * compareNumbers(valueA, valueB)
+      return compareNumbers(valueA, valueB, direction)
     }
 
     if (sortColumn === 'APY') {
-      const displaySort = compareNumbers(a.apySortValue, b.apySortValue)
+      const displaySort = compareNumbers(a.apySortValue, b.apySortValue, direction)
       if (displaySort !== 0) {
-        return direction * displaySort
+        return displaySort
       }
-      return direction * compareNumbers(a.apyRawValue, b.apyRawValue)
+      return compareNumbers(a.apyRawValue, b.apyRawValue, direction)
+    }
+
+    if (sortColumn === 'estimatedAPY') {
+      return compareNumbers(a.estimatedApySortValue, b.estimatedApySortValue, direction)
     }
 
     const valueA = String(a[sortColumn])

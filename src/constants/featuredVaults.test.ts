@@ -47,6 +47,9 @@ const makeVault = (address: string, name: string, monthlyNet: number): Vault => 
   managementFee: 0,
   performanceFee: 0,
   forwardApyNet: monthlyNet,
+  estimatedApySource: 'oracle',
+  historicalWeeklyApy: monthlyNet,
+  historicalMonthlyApy: monthlyNet,
   strategyForwardAprs: {}
 })
 
@@ -80,7 +83,45 @@ describe('featured vault grouping', () => {
     expect(vaults.map((vault) => vault.address)).toEqual([YBOLD_VAULT_ADDRESS, YVUSD_UNLOCKED_ADDRESS])
     expect(vaults[0].name).toBe('yBOLD')
     expect(vaults[0].apy?.monthlyNet).toBe(0.05)
+    expect(vaults[0].forwardApyNet).toBe(0.05)
+    expect(vaults[0].estimatedApySource).toBe('7day-hist')
     expect(vaults[1].name).toBe('yvUSD')
     expect(vaults[1].apy?.monthlyNet).toBe(0.02)
+    expect(vaults[1].pairedThirtyDayApy).toEqual({ locked: 0.08, unlocked: 0.02 })
+    expect(vaults[1].pairedEstimatedApy).toEqual({ locked: null, unlocked: null })
+  })
+  it('falls back to the staked yBOLD oracle APY when weekly history is unavailable', () => {
+    const stakedVault: Vault = {
+      ...makeVault(YBOLD_STAKING_ADDRESS, 'ysyBOLD', 0.05),
+      historicalWeeklyApy: null,
+      forwardApyNet: 0.04,
+      estimatedApySource: 'oracle'
+    }
+
+    const [vault] = combineFeaturedVaults([makeVault(YBOLD_VAULT_ADDRESS, 'yvBOLD', 0.01), stakedVault])
+
+    expect(vault.forwardApyNet).toBe(0.04)
+    expect(vault.estimatedApySource).toBe('oracle')
+  })
+
+  it('does not expose the base yBOLD estimate when staked yield data is unavailable', () => {
+    const [vault] = combineFeaturedVaults([makeVault(YBOLD_VAULT_ADDRESS, 'yvBOLD', 0.01)])
+
+    expect(vault.name).toBe('yBOLD')
+    expect(vault.forwardApyNet).toBeNull()
+    expect(vault.estimatedApySource).toBeNull()
+  })
+
+  it('stores locked-first yvUSD estimates from the APR service', () => {
+    const vaults = combineFeaturedVaults(
+      [makeVault(YVUSD_UNLOCKED_ADDRESS, 'yvUSD', 0.02), makeVault(YVUSD_LOCKED_ADDRESS, 'Locked yvUSD', 0.08)],
+      {
+        [YVUSD_UNLOCKED_ADDRESS]: { address: YVUSD_UNLOCKED_ADDRESS, apy: 0.03 },
+        [YVUSD_LOCKED_ADDRESS]: { address: YVUSD_LOCKED_ADDRESS, apy: 0.07 }
+      }
+    )
+
+    expect(vaults[0].pairedEstimatedApy).toEqual({ locked: 0.07, unlocked: 0.03 })
+    expect(vaults[0].estimatedApySource).toBe('est-yvusd')
   })
 })

@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
   deriveKongSnapshotStrategies,
   mapKongListItemToVault,
-  mapKongSnapshotToVaultExtended
+  mapKongSnapshotToVaultExtended,
+  resolveEstimatedApy
 } from '@/lib/kong-vault-derivation'
 import type { KongVaultListItem, KongVaultSnapshot } from '@/types/kong'
 
@@ -23,7 +24,7 @@ describe('mapKongListItemToVault', () => {
         decimals: 18
       },
       performance: {
-        estimated: { apy: 0.12 },
+        estimated: { apy: 0.12, type: 'crv' },
         oracle: { apy: 0.08, apr: 0.07 },
         historical: {
           net: 0.05,
@@ -44,9 +45,45 @@ describe('mapKongListItemToVault', () => {
     const mapped = mapKongListItemToVault(item)
 
     expect(mapped.forwardApyNet).toBe(0.12)
+    expect(mapped.estimatedApySource).toBe('est-crv')
     expect(mapped.vaultType).toBe('1')
     expect(mapped.yearn).toBe(true)
     expect(mapped.apy?.monthlyNet).toBe(0.03)
+  })
+
+  it('uses oracle APY only when estimated APY is unavailable', () => {
+    expect(
+      resolveEstimatedApy({
+        estimated: { apy: null, type: 'crv' },
+        oracle: { apy: 0.08 },
+        historical: { weeklyNet: 0.4 }
+      })
+    ).toEqual({ value: 0.08, source: 'oracle' })
+  })
+
+  it('does not fall back to historical APY', () => {
+    expect(resolveEstimatedApy({ historical: { weeklyNet: 0.4, monthlyNet: 0.3 } })).toEqual({
+      value: null,
+      source: null
+    })
+  })
+
+  it.each([
+    ['crv', 'est-crv'],
+    ['aero', 'est-aero'],
+    ['velo', 'est-velo'],
+    ['katana-estimated-apr', 'est-katana'],
+    ['yvusd-estimated-apr', 'est-yvusd'],
+    ['future-estimator', 'unknown']
+  ])('maps estimated type %s to %s', (type, source) => {
+    expect(resolveEstimatedApy({ estimated: { apy: 0.05, type } })).toEqual({ value: 0.05, source })
+  })
+
+  it('treats zero as an available estimated APY', () => {
+    expect(resolveEstimatedApy({ estimated: { apy: 0, type: 'crv' }, oracle: { apy: 0.1 } })).toEqual({
+      value: 0,
+      source: 'est-crv'
+    })
   })
 })
 
@@ -188,6 +225,7 @@ describe('mapKongSnapshotToVaultExtended', () => {
     const mapped = mapKongSnapshotToVaultExtended(snapshot)
 
     expect(mapped.forwardApyNet).toBe(0.08)
+    expect(mapped.estimatedApySource).toBe('oracle')
     expect(mapped.apy?.net).toBe(0.06)
     // Decimal fee values are normalized into bps for existing powerglove formatting.
     expect(mapped.fees.managementFee).toBe(200)

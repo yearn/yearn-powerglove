@@ -119,6 +119,7 @@ export function applyVaultOverride<T extends VaultEntity>(vault: T): T {
 
   if (overrides.forwardApyNet !== undefined) {
     ;(mergedVault as VaultExtended).forwardApyNet = overrides.forwardApyNet
+    ;(mergedVault as VaultExtended).estimatedApySource = 'unknown'
   }
 
   if (overrides.strategyForwardAprs !== undefined) {

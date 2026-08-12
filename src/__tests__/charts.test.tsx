@@ -1,6 +1,7 @@
 import { fireEvent, render } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { APYChart } from '@/components/charts/APYChart'
+import { ChartsPanel } from '@/components/charts/charts-panel'
 import { PPSChart } from '@/components/charts/PPSChart'
 import { YvUsdTVLChart, YvUsdTvlTooltipContent } from '@/components/charts/YvUsdTVLChart'
 
@@ -56,6 +57,121 @@ describe('APYChart', () => {
     const oracleApy30dCheckbox = getByLabelText(/oracle apy \(30d avg\)/i)
     fireEvent.click(oracleApy30dCheckbox)
     expect(container.querySelector('path[stroke="var(--color-oracleApy30dAvg)"]')).toBeTruthy()
+  })
+
+  it('shows estimated APY for both vaults and respects the vault scope', () => {
+    const data = [
+      { date: '2026-01-01', estimatedApy30dAvg: 5 },
+      { date: '2026-01-02', estimatedApy30dAvg: 6 }
+    ]
+    const lockedData = [
+      { date: '2026-01-01', estimatedApy30dAvg: 8 },
+      { date: '2026-01-02', estimatedApy30dAvg: 9 }
+    ]
+    const visibleSeries = {
+      derivedApy: false,
+      sevenDayApy: false,
+      thirtyDayApy: false,
+      ppsPeriodApy: false,
+      estimatedApy: false,
+      estimatedApy30dAvg: true,
+      oracleApr: false,
+      oracleApy30dAvg: false
+    }
+
+    const { container, rerender } = render(
+      <div style={{ width: '400px', height: '300px' }}>
+        <APYChart
+          chartData={data}
+          comparisonChartData={lockedData}
+          timeframe="30d"
+          visibleSeries={visibleSeries}
+          seriesScope="both"
+        />
+      </div>
+    )
+
+    expect(
+      container.querySelector('path[stroke="var(--color-estimatedApy30dAvg)"][stroke-dasharray="12 4"]')
+    ).toBeTruthy()
+    expect(
+      container.querySelector('path[stroke="var(--color-lockedestimatedApy30dAvg)"][stroke-dasharray="2 4"]')
+    ).toBeTruthy()
+
+    rerender(
+      <div style={{ width: '400px', height: '300px' }}>
+        <APYChart
+          chartData={data}
+          comparisonChartData={lockedData}
+          timeframe="30d"
+          visibleSeries={visibleSeries}
+          seriesScope="primary"
+        />
+      </div>
+    )
+
+    expect(container.querySelector('path[stroke="var(--color-estimatedApy30dAvg)"]')).toBeTruthy()
+    expect(container.querySelector('path[stroke="var(--color-lockedestimatedApy30dAvg)"]')).toBeNull()
+  })
+})
+
+describe('ChartsPanel', () => {
+  const aprApyData = [
+    {
+      date: '2026-01-01',
+      sevenDayApy: 4,
+      thirtyDayApy: 5,
+      derivedApr: 6,
+      derivedApy: 6.2,
+      estimatedApy: 7,
+      estimatedApy30dAvg: 6.8
+    },
+    {
+      date: '2026-01-02',
+      sevenDayApy: 4.1,
+      thirtyDayApy: 5.1,
+      derivedApr: 6.1,
+      derivedApy: 6.3,
+      estimatedApy: 7.1,
+      estimatedApy30dAvg: 6.9
+    }
+  ]
+  const ppsData = [
+    { date: '2026-01-01', PPS: 1, time: 1_767_225_600 },
+    { date: '2026-01-02', PPS: 1.001, time: 1_767_312_000 }
+  ]
+  const tvlData = [
+    { date: '2026-01-01', TVL: 1_000_000 },
+    { date: '2026-01-02', TVL: 1_100_000 }
+  ]
+
+  it('removes Period APY from yvUSD only', () => {
+    const { queryByLabelText, unmount } = render(
+      <ChartsPanel
+        aprApyData={aprApyData}
+        ppsData={ppsData}
+        tvlData={tvlData}
+        yvUsdChartData={{
+          unlockedAprApyData: aprApyData,
+          lockedAprApyData: aprApyData,
+          lockedPpsData: ppsData,
+          ppsData: [
+            { date: '2026-01-01', unlocked: 1, locked: 1 },
+            { date: '2026-01-02', unlocked: 1.001, locked: 1.002 }
+          ],
+          tvlData: [
+            { date: '2026-01-01', unlocked: 750_000, locked: 250_000 },
+            { date: '2026-01-02', unlocked: 800_000, locked: 300_000 }
+          ]
+        }}
+      />
+    )
+
+    expect(queryByLabelText(/period apy/i)).toBeNull()
+    unmount()
+
+    const standardVault = render(<ChartsPanel aprApyData={aprApyData} ppsData={ppsData} tvlData={tvlData} />)
+    expect(standardVault.getByLabelText(/period apy/i)).toBeTruthy()
   })
 })
 

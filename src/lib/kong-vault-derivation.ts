@@ -8,7 +8,14 @@ import type {
   KongVaultSnapshotComposition,
   KongVaultSnapshotDebt
 } from '@/types/kong'
-import type { Vault, VaultDebt, VaultDerivedStrategy, VaultExtended, VaultStrategyStatus } from '@/types/vaultTypes'
+import type {
+  EstimatedApySource,
+  Vault,
+  VaultDebt,
+  VaultDerivedStrategy,
+  VaultExtended,
+  VaultStrategyStatus
+} from '@/types/vaultTypes'
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 const ONE_WEEK_IN_SECONDS = 7 * 24 * 60 * 60
@@ -177,14 +184,32 @@ const deriveVaultType = ({
   return undefined
 }
 
-const resolveForwardApy = (performance?: KongVaultPerformance | null, fallback?: number | null): number | null => {
-  return toNumberOrNull(
-    performance?.estimated?.apy,
-    performance?.estimated?.apr,
-    performance?.oracle?.apy,
-    performance?.oracle?.apr,
-    fallback
-  )
+const ESTIMATED_APY_SOURCE_BY_TYPE: Record<string, EstimatedApySource> = {
+  crv: 'est-crv',
+  aero: 'est-aero',
+  velo: 'est-velo',
+  'katana-estimated-apr': 'est-katana',
+  'yvusd-estimated-apr': 'est-yvusd'
+}
+
+export const resolveEstimatedApy = (
+  performance?: KongVaultPerformance | null
+): { value: number | null; source: EstimatedApySource | null } => {
+  const estimatedApy = toNumberOrNull(performance?.estimated?.apy)
+  if (estimatedApy !== null) {
+    const estimatedType = performance?.estimated?.type?.toLowerCase() ?? ''
+    return {
+      value: estimatedApy,
+      source: ESTIMATED_APY_SOURCE_BY_TYPE[estimatedType] ?? 'unknown'
+    }
+  }
+
+  const oracleApy = toNumberOrNull(performance?.oracle?.apy)
+  if (oracleApy !== null) {
+    return { value: oracleApy, source: 'oracle' }
+  }
+
+  return { value: null, source: null }
 }
 
 const resolveYearnFlag = (inclusion?: Record<string, boolean>, explicitYearn?: boolean, fallback = true): boolean => {
@@ -413,6 +438,7 @@ export const mapKongListItemToVault = (item: KongVaultListItem): Vault => {
   const historical = performance?.historical
   const managementFee = normalizeFeeToBps(item.fees?.managementFee)
   const performanceFee = normalizeFeeToBps(item.fees?.performanceFee)
+  const estimatedApy = resolveEstimatedApy(performance)
 
   return {
     address: normalizeAddress(item.address),
@@ -455,7 +481,10 @@ export const mapKongListItemToVault = (item: KongVaultListItem): Vault => {
     },
     managementFee,
     performanceFee,
-    forwardApyNet: resolveForwardApy(performance, null),
+    forwardApyNet: estimatedApy.value,
+    estimatedApySource: estimatedApy.source,
+    historicalWeeklyApy: toNumberOrNull(historical?.weeklyNet),
+    historicalMonthlyApy: toNumberOrNull(historical?.monthlyNet),
     strategyForwardAprs: {}
   }
 }
@@ -480,7 +509,14 @@ export const mapKongSnapshotToVaultExtended = (
     return acc
   }, {})
 
-  const forwardApyNet = resolveForwardApy(performance, baseVault?.forwardApyNet ?? null)
+  const estimatedApy = resolveEstimatedApy(performance)
+  const hasSnapshotPerformance = performance !== null && performance !== undefined
+  const forwardApyNet = hasSnapshotPerformance ? estimatedApy.value : (baseVault?.forwardApyNet ?? null)
+  const estimatedApySource = hasSnapshotPerformance ? estimatedApy.source : (baseVault?.estimatedApySource ?? null)
+  const historicalWeeklyApy =
+    toNumberOrNull(snapshot.apy?.weeklyNet, historical?.weeklyNet) ?? baseVault?.historicalWeeklyApy ?? null
+  const historicalMonthlyApy =
+    toNumberOrNull(snapshot.apy?.monthlyNet, historical?.monthlyNet) ?? baseVault?.historicalMonthlyApy ?? null
 
   return {
     address: normalizeAddress(snapshot.address || baseVault?.address),
@@ -528,6 +564,9 @@ export const mapKongSnapshotToVaultExtended = (
     managementFee,
     performanceFee,
     forwardApyNet,
+    estimatedApySource,
+    historicalWeeklyApy,
+    historicalMonthlyApy,
     strategyForwardAprs,
     strategies: strategyDetails.map((strategy) => strategy.address),
     debts: mapDerivedStrategiesToDebts(strategyDetails),

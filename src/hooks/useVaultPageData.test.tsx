@@ -1,6 +1,8 @@
 import { renderHook } from '@testing-library/react'
 import { getAddress } from 'viem'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { YBOLD_STAKING_ADDRESS, YBOLD_VAULT_ADDRESS, YVUSD_UNLOCKED_ADDRESS } from '@/constants/featuredVaults'
+import type { Vault } from '@/types/vaultTypes'
 import { useVaultPageData } from './useVaultPageData'
 
 const BLACKLISTED_ADDRESS = '0x1111111111111111111111111111111111111111'
@@ -11,6 +13,10 @@ const useQueryMock = vi.fn()
 const overrideMocks = vi.hoisted(() => ({
   isVaultBlacklisted: vi.fn<(chainId: number, address: string) => boolean>(),
   getVaultBlacklistReason: vi.fn<(chainId: number, address: string) => string | undefined>()
+}))
+
+const kongMocks = vi.hoisted(() => ({
+  mapKongSnapshotToVaultExtended: vi.fn()
 }))
 
 vi.mock('@tanstack/react-query', () => ({
@@ -30,7 +36,7 @@ vi.mock('@/lib/kong-vault-client', () => ({
 }))
 
 vi.mock('@/lib/kong-vault-derivation', () => ({
-  mapKongSnapshotToVaultExtended: vi.fn()
+  mapKongSnapshotToVaultExtended: (...args: unknown[]) => kongMocks.mapKongSnapshotToVaultExtended(...args)
 }))
 
 vi.mock('@/utils/vaultOverrides', () => ({
@@ -39,6 +45,41 @@ vi.mock('@/utils/vaultOverrides', () => ({
   getVaultOverride: vi.fn(() => undefined),
   isVaultBlacklisted: (...args: [number, string]) => overrideMocks.isVaultBlacklisted(...args)
 }))
+
+const makeVault = (address: string): Vault => ({
+  address,
+  symbol: 'yvBOLD',
+  name: 'yvBOLD',
+  chainId: 1,
+  inceptTime: '0',
+  asset: {
+    name: 'BOLD',
+    symbol: 'BOLD',
+    decimals: 18,
+    address: '0x0000000000000000000000000000000000000001'
+  },
+  apiVersion: '3.0.0',
+  pricePerShare: 1,
+  apy: {
+    grossApr: 0,
+    net: 0.01,
+    inceptionNet: 0.01,
+    weeklyNet: 0.01,
+    monthlyNet: 0.01
+  },
+  tvl: { close: 100 },
+  yearn: true,
+  v3: true,
+  erc4626: true,
+  fees: { managementFee: 0, performanceFee: 0 },
+  managementFee: 0,
+  performanceFee: 0,
+  forwardApyNet: 0.01,
+  estimatedApySource: 'oracle',
+  historicalWeeklyApy: 0.01,
+  historicalMonthlyApy: 0.01,
+  strategyForwardAprs: {}
+})
 
 describe('useVaultPageData', () => {
   beforeEach(() => {
@@ -51,6 +92,7 @@ describe('useVaultPageData', () => {
     useVaultsMock.mockReturnValue({ vaults: [] })
     useQueryMock.mockReturnValue({ data: null, isLoading: false, error: null })
     useRestTimeseriesMock.mockReturnValue({ data: undefined, isLoading: false, error: null })
+    kongMocks.mapKongSnapshotToVaultExtended.mockReset()
     overrideMocks.isVaultBlacklisted.mockImplementation(
       (chainId, address) => chainId === 1 && address.toLowerCase() === BLACKLISTED_ADDRESS
     )
@@ -88,5 +130,47 @@ describe('useVaultPageData', () => {
     expect(useRestTimeseriesMock).toHaveBeenCalledWith(
       expect.objectContaining({ enabled: true, segment: 'apy-historical' })
     )
+  })
+
+  it('does not request the generic APR oracle timeseries for yvUSD', () => {
+    renderHook(() => useVaultPageData({ vaultAddress: YVUSD_UNLOCKED_ADDRESS, vaultChainId: 1 }))
+
+    expect(useRestTimeseriesMock).toHaveBeenCalledWith(
+      expect.objectContaining({ enabled: false, segment: 'apr-oracle' })
+    )
+  })
+
+  it('uses the staked yBOLD oracle APY when weekly history is unavailable', () => {
+    const baseVault = makeVault(YBOLD_VAULT_ADDRESS)
+    const stakedVault = {
+      ...makeVault(YBOLD_STAKING_ADDRESS),
+      historicalWeeklyApy: null,
+      forwardApyNet: 0.04,
+      estimatedApySource: 'oracle' as const,
+      strategyDetails: []
+    }
+
+    useVaultsMock.mockReturnValue({ vaults: [baseVault] })
+    useQueryMock.mockImplementation((options: { queryKey?: unknown[] }) => ({
+      data: options.queryKey?.includes(YBOLD_STAKING_ADDRESS.toLowerCase()) ? { address: YBOLD_STAKING_ADDRESS } : null,
+      isLoading: false,
+      error: null
+    }))
+    kongMocks.mapKongSnapshotToVaultExtended.mockReturnValue(stakedVault)
+
+    const { result } = renderHook(() => useVaultPageData({ vaultAddress: YBOLD_VAULT_ADDRESS, vaultChainId: 1 }))
+
+    expect(result.current.vaultDetails?.forwardApyNet).toBe(0.04)
+    expect(result.current.vaultDetails?.estimatedApySource).toBe('oracle')
+  })
+
+  it('does not expose the base yBOLD estimate without a staked snapshot', () => {
+    useVaultsMock.mockReturnValue({ vaults: [makeVault(YBOLD_VAULT_ADDRESS)] })
+
+    const { result } = renderHook(() => useVaultPageData({ vaultAddress: YBOLD_VAULT_ADDRESS, vaultChainId: 1 }))
+
+    expect(result.current.vaultDetails?.name).toBe('yBOLD')
+    expect(result.current.vaultDetails?.forwardApyNet).toBeNull()
+    expect(result.current.vaultDetails?.estimatedApySource).toBeNull()
   })
 })

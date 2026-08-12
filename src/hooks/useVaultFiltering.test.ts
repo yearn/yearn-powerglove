@@ -10,7 +10,10 @@ const buildVault = (overrides: Partial<VaultListData>): VaultListData => ({
   token: overrides.token ?? 'TKN',
   tokenUri: overrides.tokenUri ?? '',
   type: overrides.type ?? 'Vault',
+  estimatedAPY: overrides.estimatedAPY ?? { display: '-' },
+  estimatedApySortValue: overrides.estimatedApySortValue ?? Number.NaN,
   APY: overrides.APY ?? '0%',
+  desktopThirtyDayAPY: overrides.desktopThirtyDayAPY ?? { display: '0%' },
   apySortValue: overrides.apySortValue ?? 0,
   apyRawValue: overrides.apyRawValue ?? 0,
   tvl: overrides.tvl ?? '$0'
@@ -33,5 +36,16 @@ describe('sortVaults', () => {
     const sorted = sortVaults(vaults, 'APY', 'desc')
 
     expect(sorted.map((vault) => vault.id)).toEqual(['inf', 'cap-high', 'cap-low', 'low'])
+  })
+
+  it('sorts estimated APY numerically and puts unavailable values last', () => {
+    const vaults = [
+      buildVault({ id: 'missing', estimatedApySortValue: Number.NaN }),
+      buildVault({ id: 'high', estimatedApySortValue: 8 }),
+      buildVault({ id: 'low', estimatedApySortValue: 2 })
+    ]
+
+    expect(sortVaults(vaults, 'estimatedAPY', 'desc').map((vault) => vault.id)).toEqual(['high', 'low', 'missing'])
+    expect(sortVaults(vaults, 'estimatedAPY', 'asc').map((vault) => vault.id)).toEqual(['low', 'high', 'missing'])
   })
 })

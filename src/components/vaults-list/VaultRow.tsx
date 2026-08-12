@@ -1,7 +1,9 @@
 import { Link } from '@tanstack/react-router'
 import React from 'react'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { getChainIdByName } from '@/constants/chains'
 import { cn } from '@/lib/utils'
+import type { ApyDisplayValue } from '@/types/dataTypes'
 import { OptimizedImage } from '../ui/OptimizedImage'
 
 export interface VaultListData {
@@ -12,7 +14,10 @@ export interface VaultListData {
   token: string
   tokenUri: string
   type: string
+  estimatedAPY: ApyDisplayValue
+  estimatedApySortValue: number
   APY: string
+  desktopThirtyDayAPY: ApyDisplayValue
   apySortValue: number
   apyRawValue: number
   tvl: string
@@ -93,6 +98,35 @@ const CompactMetaItem = ({ icon, label }: { icon: React.ReactNode; label: string
 const getTypeLabel = (type: string): string => TYPE_META_LABELS[type] ?? type.replace(/ Vault$/, '')
 const getTypeCode = (type: string): string => TYPE_META_CODES[type] ?? type.slice(0, 2).toUpperCase()
 
+export const DesktopApyValue = ({ metric }: { metric: ApyDisplayValue }) => {
+  if (!metric.tooltipItems?.length) {
+    return <span className="whitespace-nowrap tabular-nums">{metric.display}</span>
+  }
+
+  return (
+    <TooltipProvider delayDuration={200}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="whitespace-nowrap border-b border-dotted border-gray-400 tabular-nums">
+            {metric.display}
+          </span>
+        </TooltipTrigger>
+        <TooltipContent className="space-y-1.5">
+          {metric.tooltipItems.map((item) => (
+            <div key={item.label} className="flex min-w-44 items-center justify-between gap-5">
+              <span className="text-gray-500">{item.label}</span>
+              <span className="font-medium tabular-nums">
+                {item.value}
+                {item.detail ? <span className="ml-1.5 font-normal text-gray-500">({item.detail})</span> : null}
+              </span>
+            </div>
+          ))}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  )
+}
+
 export const VaultRow: React.FC<VaultRowProps> = ({ vault }) => {
   return (
     <Link
@@ -122,7 +156,12 @@ export const VaultRow: React.FC<VaultRowProps> = ({ vault }) => {
         )}
       </div>
       <div className="flex-1 text-right flex items-center justify-end">{vault.type}</div>
-      <div className="flex-1 text-right flex items-center justify-end">{vault.APY}</div>
+      <div className="flex-1 text-right flex items-center justify-end text-sm">
+        <DesktopApyValue metric={vault.estimatedAPY} />
+      </div>
+      <div className="flex-1 text-right flex items-center justify-end text-sm">
+        <DesktopApyValue metric={vault.desktopThirtyDayAPY} />
+      </div>
       <div className="flex-1 text-right flex items-center justify-end">{vault.tvl}</div>
     </Link>
   )
