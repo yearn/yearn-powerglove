@@ -14,7 +14,7 @@ describe('APYChart', () => {
       derivedApr: Math.random() * 10,
       derivedApy: Math.random() * 10,
       yBoldEstimatedApy: Math.random() * 10,
-      oracleApr: Math.random() * 10,
+      oracleApy: Math.random() * 10,
       oracleApy30dAvg: Math.random() * 10
     }))
 
@@ -61,14 +61,14 @@ describe('APYChart', () => {
     fireEvent.click(derivedApyCheckbox)
     expect(container.querySelector('path[stroke="var(--color-derivedApy)"][stroke-width="2.5"]')).toBeTruthy()
 
-    expect(container.querySelector('path[stroke="var(--color-oracleApr)"]')).toBeNull()
+    expect(container.querySelector('path[stroke="var(--color-oracleApy)"]')).toBeNull()
 
-    const oracleAprCheckbox = getByLabelText(/oracle apr/i)
-    fireEvent.click(oracleAprCheckbox)
+    const oracleApyCheckbox = getByLabelText(/^oracle apy$/i)
+    fireEvent.click(oracleApyCheckbox)
     expect(
-      container.querySelector('path[stroke="var(--color-oracleApr)"][stroke-width="1.5"]:not([stroke-dasharray])')
+      container.querySelector('path[stroke="var(--color-oracleApy)"][stroke-width="1.5"]:not([stroke-dasharray])')
     ).toBeTruthy()
-    expect(container.querySelector('style')?.textContent).toContain('--color-oracleApr: var(--chart-4)')
+    expect(container.querySelector('style')?.textContent).toContain('--color-oracleApy: var(--chart-4)')
 
     expect(container.querySelector('path[stroke="var(--color-oracleApy30dAvg)"]')).toBeNull()
 
@@ -94,7 +94,7 @@ describe('APYChart', () => {
       estimatedApy: false,
       estimatedApy30dAvg: true,
       yBoldEstimatedApy: false,
-      oracleApr: false,
+      oracleApy: false,
       oracleApy30dAvg: false
     }
 
@@ -171,8 +171,8 @@ describe('ChartsPanel', () => {
         ppsData={ppsData}
         tvlData={tvlData}
         yvUsdChartData={{
-          unlockedAprApyData: aprApyData.map((point) => ({ ...point, oracleApr: 6 })),
-          lockedAprApyData: aprApyData.map((point) => ({ ...point, oracleApr: 8 })),
+          unlockedAprApyData: aprApyData.map((point) => ({ ...point, oracleApy: 6 })),
+          lockedAprApyData: aprApyData.map((point) => ({ ...point, oracleApy: 8 })),
           lockedPpsData: ppsData,
           ppsData: [
             { date: '2026-01-01', unlocked: 1, locked: 1 },
@@ -187,7 +187,7 @@ describe('ChartsPanel', () => {
     )
 
     expect(getByLabelText(/period apy/i)).toBeTruthy()
-    expect(getByLabelText(/oracle apr/i)).toBeTruthy()
+    expect(getByLabelText(/^oracle apy$/i)).toBeTruthy()
     unmount()
 
     const standardVault = render(<ChartsPanel aprApyData={aprApyData} ppsData={ppsData} tvlData={tvlData} />)
@@ -199,7 +199,7 @@ describe('ChartsPanel', () => {
   it('defaults V3 charts to 30-day, period, and the available estimate', () => {
     const yBoldAprApyData = aprApyData.map((point) => ({
       ...point,
-      oracleApr: 8,
+      oracleApy: 8,
       yBoldEstimatedApy: 9
     }))
     const { container } = render(
@@ -207,7 +207,7 @@ describe('ChartsPanel', () => {
     )
 
     expect(container.querySelector('path[stroke="var(--color-sevenDayApy)"]')).toBeNull()
-    expect(container.querySelector('path[stroke="var(--color-oracleApr)"]')).toBeNull()
+    expect(container.querySelector('path[stroke="var(--color-oracleApy)"]')).toBeNull()
     expect(
       container.querySelector('path[stroke="var(--color-thirtyDayApy)"][stroke-width="3.5"]:not([stroke-dasharray])')
     ).toBeTruthy()
@@ -219,26 +219,26 @@ describe('ChartsPanel', () => {
     ).toBeTruthy()
   })
 
-  it('falls back to Oracle APR when a V3 estimate is unavailable', () => {
+  it('falls back to Oracle APY when a V3 estimate is unavailable', () => {
     const oracleOnlyData = aprApyData.map((point) => ({
       ...point,
       estimatedApy: null,
       estimatedApy30dAvg: null,
-      oracleApr: 8
+      oracleApy: 8
     }))
     const { container } = render(
       <ChartsPanel aprApyData={oracleOnlyData} ppsData={ppsData} tvlData={tvlData} isV3Vault />
     )
 
     expect(
-      container.querySelector('path[stroke="var(--color-oracleApr)"][stroke-width="1.5"]:not([stroke-dasharray])')
+      container.querySelector('path[stroke="var(--color-oracleApy)"][stroke-width="1.5"]:not([stroke-dasharray])')
     ).toBeTruthy()
     expect(container.querySelector('path[stroke="var(--color-estimatedApy)"]')).toBeNull()
     expect(container.querySelector('path[stroke="var(--color-estimatedApy30dAvg)"]')).toBeNull()
   })
 
-  it('prefers an available V3 estimate over Oracle APR', () => {
-    const estimatedAndOracleData = aprApyData.map((point) => ({ ...point, oracleApr: 8 }))
+  it('prefers an available V3 estimate over Oracle APY', () => {
+    const estimatedAndOracleData = aprApyData.map((point) => ({ ...point, oracleApy: 8 }))
     const { container, getByLabelText } = render(
       <ChartsPanel aprApyData={estimatedAndOracleData} ppsData={ppsData} tvlData={tvlData} isV3Vault />
     )
@@ -246,11 +246,11 @@ describe('ChartsPanel', () => {
     expect(
       container.querySelector('path[stroke="var(--color-estimatedApy)"][stroke-width="1.5"][stroke-dasharray="12 4"]')
     ).toBeTruthy()
-    expect(container.querySelector('path[stroke="var(--color-oracleApr)"]')).toBeNull()
+    expect(container.querySelector('path[stroke="var(--color-oracleApy)"]')).toBeNull()
 
-    fireEvent.click(getByLabelText(/oracle apr/i))
+    fireEvent.click(getByLabelText(/^oracle apy$/i))
     expect(container.querySelector('path[stroke="var(--color-estimatedApy)"]')).toBeTruthy()
-    expect(container.querySelector('path[stroke="var(--color-oracleApr)"]')).toBeTruthy()
+    expect(container.querySelector('path[stroke="var(--color-oracleApy)"]')).toBeTruthy()
   })
 
   it('keeps the existing defaults for V2 and factory charts', () => {

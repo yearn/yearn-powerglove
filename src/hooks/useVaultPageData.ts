@@ -4,6 +4,7 @@ import { getAddress, isAddress } from 'viem'
 import { type ChainId, isSupportedChainId } from '@/constants/chains'
 import {
   getCanonicalVaultAddress,
+  getYBoldEstimatedApy,
   getYieldDataAddress,
   getYvUsdSnapshotEstimatedApy,
   isYBoldAddress,
@@ -81,8 +82,7 @@ const toBaseVaultExtended = (vault: Vault | null): VaultExtended | null => {
 }
 
 const mergeYBoldDetails = (baseVault: VaultExtended, stakedVault: VaultExtended): VaultExtended => {
-  const weeklyApy = stakedVault.historicalWeeklyApy ?? null
-  const oracleApy = stakedVault.estimatedApySource === 'oracle' ? (stakedVault.forwardApyNet ?? null) : null
+  const estimatedApy = getYBoldEstimatedApy(stakedVault)
 
   return {
     ...baseVault,
@@ -94,9 +94,9 @@ const mergeYBoldDetails = (baseVault: VaultExtended, stakedVault: VaultExtended)
       performanceFee: stakedVault.fees?.performanceFee ?? baseVault.fees.performanceFee
     },
     performanceFee: stakedVault.performanceFee ?? baseVault.performanceFee,
-    forwardApyNet: weeklyApy ?? oracleApy,
-    estimatedApySource: weeklyApy !== null ? '7day-hist' : oracleApy !== null ? 'oracle' : null,
-    historicalWeeklyApy: weeklyApy,
+    forwardApyNet: estimatedApy.value,
+    estimatedApySource: estimatedApy.source,
+    historicalWeeklyApy: stakedVault.historicalWeeklyApy ?? null,
     historicalMonthlyApy: stakedVault.historicalMonthlyApy ?? null,
     strategyForwardAprs: stakedVault.strategyForwardAprs ?? baseVault.strategyForwardAprs
   }
@@ -144,6 +144,10 @@ const applyYvUsdAprData = (
     pairedThirtyDayApy: {
       locked: lockedVault?.historicalMonthlyApy ?? null,
       unlocked: vault.historicalMonthlyApy ?? null
+    },
+    pairedFees: {
+      locked: lockedVault?.fees ?? null,
+      unlocked: vault.fees
     },
     yvUsdStrategyApyByAddress: getYvUsdApiStrategyApyByAddress(yvUsdVault)
   }
@@ -296,13 +300,13 @@ export function useVaultPageData({ vaultAddress, vaultChainId }: UseVaultPageDat
     enabled: canFetchVaultData
   })
 
-  // yvUSD uses its product-specific estimated APY series in useYvUsdChartData,
-  // while APR Oracle remains a separate chart series for every v3 vault.
+  // Prefer Kong's published net Oracle rates. Gross APR remains available as a
+  // fee-adjusted fallback for older dates without netApy or netApr components.
   const { data: aprOracleAprData } = useRestTimeseries({
     segment: 'apr-oracle',
     chainId: vaultChainId,
     address: yieldDataAddress,
-    components: ['apr'],
+    components: ['netApy', 'netApr', 'apr'],
     enabled: canFetchVaultData && isV3Vault
   })
 

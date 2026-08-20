@@ -78,7 +78,7 @@ type YvUsdSeriesScope = 'primary' | 'both' | 'comparison'
 type ApySeriesAvailability = {
   hasEstimatedApy: boolean
   hasEstimatedApy30dAvg: boolean
-  hasOracleApr: boolean
+  hasOracleApy: boolean
   hasYBoldEstimatedApy: boolean
 }
 
@@ -87,7 +87,7 @@ export function buildDefaultApyVisibleSeries({
   isYBold,
   hasEstimatedApy,
   hasEstimatedApy30dAvg,
-  hasOracleApr,
+  hasOracleApy,
   hasYBoldEstimatedApy
 }: ApySeriesAvailability & { isV3Vault: boolean; isYBold: boolean }): APYVisibleSeries {
   if (!isV3Vault) {
@@ -99,7 +99,7 @@ export function buildDefaultApyVisibleSeries({
       estimatedApy: false,
       estimatedApy30dAvg: true,
       yBoldEstimatedApy: true,
-      oracleApr: isYBold,
+      oracleApy: isYBold,
       oracleApy30dAvg: true
     })
   }
@@ -107,7 +107,7 @@ export function buildDefaultApyVisibleSeries({
   const useYBoldEstimate = hasYBoldEstimatedApy
   const useEstimate = !useYBoldEstimate && hasEstimatedApy
   const useAveragedEstimate = !useYBoldEstimate && !useEstimate && hasEstimatedApy30dAvg
-  const useOracleFallback = !useYBoldEstimate && !useEstimate && !useAveragedEstimate && hasOracleApr
+  const useOracleFallback = !useYBoldEstimate && !useEstimate && !useAveragedEstimate && hasOracleApy
 
   return buildApyVisibleSeries({
     derivedApy: false,
@@ -117,7 +117,7 @@ export function buildDefaultApyVisibleSeries({
     estimatedApy: useEstimate,
     estimatedApy30dAvg: useAveragedEstimate,
     yBoldEstimatedApy: useYBoldEstimate,
-    oracleApr: useOracleFallback,
+    oracleApy: useOracleFallback,
     oracleApy30dAvg: false
   })
 }
@@ -201,7 +201,7 @@ export function ChartsPanel(data: ChartData) {
     ? calculatePpsPeriodApy(yvUsdChartData.lockedPpsData, timeframe.value)
     : null
   const hasPpsPeriodApy = typeof ppsPeriodApy === 'number'
-  const hasOracleApr = filteredAprApyData.some((point) => typeof point.oracleApr === 'number')
+  const hasOracleApy = filteredAprApyData.some((point) => typeof point.oracleApy === 'number')
   const hasOracleApy30dAvg = filteredAprApyData.some((point) => typeof point.oracleApy30dAvg === 'number')
   const hasYBoldEstimatedApy = filteredAprApyData.some((point) => typeof point.yBoldEstimatedApy === 'number')
   const hasEstimatedApy =
@@ -215,13 +215,13 @@ export function ChartsPanel(data: ChartData) {
     isYBold,
     hasEstimatedApy,
     hasEstimatedApy30dAvg,
-    hasOracleApr,
+    hasOracleApy,
     hasYBoldEstimatedApy
   })
   const resolvedApyVisibleSeries = apyVisibleSeries ?? defaultApyVisibleSeries
   const availableApySeries = getAvailableApySeries({
     hasPpsPeriodApy,
-    hasOracleApr,
+    hasOracleApy,
     hasOracleApy30dAvg,
     hasYBoldEstimatedApy,
     hasEstimatedApy,
@@ -229,23 +229,23 @@ export function ChartsPanel(data: ChartData) {
   })
   const selectedApySeriesCount = availableApySeries.filter((seriesKey) => resolvedApyVisibleSeries[seriesKey]).length
   const v3EstimateDescription = hasYBoldEstimatedApy
-    ? 'the max(7-day PPS APY, APR Oracle) estimate'
+    ? 'the max(7-day PPS APY, Oracle net APY) estimate'
     : hasEstimatedApy || hasEstimatedApy30dAvg
       ? 'estimated APY'
-      : hasOracleApr
-        ? 'Oracle APR'
+      : hasOracleApy
+        ? 'Oracle APY'
         : null
 
   const chartInfo = {
     'historical-apy': {
       title: hasYvUsdChartData ? 'yvUSD Performance' : 'Vault Performance',
       description: hasYvUsdChartData
-        ? `30-day PPS APY, Period APY, estimated APY${hasOracleApr ? ', and Oracle APR' : ''} for unlocked and locked yvUSD over ${timeframe.label}.`
+        ? `30-day PPS APY, Period APY, estimated APY${hasOracleApy ? ', and Oracle APY' : ''} for unlocked and locked yvUSD over ${timeframe.label}.`
         : isV3Vault
           ? `30-day PPS APY and Period APY${v3EstimateDescription ? ` with ${v3EstimateDescription}` : ''} over ${timeframe.label}.`
           : `1-Day, 7-Day, and 30-Day APYs over ${timeframe.label}.`,
       mobileDescription: hasYvUsdChartData
-        ? `Compare 30-day, period, estimated APY${hasOracleApr ? ', and Oracle APR' : ''} over ${timeframe.mobileLabel}.`
+        ? `Compare 30-day, period, estimated APY${hasOracleApy ? ', and Oracle APY' : ''} over ${timeframe.mobileLabel}.`
         : isV3Vault
           ? `Compare 30-day and period APY${v3EstimateDescription ? ` with ${v3EstimateDescription}` : ''} over ${timeframe.mobileLabel}.`
           : `Compare APY trends over ${timeframe.mobileLabel}.`
@@ -363,7 +363,7 @@ export function ChartsPanel(data: ChartData) {
                       sevenDayApy: false,
                       thirtyDayApy: false,
                       derivedApy: true,
-                      oracleApr: false,
+                      oracleApy: false,
                       oracleApy30dAvg: false
                     }}
                   />
@@ -402,7 +402,7 @@ export function ChartsPanel(data: ChartData) {
                       sevenDayApy: false,
                       thirtyDayApy: true,
                       derivedApy: false,
-                      oracleApr: false,
+                      oracleApy: false,
                       oracleApy30dAvg: false
                     }}
                   />
@@ -495,7 +495,7 @@ export function ChartsPanel(data: ChartData) {
               visibleSeries={resolvedApyVisibleSeries}
               onVisibleSeriesChange={setApyVisibleSeries}
               hasPpsPeriodApy={hasPpsPeriodApy}
-              hasOracleApr={hasOracleApr}
+              hasOracleApy={hasOracleApy}
               hasOracleApy30dAvg={hasOracleApy30dAvg}
               hasYBoldEstimatedApy={hasYBoldEstimatedApy}
               hasEstimatedApy={hasEstimatedApy}
@@ -533,7 +533,7 @@ export function ChartsPanel(data: ChartData) {
         visibleSeries={resolvedApyVisibleSeries}
         onVisibleSeriesChange={setApyVisibleSeries}
         hasPpsPeriodApy={hasPpsPeriodApy}
-        hasOracleApr={hasOracleApr}
+        hasOracleApy={hasOracleApy}
         hasOracleApy30dAvg={hasOracleApy30dAvg}
         hasYBoldEstimatedApy={hasYBoldEstimatedApy}
         hasEstimatedApy={hasEstimatedApy}

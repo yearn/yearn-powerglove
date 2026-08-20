@@ -75,7 +75,8 @@ export type aprApyChartData = {
   thirtyDayApy: number | null
   derivedApr: number | null
   derivedApy: number | null
-  oracleApr?: number | null
+  oracleNetApr?: number | null
+  oracleApy?: number | null
   oracleApy30dAvg?: number | null
   yBoldEstimatedApy?: number | null
   estimatedApy?: number | null

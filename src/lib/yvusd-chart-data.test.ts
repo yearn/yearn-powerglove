@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
+import { aprToWeeklyApy } from '@/lib/oracle-apy'
 import {
   applyYvUsdEstimatedApySeries,
-  applyYvUsdLockedOracleAprSeries,
+  applyYvUsdLockedOracleApySeries,
   buildApyDataFromPpsSeries,
   buildUnderlyingLockedPpsSeries,
   mergeYvUsdTvlSeries
@@ -48,27 +49,100 @@ describe('yvUSD chart data helpers', () => {
     ])
   })
 
-  it('adds unlocked and locked-layer Oracle APR for the locked series', () => {
+  it('fee-adjusts the locked Oracle APR and converts the combined net APR to APY', () => {
     const lockedBase = [
       { date: 'Jan 1, 2026', derivedApy: 4, derivedApr: 4, sevenDayApy: 4, thirtyDayApy: 4 },
       { date: 'Jan 2, 2026', derivedApy: 5, derivedApr: 5, sevenDayApy: 5, thirtyDayApy: 5 }
     ]
     const unlocked = [
-      { ...lockedBase[0], oracleApr: 4.5 },
-      { ...lockedBase[1], oracleApr: null }
+      { ...lockedBase[0], oracleNetApr: 4.5 },
+      { ...lockedBase[1], oracleNetApr: null }
     ]
     const oraclePoint: TimeseriesDataPoint = {
       label: 'apr-oracle',
       component: 'apr',
       period: '1 day',
       time: '1767225600',
-      value: 0.045
+      value: 0.05
     }
 
-    expect(applyYvUsdLockedOracleAprSeries(lockedBase, unlocked, [oraclePoint])).toEqual([
-      { ...lockedBase[0], oracleApr: 9 },
-      { ...lockedBase[1], oracleApr: null }
-    ])
+    const result = applyYvUsdLockedOracleApySeries(lockedBase, unlocked, [oraclePoint], {
+      managementFee: 25,
+      performanceFee: 1000
+    })
+    const combinedNetApr = 0.045 + (0.05 - 0.0025) * 0.9
+
+    expect(result[0].oracleNetApr).toBeCloseTo(combinedNetApr * 100)
+    expect(result[0].oracleApy).toBeCloseTo(aprToWeeklyApy(combinedNetApr) * 100)
+    expect(result[1].oracleNetApr).toBeNull()
+    expect(result[1].oracleApy).toBeNull()
+  })
+
+  it('prefers locked Kong net rate components over the gross APR fallback', () => {
+    const lockedBase = [{ date: 'Jan 1, 2026', derivedApy: 4, derivedApr: 4, sevenDayApy: 4, thirtyDayApy: 4 }]
+    const unlocked = [{ ...lockedBase[0], oracleNetApr: 4.5 }]
+    const oraclePoints: TimeseriesDataPoint[] = [
+      {
+        label: 'apr-oracle',
+        component: 'apr',
+        period: '1 day',
+        time: '1767225600',
+        value: 0.1
+      },
+      {
+        label: 'apr-oracle',
+        component: 'netApr',
+        period: '1 day',
+        time: '1767225600',
+        value: 0.03
+      },
+      {
+        label: 'apr-oracle',
+        component: 'netApy',
+        period: '1 day',
+        time: '1767225600',
+        value: 0.031
+      }
+    ]
+
+    const result = applyYvUsdLockedOracleApySeries(lockedBase, unlocked, oraclePoints, {
+      managementFee: 200,
+      performanceFee: 1000
+    })
+
+    expect(result[0].oracleNetApr).toBeCloseTo(7.5)
+    expect(result[0].oracleApy).toBeCloseTo(aprToWeeklyApy(0.075) * 100)
+  })
+
+  it('uses published locked net rates without fees but does not treat gross APR as net', () => {
+    const lockedBase = [
+      { date: 'Jan 1, 2026', derivedApy: 4, derivedApr: 4, sevenDayApy: 4, thirtyDayApy: 4 },
+      { date: 'Jan 2, 2026', derivedApy: 4, derivedApr: 4, sevenDayApy: 4, thirtyDayApy: 4 }
+    ]
+    const unlocked = lockedBase.map((point) => ({ ...point, oracleNetApr: 4.5 }))
+    const oraclePoints: TimeseriesDataPoint[] = [
+      {
+        label: 'apr-oracle',
+        component: 'netApr',
+        period: '1 day',
+        time: '1767225600',
+        value: 0.03
+      },
+      {
+        label: 'apr-oracle',
+        component: 'apr',
+        period: '1 day',
+        time: '1767312000',
+        value: 0.1
+      }
+    ]
+
+    const result = applyYvUsdLockedOracleApySeries(lockedBase, unlocked, oraclePoints, null)
+
+    expect(result[0].oracleNetApr).toBeCloseTo(7.5)
+    expect(result[0].oracleApy).toBeCloseTo(aprToWeeklyApy(0.075) * 100)
+    expect(result[1].oracleNetApr).toBeNull()
+    expect(result[1].oracleApy).toBeNull()
   })
 
   it('converts locked PPS into underlying yvUSD terms', () => {

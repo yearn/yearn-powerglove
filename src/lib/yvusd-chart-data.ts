@@ -1,3 +1,4 @@
+import { aprToWeeklyApy, resolveOracleRates } from '@/lib/oracle-apy'
 import { fillMissingDailyData, formatUnixTimestamp } from '@/lib/utils'
 import type {
   aprApyChartData,
@@ -6,6 +7,7 @@ import type {
   tvlChartData,
   yvUsdChartData
 } from '@/types/dataTypes'
+import type { VaultFeeValues } from '@/types/vaultTypes'
 
 type TimestampRange = {
   earliest: number
@@ -168,32 +170,59 @@ export const applyYvUsdEstimatedApySeries = (
   }))
 }
 
-export const applyYvUsdLockedOracleAprSeries = (
+export const applyYvUsdLockedOracleApySeries = (
   lockedApyData: aprApyChartData,
   unlockedApyData: aprApyChartData,
-  lockedOracleAprData: TimeseriesDataPoint[]
+  lockedOracleAprData: TimeseriesDataPoint[],
+  lockedFees: VaultFeeValues | null
 ): aprApyChartData => {
-  const unlockedOracleAprByDate = new Map(unlockedApyData.map((point) => [point.date, point.oracleApr ?? null]))
-  const lockedOracleAprByDate = new Map(
-    lockedOracleAprData.map((point) => [
-      formatUnixTimestamp(point.time),
-      point.value !== null ? point.value * 100 : null
-    ])
+  const unlockedOracleNetAprByDate = new Map(unlockedApyData.map((point) => [point.date, point.oracleNetApr ?? null]))
+  const lockedOracleComponentsByDate = new Map<
+    string,
+    { netApy?: number | null; netApr?: number | null; grossApr?: number | null }
+  >()
+  for (const point of lockedOracleAprData) {
+    const date = formatUnixTimestamp(point.time)
+    const components = lockedOracleComponentsByDate.get(date) ?? {}
+    const component = point.component?.toLowerCase()
+    if (component === 'netapy') components.netApy = point.value
+    if (component === 'netapr') components.netApr = point.value
+    if (component === 'apr') components.grossApr = point.value
+    lockedOracleComponentsByDate.set(date, components)
+  }
+
+  const lockedOracleNetAprByDate = new Map(
+    [...lockedOracleComponentsByDate].map(([date, components]) => {
+      const hasPublishedNetRate = [components.netApy, components.netApr].some(
+        (value) => typeof value === 'number' && Number.isFinite(value)
+      )
+      const rates =
+        hasPublishedNetRate || lockedFees
+          ? resolveOracleRates({
+              ...components,
+              managementFeeBps: lockedFees?.managementFee,
+              performanceFeeBps: lockedFees?.performanceFee
+            })
+          : null
+      return [date, rates !== null ? rates.netApr * 100 : null]
+    })
   )
 
   return lockedApyData.map((point) => {
-    const unlockedOracleApr = unlockedOracleAprByDate.get(point.date)
-    const lockedOracleApr = lockedOracleAprByDate.get(point.date)
+    const unlockedOracleNetApr = unlockedOracleNetAprByDate.get(point.date)
+    const lockedOracleNetApr = lockedOracleNetAprByDate.get(point.date)
+    const combinedOracleNetApr =
+      unlockedOracleNetApr !== null &&
+      unlockedOracleNetApr !== undefined &&
+      lockedOracleNetApr !== null &&
+      lockedOracleNetApr !== undefined
+        ? unlockedOracleNetApr + lockedOracleNetApr
+        : null
 
     return {
       ...point,
-      oracleApr:
-        unlockedOracleApr !== null &&
-        unlockedOracleApr !== undefined &&
-        lockedOracleApr !== null &&
-        lockedOracleApr !== undefined
-          ? unlockedOracleApr + lockedOracleApr
-          : null
+      oracleNetApr: combinedOracleNetApr,
+      oracleApy: combinedOracleNetApr !== null ? aprToWeeklyApy(combinedOracleNetApr / 100) * 100 : null
     }
   })
 }

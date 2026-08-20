@@ -143,7 +143,7 @@ describe('useVaultPageData', () => {
     renderHook(() => useVaultPageData({ vaultAddress: YVUSD_UNLOCKED_ADDRESS, vaultChainId: 1 }))
 
     expect(useRestTimeseriesMock).toHaveBeenCalledWith(
-      expect.objectContaining({ enabled: true, segment: 'apr-oracle', components: ['apr'] })
+      expect.objectContaining({ enabled: true, segment: 'apr-oracle', components: ['netApy', 'netApr', 'apr'] })
     )
   })
 
@@ -184,7 +184,7 @@ describe('useVaultPageData', () => {
     expect(result.current.vaultDetails?.pairedEstimatedApy).toEqual({ locked: 0.07, unlocked: 0.03 })
   })
 
-  it('keeps the basic Katana estimate while using only Oracle APR for chart history', () => {
+  it('keeps the basic Katana estimate while using only Oracle APY for chart history', () => {
     const katanaVault: Vault = {
       ...makeVault(OPEN_ADDRESS),
       chainId: 747474,
@@ -209,6 +209,7 @@ describe('useVaultPageData', () => {
     const baseVault = makeVault(YBOLD_VAULT_ADDRESS)
     const stakedVault = {
       ...makeVault(YBOLD_STAKING_ADDRESS),
+      oracleNetApy: 0.04,
       historicalWeeklyApy: null,
       forwardApyNet: 0.04,
       estimatedApySource: 'oracle' as const,
@@ -227,6 +228,31 @@ describe('useVaultPageData', () => {
 
     expect(result.current.vaultDetails?.forwardApyNet).toBe(0.04)
     expect(result.current.vaultDetails?.estimatedApySource).toBe('oracle')
+  })
+
+  it('uses max(7-day PPS APY, Oracle net APY) for the yBOLD estimate', () => {
+    const baseVault = makeVault(YBOLD_VAULT_ADDRESS)
+    const stakedVault = {
+      ...makeVault(YBOLD_STAKING_ADDRESS),
+      oracleNetApy: 0.0495,
+      historicalWeeklyApy: 0.046,
+      forwardApyNet: 0.055,
+      estimatedApySource: 'oracle' as const,
+      strategyDetails: []
+    }
+
+    useVaultsMock.mockReturnValue({ vaults: [baseVault] })
+    useQueryMock.mockImplementation((options: { queryKey?: unknown[] }) => ({
+      data: options.queryKey?.includes(YBOLD_STAKING_ADDRESS.toLowerCase()) ? { address: YBOLD_STAKING_ADDRESS } : null,
+      isLoading: false,
+      error: null
+    }))
+    kongMocks.mapKongSnapshotToVaultExtended.mockReturnValue(stakedVault)
+
+    const { result } = renderHook(() => useVaultPageData({ vaultAddress: YBOLD_VAULT_ADDRESS, vaultChainId: 1 }))
+
+    expect(result.current.vaultDetails?.forwardApyNet).toBe(0.0495)
+    expect(result.current.vaultDetails?.estimatedApySource).toBe('est-ybold')
   })
 
   it('does not expose the base yBOLD estimate without a staked snapshot', () => {

@@ -1,6 +1,7 @@
 import { renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { YVUSD_LOCKED_ADDRESS, YVUSD_UNLOCKED_ADDRESS } from '@/constants/featuredVaults'
+import { aprToWeeklyApy } from '@/lib/oracle-apy'
 import type { TimeseriesDataPoint } from '@/types/dataTypes'
 import { useYvUsdChartData } from './useYvUsdChartData'
 
@@ -38,9 +39,9 @@ type RestResult = {
   error: Error | null
 }
 
-const point = (label: string, value: number): TimeseriesDataPoint => ({
+const point = (label: string, value: number, component = 'netAPY'): TimeseriesDataPoint => ({
   label,
-  component: 'netAPY',
+  component,
   period: '1 day',
   time: TIME,
   value
@@ -60,10 +61,19 @@ const renderYvUsdChartData = (enabled = true) =>
     useYvUsdChartData({
       enabled,
       unlockedAprApyData: [
-        { date: DATE, sevenDayApy: 4, thirtyDayApy: 5, derivedApr: 6, derivedApy: 6.2, oracleApr: 6 }
+        {
+          date: DATE,
+          sevenDayApy: 4,
+          thirtyDayApy: 5,
+          derivedApr: 6,
+          derivedApy: 6.2,
+          oracleNetApr: 6,
+          oracleApy: aprToWeeklyApy(0.06) * 100
+        }
       ],
       unlockedTvlData: [{ date: DATE, TVL: 1_000_000 }],
-      unlockedPpsData: [{ date: DATE, PPS: 1, time: Number(TIME) }]
+      unlockedPpsData: [{ date: DATE, PPS: 1, time: Number(TIME) }],
+      lockedFees: { managementFee: 0, performanceFee: 0 }
     })
   )
 
@@ -97,7 +107,13 @@ describe('useYvUsdChartData', () => {
       [
         'apr-oracle',
         {
-          data: { timeseries: [point('apr-oracle', 0.07)] },
+          data: {
+            timeseries: [
+              point('apr-oracle', 0.07, 'apr'),
+              point('apr-oracle', 0.055, 'netApr'),
+              point('apr-oracle', 0.056, 'netApy')
+            ]
+          },
           isLoading: false,
           error: null
         }
@@ -153,15 +169,16 @@ describe('useYvUsdChartData', () => {
     expect(result.current.yvUsdChartData?.lockedAprApyData[0]?.estimatedApy).toBe(8)
   })
 
-  it('adds the locked Oracle APR as a separate chart series', () => {
+  it('adds unlocked and locked Oracle net APR before converting the combined rate to APY', () => {
     const { result } = renderYvUsdChartData()
 
-    expect(result.current.yvUsdChartData?.lockedAprApyData[0]?.oracleApr).toBeCloseTo(13)
+    expect(result.current.yvUsdChartData?.lockedAprApyData[0]?.oracleNetApr).toBeCloseTo(11.5)
+    expect(result.current.yvUsdChartData?.lockedAprApyData[0]?.oracleApy).toBeCloseTo(aprToWeeklyApy(0.115) * 100)
     expect(mocks.useRestTimeseries).toHaveBeenCalledWith(
       expect.objectContaining({
         segment: 'apr-oracle',
         address: YVUSD_LOCKED_ADDRESS,
-        components: ['apr'],
+        components: ['netApy', 'netApr', 'apr'],
         enabled: true
       })
     )

@@ -203,6 +203,8 @@ function ValidVaultPage({ chainId, vaultAddress }: { chainId: string; vaultAddre
     tvlData,
     ppsData,
     includeYBoldEstimatedApy: isYBold,
+    managementFeeBps: vaultDetails?.fees.managementFee ?? 0,
+    performanceFeeBps: vaultDetails?.fees.performanceFee ?? 0,
     isLoading: chartsLoading,
     hasErrors: chartsError
   })
@@ -216,7 +218,8 @@ function ValidVaultPage({ chainId, vaultAddress }: { chainId: string; vaultAddre
     enabled: isYvUsd,
     unlockedAprApyData: transformedAprApyData,
     unlockedTvlData: transformedTvlData,
-    unlockedPpsData: transformedPpsData
+    unlockedPpsData: transformedPpsData,
+    lockedFees: vaultDetails?.pairedFees?.locked ?? null
   })
 
   const legacyVault = vaultDetails ? isLegacyVaultType(vaultDetails) : false

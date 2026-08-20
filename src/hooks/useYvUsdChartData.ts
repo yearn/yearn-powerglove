@@ -5,7 +5,7 @@ import { GET_VAULT_TIMESERIES } from '@/graphql/queries/timeseries'
 import { useRestTimeseries } from '@/hooks/useRestTimeseries'
 import {
   applyYvUsdEstimatedApySeries,
-  applyYvUsdLockedOracleAprSeries,
+  applyYvUsdLockedOracleApySeries,
   buildApyDataFromPpsSeries,
   buildUnderlyingLockedPpsSeries,
   mergeYvUsdPpsSeries,
@@ -20,6 +20,7 @@ import type {
   tvlChartData,
   yvUsdChartData
 } from '@/types/dataTypes'
+import type { VaultFeeValues } from '@/types/vaultTypes'
 
 const ESTIMATED_APY_LABEL = 'yvusd-estimated-apr'
 const LOCKED_ESTIMATED_APY_LABEL = 'locked-yvusd-estimated-apr'
@@ -47,6 +48,7 @@ interface UseYvUsdChartDataProps {
   unlockedAprApyData: aprApyChartData | null
   unlockedTvlData: tvlChartData | null
   unlockedPpsData: ppsChartData | null
+  lockedFees: VaultFeeValues | null
 }
 
 interface UseYvUsdChartDataReturn {
@@ -65,7 +67,8 @@ export function useYvUsdChartData({
   enabled,
   unlockedAprApyData,
   unlockedTvlData,
-  unlockedPpsData
+  unlockedPpsData,
+  lockedFees
 }: UseYvUsdChartDataProps): UseYvUsdChartDataReturn {
   const { data: unlockedEstimatedApyData } = useEstimatedApyTimeseries(
     YVUSD_UNLOCKED_ADDRESS,
@@ -115,7 +118,7 @@ export function useYvUsdChartData({
     segment: 'apr-oracle',
     chainId: YVUSD_CHAIN_ID,
     address: YVUSD_LOCKED_ADDRESS,
-    components: ['apr'],
+    components: ['netApy', 'netApr', 'apr'],
     enabled
   })
 
@@ -150,10 +153,11 @@ export function useYvUsdChartData({
       unlockedAprApyData,
       unlockedEstimatedApyData?.timeseries ?? []
     )
-    const lockedChartApyData = applyYvUsdLockedOracleAprSeries(
+    const lockedChartApyData = applyYvUsdLockedOracleApySeries(
       applyYvUsdEstimatedApySeries(lockedApySeries, lockedEstimatedApySeries),
       unlockedChartApyData,
-      lockedOracleAprData?.timeseries ?? []
+      lockedOracleAprData?.timeseries ?? [],
+      lockedFees
     )
 
     return {
@@ -179,6 +183,7 @@ export function useYvUsdChartData({
     lockedTvlData,
     lockedPpsData,
     lockedOracleAprData,
+    lockedFees,
     unlockedAprApyData,
     unlockedTvlData,
     unlockedPpsData
