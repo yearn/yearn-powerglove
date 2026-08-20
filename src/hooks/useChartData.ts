@@ -66,6 +66,7 @@ interface UseChartDataProps {
   aprOracleAprData?: TimeseriesQueryResult | undefined
   tvlData: TimeseriesQueryResult | undefined
   ppsData: TimeseriesQueryResult | undefined
+  includeYBoldEstimatedApy?: boolean
   isLoading: boolean
   hasErrors: boolean
 }
@@ -86,6 +87,7 @@ export function useChartData({
   aprOracleAprData,
   tvlData,
   ppsData,
+  includeYBoldEstimatedApy = false,
   isLoading,
   hasErrors
 }: UseChartDataProps): UseChartDataReturn {
@@ -150,21 +152,39 @@ export function useChartData({
       time: Number(dataPoint.time)
     }))
 
-    const transformedAprApyData: aprApyChartData = aprFilled.map((aprDataPoint, index) => ({
-      date: formatUnixTimestamp(aprDataPoint.time),
-      sevenDayApy: apy7DayFilled[index]?.value !== null ? apy7DayFilled[index]!.value! * 100 : null,
-      thirtyDayApy: apy30DayFilled[index]?.value !== null ? apy30DayFilled[index]!.value! * 100 : null,
-      derivedApr: aprDataPoint.value !== null ? aprDataPoint.value * 100 : null,
-      derivedApy: aprAsApyFilled[index]?.value !== null ? aprAsApyFilled[index]!.value! * 100 : null,
-      oracleApr: oracleAprFilled[index]?.value !== null ? oracleAprFilled[index]!.value! * 100 : null,
-      oracleApy30dAvg:
-        oracleApr30dAvgValues[index] !== null ? convertAprToApy(oracleApr30dAvgValues[index]!) * 100 : null
-    }))
+    const transformedAprApyData: aprApyChartData = aprFilled.map((aprDataPoint, index) => {
+      const sevenDayPpsApy = apy7DayFilled[index]?.value ?? null
+      const aprOracle = oracleAprFilled[index]?.value ?? null
+
+      return {
+        date: formatUnixTimestamp(aprDataPoint.time),
+        sevenDayApy: sevenDayPpsApy !== null ? sevenDayPpsApy * 100 : null,
+        thirtyDayApy: apy30DayFilled[index]?.value !== null ? apy30DayFilled[index]!.value! * 100 : null,
+        derivedApr: aprDataPoint.value !== null ? aprDataPoint.value * 100 : null,
+        derivedApy: aprAsApyFilled[index]?.value !== null ? aprAsApyFilled[index]!.value! * 100 : null,
+        oracleApr: aprOracle !== null ? aprOracle * 100 : null,
+        oracleApy30dAvg:
+          oracleApr30dAvgValues[index] !== null ? convertAprToApy(oracleApr30dAvgValues[index]!) * 100 : null,
+        yBoldEstimatedApy:
+          includeYBoldEstimatedApy && sevenDayPpsApy !== null && aprOracle !== null
+            ? Math.max(sevenDayPpsApy, aprOracle) * 100
+            : null
+      }
+    })
 
     return {
       transformedAprApyData,
       transformedTvlData,
       transformedPpsData
     }
-  }, [apyWeeklyData, apyMonthlyData, aprOracleAprData, tvlData, ppsData, isLoading, hasErrors])
+  }, [
+    apyWeeklyData,
+    apyMonthlyData,
+    aprOracleAprData,
+    tvlData,
+    ppsData,
+    includeYBoldEstimatedApy,
+    isLoading,
+    hasErrors
+  ])
 }

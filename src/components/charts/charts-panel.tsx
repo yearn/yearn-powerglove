@@ -31,6 +31,8 @@ type ChartData = {
   aprApyData: aprApyChartData | null
   tvlData: tvlChartData | null
   ppsData: ppsChartData | null
+  isV3Vault?: boolean
+  isYBold?: boolean
   isLoading?: boolean
   hasErrors?: boolean
   yvUsdChartData?: {
@@ -65,12 +67,60 @@ const chartTabs: Array<{
 const timeframes = [
   { label: '30 Days', mobileLabel: '30D', value: '30d' },
   { label: '90 Days', mobileLabel: '90D', value: '90d' },
+  { label: '180 Days', mobileLabel: '180D', value: '180d' },
   { label: '1 Year', mobileLabel: '1Y', value: '1y' },
   { label: 'All Time', mobileLabel: 'All', value: 'all' }
 ] as const
 
 type Timeframe = (typeof timeframes)[number]
 type YvUsdSeriesScope = 'primary' | 'both' | 'comparison'
+
+type ApySeriesAvailability = {
+  hasEstimatedApy: boolean
+  hasEstimatedApy30dAvg: boolean
+  hasOracleApr: boolean
+  hasYBoldEstimatedApy: boolean
+}
+
+export function buildDefaultApyVisibleSeries({
+  isV3Vault,
+  isYBold,
+  hasEstimatedApy,
+  hasEstimatedApy30dAvg,
+  hasOracleApr,
+  hasYBoldEstimatedApy
+}: ApySeriesAvailability & { isV3Vault: boolean; isYBold: boolean }): APYVisibleSeries {
+  if (!isV3Vault) {
+    return buildApyVisibleSeries({
+      derivedApy: false,
+      sevenDayApy: isYBold,
+      thirtyDayApy: true,
+      ppsPeriodApy: true,
+      estimatedApy: false,
+      estimatedApy30dAvg: true,
+      yBoldEstimatedApy: true,
+      oracleApr: isYBold,
+      oracleApy30dAvg: true
+    })
+  }
+
+  const useYBoldEstimate = hasYBoldEstimatedApy
+  const useEstimate = !useYBoldEstimate && hasEstimatedApy
+  const useAveragedEstimate = !useYBoldEstimate && !useEstimate && hasEstimatedApy30dAvg
+  const useOracleFallback = !useYBoldEstimate && !useEstimate && !useAveragedEstimate && hasOracleApr
+
+  return buildApyVisibleSeries({
+    derivedApy: false,
+    sevenDayApy: false,
+    thirtyDayApy: true,
+    ppsPeriodApy: true,
+    estimatedApy: useEstimate,
+    estimatedApy30dAvg: useAveragedEstimate,
+    yBoldEstimatedApy: useYBoldEstimate,
+    oracleApr: useOracleFallback,
+    oracleApy30dAvg: false
+  })
+}
 
 const yvUsdScopes: Array<{ value: YvUsdSeriesScope; label: string }> = [
   { value: 'primary', label: 'Unlocked' },
@@ -108,20 +158,18 @@ function YvUsdScopeControl({
 export function ChartsPanel(data: ChartData) {
   const isMobile = useIsMobile()
   const [activeTab, setActiveTab] = useState<ChartTab>('historical-apy')
-  const { aprApyData, tvlData, ppsData, yvUsdChartData, isLoading = false, hasErrors = false } = data
-  const [timeframe, setTimeframe] = useState<Timeframe>(timeframes[3])
-  const [apyVisibleSeries, setApyVisibleSeries] = useState<APYVisibleSeries>(() =>
-    buildApyVisibleSeries({
-      derivedApy: false,
-      sevenDayApy: false,
-      thirtyDayApy: true,
-      ppsPeriodApy: true,
-      estimatedApy: false,
-      estimatedApy30dAvg: true,
-      oracleApr: false,
-      oracleApy30dAvg: true
-    })
-  )
+  const {
+    aprApyData,
+    tvlData,
+    ppsData,
+    isV3Vault = false,
+    isYBold = false,
+    yvUsdChartData,
+    isLoading = false,
+    hasErrors = false
+  } = data
+  const [timeframe, setTimeframe] = useState<Timeframe>(timeframes[timeframes.length - 1])
+  const [apyVisibleSeries, setApyVisibleSeries] = useState<APYVisibleSeries | null>(null)
   const [yvUsdSeriesScope, setYvUsdSeriesScope] = useState<YvUsdSeriesScope>('both')
   const [isTimeframeDialogOpen, setIsTimeframeDialogOpen] = useState(false)
   const [isDataDialogOpen, setIsDataDialogOpen] = useState(false)
@@ -148,34 +196,59 @@ export function ChartsPanel(data: ChartData) {
   const activeAprApyData = yvUsdChartData?.unlockedAprApyData ?? aprApyData
   const filteredAprApyData = activeAprApyData.slice(-getTimeframeLimit(timeframe.value))
   const hasYvUsdChartData = Boolean(yvUsdChartData)
-  const ppsPeriodApy = hasYvUsdChartData ? null : calculatePpsPeriodApy(ppsData, timeframe.value)
+  const ppsPeriodApy = calculatePpsPeriodApy(ppsData, timeframe.value)
+  const lockedPpsPeriodApy = yvUsdChartData
+    ? calculatePpsPeriodApy(yvUsdChartData.lockedPpsData, timeframe.value)
+    : null
   const hasPpsPeriodApy = typeof ppsPeriodApy === 'number'
   const hasOracleApr = filteredAprApyData.some((point) => typeof point.oracleApr === 'number')
   const hasOracleApy30dAvg = filteredAprApyData.some((point) => typeof point.oracleApy30dAvg === 'number')
+  const hasYBoldEstimatedApy = filteredAprApyData.some((point) => typeof point.yBoldEstimatedApy === 'number')
   const hasEstimatedApy =
     filteredAprApyData.some((point) => typeof point.estimatedApy === 'number') ||
     Boolean(yvUsdChartData?.lockedAprApyData.some((point) => typeof point.estimatedApy === 'number'))
   const hasEstimatedApy30dAvg =
     filteredAprApyData.some((point) => typeof point.estimatedApy30dAvg === 'number') ||
     Boolean(yvUsdChartData?.lockedAprApyData.some((point) => typeof point.estimatedApy30dAvg === 'number'))
+  const defaultApyVisibleSeries = buildDefaultApyVisibleSeries({
+    isV3Vault,
+    isYBold,
+    hasEstimatedApy,
+    hasEstimatedApy30dAvg,
+    hasOracleApr,
+    hasYBoldEstimatedApy
+  })
+  const resolvedApyVisibleSeries = apyVisibleSeries ?? defaultApyVisibleSeries
   const availableApySeries = getAvailableApySeries({
     hasPpsPeriodApy,
     hasOracleApr,
     hasOracleApy30dAvg,
+    hasYBoldEstimatedApy,
     hasEstimatedApy,
     hasEstimatedApy30dAvg
   })
-  const selectedApySeriesCount = availableApySeries.filter((seriesKey) => apyVisibleSeries[seriesKey]).length
+  const selectedApySeriesCount = availableApySeries.filter((seriesKey) => resolvedApyVisibleSeries[seriesKey]).length
+  const v3EstimateDescription = hasYBoldEstimatedApy
+    ? 'the max(7-day PPS APY, APR Oracle) estimate'
+    : hasEstimatedApy || hasEstimatedApy30dAvg
+      ? 'estimated APY'
+      : hasOracleApr
+        ? 'Oracle APR'
+        : null
 
   const chartInfo = {
     'historical-apy': {
       title: hasYvUsdChartData ? 'yvUSD Performance' : 'Vault Performance',
       description: hasYvUsdChartData
-        ? `Historical and estimated APY for unlocked and locked yvUSD over ${timeframe.label}.`
-        : `1-Day, 7-Day, and 30-Day APYs over ${timeframe.label}.`,
+        ? `30-day PPS APY, Period APY, estimated APY${hasOracleApr ? ', and Oracle APR' : ''} for unlocked and locked yvUSD over ${timeframe.label}.`
+        : isV3Vault
+          ? `30-day PPS APY and Period APY${v3EstimateDescription ? ` with ${v3EstimateDescription}` : ''} over ${timeframe.label}.`
+          : `1-Day, 7-Day, and 30-Day APYs over ${timeframe.label}.`,
       mobileDescription: hasYvUsdChartData
-        ? `Compare historical and estimated APY over ${timeframe.mobileLabel}.`
-        : `Compare APY trends over ${timeframe.mobileLabel}.`
+        ? `Compare 30-day, period, estimated APY${hasOracleApr ? ', and Oracle APR' : ''} over ${timeframe.mobileLabel}.`
+        : isV3Vault
+          ? `Compare 30-day and period APY${v3EstimateDescription ? ` with ${v3EstimateDescription}` : ''} over ${timeframe.mobileLabel}.`
+          : `Compare APY trends over ${timeframe.mobileLabel}.`
     },
     'historical-pps': {
       title: hasYvUsdChartData ? 'yvUSD Share Growth' : 'Vault Share Growth',
@@ -220,10 +293,12 @@ export function ChartsPanel(data: ChartData) {
                   primaryLabel="Unlocked yvUSD"
                   comparisonLabel="Locked yvUSD"
                   timeframe={timeframe.value}
-                  visibleSeries={apyVisibleSeries}
+                  visibleSeries={resolvedApyVisibleSeries}
                   onVisibleSeriesChange={setApyVisibleSeries}
                   hideSeriesControls={true}
                   seriesScope={yvUsdSeriesScope}
+                  ppsPeriodApy={ppsPeriodApy}
+                  lockedPpsPeriodApy={lockedPpsPeriodApy}
                 />
               </ChartErrorBoundary>
             </FixedHeightChartContainer>
@@ -236,7 +311,7 @@ export function ChartsPanel(data: ChartData) {
               <APYChart
                 chartData={aprApyData}
                 timeframe={timeframe.value}
-                visibleSeries={apyVisibleSeries}
+                visibleSeries={resolvedApyVisibleSeries}
                 onVisibleSeriesChange={setApyVisibleSeries}
                 hideSeriesControls={true}
                 ppsPeriodApy={ppsPeriodApy}
@@ -417,11 +492,12 @@ export function ChartsPanel(data: ChartData) {
               <DialogDescription>Choose which APY series are visible on the chart.</DialogDescription>
             </DialogHeader>
             <APYSeriesSelector
-              visibleSeries={apyVisibleSeries}
+              visibleSeries={resolvedApyVisibleSeries}
               onVisibleSeriesChange={setApyVisibleSeries}
               hasPpsPeriodApy={hasPpsPeriodApy}
               hasOracleApr={hasOracleApr}
               hasOracleApy30dAvg={hasOracleApy30dAvg}
+              hasYBoldEstimatedApy={hasYBoldEstimatedApy}
               hasEstimatedApy={hasEstimatedApy}
               hasEstimatedApy30dAvg={hasEstimatedApy30dAvg}
               className="grid gap-2 border-none bg-transparent p-0"
@@ -435,7 +511,7 @@ export function ChartsPanel(data: ChartData) {
   )
 
   const desktopChartControls = (
-    <div className="grid grid-cols-4 gap-2 sm:flex sm:flex-wrap">
+    <div className="grid grid-cols-5 gap-2 sm:flex sm:flex-wrap">
       {timeframes.map((tf) => (
         <button
           key={tf.value}
@@ -454,11 +530,12 @@ export function ChartsPanel(data: ChartData) {
   const desktopApySeriesControls = (
     <div className="flex justify-center">
       <APYSeriesSelector
-        visibleSeries={apyVisibleSeries}
+        visibleSeries={resolvedApyVisibleSeries}
         onVisibleSeriesChange={setApyVisibleSeries}
         hasPpsPeriodApy={hasPpsPeriodApy}
         hasOracleApr={hasOracleApr}
         hasOracleApy30dAvg={hasOracleApy30dAvg}
+        hasYBoldEstimatedApy={hasYBoldEstimatedApy}
         hasEstimatedApy={hasEstimatedApy}
         hasEstimatedApy30dAvg={hasEstimatedApy30dAvg}
         compact={true}
