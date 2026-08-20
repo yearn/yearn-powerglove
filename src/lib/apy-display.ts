@@ -27,8 +27,9 @@ export const buildPairedApyDisplay = (
 }
 
 export const getEstimatedApySourceLabel = (source: EstimatedApySource): string => {
-  if (source === 'oracle') return 'Oracle'
-  if (source === '7day-hist') return 'max(7day, oracle)'
+  if (source === 'oracle') return 'Oracle netAPY'
+  if (source === '7day-hist') return '7-day PPS'
+  if (source === 'est-ybold') return 'max(7day, oracle)'
   if (source === 'unknown') return 'Unknown'
   return source
 }

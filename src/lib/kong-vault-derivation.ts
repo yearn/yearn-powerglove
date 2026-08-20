@@ -1,5 +1,6 @@
 import { getAddress, isAddress } from 'viem'
 import type { ChainId } from '@/constants/chains'
+import { resolveOracleNetApy } from '@/lib/oracle-apy'
 import type {
   KongNullableNumberish,
   KongVaultListItem,
@@ -193,7 +194,8 @@ const ESTIMATED_APY_SOURCE_BY_TYPE: Record<string, EstimatedApySource> = {
 }
 
 export const resolveEstimatedApy = (
-  performance?: KongVaultPerformance | null
+  performance?: KongVaultPerformance | null,
+  fees: { managementFeeBps?: number; performanceFeeBps?: number } = {}
 ): { value: number | null; source: EstimatedApySource | null } => {
   const estimatedApy = toNumberOrNull(performance?.estimated?.apy)
   if (estimatedApy !== null) {
@@ -204,9 +206,15 @@ export const resolveEstimatedApy = (
     }
   }
 
-  const oracleApy = toNumberOrNull(performance?.oracle?.apy)
-  if (oracleApy !== null) {
-    return { value: oracleApy, source: 'oracle' }
+  const oracleNetApy = resolveOracleNetApy({
+    netApy: toNumberOrNull(performance?.oracle?.netAPY),
+    netApr: toNumberOrNull(performance?.oracle?.netAPR),
+    grossApr: toNumberOrNull(performance?.oracle?.apr),
+    managementFeeBps: fees.managementFeeBps,
+    performanceFeeBps: fees.performanceFeeBps
+  })
+  if (oracleNetApy !== null) {
+    return { value: oracleNetApy, source: 'oracle' }
   }
 
   return { value: null, source: null }
@@ -438,7 +446,10 @@ export const mapKongListItemToVault = (item: KongVaultListItem): Vault => {
   const historical = performance?.historical
   const managementFee = normalizeFeeToBps(item.fees?.managementFee)
   const performanceFee = normalizeFeeToBps(item.fees?.performanceFee)
-  const estimatedApy = resolveEstimatedApy(performance)
+  const estimatedApy = resolveEstimatedApy(performance, {
+    managementFeeBps: managementFee,
+    performanceFeeBps: performanceFee
+  })
 
   return {
     address: normalizeAddress(item.address),
@@ -482,6 +493,13 @@ export const mapKongListItemToVault = (item: KongVaultListItem): Vault => {
     managementFee,
     performanceFee,
     forwardApyNet: estimatedApy.value,
+    oracleNetApy: resolveOracleNetApy({
+      netApy: toNumberOrNull(performance?.oracle?.netAPY),
+      netApr: toNumberOrNull(performance?.oracle?.netAPR),
+      grossApr: toNumberOrNull(performance?.oracle?.apr),
+      managementFeeBps: managementFee,
+      performanceFeeBps: performanceFee
+    }),
     estimatedApySource: estimatedApy.source,
     historicalWeeklyApy: toNumberOrNull(historical?.weeklyNet),
     historicalMonthlyApy: toNumberOrNull(historical?.monthlyNet),
@@ -509,7 +527,10 @@ export const mapKongSnapshotToVaultExtended = (
     return acc
   }, {})
 
-  const estimatedApy = resolveEstimatedApy(performance)
+  const estimatedApy = resolveEstimatedApy(performance, {
+    managementFeeBps: managementFee,
+    performanceFeeBps: performanceFee
+  })
   const hasSnapshotPerformance = performance !== null && performance !== undefined
   const forwardApyNet = hasSnapshotPerformance ? estimatedApy.value : (baseVault?.forwardApyNet ?? null)
   const estimatedApySource = hasSnapshotPerformance ? estimatedApy.source : (baseVault?.estimatedApySource ?? null)
@@ -564,6 +585,16 @@ export const mapKongSnapshotToVaultExtended = (
     managementFee,
     performanceFee,
     forwardApyNet,
+    oracleNetApy:
+      (hasSnapshotPerformance
+        ? resolveOracleNetApy({
+            netApy: toNumberOrNull(performance?.oracle?.netAPY),
+            netApr: toNumberOrNull(performance?.oracle?.netAPR),
+            grossApr: toNumberOrNull(performance?.oracle?.apr),
+            managementFeeBps: managementFee,
+            performanceFeeBps: performanceFee
+          })
+        : baseVault?.oracleNetApy) ?? null,
     estimatedApySource,
     historicalWeeklyApy,
     historicalMonthlyApy,

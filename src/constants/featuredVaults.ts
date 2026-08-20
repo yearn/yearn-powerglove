@@ -1,6 +1,6 @@
 import type { ChainId } from '@/constants/chains'
 import { getYvUsdApiVault, type YvUsdAprServiceResponse } from '@/lib/yvusd-apr-client'
-import type { Vault } from '@/types/vaultTypes'
+import type { EstimatedApySource, Vault } from '@/types/vaultTypes'
 
 export const YBOLD_CHAIN_ID = 1 as ChainId
 export const YBOLD_VAULT_ADDRESS = '0x9F4330700a36B29952869fac9b33f45EEdd8A3d8'
@@ -21,6 +21,24 @@ const isSameVault = (vault: Pick<Vault, 'chainId' | 'address'>, chainId: ChainId
 export const getYvUsdSnapshotEstimatedApy = (
   vault: Pick<Vault, 'estimatedApySource' | 'forwardApyNet'> | null | undefined
 ): number | null => (vault?.estimatedApySource === 'est-yvusd' ? (vault.forwardApyNet ?? null) : null)
+
+export const getYBoldEstimatedApy = (
+  vault: Pick<Vault, 'historicalWeeklyApy' | 'oracleNetApy'>
+): { value: number | null; source: EstimatedApySource | null } => {
+  const weeklyApy = vault.historicalWeeklyApy ?? null
+  const oracleApy = vault.oracleNetApy ?? null
+
+  if (weeklyApy !== null && oracleApy !== null) {
+    return { value: Math.max(weeklyApy, oracleApy), source: 'est-ybold' }
+  }
+  if (weeklyApy !== null) {
+    return { value: weeklyApy, source: '7day-hist' }
+  }
+  if (oracleApy !== null) {
+    return { value: oracleApy, source: 'oracle' }
+  }
+  return { value: null, source: null }
+}
 
 export const isYBoldAddress = (chainId: ChainId, address?: string) =>
   chainId === YBOLD_CHAIN_ID &&
@@ -56,8 +74,7 @@ export const getVaultEventAddresses = (chainId: ChainId, address: string): strin
 }
 
 const mergeYBoldVault = (baseVault: Vault, stakedVault: Vault): Vault => {
-  const weeklyApy = stakedVault.historicalWeeklyApy ?? null
-  const oracleApy = stakedVault.estimatedApySource === 'oracle' ? (stakedVault.forwardApyNet ?? null) : null
+  const estimatedApy = getYBoldEstimatedApy(stakedVault)
 
   return {
     ...baseVault,
@@ -69,9 +86,9 @@ const mergeYBoldVault = (baseVault: Vault, stakedVault: Vault): Vault => {
       performanceFee: stakedVault.fees?.performanceFee ?? baseVault.fees.performanceFee
     },
     performanceFee: stakedVault.performanceFee ?? baseVault.performanceFee,
-    forwardApyNet: weeklyApy ?? oracleApy,
-    estimatedApySource: weeklyApy !== null ? '7day-hist' : oracleApy !== null ? 'oracle' : null,
-    historicalWeeklyApy: weeklyApy,
+    forwardApyNet: estimatedApy.value,
+    estimatedApySource: estimatedApy.source,
+    historicalWeeklyApy: stakedVault.historicalWeeklyApy ?? null,
     historicalMonthlyApy: stakedVault.historicalMonthlyApy ?? null,
     strategyForwardAprs: stakedVault.strategyForwardAprs ?? baseVault.strategyForwardAprs
   }

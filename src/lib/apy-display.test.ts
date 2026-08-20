@@ -17,8 +17,9 @@ describe('APY display helpers', () => {
   })
 
   it('uses the approved source labels', () => {
-    expect(getEstimatedApySourceLabel('oracle')).toBe('Oracle')
-    expect(getEstimatedApySourceLabel('7day-hist')).toBe('max(7day, oracle)')
+    expect(getEstimatedApySourceLabel('oracle')).toBe('Oracle netAPY')
+    expect(getEstimatedApySourceLabel('7day-hist')).toBe('7-day PPS')
+    expect(getEstimatedApySourceLabel('est-ybold')).toBe('max(7day, oracle)')
     expect(getEstimatedApySourceLabel('est-crv')).toBe('est-crv')
     expect(getEstimatedApySourceLabel('unknown')).toBe('Unknown')
   })
