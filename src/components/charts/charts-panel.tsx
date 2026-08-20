@@ -228,27 +228,11 @@ export function ChartsPanel(data: ChartData) {
     hasEstimatedApy30dAvg
   })
   const selectedApySeriesCount = availableApySeries.filter((seriesKey) => resolvedApyVisibleSeries[seriesKey]).length
-  const v3EstimateDescription = hasYBoldEstimatedApy
-    ? 'the max(7-day PPS APY, Oracle net APY) estimate'
-    : hasEstimatedApy || hasEstimatedApy30dAvg
-      ? 'estimated APY'
-      : hasOracleApy
-        ? 'Oracle APY'
-        : null
-
   const chartInfo = {
     'historical-apy': {
       title: hasYvUsdChartData ? 'yvUSD Performance' : 'Vault Performance',
-      description: hasYvUsdChartData
-        ? `30-day PPS APY, Period APY, estimated APY${hasOracleApy ? ', and Oracle APY' : ''} for unlocked and locked yvUSD over ${timeframe.label}.`
-        : isV3Vault
-          ? `30-day PPS APY and Period APY${v3EstimateDescription ? ` with ${v3EstimateDescription}` : ''} over ${timeframe.label}.`
-          : `1-Day, 7-Day, and 30-Day APYs over ${timeframe.label}.`,
-      mobileDescription: hasYvUsdChartData
-        ? `Compare 30-day, period, estimated APY${hasOracleApy ? ', and Oracle APY' : ''} over ${timeframe.mobileLabel}.`
-        : isV3Vault
-          ? `Compare 30-day and period APY${v3EstimateDescription ? ` with ${v3EstimateDescription}` : ''} over ${timeframe.mobileLabel}.`
-          : `Compare APY trends over ${timeframe.mobileLabel}.`
+      description: `Historical return over ${timeframe.label}`,
+      mobileDescription: `Historical return over ${timeframe.label}`
     },
     'historical-pps': {
       title: hasYvUsdChartData ? 'yvUSD Share Growth' : 'Vault Share Growth',

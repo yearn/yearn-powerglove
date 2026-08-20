@@ -192,8 +192,10 @@ describe('ChartsPanel', () => {
 
     const standardVault = render(<ChartsPanel aprApyData={aprApyData} ppsData={ppsData} tvlData={tvlData} />)
     expect(standardVault.getByLabelText(/period apy/i)).toBeTruthy()
-    expect(standardVault.getByRole('button', { name: '180 Days' })).toBeTruthy()
-    expect(standardVault.getByText(/over All Time\.$/)).toBeTruthy()
+    expect(standardVault.getByText('Historical return over All Time')).toBeTruthy()
+
+    fireEvent.click(standardVault.getByRole('button', { name: '180 Days' }))
+    expect(standardVault.getByText('Historical return over 180 Days')).toBeTruthy()
   })
 
   it('defaults V3 charts to 30-day, period, and the available estimate', () => {
@@ -217,6 +219,24 @@ describe('ChartsPanel', () => {
         'path[stroke="var(--color-yBoldEstimatedApy)"][stroke-width="1.5"][stroke-dasharray="12 4"]'
       )
     ).toBeTruthy()
+  })
+
+  it('explains APY selectors on hover', async () => {
+    const yBoldAprApyData = aprApyData.map((point) => ({
+      ...point,
+      oracleApy: 8,
+      yBoldEstimatedApy: 9
+    }))
+    const view = render(
+      <ChartsPanel aprApyData={yBoldAprApyData} ppsData={ppsData} tvlData={tvlData} isV3Vault isYBold />
+    )
+    const estimatedControl = view.container.querySelector('#desktop-chart-toggle-yBoldEstimatedApy-compact')
+    const tooltipTrigger = estimatedControl?.closest('[data-state="closed"]')
+
+    expect(tooltipTrigger).toBeTruthy()
+    fireEvent.pointerMove(tooltipTrigger!, { pointerType: 'mouse' })
+
+    expect(await view.findAllByText('The larger of the 7-day PPS APY and fee-adjusted Oracle APY.')).not.toHaveLength(0)
   })
 
   it('falls back to Oracle APY when a V3 estimate is unavailable', () => {
