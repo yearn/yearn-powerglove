@@ -168,6 +168,36 @@ export const applyYvUsdEstimatedApySeries = (
   }))
 }
 
+export const applyYvUsdLockedOracleAprSeries = (
+  lockedApyData: aprApyChartData,
+  unlockedApyData: aprApyChartData,
+  lockedOracleAprData: TimeseriesDataPoint[]
+): aprApyChartData => {
+  const unlockedOracleAprByDate = new Map(unlockedApyData.map((point) => [point.date, point.oracleApr ?? null]))
+  const lockedOracleAprByDate = new Map(
+    lockedOracleAprData.map((point) => [
+      formatUnixTimestamp(point.time),
+      point.value !== null ? point.value * 100 : null
+    ])
+  )
+
+  return lockedApyData.map((point) => {
+    const unlockedOracleApr = unlockedOracleAprByDate.get(point.date)
+    const lockedOracleApr = lockedOracleAprByDate.get(point.date)
+
+    return {
+      ...point,
+      oracleApr:
+        unlockedOracleApr !== null &&
+        unlockedOracleApr !== undefined &&
+        lockedOracleApr !== null &&
+        lockedOracleApr !== undefined
+          ? unlockedOracleApr + lockedOracleApr
+          : null
+    }
+  })
+}
+
 export const mergeYvUsdPpsSeries = (
   unlockedPpsData: ppsChartData | null,
   lockedUnderlyingPpsData: ppsChartData

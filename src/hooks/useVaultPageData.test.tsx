@@ -1,7 +1,12 @@
 import { renderHook } from '@testing-library/react'
 import { getAddress } from 'viem'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { YBOLD_STAKING_ADDRESS, YBOLD_VAULT_ADDRESS, YVUSD_UNLOCKED_ADDRESS } from '@/constants/featuredVaults'
+import {
+  YBOLD_STAKING_ADDRESS,
+  YBOLD_VAULT_ADDRESS,
+  YVUSD_LOCKED_ADDRESS,
+  YVUSD_UNLOCKED_ADDRESS
+} from '@/constants/featuredVaults'
 import type { Vault } from '@/types/vaultTypes'
 import { useVaultPageData } from './useVaultPageData'
 
@@ -132,11 +137,71 @@ describe('useVaultPageData', () => {
     )
   })
 
-  it('does not request the generic APR oracle timeseries for yvUSD', () => {
+  it('requests the APR Oracle chart series for yvUSD', () => {
+    useVaultsMock.mockReturnValue({ vaults: [makeVault(YVUSD_UNLOCKED_ADDRESS)] })
+
     renderHook(() => useVaultPageData({ vaultAddress: YVUSD_UNLOCKED_ADDRESS, vaultChainId: 1 }))
 
     expect(useRestTimeseriesMock).toHaveBeenCalledWith(
-      expect.objectContaining({ enabled: false, segment: 'apr-oracle' })
+      expect.objectContaining({ enabled: true, segment: 'apr-oracle', components: ['apr'] })
+    )
+  })
+
+  it('keeps paired yvUSD snapshot estimates when the APR service is unavailable', () => {
+    const unlockedVault = {
+      ...makeVault(YVUSD_UNLOCKED_ADDRESS),
+      forwardApyNet: 0.03,
+      estimatedApySource: 'est-yvusd' as const,
+      strategyDetails: []
+    }
+    const lockedVault = {
+      ...makeVault(YVUSD_LOCKED_ADDRESS),
+      forwardApyNet: 0.07,
+      estimatedApySource: 'est-yvusd' as const,
+      strategyDetails: []
+    }
+    useVaultsMock.mockReturnValue({ vaults: [unlockedVault] })
+    useQueryMock.mockImplementation((options: { queryKey?: unknown[] }) => {
+      const queryKey = options.queryKey ?? []
+      const address = queryKey[4]
+      if (queryKey[0] === 'yvusd') {
+        return { data: undefined, isLoading: false, error: new Error('service unavailable') }
+      }
+      if (address === YVUSD_UNLOCKED_ADDRESS.toLowerCase()) {
+        return { data: { address: YVUSD_UNLOCKED_ADDRESS }, isLoading: false, error: null }
+      }
+      if (address === lockedVault.address.toLowerCase()) {
+        return { data: { address: lockedVault.address }, isLoading: false, error: null }
+      }
+      return { data: null, isLoading: false, error: null }
+    })
+    kongMocks.mapKongSnapshotToVaultExtended.mockImplementation((snapshot: { address: string }) =>
+      snapshot.address.toLowerCase() === lockedVault.address.toLowerCase() ? lockedVault : unlockedVault
+    )
+
+    const { result } = renderHook(() => useVaultPageData({ vaultAddress: YVUSD_UNLOCKED_ADDRESS, vaultChainId: 1 }))
+
+    expect(result.current.vaultDetails?.pairedEstimatedApy).toEqual({ locked: 0.07, unlocked: 0.03 })
+  })
+
+  it('keeps the basic Katana estimate while using only Oracle APR for chart history', () => {
+    const katanaVault: Vault = {
+      ...makeVault(OPEN_ADDRESS),
+      chainId: 747474,
+      forwardApyNet: 0.07,
+      estimatedApySource: 'est-katana'
+    }
+    useVaultsMock.mockReturnValue({ vaults: [katanaVault] })
+
+    const { result } = renderHook(() => useVaultPageData({ vaultAddress: OPEN_ADDRESS, vaultChainId: 747474 }))
+
+    expect(result.current.vaultDetails?.forwardApyNet).toBe(0.07)
+    expect(result.current.vaultDetails?.estimatedApySource).toBe('est-katana')
+    expect(useRestTimeseriesMock).toHaveBeenCalledWith(
+      expect.objectContaining({ enabled: true, segment: 'apr-oracle' })
+    )
+    expect(useQueryMock).not.toHaveBeenCalledWith(
+      expect.objectContaining({ queryKey: expect.arrayContaining(['katana-estimated-apr']) })
     )
   })
 

@@ -5,6 +5,7 @@ import { GET_VAULT_TIMESERIES } from '@/graphql/queries/timeseries'
 import { useRestTimeseries } from '@/hooks/useRestTimeseries'
 import {
   applyYvUsdEstimatedApySeries,
+  applyYvUsdLockedOracleAprSeries,
   buildApyDataFromPpsSeries,
   buildUnderlyingLockedPpsSeries,
   mergeYvUsdPpsSeries,
@@ -110,6 +111,14 @@ export function useYvUsdChartData({
     enabled
   })
 
+  const { data: lockedOracleAprData } = useRestTimeseries({
+    segment: 'apr-oracle',
+    chainId: YVUSD_CHAIN_ID,
+    address: YVUSD_LOCKED_ADDRESS,
+    components: ['apr'],
+    enabled
+  })
+
   return useMemo(() => {
     if (!enabled) {
       return {
@@ -137,14 +146,20 @@ export function useYvUsdChartData({
     const lockedEstimatedApySeries = lockedEstimatedApyData?.timeseries.length
       ? lockedEstimatedApyData.timeseries
       : (lockedEstimatedApyFallbackData?.timeseries ?? [])
+    const unlockedChartApyData = applyYvUsdEstimatedApySeries(
+      unlockedAprApyData,
+      unlockedEstimatedApyData?.timeseries ?? []
+    )
+    const lockedChartApyData = applyYvUsdLockedOracleAprSeries(
+      applyYvUsdEstimatedApySeries(lockedApySeries, lockedEstimatedApySeries),
+      unlockedChartApyData,
+      lockedOracleAprData?.timeseries ?? []
+    )
 
     return {
       yvUsdChartData: {
-        unlockedAprApyData: applyYvUsdEstimatedApySeries(
-          unlockedAprApyData,
-          unlockedEstimatedApyData?.timeseries ?? []
-        ),
-        lockedAprApyData: applyYvUsdEstimatedApySeries(lockedApySeries, lockedEstimatedApySeries),
+        unlockedAprApyData: unlockedChartApyData,
+        lockedAprApyData: lockedChartApyData,
         lockedPpsData: lockedUnderlyingPpsSeries,
         ppsData: mergeYvUsdPpsSeries(unlockedPpsData, lockedUnderlyingPpsSeries),
         tvlData: mergeYvUsdTvlSeries(unlockedTvlData, lockedTvlSeries)
@@ -163,6 +178,7 @@ export function useYvUsdChartData({
     lockedPpsError,
     lockedTvlData,
     lockedPpsData,
+    lockedOracleAprData,
     unlockedAprApyData,
     unlockedTvlData,
     unlockedPpsData

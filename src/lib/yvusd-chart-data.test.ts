@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   applyYvUsdEstimatedApySeries,
+  applyYvUsdLockedOracleAprSeries,
   buildApyDataFromPpsSeries,
   buildUnderlyingLockedPpsSeries,
   mergeYvUsdTvlSeries
@@ -44,6 +45,29 @@ describe('yvUSD chart data helpers', () => {
         estimatedApy: 6,
         estimatedApy30dAvg: 5.5
       }
+    ])
+  })
+
+  it('adds unlocked and locked-layer Oracle APR for the locked series', () => {
+    const lockedBase = [
+      { date: 'Jan 1, 2026', derivedApy: 4, derivedApr: 4, sevenDayApy: 4, thirtyDayApy: 4 },
+      { date: 'Jan 2, 2026', derivedApy: 5, derivedApr: 5, sevenDayApy: 5, thirtyDayApy: 5 }
+    ]
+    const unlocked = [
+      { ...lockedBase[0], oracleApr: 4.5 },
+      { ...lockedBase[1], oracleApr: null }
+    ]
+    const oraclePoint: TimeseriesDataPoint = {
+      label: 'apr-oracle',
+      component: 'apr',
+      period: '1 day',
+      time: '1767225600',
+      value: 0.045
+    }
+
+    expect(applyYvUsdLockedOracleAprSeries(lockedBase, unlocked, [oraclePoint])).toEqual([
+      { ...lockedBase[0], oracleApr: 9 },
+      { ...lockedBase[1], oracleApr: null }
     ])
   })
 

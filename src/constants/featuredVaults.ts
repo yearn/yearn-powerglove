@@ -18,6 +18,10 @@ const toAddressKey = (address: string) => address.toLowerCase()
 const isSameVault = (vault: Pick<Vault, 'chainId' | 'address'>, chainId: ChainId, address: string) =>
   vault.chainId === chainId && vault.address.toLowerCase() === toAddressKey(address)
 
+export const getYvUsdSnapshotEstimatedApy = (
+  vault: Pick<Vault, 'estimatedApySource' | 'forwardApyNet'> | null | undefined
+): number | null => (vault?.estimatedApySource === 'est-yvusd' ? (vault.forwardApyNet ?? null) : null)
+
 export const isYBoldAddress = (chainId: ChainId, address?: string) =>
   chainId === YBOLD_CHAIN_ID &&
   Boolean(address) &&
@@ -80,8 +84,8 @@ const normalizeYvUsdVault = (
 ): Vault => {
   const yvUsdVault = getYvUsdApiVault(aprData, YVUSD_UNLOCKED_ADDRESS)
   const lockedYvUsdVault = getYvUsdApiVault(aprData, YVUSD_LOCKED_ADDRESS)
-  const unlockedEstimatedApy = yvUsdVault?.apy ?? null
-  const lockedEstimatedApy = lockedYvUsdVault?.apy ?? null
+  const unlockedEstimatedApy = yvUsdVault?.apy ?? getYvUsdSnapshotEstimatedApy(vault)
+  const lockedEstimatedApy = lockedYvUsdVault?.apy ?? getYvUsdSnapshotEstimatedApy(lockedVault)
 
   return {
     ...vault,

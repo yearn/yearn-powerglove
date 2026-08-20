@@ -59,7 +59,9 @@ const renderYvUsdChartData = (enabled = true) =>
   renderHook(() =>
     useYvUsdChartData({
       enabled,
-      unlockedAprApyData: [{ date: DATE, sevenDayApy: 4, thirtyDayApy: 5, derivedApr: 6, derivedApy: 6.2 }],
+      unlockedAprApyData: [
+        { date: DATE, sevenDayApy: 4, thirtyDayApy: 5, derivedApr: 6, derivedApy: 6.2, oracleApr: 6 }
+      ],
       unlockedTvlData: [{ date: DATE, TVL: 1_000_000 }],
       unlockedPpsData: [{ date: DATE, PPS: 1, time: Number(TIME) }]
     })
@@ -88,6 +90,14 @@ describe('useYvUsdChartData', () => {
         'pps',
         {
           data: { timeseries: [point('pps', 1.1)] },
+          isLoading: false,
+          error: null
+        }
+      ],
+      [
+        'apr-oracle',
+        {
+          data: { timeseries: [point('apr-oracle', 0.07)] },
           isLoading: false,
           error: null
         }
@@ -141,6 +151,20 @@ describe('useYvUsdChartData', () => {
 
     expect(result.current.hasErrors).toBe(false)
     expect(result.current.yvUsdChartData?.lockedAprApyData[0]?.estimatedApy).toBe(8)
+  })
+
+  it('adds the locked Oracle APR as a separate chart series', () => {
+    const { result } = renderYvUsdChartData()
+
+    expect(result.current.yvUsdChartData?.lockedAprApyData[0]?.oracleApr).toBeCloseTo(13)
+    expect(mocks.useRestTimeseries).toHaveBeenCalledWith(
+      expect.objectContaining({
+        segment: 'apr-oracle',
+        address: YVUSD_LOCKED_ADDRESS,
+        components: ['apr'],
+        enabled: true
+      })
+    )
   })
 
   it('keeps the dedicated series when the shared-label fallback fails', () => {

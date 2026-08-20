@@ -124,4 +124,22 @@ describe('featured vault grouping', () => {
     expect(vaults[0].pairedEstimatedApy).toEqual({ locked: 0.07, unlocked: 0.03 })
     expect(vaults[0].estimatedApySource).toBe('est-yvusd')
   })
+
+  it('keeps yvUSD snapshot estimates when the APR service is unavailable', () => {
+    const unlockedVault: Vault = {
+      ...makeVault(YVUSD_UNLOCKED_ADDRESS, 'yvUSD', 0.02),
+      forwardApyNet: 0.03,
+      estimatedApySource: 'est-yvusd'
+    }
+    const lockedVault: Vault = {
+      ...makeVault(YVUSD_LOCKED_ADDRESS, 'Locked yvUSD', 0.08),
+      forwardApyNet: 0.07,
+      estimatedApySource: 'est-yvusd'
+    }
+
+    const vaults = combineFeaturedVaults([unlockedVault, lockedVault])
+
+    expect(vaults[0].pairedEstimatedApy).toEqual({ locked: 0.07, unlocked: 0.03 })
+    expect(vaults[0].estimatedApySource).toBe('est-yvusd')
+  })
 })

@@ -5,6 +5,7 @@ import { type ChainId, isSupportedChainId } from '@/constants/chains'
 import {
   getCanonicalVaultAddress,
   getYieldDataAddress,
+  getYvUsdSnapshotEstimatedApy,
   isYBoldAddress,
   isYvUsdAddress,
   YBOLD_CHAIN_ID,
@@ -129,8 +130,8 @@ const applyYvUsdAprData = (
 ): VaultExtended => {
   const yvUsdVault = getYvUsdApiVault(aprData, vault.address)
   const lockedYvUsdVault = getYvUsdApiVault(aprData, YVUSD_LOCKED_ADDRESS)
-  const unlockedEstimatedApy = yvUsdVault?.apy ?? null
-  const lockedEstimatedApy = lockedYvUsdVault?.apy ?? null
+  const unlockedEstimatedApy = yvUsdVault?.apy ?? getYvUsdSnapshotEstimatedApy(vault)
+  const lockedEstimatedApy = lockedYvUsdVault?.apy ?? getYvUsdSnapshotEstimatedApy(lockedVault)
 
   return {
     ...vault,
@@ -295,14 +296,14 @@ export function useVaultPageData({ vaultAddress, vaultChainId }: UseVaultPageDat
     enabled: canFetchVaultData
   })
 
-  // yvUSD uses its product-specific estimated APY series in useYvUsdChartData.
-  // Keep the generic APR-oracle overlay for every other v3 vault.
+  // yvUSD uses its product-specific estimated APY series in useYvUsdChartData,
+  // while APR Oracle remains a separate chart series for every v3 vault.
   const { data: aprOracleAprData } = useRestTimeseries({
     segment: 'apr-oracle',
     chainId: vaultChainId,
     address: yieldDataAddress,
     components: ['apr'],
-    enabled: canFetchVaultData && isV3Vault && !isYvUsd
+    enabled: canFetchVaultData && isV3Vault
   })
 
   // Fetch TVL data from REST API
@@ -332,13 +333,13 @@ export function useVaultPageData({ vaultAddress, vaultChainId }: UseVaultPageDat
 
   // Calculate combined loading states
   const chartsLoading = useMemo(() => {
-    // `aprOracleApyLoading` is intentionally excluded since it's optional overlay data.
+    // The Oracle overlay is optional and does not block the base chart.
     return apyWeeklyLoading || apyMonthlyLoading || tvlLoading || ppsLoading
   }, [apyWeeklyLoading, apyMonthlyLoading, tvlLoading, ppsLoading])
 
   // Calculate combined error states
   const chartsError = useMemo(() => {
-    // `aprOracleApyError` is intentionally excluded since it's optional overlay data.
+    // Oracle overlay failures do not hide the base chart.
     return !!apyWeeklyError || !!apyMonthlyError || !!tvlError || !!ppsError
   }, [apyWeeklyError, apyMonthlyError, tvlError, ppsError])
 
