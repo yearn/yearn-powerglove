@@ -4,7 +4,9 @@ import { getAddress, isAddress } from 'viem'
 import { type ChainId, isSupportedChainId } from '@/constants/chains'
 import {
   getCanonicalVaultAddress,
+  getYBoldEstimatedApy,
   getYieldDataAddress,
+  getYvUsdSnapshotEstimatedApy,
   isYBoldAddress,
   isYvUsdAddress,
   YBOLD_CHAIN_ID,
@@ -80,8 +82,7 @@ const toBaseVaultExtended = (vault: Vault | null): VaultExtended | null => {
 }
 
 const mergeYBoldDetails = (baseVault: VaultExtended, stakedVault: VaultExtended): VaultExtended => {
-  const weeklyApy = stakedVault.historicalWeeklyApy ?? null
-  const oracleApy = stakedVault.estimatedApySource === 'oracle' ? (stakedVault.forwardApyNet ?? null) : null
+  const estimatedApy = getYBoldEstimatedApy(stakedVault)
 
   return {
     ...baseVault,
@@ -93,9 +94,9 @@ const mergeYBoldDetails = (baseVault: VaultExtended, stakedVault: VaultExtended)
       performanceFee: stakedVault.fees?.performanceFee ?? baseVault.fees.performanceFee
     },
     performanceFee: stakedVault.performanceFee ?? baseVault.performanceFee,
-    forwardApyNet: weeklyApy ?? oracleApy,
-    estimatedApySource: weeklyApy !== null ? '7day-hist' : oracleApy !== null ? 'oracle' : null,
-    historicalWeeklyApy: weeklyApy,
+    forwardApyNet: estimatedApy.value,
+    estimatedApySource: estimatedApy.source,
+    historicalWeeklyApy: stakedVault.historicalWeeklyApy ?? null,
     historicalMonthlyApy: stakedVault.historicalMonthlyApy ?? null,
     strategyForwardAprs: stakedVault.strategyForwardAprs ?? baseVault.strategyForwardAprs
   }
@@ -129,8 +130,8 @@ const applyYvUsdAprData = (
 ): VaultExtended => {
   const yvUsdVault = getYvUsdApiVault(aprData, vault.address)
   const lockedYvUsdVault = getYvUsdApiVault(aprData, YVUSD_LOCKED_ADDRESS)
-  const unlockedEstimatedApy = yvUsdVault?.apy ?? null
-  const lockedEstimatedApy = lockedYvUsdVault?.apy ?? null
+  const unlockedEstimatedApy = yvUsdVault?.apy ?? getYvUsdSnapshotEstimatedApy(vault)
+  const lockedEstimatedApy = lockedYvUsdVault?.apy ?? getYvUsdSnapshotEstimatedApy(lockedVault)
 
   return {
     ...vault,
@@ -143,6 +144,10 @@ const applyYvUsdAprData = (
     pairedThirtyDayApy: {
       locked: lockedVault?.historicalMonthlyApy ?? null,
       unlocked: vault.historicalMonthlyApy ?? null
+    },
+    pairedFees: {
+      locked: lockedVault?.fees ?? null,
+      unlocked: vault.fees
     },
     yvUsdStrategyApyByAddress: getYvUsdApiStrategyApyByAddress(yvUsdVault)
   }
@@ -295,14 +300,14 @@ export function useVaultPageData({ vaultAddress, vaultChainId }: UseVaultPageDat
     enabled: canFetchVaultData
   })
 
-  // yvUSD uses its product-specific estimated APY series in useYvUsdChartData.
-  // Keep the generic APR-oracle overlay for every other v3 vault.
+  // Prefer Kong's published net Oracle rates. Gross APR remains available as a
+  // fee-adjusted fallback for older dates without netApy or netApr components.
   const { data: aprOracleAprData } = useRestTimeseries({
     segment: 'apr-oracle',
     chainId: vaultChainId,
     address: yieldDataAddress,
-    components: ['apr'],
-    enabled: canFetchVaultData && isV3Vault && !isYvUsd
+    components: ['netApy', 'netApr', 'apr'],
+    enabled: canFetchVaultData && isV3Vault
   })
 
   // Fetch TVL data from REST API
@@ -332,13 +337,13 @@ export function useVaultPageData({ vaultAddress, vaultChainId }: UseVaultPageDat
 
   // Calculate combined loading states
   const chartsLoading = useMemo(() => {
-    // `aprOracleApyLoading` is intentionally excluded since it's optional overlay data.
+    // The Oracle overlay is optional and does not block the base chart.
     return apyWeeklyLoading || apyMonthlyLoading || tvlLoading || ppsLoading
   }, [apyWeeklyLoading, apyMonthlyLoading, tvlLoading, ppsLoading])
 
   // Calculate combined error states
   const chartsError = useMemo(() => {
-    // `aprOracleApyError` is intentionally excluded since it's optional overlay data.
+    // Oracle overlay failures do not hide the base chart.
     return !!apyWeeklyError || !!apyMonthlyError || !!tvlError || !!ppsError
   }, [apyWeeklyError, apyMonthlyError, tvlError, ppsError])
 

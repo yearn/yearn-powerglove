@@ -11,6 +11,14 @@ const parseAllowedHosts = (value?: string): string[] =>
     .map((host) => host.trim())
     .filter(Boolean)
 
+const yvUsdAprProxy = {
+  '/api/yvusd/aprs': {
+    target: 'https://yvusd-api.yearn.fi',
+    changeOrigin: true,
+    rewrite: () => '/api/aprs'
+  }
+}
+
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
@@ -27,17 +35,12 @@ export default defineConfig(({ mode }) => {
       process.env.NODE_ENV === 'development'
         ? {
             allowedHosts,
-            proxy: {
-              '/api/yvusd/aprs': {
-                target: 'https://yvusd-api.yearn.fi',
-                changeOrigin: true,
-                rewrite: () => '/api/aprs'
-              }
-            }
+            proxy: yvUsdAprProxy
           }
         : {},
     preview: {
-      allowedHosts
+      allowedHosts,
+      proxy: yvUsdAprProxy
     }
   }
 })

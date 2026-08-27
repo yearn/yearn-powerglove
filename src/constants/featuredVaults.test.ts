@@ -73,9 +73,11 @@ describe('featured vault grouping', () => {
   })
 
   it('hides duplicate list entries and applies staked yBOLD APY to the combined row', () => {
+    const stakedYBold = makeVault(YBOLD_STAKING_ADDRESS, 'ysyBOLD', 0.05)
+    stakedYBold.oracleNetApy = 0.07
     const vaults = combineFeaturedVaults([
       makeVault(YBOLD_VAULT_ADDRESS, 'yvBOLD', 0.01),
-      makeVault(YBOLD_STAKING_ADDRESS, 'ysyBOLD', 0.05),
+      stakedYBold,
       makeVault(YVUSD_UNLOCKED_ADDRESS, 'yvUSD', 0.02),
       makeVault(YVUSD_LOCKED_ADDRESS, 'yvUSD (Locked)', 0.08)
     ])
@@ -83,8 +85,8 @@ describe('featured vault grouping', () => {
     expect(vaults.map((vault) => vault.address)).toEqual([YBOLD_VAULT_ADDRESS, YVUSD_UNLOCKED_ADDRESS])
     expect(vaults[0].name).toBe('yBOLD')
     expect(vaults[0].apy?.monthlyNet).toBe(0.05)
-    expect(vaults[0].forwardApyNet).toBe(0.05)
-    expect(vaults[0].estimatedApySource).toBe('7day-hist')
+    expect(vaults[0].forwardApyNet).toBe(0.07)
+    expect(vaults[0].estimatedApySource).toBe('est-ybold')
     expect(vaults[1].name).toBe('yvUSD')
     expect(vaults[1].apy?.monthlyNet).toBe(0.02)
     expect(vaults[1].pairedThirtyDayApy).toEqual({ locked: 0.08, unlocked: 0.02 })
@@ -93,6 +95,7 @@ describe('featured vault grouping', () => {
   it('falls back to the staked yBOLD oracle APY when weekly history is unavailable', () => {
     const stakedVault: Vault = {
       ...makeVault(YBOLD_STAKING_ADDRESS, 'ysyBOLD', 0.05),
+      oracleNetApy: 0.04,
       historicalWeeklyApy: null,
       forwardApyNet: 0.04,
       estimatedApySource: 'oracle'
@@ -102,6 +105,19 @@ describe('featured vault grouping', () => {
 
     expect(vault.forwardApyNet).toBe(0.04)
     expect(vault.estimatedApySource).toBe('oracle')
+  })
+
+  it('falls back to the staked yBOLD weekly APY when Oracle net APY is unavailable', () => {
+    const stakedVault: Vault = {
+      ...makeVault(YBOLD_STAKING_ADDRESS, 'ysyBOLD', 0.05),
+      oracleNetApy: null,
+      estimatedApySource: 'unknown'
+    }
+
+    const [vault] = combineFeaturedVaults([makeVault(YBOLD_VAULT_ADDRESS, 'yvBOLD', 0.01), stakedVault])
+
+    expect(vault.forwardApyNet).toBe(0.05)
+    expect(vault.estimatedApySource).toBe('7day-hist')
   })
 
   it('does not expose the base yBOLD estimate when staked yield data is unavailable', () => {
@@ -120,6 +136,24 @@ describe('featured vault grouping', () => {
         [YVUSD_LOCKED_ADDRESS]: { address: YVUSD_LOCKED_ADDRESS, apy: 0.07 }
       }
     )
+
+    expect(vaults[0].pairedEstimatedApy).toEqual({ locked: 0.07, unlocked: 0.03 })
+    expect(vaults[0].estimatedApySource).toBe('est-yvusd')
+  })
+
+  it('keeps yvUSD snapshot estimates when the APR service is unavailable', () => {
+    const unlockedVault: Vault = {
+      ...makeVault(YVUSD_UNLOCKED_ADDRESS, 'yvUSD', 0.02),
+      forwardApyNet: 0.03,
+      estimatedApySource: 'est-yvusd'
+    }
+    const lockedVault: Vault = {
+      ...makeVault(YVUSD_LOCKED_ADDRESS, 'Locked yvUSD', 0.08),
+      forwardApyNet: 0.07,
+      estimatedApySource: 'est-yvusd'
+    }
+
+    const vaults = combineFeaturedVaults([unlockedVault, lockedVault])
 
     expect(vaults[0].pairedEstimatedApy).toEqual({ locked: 0.07, unlocked: 0.03 })
     expect(vaults[0].estimatedApySource).toBe('est-yvusd')

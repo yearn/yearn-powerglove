@@ -5,6 +5,7 @@ import { GET_VAULT_TIMESERIES } from '@/graphql/queries/timeseries'
 import { useRestTimeseries } from '@/hooks/useRestTimeseries'
 import {
   applyYvUsdEstimatedApySeries,
+  applyYvUsdLockedOracleApySeries,
   buildApyDataFromPpsSeries,
   buildUnderlyingLockedPpsSeries,
   mergeYvUsdPpsSeries,
@@ -19,6 +20,7 @@ import type {
   tvlChartData,
   yvUsdChartData
 } from '@/types/dataTypes'
+import type { VaultFeeValues } from '@/types/vaultTypes'
 
 const ESTIMATED_APY_LABEL = 'yvusd-estimated-apr'
 const LOCKED_ESTIMATED_APY_LABEL = 'locked-yvusd-estimated-apr'
@@ -46,6 +48,7 @@ interface UseYvUsdChartDataProps {
   unlockedAprApyData: aprApyChartData | null
   unlockedTvlData: tvlChartData | null
   unlockedPpsData: ppsChartData | null
+  lockedFees: VaultFeeValues | null
 }
 
 interface UseYvUsdChartDataReturn {
@@ -64,7 +67,8 @@ export function useYvUsdChartData({
   enabled,
   unlockedAprApyData,
   unlockedTvlData,
-  unlockedPpsData
+  unlockedPpsData,
+  lockedFees
 }: UseYvUsdChartDataProps): UseYvUsdChartDataReturn {
   const { data: unlockedEstimatedApyData } = useEstimatedApyTimeseries(
     YVUSD_UNLOCKED_ADDRESS,
@@ -110,6 +114,14 @@ export function useYvUsdChartData({
     enabled
   })
 
+  const { data: lockedOracleAprData } = useRestTimeseries({
+    segment: 'apr-oracle',
+    chainId: YVUSD_CHAIN_ID,
+    address: YVUSD_LOCKED_ADDRESS,
+    components: ['netApy', 'netApr', 'apr'],
+    enabled
+  })
+
   return useMemo(() => {
     if (!enabled) {
       return {
@@ -137,14 +149,21 @@ export function useYvUsdChartData({
     const lockedEstimatedApySeries = lockedEstimatedApyData?.timeseries.length
       ? lockedEstimatedApyData.timeseries
       : (lockedEstimatedApyFallbackData?.timeseries ?? [])
+    const unlockedChartApyData = applyYvUsdEstimatedApySeries(
+      unlockedAprApyData,
+      unlockedEstimatedApyData?.timeseries ?? []
+    )
+    const lockedChartApyData = applyYvUsdLockedOracleApySeries(
+      applyYvUsdEstimatedApySeries(lockedApySeries, lockedEstimatedApySeries),
+      unlockedChartApyData,
+      lockedOracleAprData?.timeseries ?? [],
+      lockedFees
+    )
 
     return {
       yvUsdChartData: {
-        unlockedAprApyData: applyYvUsdEstimatedApySeries(
-          unlockedAprApyData,
-          unlockedEstimatedApyData?.timeseries ?? []
-        ),
-        lockedAprApyData: applyYvUsdEstimatedApySeries(lockedApySeries, lockedEstimatedApySeries),
+        unlockedAprApyData: unlockedChartApyData,
+        lockedAprApyData: lockedChartApyData,
         lockedPpsData: lockedUnderlyingPpsSeries,
         ppsData: mergeYvUsdPpsSeries(unlockedPpsData, lockedUnderlyingPpsSeries),
         tvlData: mergeYvUsdTvlSeries(unlockedTvlData, lockedTvlSeries)
@@ -163,6 +182,8 @@ export function useYvUsdChartData({
     lockedPpsError,
     lockedTvlData,
     lockedPpsData,
+    lockedOracleAprData,
+    lockedFees,
     unlockedAprApyData,
     unlockedTvlData,
     unlockedPpsData

@@ -7,12 +7,18 @@ export type EstimatedApySource =
   | 'est-aero'
   | 'est-velo'
   | 'est-katana'
+  | 'est-ybold'
   | 'est-yvusd'
   | 'unknown'
 
 export type PairedApyValues = {
   locked: number | null
   unlocked: number | null
+}
+
+export type VaultFeeValues = {
+  managementFee: number
+  performanceFee: number
 }
 
 export type VaultSimple = {
@@ -52,11 +58,16 @@ export type VaultSimple = {
   managementFee: number
   performanceFee: number
   forwardApyNet?: number | null
+  oracleNetApy?: number | null
   estimatedApySource?: EstimatedApySource | null
   historicalWeeklyApy?: number | null
   historicalMonthlyApy?: number | null
   pairedEstimatedApy?: PairedApyValues
   pairedThirtyDayApy?: PairedApyValues
+  pairedFees?: {
+    locked: VaultFeeValues | null
+    unlocked: VaultFeeValues
+  }
   strategyForwardAprs?: Record<string, number | null>
   yvUsdStrategyApyByAddress?: Record<string, { apy: number; name?: string }>
 }

@@ -7,6 +7,7 @@ const ChartSkeleton: React.FC = () => {
   const timeframes = [
     { label: '30 Days', value: '30d' },
     { label: '90 Days', value: '90d' },
+    { label: '180 Days', value: '180d' },
     { label: '1 Year', value: '1y' },
     { label: 'All Time', value: 'all' }
   ]

@@ -5,6 +5,8 @@ export type KongVaultPerformance = {
   oracle?: {
     apr?: KongNullableNumberish
     apy?: KongNullableNumberish
+    netAPR?: KongNullableNumberish
+    netAPY?: KongNullableNumberish
   } | null
   estimated?: {
     apr?: KongNullableNumberish

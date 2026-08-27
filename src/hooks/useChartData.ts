@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { resolveOracleRates } from '@/lib/oracle-apy'
 import {
   calculateAprFromPps,
   calculateApyFromApr,
@@ -40,32 +41,15 @@ const averageLast = (series: Array<number | null>, endIndexInclusive: number, wi
   return count > 0 ? sum / count : null
 }
 
-/**
- * Convert a nominal annual APR to APY assuming weekly compounding.
- *
- * Uses the standard compound interest formula:
- *   APY = (1 + APR / n)^n - 1
- * where n is the number of compounding periods per year.
- *
- * In this context we assume interest compounds weekly, so n = 52.
- *
- * @param apr - The annual percentage rate as a decimal (e.g., 0.05 for 5%)
- * @returns The annual percentage yield as a decimal after weekly compounding
- *
- * @example
- * convertAprToApy(0.05) // returns ~0.0512 (5% APR becomes ~5.12% APY)
- */
-const convertAprToApy = (apr: number): number => {
-  const periodsPerYear = 52 // weekly compounding: 52 weeks per year
-  return (1 + apr / periodsPerYear) ** periodsPerYear - 1
-}
-
 interface UseChartDataProps {
   apyWeeklyData: TimeseriesQueryResult | undefined
   apyMonthlyData: TimeseriesQueryResult | undefined
   aprOracleAprData?: TimeseriesQueryResult | undefined
   tvlData: TimeseriesQueryResult | undefined
   ppsData: TimeseriesQueryResult | undefined
+  includeYBoldEstimatedApy?: boolean
+  managementFeeBps?: number
+  performanceFeeBps?: number
   isLoading: boolean
   hasErrors: boolean
 }
@@ -86,6 +70,9 @@ export function useChartData({
   aprOracleAprData,
   tvlData,
   ppsData,
+  includeYBoldEstimatedApy = false,
+  managementFeeBps = 0,
+  performanceFeeBps = 0,
   isLoading,
   hasErrors
 }: UseChartDataProps): UseChartDataReturn {
@@ -104,7 +91,12 @@ export function useChartData({
     const apy30DayDataClean = apyMonthlyData.timeseries || []
     const tvlDataClean = tvlData.timeseries || []
     const ppsDataClean = ppsData.timeseries || []
-    const oracleAprDataClean = aprOracleAprData?.timeseries || []
+    const oracleDataClean = aprOracleAprData?.timeseries || []
+    const oracleSeries = (component: string) =>
+      oracleDataClean.filter((point) => point.component?.toLowerCase() === component.toLowerCase())
+    const oracleNetApyDataClean = oracleSeries('netApy')
+    const oracleNetAprDataClean = oracleSeries('netApr')
+    const oracleAprDataClean = oracleSeries('apr')
 
     // Get timestamp range for data alignment
     const { earliest, latest } = getEarliestAndLatestTimestamps(
@@ -112,7 +104,7 @@ export function useChartData({
       apy30DayDataClean,
       tvlDataClean,
       ppsDataClean,
-      oracleAprDataClean
+      oracleDataClean
     )
 
     if (!Number.isFinite(earliest) || !Number.isFinite(latest) || earliest > latest) {
@@ -128,14 +120,26 @@ export function useChartData({
     const apy30DayFilled = fillMissingDailyData(apy30DayDataClean, earliest, latest)
     const tvlFilled = fillMissingDailyData(tvlDataClean, earliest, latest)
     const ppsFilled = fillMissingDailyData(ppsDataClean, earliest, latest)
+    const oracleNetApyFilled = fillMissingDailyData(oracleNetApyDataClean, earliest, latest)
+    const oracleNetAprFilled = fillMissingDailyData(oracleNetAprDataClean, earliest, latest)
     const oracleAprFilled = fillMissingDailyData(oracleAprDataClean, earliest, latest)
 
     // Calculate APR from PPS data
     const aprFilled = calculateAprFromPps(ppsFilled)
     const aprAsApyFilled = calculateApyFromApr(aprFilled)
 
-    const oracleAprValues = oracleAprFilled.map((point) => point.value ?? null)
-    const oracleApr30dAvgValues = oracleAprValues.map((_, index) => averageLast(oracleAprValues, index, 30))
+    const oracleRates = oracleAprFilled.map((point, index) =>
+      resolveOracleRates({
+        netApy: oracleNetApyFilled[index]?.value,
+        netApr: oracleNetAprFilled[index]?.value,
+        grossApr: point.value,
+        managementFeeBps,
+        performanceFeeBps
+      })
+    )
+    const oracleNetAprValues = oracleRates.map((rates) => rates?.netApr ?? null)
+    const oracleApyValues = oracleRates.map((rates) => rates?.netApy ?? null)
+    const oracleApy30dAvgValues = oracleApyValues.map((_, index) => averageLast(oracleApyValues, index, 30))
 
     // Transform TVL data
     const transformedTvlData: tvlChartData = tvlFilled.map((dataPoint) => ({
@@ -150,21 +154,42 @@ export function useChartData({
       time: Number(dataPoint.time)
     }))
 
-    const transformedAprApyData: aprApyChartData = aprFilled.map((aprDataPoint, index) => ({
-      date: formatUnixTimestamp(aprDataPoint.time),
-      sevenDayApy: apy7DayFilled[index]?.value !== null ? apy7DayFilled[index]!.value! * 100 : null,
-      thirtyDayApy: apy30DayFilled[index]?.value !== null ? apy30DayFilled[index]!.value! * 100 : null,
-      derivedApr: aprDataPoint.value !== null ? aprDataPoint.value * 100 : null,
-      derivedApy: aprAsApyFilled[index]?.value !== null ? aprAsApyFilled[index]!.value! * 100 : null,
-      oracleApr: oracleAprFilled[index]?.value !== null ? oracleAprFilled[index]!.value! * 100 : null,
-      oracleApy30dAvg:
-        oracleApr30dAvgValues[index] !== null ? convertAprToApy(oracleApr30dAvgValues[index]!) * 100 : null
-    }))
+    const transformedAprApyData: aprApyChartData = aprFilled.map((aprDataPoint, index) => {
+      const sevenDayPpsApy = apy7DayFilled[index]?.value ?? null
+      const oracleNetApr = oracleNetAprValues[index] ?? null
+      const oracleApy = oracleApyValues[index] ?? null
+
+      return {
+        date: formatUnixTimestamp(aprDataPoint.time),
+        sevenDayApy: sevenDayPpsApy !== null ? sevenDayPpsApy * 100 : null,
+        thirtyDayApy: apy30DayFilled[index]?.value !== null ? apy30DayFilled[index]!.value! * 100 : null,
+        derivedApr: aprDataPoint.value !== null ? aprDataPoint.value * 100 : null,
+        derivedApy: aprAsApyFilled[index]?.value !== null ? aprAsApyFilled[index]!.value! * 100 : null,
+        oracleNetApr: oracleNetApr !== null ? oracleNetApr * 100 : null,
+        oracleApy: oracleApy !== null ? oracleApy * 100 : null,
+        oracleApy30dAvg: oracleApy30dAvgValues[index] !== null ? oracleApy30dAvgValues[index]! * 100 : null,
+        yBoldEstimatedApy:
+          includeYBoldEstimatedApy && sevenDayPpsApy !== null && oracleApy !== null
+            ? Math.max(sevenDayPpsApy, oracleApy) * 100
+            : null
+      }
+    })
 
     return {
       transformedAprApyData,
       transformedTvlData,
       transformedPpsData
     }
-  }, [apyWeeklyData, apyMonthlyData, aprOracleAprData, tvlData, ppsData, isLoading, hasErrors])
+  }, [
+    apyWeeklyData,
+    apyMonthlyData,
+    aprOracleAprData,
+    tvlData,
+    ppsData,
+    includeYBoldEstimatedApy,
+    managementFeeBps,
+    performanceFeeBps,
+    isLoading,
+    hasErrors
+  ])
 }

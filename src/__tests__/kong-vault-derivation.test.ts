@@ -25,7 +25,7 @@ describe('mapKongListItemToVault', () => {
       },
       performance: {
         estimated: { apy: 0.12, type: 'crv' },
-        oracle: { apy: 0.08, apr: 0.07 },
+        oracle: { apy: 0.08, apr: 0.07, netAPR: 0.055, netAPY: 0.0565 },
         historical: {
           net: 0.05,
           weeklyNet: 0.04,
@@ -45,20 +45,31 @@ describe('mapKongListItemToVault', () => {
     const mapped = mapKongListItemToVault(item)
 
     expect(mapped.forwardApyNet).toBe(0.12)
+    expect(mapped.oracleNetApy).toBe(0.0565)
     expect(mapped.estimatedApySource).toBe('est-crv')
     expect(mapped.vaultType).toBe('1')
     expect(mapped.yearn).toBe(true)
     expect(mapped.apy?.monthlyNet).toBe(0.03)
   })
 
-  it('uses oracle APY only when estimated APY is unavailable', () => {
+  it('uses Kong Oracle netAPY only when estimated APY is unavailable', () => {
     expect(
       resolveEstimatedApy({
         estimated: { apy: null, type: 'crv' },
-        oracle: { apy: 0.08 },
+        oracle: { apy: 0.08, netAPY: 0.07 },
         historical: { weeklyNet: 0.4 }
       })
-    ).toEqual({ value: 0.08, source: 'oracle' })
+    ).toEqual({ value: 0.07, source: 'oracle' })
+  })
+
+  it('derives Oracle net APY from gross APR and normalized fees when Kong net values are unavailable', () => {
+    const resolved = resolveEstimatedApy(
+      { oracle: { apr: 0.027882532516103713 } },
+      { managementFeeBps: 25, performanceFeeBps: 1000 }
+    )
+
+    expect(resolved.source).toBe('oracle')
+    expect(resolved.value).toBeCloseTo(0.023102075806243016)
   })
 
   it('does not fall back to historical APY', () => {
@@ -183,6 +194,7 @@ describe('mapKongSnapshotToVaultExtended', () => {
         performanceFee: 0.2
       },
       apy: {
+        grossApr: 0.09,
         net: 0.06,
         weeklyNet: 0.05,
         monthlyNet: 0.04,
@@ -191,7 +203,9 @@ describe('mapKongSnapshotToVaultExtended', () => {
       performance: {
         oracle: {
           apy: 0.08,
-          apr: 0.07
+          apr: 0.07,
+          netAPR: 0.05,
+          netAPY: 0.0512
         }
       },
       composition: [
@@ -224,8 +238,10 @@ describe('mapKongSnapshotToVaultExtended', () => {
 
     const mapped = mapKongSnapshotToVaultExtended(snapshot)
 
-    expect(mapped.forwardApyNet).toBe(0.08)
+    expect(mapped.forwardApyNet).toBe(0.0512)
+    expect(mapped.oracleNetApy).toBe(0.0512)
     expect(mapped.estimatedApySource).toBe('oracle')
+    expect(mapped.apy?.grossApr).toBe(0.09)
     expect(mapped.apy?.net).toBe(0.06)
     // Decimal fee values are normalized into bps for existing powerglove formatting.
     expect(mapped.fees.managementFee).toBe(200)

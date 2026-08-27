@@ -13,7 +13,7 @@ const ChartsPanel = lazy(() =>
 import { StrategiesPanel } from '@/components/strategies-panel/index'
 import { VaultPageBreadcrumb, VaultPageLayout } from '@/components/vault-page'
 import { type ChainId, isSupportedChainId } from '@/constants/chains'
-import { isYvUsdAddress } from '@/constants/featuredVaults'
+import { isYBoldAddress, isYvUsdAddress } from '@/constants/featuredVaults'
 import { useTokenAssetsContext } from '@/contexts/useTokenAssets'
 import { useChartData } from '@/hooks/useChartData'
 import { useMainInfoPanelData } from '@/hooks/useMainInfoPanelData'
@@ -58,6 +58,7 @@ type SingleVaultPageContentProps = {
   transformedTvlData: ReturnType<typeof useChartData>['transformedTvlData']
   transformedPpsData: ReturnType<typeof useChartData>['transformedPpsData']
   yvUsdChartData?: ReturnType<typeof useYvUsdChartData>['yvUsdChartData']
+  isYBold?: boolean
   isYvUsd?: boolean
   mainInfoPanelProps: ReturnType<typeof useMainInfoPanelData>
   reallocationData: ReturnType<typeof useReallocationData>['data']
@@ -77,6 +78,7 @@ export function SingleVaultPageContent({
   transformedTvlData,
   transformedPpsData,
   yvUsdChartData,
+  isYBold = false,
   isYvUsd = false,
   mainInfoPanelProps,
   reallocationData
@@ -112,6 +114,11 @@ export function SingleVaultPageContent({
     )
   }
 
+  const isFactoryVault = vaultDetails.name?.toLowerCase().includes('factory') ?? false
+  const isV3Vault =
+    !isFactoryVault &&
+    Boolean(vaultDetails.v3 || vaultDetails.apiVersion?.startsWith('3') || vaultDetails.apiVersion?.startsWith('~3'))
+
   return (
     <VaultPageLayout isLoading={isInitialLoading} hasErrors={hasErrors}>
       <VaultPageBreadcrumb vaultName={isYvUsd ? 'yvUSD' : vaultDetails.name} />
@@ -141,6 +148,8 @@ export function SingleVaultPageContent({
             tvlData={transformedTvlData}
             ppsData={transformedPpsData}
             yvUsdChartData={yvUsdChartData}
+            isV3Vault={isV3Vault}
+            isYBold={isYBold}
             isLoading={chartsLoading}
             hasErrors={chartsError}
           />
@@ -184,6 +193,8 @@ function ValidVaultPage({ chainId, vaultAddress }: { chainId: string; vaultAddre
     tokenAssets
   })
 
+  const isYBold = isYBoldAddress(vaultChainId, vaultAddress)
+
   // Process chart data
   const { transformedAprApyData, transformedTvlData, transformedPpsData } = useChartData({
     apyWeeklyData,
@@ -191,6 +202,9 @@ function ValidVaultPage({ chainId, vaultAddress }: { chainId: string; vaultAddre
     aprOracleAprData,
     tvlData,
     ppsData,
+    includeYBoldEstimatedApy: isYBold,
+    managementFeeBps: vaultDetails?.fees.managementFee ?? 0,
+    performanceFeeBps: vaultDetails?.fees.performanceFee ?? 0,
     isLoading: chartsLoading,
     hasErrors: chartsError
   })
@@ -204,7 +218,8 @@ function ValidVaultPage({ chainId, vaultAddress }: { chainId: string; vaultAddre
     enabled: isYvUsd,
     unlockedAprApyData: transformedAprApyData,
     unlockedTvlData: transformedTvlData,
-    unlockedPpsData: transformedPpsData
+    unlockedPpsData: transformedPpsData,
+    lockedFees: vaultDetails?.pairedFees?.locked ?? null
   })
 
   const legacyVault = vaultDetails ? isLegacyVaultType(vaultDetails) : false
@@ -259,6 +274,7 @@ function ValidVaultPage({ chainId, vaultAddress }: { chainId: string; vaultAddre
       transformedTvlData={transformedTvlData}
       transformedPpsData={transformedPpsData}
       yvUsdChartData={yvUsdChartData}
+      isYBold={isYBold}
       isYvUsd={isYvUsd}
       mainInfoPanelProps={mainInfoPanelProps}
       reallocationData={reallocationData}
