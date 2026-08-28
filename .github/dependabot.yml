@@ -1,0 +1,25 @@
+version: 2
+
+updates:
+  - package-ecosystem: 'bun'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+      time: '09:00'
+      timezone: 'Etc/UTC'
+
+    open-pull-requests-limit: 5
+
+    groups:
+      routine-updates:
+        applies-to: 'version-updates'
+        patterns:
+          - '*'
+        update-types:
+          - 'minor'
+          - 'patch'
+
+    commit-message:
+      prefix: 'chore'
+      include: 'scope'
