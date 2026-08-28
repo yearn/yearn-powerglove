@@ -8,100 +8,47 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-// Import Routes
+import { Route as rootRouteImport } from './routes/__root'
+import { Route as IndexRouteImport } from './routes/index'
+import { Route as AboutRouteImport } from './routes/about'
+import { Route as DisclaimerRouteImport } from './routes/disclaimer'
+import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as VaultsChainIdVaultAddressIndexRouteImport } from './routes/vaults/$chainId/$vaultAddress/index'
 
-import { Route as rootRoute } from './routes/__root'
-import { Route as PrivacyImport } from './routes/privacy'
-import { Route as DisclaimerImport } from './routes/disclaimer'
-import { Route as AboutImport } from './routes/about'
-import { Route as IndexImport } from './routes/index'
-import { Route as VaultsChainIdVaultAddressIndexImport } from './routes/vaults/$chainId/$vaultAddress/index'
-
-// Create/Update Routes
-
-const PrivacyRoute = PrivacyImport.update({
-  id: '/privacy',
-  path: '/privacy',
-  getParentRoute: () => rootRoute,
-} as any)
-
-const DisclaimerRoute = DisclaimerImport.update({
-  id: '/disclaimer',
-  path: '/disclaimer',
-  getParentRoute: () => rootRoute,
-} as any)
-
-const AboutRoute = AboutImport.update({
-  id: '/about',
-  path: '/about',
-  getParentRoute: () => rootRoute,
-} as any)
-
-const IndexRoute = IndexImport.update({
+const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
+const AboutRoute = AboutRouteImport.update({
+  id: '/about',
+  path: '/about',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DisclaimerRoute = DisclaimerRouteImport.update({
+  id: '/disclaimer',
+  path: '/disclaimer',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const VaultsChainIdVaultAddressIndexRoute =
-  VaultsChainIdVaultAddressIndexImport.update({
+  VaultsChainIdVaultAddressIndexRouteImport.update({
     id: '/vaults/$chainId/$vaultAddress/',
     path: '/vaults/$chainId/$vaultAddress/',
-    getParentRoute: () => rootRoute,
+    getParentRoute: () => rootRouteImport,
   } as any)
-
-// Populate the FileRoutesByPath interface
-
-declare module '@tanstack/react-router' {
-  interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexImport
-      parentRoute: typeof rootRoute
-    }
-    '/about': {
-      id: '/about'
-      path: '/about'
-      fullPath: '/about'
-      preLoaderRoute: typeof AboutImport
-      parentRoute: typeof rootRoute
-    }
-    '/disclaimer': {
-      id: '/disclaimer'
-      path: '/disclaimer'
-      fullPath: '/disclaimer'
-      preLoaderRoute: typeof DisclaimerImport
-      parentRoute: typeof rootRoute
-    }
-    '/privacy': {
-      id: '/privacy'
-      path: '/privacy'
-      fullPath: '/privacy'
-      preLoaderRoute: typeof PrivacyImport
-      parentRoute: typeof rootRoute
-    }
-    '/vaults/$chainId/$vaultAddress/': {
-      id: '/vaults/$chainId/$vaultAddress/'
-      path: '/vaults/$chainId/$vaultAddress'
-      fullPath: '/vaults/$chainId/$vaultAddress'
-      preLoaderRoute: typeof VaultsChainIdVaultAddressIndexImport
-      parentRoute: typeof rootRoute
-    }
-  }
-}
-
-// Create and export the route tree
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/disclaimer': typeof DisclaimerRoute
   '/privacy': typeof PrivacyRoute
-  '/vaults/$chainId/$vaultAddress': typeof VaultsChainIdVaultAddressIndexRoute
+  '/vaults/$chainId/$vaultAddress/': typeof VaultsChainIdVaultAddressIndexRoute
 }
-
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
@@ -109,16 +56,14 @@ export interface FileRoutesByTo {
   '/privacy': typeof PrivacyRoute
   '/vaults/$chainId/$vaultAddress': typeof VaultsChainIdVaultAddressIndexRoute
 }
-
 export interface FileRoutesById {
-  __root__: typeof rootRoute
+  __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/disclaimer': typeof DisclaimerRoute
   '/privacy': typeof PrivacyRoute
   '/vaults/$chainId/$vaultAddress/': typeof VaultsChainIdVaultAddressIndexRoute
 }
-
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
@@ -126,7 +71,7 @@ export interface FileRouteTypes {
     | '/about'
     | '/disclaimer'
     | '/privacy'
-    | '/vaults/$chainId/$vaultAddress'
+    | '/vaults/$chainId/$vaultAddress/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -143,13 +88,52 @@ export interface FileRouteTypes {
     | '/vaults/$chainId/$vaultAddress/'
   fileRoutesById: FileRoutesById
 }
-
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
   DisclaimerRoute: typeof DisclaimerRoute
   PrivacyRoute: typeof PrivacyRoute
   VaultsChainIdVaultAddressIndexRoute: typeof VaultsChainIdVaultAddressIndexRoute
+}
+
+declare module '@tanstack/react-router' {
+  interface FileRoutesByPath {
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/about': {
+      id: '/about'
+      path: '/about'
+      fullPath: '/about'
+      preLoaderRoute: typeof AboutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/disclaimer': {
+      id: '/disclaimer'
+      path: '/disclaimer'
+      fullPath: '/disclaimer'
+      preLoaderRoute: typeof DisclaimerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/vaults/$chainId/$vaultAddress/': {
+      id: '/vaults/$chainId/$vaultAddress/'
+      path: '/vaults/$chainId/$vaultAddress'
+      fullPath: '/vaults/$chainId/$vaultAddress/'
+      preLoaderRoute: typeof VaultsChainIdVaultAddressIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+  }
 }
 
 const rootRouteChildren: RootRouteChildren = {
@@ -159,39 +143,6 @@ const rootRouteChildren: RootRouteChildren = {
   PrivacyRoute: PrivacyRoute,
   VaultsChainIdVaultAddressIndexRoute: VaultsChainIdVaultAddressIndexRoute,
 }
-
-export const routeTree = rootRoute
+export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-/* ROUTE_MANIFEST_START
-{
-  "routes": {
-    "__root__": {
-      "filePath": "__root.tsx",
-      "children": [
-        "/",
-        "/about",
-        "/disclaimer",
-        "/privacy",
-        "/vaults/$chainId/$vaultAddress/"
-      ]
-    },
-    "/": {
-      "filePath": "index.tsx"
-    },
-    "/about": {
-      "filePath": "about.tsx"
-    },
-    "/disclaimer": {
-      "filePath": "disclaimer.tsx"
-    },
-    "/privacy": {
-      "filePath": "privacy.tsx"
-    },
-    "/vaults/$chainId/$vaultAddress/": {
-      "filePath": "vaults/$chainId/$vaultAddress/index.tsx"
-    }
-  }
-}
-ROUTE_MANIFEST_END */
