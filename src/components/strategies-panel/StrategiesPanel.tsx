@@ -18,7 +18,9 @@ import {
 import { cn } from '@/lib/utils'
 import type { ReallocationData } from '@/types/reallocationTypes'
 import type { VaultExtended } from '@/types/vaultTypes'
+import { isLegacyVaultType } from '@/utils/vaultDataUtils'
 import type { ChainId } from '../../constants/chains'
+import { HistoricalAllocationPanel } from './HistoricalAllocationPanel'
 import { StrategyAllocationChart } from './StrategyAllocationChart'
 import { StrategyTable } from './StrategyTable'
 
@@ -50,6 +52,7 @@ export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
     const eventsContentRef = React.useRef<HTMLDivElement | null>(null)
     const hasAbout = Boolean(aboutDescription?.trim())
     const hasReallocation = Boolean(reallocationData)
+    const hasHistoricalAllocation = !isLegacyVaultType(vaultDetails)
     const hasHistoricalUserEvents = isEnvioConfigured()
     const hasVaultManagementEvents = isEnvioConfigured()
     const vaultEventAddresses = React.useMemo(
@@ -62,9 +65,10 @@ export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
     const mainTabs = React.useMemo(() => {
       const list: string[] = ['Current Strategies']
       if (hasReallocation) list.push('Current Reallocation')
+      if (hasHistoricalAllocation) list.push('Historical Allocation')
       if (isMobile && hasAbout) list.push('About')
       return list
-    }, [hasReallocation, isMobile, hasAbout])
+    }, [hasReallocation, hasHistoricalAllocation, isMobile, hasAbout])
 
     const eventTabs = React.useMemo(() => {
       const list: string[] = []
@@ -255,6 +259,9 @@ export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
               </div>
             </div>
           )
+        }
+        case 'Historical Allocation': {
+          return <HistoricalAllocationPanel vaultChainId={vaultChainId} vaultAddress={vaultDetails.address} />
         }
         case 'About': {
           return (

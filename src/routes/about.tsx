@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 
 function AboutPage() {
   return (
@@ -35,9 +35,9 @@ function AboutPage() {
               The PowerGlove dashboard provides real-time metrics and insights into Yearn's vault performance, including
               APY tracking, TVL analysis, and strategy breakdowns. It's designed to help users make informed decisions
               about their DeFi investments. For more information, please review our{' '}
-              <a href="/disclaimer" className="underline text-blue-600 hover:text-blue-800">
+              <Link to="/disclaimer" className="underline text-blue-600 hover:text-blue-800">
                 disclaimer.
-              </a>
+              </Link>
             </p>
 
             <div className="mt-8 p-6 bg-blue-50 border-l-4 border-blue-400 rounded-r-lg">

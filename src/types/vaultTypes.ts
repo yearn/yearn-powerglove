@@ -51,6 +51,8 @@ export type VaultSimple = {
   v3?: boolean
   erc4626?: boolean
   liquidLocker?: boolean
+  isRetired?: boolean
+  isHidden?: boolean
   fees: {
     managementFee: number
     performanceFee: number

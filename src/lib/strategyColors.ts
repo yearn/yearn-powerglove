@@ -1,24 +1,23 @@
+// Yearn brand palette, sourced from the press kit (https://presskit.yearn.fi/colors):
+// the primary Yearn Blue plus mid-range shades of the four secondary hues —
+// Metaverse Sunset, Disco Salmon, Tokyo Party and Up Only Green (the kit calls
+// these out "for use in UI, charts and diagrams"). Ordered so adjacent
+// stacked-area bands differ in both hue and lightness. Note: the kit lists the
+// primary blue hex as #0675F9 but its own RGB (6.87.249) and logo resolve to
+// #0657F9, which is what we use to stay consistent with the rest of the app.
 const PALETTE = [
-  '#0074D9',
-  '#40D3A4',
-  '#FFB800',
-  '#F05138',
-  '#0657F9',
-  '#FFBF00',
-  '#00A650',
-  '#00796D',
-  '#3b82f6',
-  '#10b981',
-  '#f59e0b',
-  '#ef4444',
-  '#8b5cf6',
-  '#06b6d4',
-  '#f97316',
-  '#ec4899',
-  '#84cc16',
-  '#6366f1',
-  '#14b8a6',
-  '#d946ef'
+  '#0657F9', // Yearn Blue (primary / logo)
+  '#F8A908', // Metaverse Sunset 500
+  '#7D3787', // Tokyo Party 500
+  '#38E331', // Up Only Green 400
+  '#DF536A', // Disco Salmon 500
+  '#FFDC53', // Metaverse Sunset 100
+  '#7829E1', // Tokyo Party 200
+  '#55F541', // Up Only Green 200
+  '#FD5DA5', // Disco Salmon 200
+  '#6B26C2', // Tokyo Party 400
+  '#F1F025', // Metaverse Sunset 200
+  '#FA3AA7' // Disco Salmon 300
 ]
 
 function hashKey(key: string): number {

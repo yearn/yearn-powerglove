@@ -58,8 +58,8 @@ export default function Header() {
       <div className="container flex flex-col gap-3 px-4 sm:flex-row sm:items-center sm:justify-between sm:px-8">
         <div className="flex items-center justify-between gap-3">
           <Link to="/" className="flex min-w-0 cursor-pointer items-center gap-2">
-            <img src="/logo.svg" alt="Yearn PowerGlove Logo" className="h-6 w-6 shrink-0" />
-            <span className="text-base font-bold sm:text-lg">Yearn PowerGlove</span>
+            <img src="/logo.svg" alt="Yearn PowerGlove Logo" className="h-7 w-7 shrink-0" />
+            <span className="text-lg font-bold sm:text-xl">Yearn PowerGlove</span>
           </Link>
           <div className="md:hidden">{partnerButton}</div>
         </div>

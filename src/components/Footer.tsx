@@ -1,3 +1,4 @@
+import { Link } from '@tanstack/react-router'
 import { ExternalLink } from 'lucide-react'
 
 export default function Footer() {
@@ -19,16 +20,16 @@ export default function Footer() {
               Docs <ExternalLink className="ml-1 h-3 w-3" />
             </a>
 
-            <a href="/about" rel="noopener noreferrer" className="text-sm text-gray-500 hover:text-gray-700">
+            <Link to="/about" className="text-sm text-gray-500 hover:text-gray-700">
               About Yearn
-            </a>
+            </Link>
 
-            <a href="/privacy" rel="noopener noreferrer" className="text-sm text-gray-500 hover:text-gray-700">
+            <Link to="/privacy" className="text-sm text-gray-500 hover:text-gray-700">
               Privacy Policy
-            </a>
-            <a href="/disclaimer" rel="noopener noreferrer" className="text-sm text-gray-500 hover:text-gray-700">
+            </Link>
+            <Link to="/disclaimer" className="text-sm text-gray-500 hover:text-gray-700">
               Disclaimer
-            </a>
+            </Link>
           </div>
 
           <div className="flex items-center justify-center gap-4">
