@@ -1,14 +1,9 @@
 import { useState } from 'react'
-import APYChart, {
-  APYSeriesSelector,
-  type APYVisibleSeries,
-  buildApyVisibleSeries,
-  getAvailableApySeries
-} from '@/components/charts/APYChart'
+import APYChart, { APYSeriesSelector, type APYVisibleSeries, buildApyVisibleSeries } from '@/components/charts/APYChart'
 import ChartSkeleton from '@/components/charts/ChartSkeleton'
 import ChartsLoader from '@/components/charts/ChartsLoader'
 import { FixedHeightChartContainer } from '@/components/charts/chart-container'
-import { calculatePpsPeriodApy, getTimeframeLimit } from '@/components/charts/chart-utils'
+import { calculatePpsHistoricalApySeries, getTimeframeLimit } from '@/components/charts/chart-utils'
 import PPSChart from '@/components/charts/PPSChart'
 import TVLChart from '@/components/charts/TVLChart'
 import YvUsdDualLineChart from '@/components/charts/YvUsdDualLineChart'
@@ -95,7 +90,7 @@ export function buildDefaultApyVisibleSeries({
       derivedApy: false,
       sevenDayApy: isYBold,
       thirtyDayApy: true,
-      ppsPeriodApy: true,
+      ppsAllTimeApy: true,
       estimatedApy: false,
       estimatedApy30dAvg: true,
       yBoldEstimatedApy: true,
@@ -113,7 +108,7 @@ export function buildDefaultApyVisibleSeries({
     derivedApy: false,
     sevenDayApy: false,
     thirtyDayApy: true,
-    ppsPeriodApy: true,
+    ppsAllTimeApy: true,
     estimatedApy: useEstimate,
     estimatedApy30dAvg: useAveragedEstimate,
     yBoldEstimatedApy: useYBoldEstimate,
@@ -172,7 +167,6 @@ export function ChartsPanel(data: ChartData) {
   const [apyVisibleSeries, setApyVisibleSeries] = useState<APYVisibleSeries | null>(null)
   const [yvUsdSeriesScope, setYvUsdSeriesScope] = useState<YvUsdSeriesScope>('both')
   const [isTimeframeDialogOpen, setIsTimeframeDialogOpen] = useState(false)
-  const [isDataDialogOpen, setIsDataDialogOpen] = useState(false)
 
   if (hasErrors) {
     return (
@@ -196,11 +190,10 @@ export function ChartsPanel(data: ChartData) {
   const activeAprApyData = yvUsdChartData?.unlockedAprApyData ?? aprApyData
   const filteredAprApyData = activeAprApyData.slice(-getTimeframeLimit(timeframe.value))
   const hasYvUsdChartData = Boolean(yvUsdChartData)
-  const ppsPeriodApy = calculatePpsPeriodApy(ppsData, timeframe.value)
-  const lockedPpsPeriodApy = yvUsdChartData
-    ? calculatePpsPeriodApy(yvUsdChartData.lockedPpsData, timeframe.value)
+  const historicalApySeries = calculatePpsHistoricalApySeries(ppsData)
+  const lockedHistoricalApySeries = yvUsdChartData
+    ? calculatePpsHistoricalApySeries(yvUsdChartData.lockedPpsData)
     : null
-  const hasPpsPeriodApy = typeof ppsPeriodApy === 'number'
   const hasOracleApy = filteredAprApyData.some((point) => typeof point.oracleApy === 'number')
   const hasOracleApy30dAvg = filteredAprApyData.some((point) => typeof point.oracleApy30dAvg === 'number')
   const hasYBoldEstimatedApy = filteredAprApyData.some((point) => typeof point.yBoldEstimatedApy === 'number')
@@ -219,15 +212,6 @@ export function ChartsPanel(data: ChartData) {
     hasYBoldEstimatedApy
   })
   const resolvedApyVisibleSeries = apyVisibleSeries ?? defaultApyVisibleSeries
-  const availableApySeries = getAvailableApySeries({
-    hasPpsPeriodApy,
-    hasOracleApy,
-    hasOracleApy30dAvg,
-    hasYBoldEstimatedApy,
-    hasEstimatedApy,
-    hasEstimatedApy30dAvg
-  })
-  const selectedApySeriesCount = availableApySeries.filter((seriesKey) => resolvedApyVisibleSeries[seriesKey]).length
   const chartInfo = {
     'historical-apy': {
       title: hasYvUsdChartData ? 'yvUSD Performance' : 'Vault Performance',
@@ -281,8 +265,8 @@ export function ChartsPanel(data: ChartData) {
                   onVisibleSeriesChange={setApyVisibleSeries}
                   hideSeriesControls={true}
                   seriesScope={yvUsdSeriesScope}
-                  ppsPeriodApy={ppsPeriodApy}
-                  lockedPpsPeriodApy={lockedPpsPeriodApy}
+                  historicalApySeries={historicalApySeries}
+                  lockedHistoricalApySeries={lockedHistoricalApySeries}
                 />
               </ChartErrorBoundary>
             </FixedHeightChartContainer>
@@ -298,7 +282,7 @@ export function ChartsPanel(data: ChartData) {
                 visibleSeries={resolvedApyVisibleSeries}
                 onVisibleSeriesChange={setApyVisibleSeries}
                 hideSeriesControls={true}
-                ppsPeriodApy={ppsPeriodApy}
+                historicalApySeries={historicalApySeries}
               />
             </ChartErrorBoundary>
             {showGhostedOverlay && (
@@ -419,12 +403,12 @@ export function ChartsPanel(data: ChartData) {
       {hasYvUsdChartData && activeTab === 'historical-apy' ? (
         <YvUsdScopeControl value={yvUsdSeriesScope} onChange={setYvUsdSeriesScope} />
       ) : null}
-      <div className="grid w-full grid-cols-2 gap-2">
+      <div className="w-full">
         <Dialog open={isTimeframeDialogOpen} onOpenChange={setIsTimeframeDialogOpen}>
           <DialogTrigger asChild>
             <Button
               variant="outline"
-              className="flex h-auto flex-col items-start rounded-md border-border px-3 py-2 text-left"
+              className="flex h-auto w-full flex-col items-start rounded-md border-border px-3 py-2 text-left"
             >
               <span className="text-[11px] font-medium uppercase tracking-[0.08em] text-gray-500">Timeframe</span>
               <span className="text-sm text-foreground">{timeframe.mobileLabel}</span>
@@ -456,41 +440,20 @@ export function ChartsPanel(data: ChartData) {
             </div>
           </DialogContent>
         </Dialog>
-
-        <Dialog open={isDataDialogOpen} onOpenChange={setIsDataDialogOpen}>
-          <DialogTrigger asChild>
-            <Button
-              variant="outline"
-              disabled={activeTab !== 'historical-apy'}
-              className="flex h-auto flex-col items-start rounded-md border-border px-3 py-2 text-left disabled:opacity-40"
-            >
-              <span className="text-[11px] font-medium uppercase tracking-[0.08em] text-gray-500">Data</span>
-              <span className="text-sm text-foreground">
-                {activeTab === 'historical-apy' ? `${selectedApySeriesCount} series` : 'Unavailable'}
-              </span>
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-[calc(100vw-2rem)] rounded-lg p-4 sm:max-w-sm">
-            <DialogHeader>
-              <DialogTitle>Data</DialogTitle>
-              <DialogDescription>Choose which APY series are visible on the chart.</DialogDescription>
-            </DialogHeader>
-            <APYSeriesSelector
-              visibleSeries={resolvedApyVisibleSeries}
-              onVisibleSeriesChange={setApyVisibleSeries}
-              hasPpsPeriodApy={hasPpsPeriodApy}
-              hasOracleApy={hasOracleApy}
-              hasOracleApy30dAvg={hasOracleApy30dAvg}
-              hasYBoldEstimatedApy={hasYBoldEstimatedApy}
-              hasEstimatedApy={hasEstimatedApy}
-              hasEstimatedApy30dAvg={hasEstimatedApy30dAvg}
-              className="grid gap-2 border-none bg-transparent p-0"
-              itemClassName="min-w-0 rounded-md border border-border px-3 py-3"
-              idPrefix="dialog-toggle"
-            />
-          </DialogContent>
-        </Dialog>
       </div>
+      {activeTab === 'historical-apy' ? (
+        <APYSeriesSelector
+          visibleSeries={resolvedApyVisibleSeries}
+          onVisibleSeriesChange={setApyVisibleSeries}
+          historicalApySeries={historicalApySeries}
+          lockedHistoricalApySeries={lockedHistoricalApySeries}
+          hasOracleApy={hasOracleApy}
+          hasOracleApy30dAvg={hasOracleApy30dAvg}
+          hasYBoldEstimatedApy={hasYBoldEstimatedApy}
+          hasEstimatedApy={hasEstimatedApy}
+          hasEstimatedApy30dAvg={hasEstimatedApy30dAvg}
+        />
+      ) : null}
     </div>
   )
 
@@ -516,16 +479,14 @@ export function ChartsPanel(data: ChartData) {
       <APYSeriesSelector
         visibleSeries={resolvedApyVisibleSeries}
         onVisibleSeriesChange={setApyVisibleSeries}
-        hasPpsPeriodApy={hasPpsPeriodApy}
+        historicalApySeries={historicalApySeries}
+        lockedHistoricalApySeries={lockedHistoricalApySeries}
         hasOracleApy={hasOracleApy}
         hasOracleApy30dAvg={hasOracleApy30dAvg}
         hasYBoldEstimatedApy={hasYBoldEstimatedApy}
         hasEstimatedApy={hasEstimatedApy}
         hasEstimatedApy30dAvg={hasEstimatedApy30dAvg}
-        compact={true}
-        className="w-full justify-center bg-transparent p-0 text-xs sm:text-sm"
-        itemClassName="min-w-0 rounded-md px-3 py-2"
-        idPrefix="desktop-chart-toggle"
+        className="w-full justify-center"
       />
     </div>
   )
@@ -551,11 +512,7 @@ export function ChartsPanel(data: ChartData) {
           value={activeTab}
           className="w-full"
           onValueChange={(value) => {
-            const nextTab = value as ChartTab
-            setActiveTab(nextTab)
-            if (nextTab !== 'historical-apy') {
-              setIsDataDialogOpen(false)
-            }
+            setActiveTab(value as ChartTab)
           }}
         >
           <div className="border-b border-border">
@@ -589,11 +546,7 @@ export function ChartsPanel(data: ChartData) {
         value={activeTab}
         className="w-full"
         onValueChange={(value) => {
-          const nextTab = value as ChartTab
-          setActiveTab(nextTab)
-          if (nextTab !== 'historical-apy') {
-            setIsDataDialogOpen(false)
-          }
+          setActiveTab(value as ChartTab)
         }}
       >
         <div className="border-b border-border">
