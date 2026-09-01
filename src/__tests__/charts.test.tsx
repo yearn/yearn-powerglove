@@ -5,8 +5,28 @@ import { ChartsPanel } from '@/components/charts/charts-panel'
 import { PPSChart } from '@/components/charts/PPSChart'
 import { YvUsdTVLChart, YvUsdTvlTooltipContent } from '@/components/charts/YvUsdTVLChart'
 
+const openApySeriesMenu = async (
+  view: ReturnType<typeof render>,
+  dropdownLabel: 'Historical' | 'Oracle & estimates'
+) => {
+  const trigger = view.getByRole('button', { name: new RegExp(`^${dropdownLabel} values`, 'i') })
+  trigger.focus()
+  fireEvent.keyDown(trigger, { key: 'Enter' })
+  await view.findByRole('menu')
+}
+
+const toggleApySeries = async (
+  view: ReturnType<typeof render>,
+  dropdownLabel: 'Historical' | 'Oracle & estimates',
+  seriesName: RegExp
+) => {
+  await openApySeriesMenu(view, dropdownLabel)
+  fireEvent.click(await view.findByRole('menuitemcheckbox', { name: seriesName }))
+  fireEvent.keyDown(document, { key: 'Escape' })
+}
+
 describe('APYChart', () => {
-  it('renders without crashing', () => {
+  it('renders without crashing', async () => {
     const data = Array.from({ length: 10 }).map((_, i) => ({
       date: `2025-01-${String(i + 1).padStart(2, '0')}`,
       sevenDayApy: Math.random() * 10,
@@ -31,11 +51,26 @@ describe('APYChart', () => {
       toJSON: () => {}
     }))
 
-    const { container, getByLabelText } = render(
+    const view = render(
       <div style={{ width: '400px', height: '300px' }}>
-        <APYChart chartData={data} timeframe="30d" hideTooltip />
+        <APYChart
+          chartData={data}
+          timeframe="30d"
+          hideTooltip
+          historicalApySeries={data.map((point, index) => ({
+            date: point.date,
+            pps90DayApy: null,
+            pps180DayApy: null,
+            ppsOneYearApy: null,
+            ppsAllTimeApy: index === 0 ? null : 6 + index / 10
+          }))}
+        />
       </div>
     )
+    const { container } = view
+    expect(
+      container.querySelector('path[stroke="var(--color-derivedApy)"][stroke-width="2.5"]:not([stroke-dasharray])')
+    ).toBeTruthy()
     expect(container.querySelector('path[stroke="var(--color-sevenDayApy)"][stroke-width="2"]')).toBeTruthy()
     expect(
       container.querySelector('path[stroke="var(--color-thirtyDayApy)"][stroke-width="3.5"]:not([stroke-dasharray])')
@@ -47,24 +82,20 @@ describe('APYChart', () => {
     ).toBeTruthy()
     expect(container.querySelector('style')?.textContent).toContain('--color-yBoldEstimatedApy: var(--chart-1)')
     expect(container.querySelector('style')?.textContent).toContain('--color-thirtyDayApy: var(--chart-1)')
+    expect(container.querySelector('path[stroke="var(--color-ppsAllTimeApy)"]')).toBeTruthy()
 
-    const estimatedApyCheckbox = getByLabelText(/estimated apy/i)
-    fireEvent.click(estimatedApyCheckbox)
+    await toggleApySeries(view, 'Oracle & estimates', /^estimated apy/i)
     expect(container.querySelector('path[stroke="var(--color-yBoldEstimatedApy)"]')).toBeNull()
 
-    const derivedApyCheckbox = getByLabelText(/1-day apy/i)
-    expect(container.querySelector('path[stroke="var(--color-derivedApy)"][stroke-width="2.5"]')).toBeTruthy()
+    await toggleApySeries(view, 'Historical', /^all-time apy/i)
+    expect(container.querySelector('path[stroke="var(--color-ppsAllTimeApy)"]')).toBeNull()
 
-    fireEvent.click(derivedApyCheckbox)
-    expect(container.querySelector('path[stroke="var(--color-derivedApy)"]')).toBeNull()
-
-    fireEvent.click(derivedApyCheckbox)
-    expect(container.querySelector('path[stroke="var(--color-derivedApy)"][stroke-width="2.5"]')).toBeTruthy()
+    await toggleApySeries(view, 'Historical', /^all-time apy/i)
+    expect(container.querySelector('path[stroke="var(--color-ppsAllTimeApy)"]')).toBeTruthy()
 
     expect(container.querySelector('path[stroke="var(--color-oracleApy)"]')).toBeNull()
 
-    const oracleApyCheckbox = getByLabelText(/^oracle apy$/i)
-    fireEvent.click(oracleApyCheckbox)
+    await toggleApySeries(view, 'Oracle & estimates', /^oracle apy fee-adjusted/i)
     expect(
       container.querySelector('path[stroke="var(--color-oracleApy)"][stroke-width="1.5"]:not([stroke-dasharray])')
     ).toBeTruthy()
@@ -72,8 +103,7 @@ describe('APYChart', () => {
 
     expect(container.querySelector('path[stroke="var(--color-oracleApy30dAvg)"]')).toBeNull()
 
-    const oracleApy30dCheckbox = getByLabelText(/oracle apy \(30d avg\)/i)
-    fireEvent.click(oracleApy30dCheckbox)
+    await toggleApySeries(view, 'Oracle & estimates', /^oracle apy \(30d avg\)/i)
     expect(container.querySelector('path[stroke="var(--color-oracleApy30dAvg)"]')).toBeTruthy()
   })
 
@@ -90,7 +120,10 @@ describe('APYChart', () => {
       derivedApy: false,
       sevenDayApy: false,
       thirtyDayApy: false,
-      ppsPeriodApy: false,
+      pps90DayApy: false,
+      pps180DayApy: false,
+      ppsOneYearApy: false,
+      ppsAllTimeApy: false,
       estimatedApy: false,
       estimatedApy30dAvg: true,
       yBoldEstimatedApy: false,
@@ -164,8 +197,8 @@ describe('ChartsPanel', () => {
     { date: '2026-01-02', TVL: 1_100_000 }
   ]
 
-  it('offers Period APY for both paired and standard vault charts', () => {
-    const { getByLabelText, unmount } = render(
+  it('offers grouped multi-select APY controls for paired and standard vault charts', async () => {
+    const pairedVault = render(
       <ChartsPanel
         aprApyData={aprApyData}
         ppsData={ppsData}
@@ -186,26 +219,60 @@ describe('ChartsPanel', () => {
       />
     )
 
-    expect(getByLabelText(/period apy/i)).toBeTruthy()
-    expect(getByLabelText(/^oracle apy$/i)).toBeTruthy()
-    unmount()
+    expect(pairedVault.getByRole('button', { name: /^historical values/i })).toBeTruthy()
+    expect(pairedVault.getByRole('button', { name: /^oracle & estimates values/i })).toBeTruthy()
+
+    await openApySeriesMenu(pairedVault, 'Historical')
+    const selectedThirtyDayOption = pairedVault.getByRole('menuitemcheckbox', { name: /^30-day apy/i })
+    expect(selectedThirtyDayOption.getAttribute('data-state')).toBe('checked')
+    expect(selectedThirtyDayOption.className).toContain('focus:text-[#0657f9]')
+    expect(pairedVault.getByRole('menuitemcheckbox', { name: /^all-time apy/i }).getAttribute('data-state')).toBe(
+      'checked'
+    )
+    expect(pairedVault.queryByText('Period APY')).toBeNull()
+    expect(pairedVault.queryByText('Latest period return')).toBeNull()
+    expect(pairedVault.getByText('Rolling history')).toBeTruthy()
+    expect(
+      pairedVault
+        .getByRole('menuitemcheckbox', { name: /^1-day apy/i })
+        .querySelector('line')
+        ?.getAttribute('stroke')
+    ).toBe('#94adf2')
+    expect(
+      pairedVault
+        .getByRole('menuitemcheckbox', { name: /^7-day apy/i })
+        .querySelector('line')
+        ?.getAttribute('stroke')
+    ).toBe('#46a2ff')
+    expect(selectedThirtyDayOption.querySelector('line')?.getAttribute('stroke')).toBe('#46a2ff')
+    pairedVault.unmount()
 
     const standardVault = render(<ChartsPanel aprApyData={aprApyData} ppsData={ppsData} tvlData={tvlData} />)
-    expect(standardVault.getByLabelText(/period apy/i)).toBeTruthy()
+    expect(standardVault.getByRole('button', { name: /^historical values/i })).toBeTruthy()
     expect(standardVault.getByText('Historical return over All Time')).toBeTruthy()
 
     fireEvent.click(standardVault.getByRole('button', { name: '180 Days' }))
     expect(standardVault.getByText('Historical return over 180 Days')).toBeTruthy()
   })
 
-  it('defaults V3 charts to 30-day, period, and the available estimate', () => {
-    const yBoldAprApyData = aprApyData.map((point) => ({
-      ...point,
+  it('defaults V3 charts to rolling 30-day, all-time, and the available estimate', () => {
+    const start = 1_767_225_600
+    const rollingPpsData = Array.from({ length: 31 }, (_, day) => ({
+      date: new Date((start + day * 86400) * 1000).toISOString().slice(0, 10),
+      PPS: 1 + day * 0.001,
+      time: start + day * 86400
+    }))
+    const yBoldAprApyData = rollingPpsData.map((point) => ({
+      date: point.date,
+      sevenDayApy: 4,
+      thirtyDayApy: 5,
+      derivedApr: 6,
+      derivedApy: 6.2,
       oracleApy: 8,
       yBoldEstimatedApy: 9
     }))
     const { container } = render(
-      <ChartsPanel aprApyData={yBoldAprApyData} ppsData={ppsData} tvlData={tvlData} isV3Vault isYBold />
+      <ChartsPanel aprApyData={yBoldAprApyData} ppsData={rollingPpsData} tvlData={tvlData} isV3Vault isYBold />
     )
 
     expect(container.querySelector('path[stroke="var(--color-sevenDayApy)"]')).toBeNull()
@@ -213,7 +280,7 @@ describe('ChartsPanel', () => {
     expect(
       container.querySelector('path[stroke="var(--color-thirtyDayApy)"][stroke-width="3.5"]:not([stroke-dasharray])')
     ).toBeTruthy()
-    expect(container.querySelector('path[stroke="var(--color-ppsPeriodApy)"]')).toBeTruthy()
+    expect(container.querySelector('path[stroke="var(--color-ppsAllTimeApy)"]')).toBeTruthy()
     expect(
       container.querySelector(
         'path[stroke="var(--color-yBoldEstimatedApy)"][stroke-width="1.5"][stroke-dasharray="12 4"]'
@@ -221,7 +288,36 @@ describe('ChartsPanel', () => {
     ).toBeTruthy()
   })
 
-  it('explains APY selectors on hover', async () => {
+  it('allows multiple rolling timeframe APYs to be selected together', async () => {
+    const start = 1_735_689_600
+    const longPpsData = Array.from({ length: 366 }, (_, day) => ({
+      date: new Date((start + day * 86400) * 1000).toISOString().slice(0, 10),
+      PPS: 1 + day * 0.0001,
+      time: start + day * 86400
+    }))
+    const longAprApyData = longPpsData.map((point) => ({
+      date: point.date,
+      sevenDayApy: 4,
+      thirtyDayApy: 5,
+      derivedApr: 6,
+      derivedApy: 6.2,
+      estimatedApy: 7,
+      estimatedApy30dAvg: 6.8
+    }))
+    const view = render(<ChartsPanel aprApyData={longAprApyData} ppsData={longPpsData} tvlData={tvlData} />)
+
+    await toggleApySeries(view, 'Historical', /^90-day apy/i)
+
+    expect(
+      view.container.querySelector(
+        'path[stroke="var(--color-thirtyDayApy)"][stroke-width="3.5"]:not([stroke-dasharray])'
+      )
+    ).toBeTruthy()
+    expect(view.container.querySelector('path[stroke="var(--color-pps90DayApy)"]')).toBeTruthy()
+    expect(view.container.querySelector('path[stroke="var(--color-ppsAllTimeApy)"]')).toBeTruthy()
+  })
+
+  it('keeps APY explanations in the grouped dropdowns', async () => {
     const yBoldAprApyData = aprApyData.map((point) => ({
       ...point,
       oracleApy: 8,
@@ -230,13 +326,8 @@ describe('ChartsPanel', () => {
     const view = render(
       <ChartsPanel aprApyData={yBoldAprApyData} ppsData={ppsData} tvlData={tvlData} isV3Vault isYBold />
     )
-    const estimatedControl = view.container.querySelector('#desktop-chart-toggle-yBoldEstimatedApy-compact')
-    const tooltipTrigger = estimatedControl?.closest('[data-state="closed"]')
-
-    expect(tooltipTrigger).toBeTruthy()
-    fireEvent.pointerMove(tooltipTrigger!, { pointerType: 'mouse' })
-
-    expect(await view.findAllByText('The larger of the 7-day PPS APY and fee-adjusted Oracle APY.')).not.toHaveLength(0)
+    await openApySeriesMenu(view, 'Oracle & estimates')
+    expect(view.getByText('The larger of the 7-day PPS APY and fee-adjusted Oracle APY.')).toBeTruthy()
   })
 
   it('falls back to Oracle APY when a V3 estimate is unavailable', () => {
@@ -257,29 +348,41 @@ describe('ChartsPanel', () => {
     expect(container.querySelector('path[stroke="var(--color-estimatedApy30dAvg)"]')).toBeNull()
   })
 
-  it('prefers an available V3 estimate over Oracle APY', () => {
+  it('prefers an available V3 estimate over Oracle APY', async () => {
     const estimatedAndOracleData = aprApyData.map((point) => ({ ...point, oracleApy: 8 }))
-    const { container, getByLabelText } = render(
+    const view = render(
       <ChartsPanel aprApyData={estimatedAndOracleData} ppsData={ppsData} tvlData={tvlData} isV3Vault />
     )
+    const { container } = view
 
     expect(
       container.querySelector('path[stroke="var(--color-estimatedApy)"][stroke-width="1.5"][stroke-dasharray="12 4"]')
     ).toBeTruthy()
     expect(container.querySelector('path[stroke="var(--color-oracleApy)"]')).toBeNull()
 
-    fireEvent.click(getByLabelText(/^oracle apy$/i))
+    await toggleApySeries(view, 'Oracle & estimates', /^oracle apy fee-adjusted/i)
     expect(container.querySelector('path[stroke="var(--color-estimatedApy)"]')).toBeTruthy()
     expect(container.querySelector('path[stroke="var(--color-oracleApy)"]')).toBeTruthy()
   })
 
   it('keeps the existing defaults for V2 and factory charts', () => {
-    const { container } = render(<ChartsPanel aprApyData={aprApyData} ppsData={ppsData} tvlData={tvlData} />)
+    const start = 1_767_225_600
+    const rollingPpsData = Array.from({ length: 31 }, (_, day) => ({
+      date: new Date((start + day * 86400) * 1000).toISOString().slice(0, 10),
+      PPS: 1 + day * 0.001,
+      time: start + day * 86400
+    }))
+    const rollingAprApyData = rollingPpsData.map((point) => ({ ...aprApyData[0], date: point.date }))
+    const { container } = render(
+      <ChartsPanel aprApyData={rollingAprApyData} ppsData={rollingPpsData} tvlData={tvlData} />
+    )
 
     expect(container.querySelector('path[stroke="var(--color-estimatedApy)"]')).toBeNull()
     expect(container.querySelector('path[stroke="var(--color-estimatedApy30dAvg)"]')).toBeTruthy()
-    expect(container.querySelector('path[stroke="var(--color-thirtyDayApy)"]')).toBeTruthy()
-    expect(container.querySelector('path[stroke="var(--color-ppsPeriodApy)"]')).toBeTruthy()
+    expect(
+      container.querySelector('path[stroke="var(--color-thirtyDayApy)"][stroke-width="3.5"]:not([stroke-dasharray])')
+    ).toBeTruthy()
+    expect(container.querySelector('path[stroke="var(--color-ppsAllTimeApy)"]')).toBeTruthy()
   })
 })
 
