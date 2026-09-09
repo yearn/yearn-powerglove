@@ -1,9 +1,22 @@
+import { ChevronDown } from 'lucide-react'
 import React, { useMemo, useState } from 'react'
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, XAxis, YAxis } from 'recharts'
-import { getTimeframeLimit } from '@/components/charts/chart-utils'
+import { CHART_PALETTE } from '@/components/charts/chart-container'
+import {
+  getTimeframeLimit,
+  PPS_HISTORICAL_APY_PERIODS,
+  type PpsHistoricalApyKey,
+  type PpsHistoricalApyPoint
+} from '@/components/charts/chart-utils'
 import { type ChartConfig, ChartContainer, ChartTooltip } from '@/components/ui/chart'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu'
 import { useIsMobile } from '@/components/ui/use-mobile'
 import { cn } from '@/lib/utils'
 import type { ChartDataPoint } from '@/types/dataTypes'
@@ -12,7 +25,7 @@ export type APYSeriesKey =
   | 'derivedApy'
   | 'sevenDayApy'
   | 'thirtyDayApy'
-  | 'ppsPeriodApy'
+  | PpsHistoricalApyKey
   | 'estimatedApy'
   | 'estimatedApy30dAvg'
   | 'yBoldEstimatedApy'
@@ -24,20 +37,35 @@ const TOOLTIP_ORDER: Record<APYSeriesKey, number> = {
   derivedApy: 0,
   sevenDayApy: 1,
   thirtyDayApy: 2,
-  ppsPeriodApy: 3,
-  estimatedApy: 4,
-  estimatedApy30dAvg: 5,
-  yBoldEstimatedApy: 6,
-  oracleApy: 7,
-  oracleApy30dAvg: 8
+  pps90DayApy: 3,
+  pps180DayApy: 4,
+  ppsOneYearApy: 5,
+  ppsAllTimeApy: 6,
+  estimatedApy: 8,
+  estimatedApy30dAvg: 9,
+  yBoldEstimatedApy: 10,
+  oracleApy: 11,
+  oracleApy30dAvg: 12
 }
 
-const isDashedSeries = (seriesKey: APYSeriesKey) =>
-  seriesKey === 'yBoldEstimatedApy' ||
-  seriesKey === 'estimatedApy' ||
-  seriesKey === 'ppsPeriodApy' ||
-  seriesKey === 'estimatedApy30dAvg' ||
-  seriesKey === 'oracleApy30dAvg'
+const SERIES_DASH_PATTERNS: Partial<Record<APYSeriesKey, string>> = {
+  pps90DayApy: '8 4',
+  pps180DayApy: '4 4',
+  ppsOneYearApy: '2 4',
+  ppsAllTimeApy: '12 3 2 3',
+  yBoldEstimatedApy: '12 4',
+  estimatedApy: '12 4',
+  estimatedApy30dAvg: '12 4',
+  oracleApy30dAvg: '12 4'
+}
+
+const getSeriesDashPattern = (seriesKey: APYSeriesKey, locked = false) => {
+  if (locked && seriesKey === 'estimatedApy30dAvg') return '2 4'
+  return SERIES_DASH_PATTERNS[seriesKey]
+}
+
+const isPpsHistoricalApySeries = (seriesKey: APYSeriesKey): seriesKey is PpsHistoricalApyKey =>
+  PPS_HISTORICAL_APY_PERIODS.some((period) => period.key === seriesKey)
 
 const SERIES_BASE_CONFIG: Record<
   APYSeriesKey,
@@ -61,11 +89,29 @@ const SERIES_BASE_CONFIG: Record<
     color: 'var(--chart-1)',
     description: 'Annualized return from the latest 30-day price-per-share change.'
   },
-  ppsPeriodApy: {
-    chartLabel: 'Period APY %',
-    legendLabel: 'Period APY',
-    color: '#6d90f2',
-    description: 'Annualized return across the selected chart timeframe.'
+  pps90DayApy: {
+    chartLabel: '90-day APY %',
+    legendLabel: '90-day APY',
+    color: '#657fc7',
+    description: 'Rolling annualized PPS return over each complete 90-day window.'
+  },
+  pps180DayApy: {
+    chartLabel: '180-day APY %',
+    legendLabel: '180-day APY',
+    color: '#5f709f',
+    description: 'Rolling annualized PPS return over each complete 180-day window.'
+  },
+  ppsOneYearApy: {
+    chartLabel: '1-year APY %',
+    legendLabel: '1-year APY',
+    color: '#56617e',
+    description: 'Rolling annualized PPS return over each complete one-year window.'
+  },
+  ppsAllTimeApy: {
+    chartLabel: 'All-time APY %',
+    legendLabel: 'All-time APY',
+    color: '#485269',
+    description: 'Annualized PPS return from the first observation through each chart date.'
   },
   estimatedApy: {
     chartLabel: 'Estimated APY %',
@@ -103,7 +149,10 @@ const LOCKED_SERIES_COLORS: Record<APYSeriesKey, string> = {
   derivedApy: '#ff8fbb',
   sevenDayApy: '#ffb3d1',
   thirtyDayApy: '#ff6ba5',
-  ppsPeriodApy: '#ffd6e7',
+  pps90DayApy: '#f6b7d1',
+  pps180DayApy: '#eb96bb',
+  ppsOneYearApy: '#db729f',
+  ppsAllTimeApy: '#c94d83',
   estimatedApy: '#d21162',
   estimatedApy30dAvg: 'var(--chart-4)',
   yBoldEstimatedApy: 'var(--chart-1)',
@@ -115,7 +164,10 @@ const SERIES_ORDER: APYSeriesKey[] = [
   'derivedApy',
   'sevenDayApy',
   'thirtyDayApy',
-  'ppsPeriodApy',
+  'pps90DayApy',
+  'pps180DayApy',
+  'ppsOneYearApy',
+  'ppsAllTimeApy',
   'estimatedApy',
   'estimatedApy30dAvg',
   'yBoldEstimatedApy',
@@ -127,7 +179,10 @@ export const buildApyVisibleSeries = (overrides?: Partial<Record<APYSeriesKey, b
   derivedApy: overrides?.derivedApy ?? true,
   sevenDayApy: overrides?.sevenDayApy ?? true,
   thirtyDayApy: overrides?.thirtyDayApy ?? true,
-  ppsPeriodApy: overrides?.ppsPeriodApy ?? true,
+  pps90DayApy: overrides?.pps90DayApy ?? false,
+  pps180DayApy: overrides?.pps180DayApy ?? false,
+  ppsOneYearApy: overrides?.ppsOneYearApy ?? false,
+  ppsAllTimeApy: overrides?.ppsAllTimeApy ?? true,
   estimatedApy: overrides?.estimatedApy ?? false,
   estimatedApy30dAvg: overrides?.estimatedApy30dAvg ?? false,
   yBoldEstimatedApy: overrides?.yBoldEstimatedApy ?? true,
@@ -136,14 +191,16 @@ export const buildApyVisibleSeries = (overrides?: Partial<Record<APYSeriesKey, b
 })
 
 export const getAvailableApySeries = ({
-  hasPpsPeriodApy,
+  historicalApySeries,
+  lockedHistoricalApySeries,
   hasOracleApy,
   hasOracleApy30dAvg,
   hasYBoldEstimatedApy = false,
   hasEstimatedApy = false,
   hasEstimatedApy30dAvg = false
 }: {
-  hasPpsPeriodApy: boolean
+  historicalApySeries?: PpsHistoricalApyPoint[] | null
+  lockedHistoricalApySeries?: PpsHistoricalApyPoint[] | null
   hasOracleApy: boolean
   hasOracleApy30dAvg: boolean
   hasYBoldEstimatedApy?: boolean
@@ -151,7 +208,11 @@ export const getAvailableApySeries = ({
   hasEstimatedApy30dAvg?: boolean
 }): APYSeriesKey[] => {
   return SERIES_ORDER.filter((seriesKey) => {
-    if (seriesKey === 'ppsPeriodApy') return hasPpsPeriodApy
+    if (isPpsHistoricalApySeries(seriesKey)) {
+      return [historicalApySeries, lockedHistoricalApySeries].some((series) =>
+        series?.some((point) => typeof point[seriesKey] === 'number' && Number.isFinite(point[seriesKey]))
+      )
+    }
     if (seriesKey === 'estimatedApy') return hasEstimatedApy
     if (seriesKey === 'estimatedApy30dAvg') return hasEstimatedApy30dAvg
     if (seriesKey === 'yBoldEstimatedApy') return hasYBoldEstimatedApy
@@ -179,8 +240,8 @@ interface APYChartProps {
   visibleSeries?: APYVisibleSeries
   onVisibleSeriesChange?: (nextVisibleSeries: APYVisibleSeries) => void
   hideSeriesControls?: boolean
-  ppsPeriodApy?: number | null
-  lockedPpsPeriodApy?: number | null
+  historicalApySeries?: PpsHistoricalApyPoint[] | null
+  lockedHistoricalApySeries?: PpsHistoricalApyPoint[] | null
   primaryLabel?: string
   seriesScope?: 'both' | 'primary' | 'comparison'
 }
@@ -188,31 +249,154 @@ interface APYChartProps {
 interface APYSeriesSelectorProps {
   visibleSeries: APYVisibleSeries
   onVisibleSeriesChange: (nextVisibleSeries: APYVisibleSeries) => void
-  hasPpsPeriodApy: boolean
+  historicalApySeries?: PpsHistoricalApyPoint[] | null
+  lockedHistoricalApySeries?: PpsHistoricalApyPoint[] | null
   hasOracleApy: boolean
   hasOracleApy30dAvg: boolean
   hasYBoldEstimatedApy?: boolean
   hasEstimatedApy?: boolean
   hasEstimatedApy30dAvg?: boolean
   className?: string
-  itemClassName?: string
-  idPrefix?: string
-  compact?: boolean
+}
+
+const ROLLING_HISTORICAL_SERIES: APYSeriesKey[] = [
+  'derivedApy',
+  'sevenDayApy',
+  'thirtyDayApy',
+  ...PPS_HISTORICAL_APY_PERIODS.map((period) => period.key)
+]
+const ESTIMATE_SERIES: APYSeriesKey[] = [
+  'estimatedApy',
+  'estimatedApy30dAvg',
+  'yBoldEstimatedApy',
+  'oracleApy',
+  'oracleApy30dAvg'
+]
+
+const SERIES_LINE_SAMPLE_COLORS: Partial<Record<APYSeriesKey, string>> = {
+  derivedApy: CHART_PALETTE.secondary,
+  sevenDayApy: CHART_PALETTE.primary,
+  thirtyDayApy: CHART_PALETTE.primary,
+  estimatedApy: CHART_PALETTE.primary,
+  yBoldEstimatedApy: CHART_PALETTE.primary,
+  estimatedApy30dAvg: CHART_PALETTE.neutral,
+  oracleApy: CHART_PALETTE.neutral,
+  oracleApy30dAvg: CHART_PALETTE.neutral
+}
+
+function SeriesLineSample({ seriesKey }: { seriesKey: APYSeriesKey }) {
+  return (
+    <svg aria-hidden="true" width="26" height="8" viewBox="0 0 26 8" className="shrink-0">
+      <line
+        x1="1"
+        y1="4"
+        x2="25"
+        y2="4"
+        stroke={SERIES_LINE_SAMPLE_COLORS[seriesKey] ?? SERIES_BASE_CONFIG[seriesKey].color}
+        strokeWidth="2"
+        strokeDasharray={getSeriesDashPattern(seriesKey)}
+      />
+    </svg>
+  )
+}
+
+interface ApySeriesDropdownProps {
+  label: string
+  groups: Array<{ label: string; seriesKeys: APYSeriesKey[]; showUnavailable?: boolean }>
+  availableSeries: Set<APYSeriesKey>
+  visibleSeries: APYVisibleSeries
+  onSeriesToggle: (seriesKey: APYSeriesKey, checked: boolean) => void
+}
+
+function ApySeriesDropdown({ label, groups, availableSeries, visibleSeries, onSeriesToggle }: ApySeriesDropdownProps) {
+  const [open, setOpen] = useState(false)
+  const seriesKeys = groups.flatMap((group) => group.seriesKeys)
+  const availableCount = seriesKeys.filter((seriesKey) => availableSeries.has(seriesKey)).length
+  const selectedCount = seriesKeys.filter(
+    (seriesKey) => availableSeries.has(seriesKey) && visibleSeries[seriesKey]
+  ).length
+
+  return (
+    <DropdownMenu open={open} onOpenChange={setOpen}>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          disabled={availableCount === 0}
+          aria-label={`${label} values, ${selectedCount} selected`}
+          className="flex h-10 w-full min-w-44 items-center justify-between gap-4 rounded-md border border-border bg-white px-3 text-sm font-medium text-gray-800 transition-colors hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0657f9]/35 disabled:cursor-not-allowed disabled:opacity-45 sm:w-auto"
+        >
+          <span>{label}</span>
+          <span className="ml-auto text-xs font-normal tabular-nums text-gray-500">
+            {availableCount === 0 ? 'Unavailable' : `${selectedCount} selected`}
+          </span>
+          <ChevronDown
+            className={cn('h-4 w-4 shrink-0 text-gray-500 transition-transform duration-200', open && 'rotate-180')}
+          />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="start"
+        sideOffset={6}
+        className="max-h-[min(32rem,var(--radix-dropdown-menu-content-available-height))] w-[min(22rem,calc(100vw-2rem))] overflow-y-auto rounded-md border border-border bg-white p-1.5 shadow-lg"
+      >
+        {groups.map((group, groupIndex) => {
+          const options = group.showUnavailable
+            ? group.seriesKeys
+            : group.seriesKeys.filter((seriesKey) => availableSeries.has(seriesKey))
+
+          if (options.length === 0) return null
+
+          return (
+            <React.Fragment key={group.label}>
+              {groupIndex > 0 ? <DropdownMenuSeparator className="my-1.5" /> : null}
+              <DropdownMenuLabel className="px-2 py-1 text-[11px] font-medium uppercase tracking-[0.08em] text-gray-500">
+                {group.label}
+              </DropdownMenuLabel>
+              {options.map((seriesKey) => {
+                const available = availableSeries.has(seriesKey)
+                const meta = SERIES_BASE_CONFIG[seriesKey]
+
+                return (
+                  <DropdownMenuCheckboxItem
+                    key={seriesKey}
+                    checked={available && visibleSeries[seriesKey]}
+                    disabled={!available}
+                    onCheckedChange={(checked) => onSeriesToggle(seriesKey, checked === true)}
+                    onSelect={(event) => event.preventDefault()}
+                    className="items-start rounded-sm py-2 pl-8 pr-2 text-[#0657f9] focus:bg-gray-50 focus:text-[#0657f9] data-[disabled]:opacity-45"
+                  >
+                    <div className="flex min-w-0 flex-1 items-start gap-2.5">
+                      <SeriesLineSample seriesKey={seriesKey} />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="font-medium text-gray-900">{meta.legendLabel}</span>
+                          {!available ? <span className="text-[11px] text-gray-500">Unavailable</span> : null}
+                        </div>
+                        <p className="mt-0.5 text-xs leading-4 text-gray-500">{meta.description}</p>
+                      </div>
+                    </div>
+                  </DropdownMenuCheckboxItem>
+                )
+              })}
+            </React.Fragment>
+          )
+        })}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
 }
 
 export function APYSeriesSelector({
   visibleSeries,
   onVisibleSeriesChange,
-  hasPpsPeriodApy,
+  historicalApySeries,
+  lockedHistoricalApySeries,
   hasOracleApy,
   hasOracleApy30dAvg,
   hasYBoldEstimatedApy = false,
   hasEstimatedApy = false,
   hasEstimatedApy30dAvg = false,
-  className,
-  itemClassName,
-  idPrefix = 'toggle',
-  compact = false
+  className
 }: APYSeriesSelectorProps) {
   const toggleSeries = (seriesKey: APYSeriesKey, checked: boolean) =>
     onVisibleSeriesChange({
@@ -220,65 +404,35 @@ export function APYSeriesSelector({
       [seriesKey]: checked
     })
 
+  const availableSeries = new Set(
+    getAvailableApySeries({
+      historicalApySeries,
+      lockedHistoricalApySeries,
+      hasOracleApy,
+      hasOracleApy30dAvg,
+      hasYBoldEstimatedApy,
+      hasEstimatedApy,
+      hasEstimatedApy30dAvg
+    })
+  )
+
   return (
-    <TooltipProvider delayDuration={200}>
-      <div
-        className={cn(
-          'flex w-full flex-wrap items-center justify-center gap-x-4 gap-y-2 rounded-md bg-white/90 px-3 py-2 text-xs sm:w-fit sm:px-4',
-          className
-        )}
-      >
-        {getAvailableApySeries({
-          hasPpsPeriodApy,
-          hasOracleApy,
-          hasOracleApy30dAvg,
-          hasYBoldEstimatedApy,
-          hasEstimatedApy,
-          hasEstimatedApy30dAvg
-        }).map((seriesKey) => (
-          <Tooltip key={seriesKey}>
-            <TooltipTrigger asChild>
-              <div className={cn('flex min-w-[8.75rem] items-center gap-2 sm:min-w-0', itemClassName)}>
-                {compact ? (
-                  <label
-                    className="flex cursor-pointer items-center gap-2 text-left"
-                    htmlFor={`${idPrefix}-${seriesKey}-compact`}
-                  >
-                    <Checkbox
-                      id={`${idPrefix}-${seriesKey}-compact`}
-                      checked={visibleSeries[seriesKey]}
-                      className="h-4 w-4 rounded-[4px] border border-gray-400 bg-white text-gray-700 data-[state=checked]:border-gray-700 data-[state=checked]:bg-white data-[state=checked]:text-gray-800"
-                      onCheckedChange={(checked) => toggleSeries(seriesKey, !!checked)}
-                    />
-                    <span>{SERIES_BASE_CONFIG[seriesKey].legendLabel}</span>
-                  </label>
-                ) : (
-                  <>
-                    <Checkbox
-                      id={`${idPrefix}-${seriesKey}`}
-                      checked={visibleSeries[seriesKey]}
-                      className="h-4 w-4 rounded-[4px] border border-gray-400 bg-white text-gray-700 data-[state=checked]:border-gray-700 data-[state=checked]:bg-white data-[state=checked]:text-gray-800"
-                      onCheckedChange={(checked) => toggleSeries(seriesKey, !!checked)}
-                    />
-                    <label htmlFor={`${idPrefix}-${seriesKey}`} className="flex cursor-help items-center gap-1">
-                      <span
-                        aria-hidden="true"
-                        className="inline-block h-3.5 w-3.5 rounded-sm border border-gray-200"
-                        style={{
-                          backgroundColor: SERIES_BASE_CONFIG[seriesKey].color
-                        }}
-                      />
-                      {SERIES_BASE_CONFIG[seriesKey].legendLabel}
-                    </label>
-                  </>
-                )}
-              </div>
-            </TooltipTrigger>
-            <TooltipContent className="max-w-64 text-xs">{SERIES_BASE_CONFIG[seriesKey].description}</TooltipContent>
-          </Tooltip>
-        ))}
-      </div>
-    </TooltipProvider>
+    <div className={cn('flex w-full flex-col justify-center gap-2 sm:w-auto sm:flex-row', className)}>
+      <ApySeriesDropdown
+        label="Historical"
+        groups={[{ label: 'Rolling history', seriesKeys: ROLLING_HISTORICAL_SERIES, showUnavailable: true }]}
+        availableSeries={availableSeries}
+        visibleSeries={visibleSeries}
+        onSeriesToggle={toggleSeries}
+      />
+      <ApySeriesDropdown
+        label="Oracle & estimates"
+        groups={[{ label: 'Forward-looking values', seriesKeys: ESTIMATE_SERIES }]}
+        availableSeries={availableSeries}
+        visibleSeries={visibleSeries}
+        onSeriesToggle={toggleSeries}
+      />
+    </div>
   )
 }
 
@@ -296,8 +450,8 @@ export const APYChart: React.FC<APYChartProps> = React.memo(
     visibleSeries,
     onVisibleSeriesChange,
     hideSeriesControls,
-    ppsPeriodApy,
-    lockedPpsPeriodApy,
+    historicalApySeries,
+    lockedHistoricalApySeries,
     primaryLabel,
     seriesScope = 'both'
   }) => {
@@ -318,7 +472,6 @@ export const APYChart: React.FC<APYChartProps> = React.memo(
     const filteredData = useMemo(() => chartData.slice(-getTimeframeLimit(timeframe)), [chartData, timeframe])
     const chartBottomPadding = isMobile ? 12 : 16
     const yAxisMargin = yAxisWidth ?? (isMobile ? 44 : 60)
-    const hasPpsPeriodApy = typeof ppsPeriodApy === 'number' && Number.isFinite(ppsPeriodApy)
 
     const hasOracleApy = useMemo(() => {
       return (
@@ -347,6 +500,29 @@ export const APYChart: React.FC<APYChartProps> = React.memo(
         (comparisonChartData ?? []).some((point) => typeof point.estimatedApy30dAvg === 'number'),
       [filteredData, comparisonChartData]
     )
+    const availableApySeries = useMemo(
+      () =>
+        new Set(
+          getAvailableApySeries({
+            historicalApySeries,
+            lockedHistoricalApySeries,
+            hasOracleApy,
+            hasOracleApy30dAvg,
+            hasYBoldEstimatedApy,
+            hasEstimatedApy,
+            hasEstimatedApy30dAvg
+          })
+        ),
+      [
+        historicalApySeries,
+        lockedHistoricalApySeries,
+        hasOracleApy,
+        hasOracleApy30dAvg,
+        hasYBoldEstimatedApy,
+        hasEstimatedApy,
+        hasEstimatedApy30dAvg
+      ]
+    )
     const showPrimary = seriesScope !== 'comparison'
     const showComparison = seriesScope !== 'primary' && Boolean(comparisonChartData?.length)
 
@@ -354,12 +530,34 @@ export const APYChart: React.FC<APYChartProps> = React.memo(
       () => new Map((comparisonChartData ?? []).map((point) => [point.date, point])),
       [comparisonChartData]
     )
+    const historicalApyByDate = useMemo(
+      () => new Map((historicalApySeries ?? []).map((point) => [point.date, point])),
+      [historicalApySeries]
+    )
+    const lockedHistoricalApyByDate = useMemo(
+      () => new Map((lockedHistoricalApySeries ?? []).map((point) => [point.date, point])),
+      [lockedHistoricalApySeries]
+    )
 
     const chartSeriesData = useMemo(
       () =>
         filteredData.map((point) => {
           const comparisonPoint = comparisonByDate.get(point.date)
-          const nextPoint: ChartDataPoint = hasPpsPeriodApy ? { ...point, ppsPeriodApy } : { ...point }
+          const historicalApyPoint = historicalApyByDate.get(point.date)
+          const lockedHistoricalApyPoint = lockedHistoricalApyByDate.get(point.date)
+          const nextPoint: ChartDataPoint = { ...point }
+
+          for (const period of PPS_HISTORICAL_APY_PERIODS) {
+            const primaryValue = historicalApyPoint?.[period.key]
+            const lockedValue = lockedHistoricalApyPoint?.[period.key]
+
+            if (typeof primaryValue === 'number' && Number.isFinite(primaryValue)) {
+              nextPoint[period.key] = primaryValue
+            }
+            if (typeof lockedValue === 'number' && Number.isFinite(lockedValue)) {
+              nextPoint[`locked${period.key}`] = lockedValue
+            }
+          }
 
           if (comparisonPoint) {
             for (const seriesKey of SERIES_ORDER) {
@@ -369,33 +567,15 @@ export const APYChart: React.FC<APYChartProps> = React.memo(
             }
           }
 
-          if (typeof lockedPpsPeriodApy === 'number' && Number.isFinite(lockedPpsPeriodApy)) {
-            nextPoint.lockedPpsPeriodApy = lockedPpsPeriodApy
-          }
-
           return nextPoint
         }),
-      [filteredData, comparisonByDate, hasPpsPeriodApy, ppsPeriodApy, lockedPpsPeriodApy]
+      [filteredData, comparisonByDate, historicalApyByDate, lockedHistoricalApyByDate]
     )
 
     const chartConfig = useMemo<ChartConfig>(() => {
       return Object.entries(SERIES_BASE_CONFIG).reduce((acc, [key, meta]) => {
-        if (key === 'ppsPeriodApy' && !hasPpsPeriodApy) {
-          return acc
-        }
-        if (key === 'oracleApy' && !hasOracleApy) {
-          return acc
-        }
-        if (key === 'oracleApy30dAvg' && !hasOracleApy30dAvg) {
-          return acc
-        }
-        if (key === 'estimatedApy' && !hasEstimatedApy) {
-          return acc
-        }
-        if (key === 'estimatedApy30dAvg' && !hasEstimatedApy30dAvg) {
-          return acc
-        }
-        if (key === 'yBoldEstimatedApy' && !hasYBoldEstimatedApy) {
+        const seriesKey = key as APYSeriesKey
+        if (!availableApySeries.has(seriesKey)) {
           return acc
         }
         acc[key] = {
@@ -405,39 +585,17 @@ export const APYChart: React.FC<APYChartProps> = React.memo(
         if (comparisonChartData?.length) {
           acc[`locked${key}`] = {
             label: `${comparisonLabel} ${meta.chartLabel}`,
-            color: hideAxes ? 'black' : LOCKED_SERIES_COLORS[key as APYSeriesKey]
+            color: hideAxes ? 'black' : LOCKED_SERIES_COLORS[seriesKey]
           }
         }
         return acc
       }, {} as ChartConfig)
-    }, [
-      hideAxes,
-      hasPpsPeriodApy,
-      hasOracleApy,
-      hasOracleApy30dAvg,
-      hasEstimatedApy,
-      hasEstimatedApy30dAvg,
-      hasYBoldEstimatedApy,
-      comparisonChartData?.length,
-      comparisonLabel,
-      primaryLabel
-    ])
-
-    const getTimeframeLabel = (value: string) => {
-      if (value === '30d') return '30D'
-      if (value === '90d') return '90D'
-      if (value === '1y') return '1Y'
-      if (value === 'all') return 'All Time'
-      return value
-    }
+    }, [hideAxes, availableApySeries, comparisonChartData?.length, comparisonLabel, primaryLabel])
 
     const getSeriesLabel = (name: string) => {
       if (name.startsWith('locked')) {
         const unlockedSeriesKey = (name.charAt(6).toLowerCase() + name.slice(7)) as APYSeriesKey
         return `${comparisonLabel} ${seriesConfig[unlockedSeriesKey]?.legendLabel ?? name}`
-      }
-      if (name === 'ppsPeriodApy') {
-        return `${primaryLabel ? `${primaryLabel} ` : ''}${getTimeframeLabel(timeframe)} APY`
       }
       const label = seriesConfig[name as APYSeriesKey]?.legendLabel || name
       return primaryLabel ? `${primaryLabel} ${label}` : label
@@ -454,8 +612,7 @@ export const APYChart: React.FC<APYChartProps> = React.memo(
     const renderSeriesLine = (seriesKey: APYSeriesKey, locked = false) => {
       const dataKey = locked ? `locked${seriesKey}` : seriesKey
       const colorKey = locked ? `locked${seriesKey}` : seriesKey
-      const strokeDasharray =
-        seriesKey === 'estimatedApy30dAvg' && locked ? '2 4' : isDashedSeries(seriesKey) ? '12 4' : undefined
+      const strokeDasharray = getSeriesDashPattern(seriesKey, locked)
 
       return (
         <Line
@@ -477,8 +634,8 @@ export const APYChart: React.FC<APYChartProps> = React.memo(
                       ? 2.5
                       : seriesKey === 'sevenDayApy'
                         ? 2
-                        : seriesKey === 'ppsPeriodApy'
-                          ? 0.5
+                        : isPpsHistoricalApySeries(seriesKey)
+                          ? 1.25
                           : 1
           }
           dot={false}
@@ -563,8 +720,7 @@ export const APYChart: React.FC<APYChartProps> = React.memo(
                           <div className="grid gap-1.5">
                             {sorted.map((item) => {
                               const seriesKey = getTooltipSeriesKey(String(item.dataKey))
-                              const isLockedEstimatedAverage =
-                                String(item.dataKey).startsWith('locked') && seriesKey === 'estimatedApy30dAvg'
+                              const isLocked = String(item.dataKey).startsWith('locked')
                               const raw = item.value
                               const value = typeof raw === 'number' ? `${raw.toFixed(2)}%` : raw
 
@@ -600,13 +756,7 @@ export const APYChart: React.FC<APYChartProps> = React.memo(
                                                 ? 2.5
                                                 : 2
                                         }
-                                        strokeDasharray={
-                                          isLockedEstimatedAverage
-                                            ? '2 4'
-                                            : isDashedSeries(seriesKey)
-                                              ? '12 4'
-                                              : undefined
-                                        }
+                                        strokeDasharray={getSeriesDashPattern(seriesKey, isLocked)}
                                         strokeLinecap="butt"
                                       />
                                     </svg>
@@ -634,14 +784,16 @@ export const APYChart: React.FC<APYChartProps> = React.memo(
                     {showComparison ? renderSeriesLine('thirtyDayApy', true) : null}
                   </>
                 )}
-                {hasPpsPeriodApy && resolvedVisibleSeries.ppsPeriodApy && (
-                  <>
-                    {showPrimary ? renderSeriesLine('ppsPeriodApy') : null}
-                    {showComparison && typeof lockedPpsPeriodApy === 'number'
-                      ? renderSeriesLine('ppsPeriodApy', true)
-                      : null}
-                  </>
-                )}
+                {PPS_HISTORICAL_APY_PERIODS.map((period) => {
+                  if (!availableApySeries.has(period.key) || !resolvedVisibleSeries[period.key]) return null
+
+                  return (
+                    <React.Fragment key={period.key}>
+                      {showPrimary ? renderSeriesLine(period.key) : null}
+                      {showComparison ? renderSeriesLine(period.key, true) : null}
+                    </React.Fragment>
+                  )
+                })}
                 {resolvedVisibleSeries.derivedApy && (
                   <>
                     {showPrimary ? renderSeriesLine('derivedApy') : null}
@@ -685,7 +837,8 @@ export const APYChart: React.FC<APYChartProps> = React.memo(
             <APYSeriesSelector
               visibleSeries={resolvedVisibleSeries}
               onVisibleSeriesChange={setSeriesVisibility}
-              hasPpsPeriodApy={hasPpsPeriodApy}
+              historicalApySeries={historicalApySeries}
+              lockedHistoricalApySeries={lockedHistoricalApySeries}
               hasOracleApy={hasOracleApy}
               hasOracleApy30dAvg={hasOracleApy30dAvg}
               hasYBoldEstimatedApy={hasYBoldEstimatedApy}
