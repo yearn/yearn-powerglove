@@ -197,6 +197,24 @@ describe('ChartsPanel', () => {
     { date: '2026-01-02', TVL: 1_100_000 }
   ]
 
+  it('keeps a custom range across chart tabs and restores presets', () => {
+    const view = render(<ChartsPanel aprApyData={aprApyData} ppsData={ppsData} tvlData={tvlData} />)
+    fireEvent.click(view.getByRole('button', { name: 'Custom' }))
+    fireEvent.change(view.getByLabelText('Start date'), { target: { value: '2020-01-01' } })
+    fireEvent.change(view.getByLabelText('End date'), { target: { value: '2020-02-01' } })
+    fireEvent.click(view.getByRole('button', { name: 'Apply range' }))
+    expect(view.getByRole('button', { name: 'Custom' }).getAttribute('aria-pressed')).toBe('true')
+    expect(view.getByRole('status').textContent).toBe('No chart data available for this date range.')
+    for (const name of ['Historical Share Growth', 'Historical TVL']) {
+      fireEvent.mouseDown(view.getByRole('tab', { name }), { button: 0, ctrlKey: false })
+      expect(view.getByRole('status').textContent).toBe('No chart data available for this date range.')
+      expect(view.getByText(/Jan 1, 2020 – Feb 1, 2020/)).toBeTruthy()
+    }
+    fireEvent.click(view.getByRole('button', { name: 'All Time' }))
+    expect(view.queryByRole('status')).toBeNull()
+    expect(view.getByRole('button', { name: 'Custom' }).getAttribute('aria-pressed')).toBe('false')
+  })
+
   it('offers grouped multi-select APY controls for paired and standard vault charts', async () => {
     const pairedVault = render(
       <ChartsPanel

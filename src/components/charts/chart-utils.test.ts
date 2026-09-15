@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { calculatePpsHistoricalApySeries, getTimeframeLimit } from '@/components/charts/chart-utils'
+import {
+  calculatePpsHistoricalApySeries,
+  filterChartTimeframe,
+  getTimeframeLimit
+} from '@/components/charts/chart-utils'
 
 describe('getTimeframeLimit', () => {
   it('includes both endpoints for fixed-day chart windows', () => {
@@ -73,5 +77,25 @@ describe('calculatePpsHistoricalApySeries', () => {
         ppsAllTimeApy: null
       }
     ])
+  })
+})
+
+describe('filterChartTimeframe', () => {
+  it('includes both calendar boundaries across ISO and formatted chart dates, even with gaps', () => {
+    const data = ['Dec 31, 2024', 'Jan 1, 2025', '2025-01-14', 'Jan 31, 2025', 'Feb 1, 2025', 'Invalid date'].map(
+      (date) => ({ date })
+    )
+    expect(filterChartTimeframe(data, { start: '2025-01-01', end: '2025-01-31' })).toEqual(data.slice(1, 4))
+    expect(filterChartTimeframe(data, { start: '2025-01-14', end: '2025-01-14' })).toEqual([data[2]])
+    expect(filterChartTimeframe(data, { start: '2020-01-01', end: '2020-12-31' })).toEqual([])
+  })
+
+  it('does not truncate a custom range longer than the preset windows or 1000 rows', () => {
+    const data = Array.from({ length: 1500 }, (_, day) => ({
+      date: new Date(Date.UTC(2020, 0, day + 1)).toISOString().slice(0, 10)
+    }))
+    expect(filterChartTimeframe(data, { start: data[0].date, end: data[1499].date })).toHaveLength(1500)
+    expect(filterChartTimeframe(data, 'all')).toHaveLength(1500)
+    expect(filterChartTimeframe(data, '30d')).toEqual(data.slice(-31))
   })
 })

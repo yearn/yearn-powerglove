@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react'
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, XAxis, YAxis } from 'recharts'
-import { getTimeframeLimit } from '@/components/charts/chart-utils'
+import { type ChartTimeframe, filterChartTimeframe } from '@/components/charts/chart-utils'
 import { ChartContainer, ChartTooltip } from '@/components/ui/chart'
 import { useIsMobile } from '@/components/ui/use-mobile'
 import type { yvUsdChartData } from '@/types/dataTypes'
@@ -9,7 +9,7 @@ type YvUsdChartValue = 'apy' | 'pps' | 'tvl'
 
 interface YvUsdDualLineChartProps {
   chartData: yvUsdChartData
-  timeframe: string
+  timeframe: ChartTimeframe
   valueType: YvUsdChartValue
 }
 
@@ -56,7 +56,7 @@ const yAxisLabel = (valueType: YvUsdChartValue): string => {
 export const YvUsdDualLineChart: React.FC<YvUsdDualLineChartProps> = React.memo(
   ({ chartData, timeframe, valueType }) => {
     const isMobile = useIsMobile()
-    const filteredData = useMemo(() => chartData.slice(-getTimeframeLimit(timeframe)), [chartData, timeframe])
+    const filteredData = useMemo(() => filterChartTimeframe(chartData, timeframe), [chartData, timeframe])
     const chartBottomPadding = isMobile ? 12 : 16
     const yAxisMargin = isMobile ? 52 : valueType === 'tvl' ? 68 : 60
 

@@ -1,14 +1,14 @@
 import React, { useMemo } from 'react'
 import type { TooltipProps } from 'recharts'
 import { Bar, CartesianGrid, ComposedChart, Legend, ResponsiveContainer, XAxis, YAxis } from 'recharts'
-import { getTimeframeLimit } from '@/components/charts/chart-utils'
+import { type ChartTimeframe, filterChartTimeframe } from '@/components/charts/chart-utils'
 import { ChartContainer, ChartLegendContent, ChartTooltip } from '@/components/ui/chart'
 import { useIsMobile } from '@/components/ui/use-mobile'
 import type { yvUsdChartData } from '@/types/dataTypes'
 
 interface YvUsdTVLChartProps {
   chartData: yvUsdChartData
-  timeframe: string
+  timeframe: ChartTimeframe
 }
 
 const formatCurrency = (value: number) => `$${value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
@@ -48,7 +48,7 @@ export const YvUsdTvlTooltipContent = ({ active, label, payload }: TooltipProps<
 
 export const YvUsdTVLChart: React.FC<YvUsdTVLChartProps> = React.memo(({ chartData, timeframe }) => {
   const isMobile = useIsMobile()
-  const filteredData = useMemo(() => chartData.slice(-getTimeframeLimit(timeframe)), [chartData, timeframe])
+  const filteredData = useMemo(() => filterChartTimeframe(chartData, timeframe), [chartData, timeframe])
   const chartBottomPadding = isMobile ? 12 : 16
   const yAxisMargin = isMobile ? 52 : 68
 
