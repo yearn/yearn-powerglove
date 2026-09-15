@@ -1,3 +1,23 @@
+import { format, isValid, parse, parseISO } from 'date-fns'
+
+export type ChartDateRange = { start: string; end: string }
+export type ChartTimeframe = string | ChartDateRange
+
+// Chart labels use either ISO dates or the app's "MMM d, yyyy" format.
+export function getChartDate(date: string): string | null {
+  const parsed = /^\d{4}-\d{2}-\d{2}$/.test(date) ? parseISO(date) : parse(date, 'MMM d, yyyy', new Date())
+  return isValid(parsed) ? format(parsed, 'yyyy-MM-dd') : null
+}
+
+export function filterChartTimeframe<T extends { date: string }>(data: T[], timeframe: ChartTimeframe): T[] {
+  if (typeof timeframe === 'string') return data.slice(-getTimeframeLimit(timeframe))
+
+  return data.filter((point) => {
+    const date = getChartDate(point.date)
+    return date !== null && date >= timeframe.start && date <= timeframe.end
+  })
+}
+
 const TIMEFRAME_LIMITS: Record<string, number> = {
   '7d': 8,
   '30d': 31,

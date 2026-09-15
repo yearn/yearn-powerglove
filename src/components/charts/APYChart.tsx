@@ -3,7 +3,8 @@ import React, { useMemo, useState } from 'react'
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, XAxis, YAxis } from 'recharts'
 import { CHART_PALETTE } from '@/components/charts/chart-container'
 import {
-  getTimeframeLimit,
+  type ChartTimeframe,
+  filterChartTimeframe,
   PPS_HISTORICAL_APY_PERIODS,
   type PpsHistoricalApyKey,
   type PpsHistoricalApyPoint
@@ -226,7 +227,7 @@ interface APYChartProps {
   chartData: ChartDataPoint[]
   comparisonChartData?: ChartDataPoint[]
   comparisonLabel?: string
-  timeframe: string
+  timeframe: ChartTimeframe
   hideAxes?: boolean
   hideTooltip?: boolean
   chartMargin?: Partial<{
@@ -469,7 +470,7 @@ export const APYChart: React.FC<APYChartProps> = React.memo(
       }
     }
 
-    const filteredData = useMemo(() => chartData.slice(-getTimeframeLimit(timeframe)), [chartData, timeframe])
+    const filteredData = useMemo(() => filterChartTimeframe(chartData, timeframe), [chartData, timeframe])
     const chartBottomPadding = isMobile ? 12 : 16
     const yAxisMargin = yAxisWidth ?? (isMobile ? 44 : 60)
 
