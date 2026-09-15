@@ -62,6 +62,9 @@ type SingleVaultPageContentProps = {
   isYvUsd?: boolean
   mainInfoPanelProps: ReturnType<typeof useMainInfoPanelData>
   reallocationData: ReturnType<typeof useReallocationData>['data']
+  hasOlderReallocations?: ReturnType<typeof useReallocationData>['hasOlderEntries']
+  isLoadingOlderReallocations?: ReturnType<typeof useReallocationData>['isLoadingOlderEntries']
+  onLoadOlderReallocations?: ReturnType<typeof useReallocationData>['loadOlderEntries']
 }
 
 export function SingleVaultPageContent({
@@ -81,7 +84,10 @@ export function SingleVaultPageContent({
   isYBold = false,
   isYvUsd = false,
   mainInfoPanelProps,
-  reallocationData
+  reallocationData,
+  hasOlderReallocations = false,
+  isLoadingOlderReallocations = false,
+  onLoadOlderReallocations
 }: SingleVaultPageContentProps) {
   const overrideItems = React.useMemo(() => getVaultOverrideDisplayItems(overrideConfig), [overrideConfig])
 
@@ -160,6 +166,9 @@ export function SingleVaultPageContent({
           aboutDescription={mainInfoPanelProps.description}
           aboutLink={mainInfoPanelProps.yearnVaultLink}
           reallocationData={reallocationData}
+          hasOlderReallocations={hasOlderReallocations}
+          isLoadingOlderReallocations={isLoadingOlderReallocations}
+          onLoadOlderReallocations={onLoadOlderReallocations}
         />
       </div>
     </VaultPageLayout>
@@ -250,12 +259,12 @@ function ValidVaultPage({ chainId, vaultAddress }: { chainId: string; vaultAddre
     vaultDetails?.pairedThirtyDayApy
   ])
 
-  const { data: reallocationData } = useReallocationData(
-    vaultAddress,
-    vaultChainId,
-    vaultDetails,
-    vaultSnapshotTimestampUtc
-  )
+  const {
+    data: reallocationData,
+    hasOlderEntries,
+    isLoadingOlderEntries,
+    loadOlderEntries
+  } = useReallocationData(vaultAddress, vaultChainId, vaultDetails, vaultSnapshotTimestampUtc)
 
   return (
     <SingleVaultPageContent
@@ -278,6 +287,9 @@ function ValidVaultPage({ chainId, vaultAddress }: { chainId: string; vaultAddre
       isYvUsd={isYvUsd}
       mainInfoPanelProps={mainInfoPanelProps}
       reallocationData={reallocationData}
+      hasOlderReallocations={hasOlderEntries}
+      isLoadingOlderReallocations={isLoadingOlderEntries}
+      onLoadOlderReallocations={loadOlderEntries}
     />
   )
 }

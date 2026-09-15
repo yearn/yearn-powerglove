@@ -1,4 +1,4 @@
-import { ArrowUpDown, ChevronDown, ChevronUp } from 'lucide-react'
+import { ArrowUpDown } from 'lucide-react'
 import React, { useState } from 'react'
 import { CHAIN_ID_TO_BLOCK_EXPLORER } from '@/constants/chains'
 import { formatPercent } from '@/lib/formatters'
@@ -25,11 +25,24 @@ function formatAddress(address: string): string {
   return `${address.slice(0, 6)}...${address.slice(-4)}`
 }
 
-function SortHeader({ label, sortKey, onSort }: { label: string; sortKey: SortKey; onSort: (key: SortKey) => void }) {
+function SortHeader({
+  label,
+  sortKey,
+  onSort,
+  align = 'left'
+}: {
+  label: string
+  sortKey: SortKey
+  onSort: (key: SortKey) => void
+  align?: 'left' | 'right'
+}) {
   return (
     <button
       onClick={() => onSort(sortKey)}
-      className="flex items-center gap-1 text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground hover:text-foreground"
+      className={cn(
+        'flex w-full items-center gap-1 text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground hover:text-foreground',
+        align === 'right' && 'justify-end'
+      )}
     >
       {label}
       <ArrowUpDown className="h-3 w-3 opacity-50" />
@@ -42,16 +55,25 @@ interface ReallocationStrategyTableProps {
   chainId: number | null
   beforeLabel?: string
   afterLabel?: string
+  beforeAprLabel?: string
+  afterAprLabel?: string
+  showAprColumns?: boolean
 }
 
 export const ReallocationStrategyTable: React.FC<ReallocationStrategyTableProps> = React.memo(
-  ({ strategies, chainId, beforeLabel = 'Current', afterLabel = 'Target' }) => {
+  ({
+    strategies,
+    chainId,
+    beforeLabel = 'Current',
+    afterLabel = 'Proposed',
+    beforeAprLabel = 'APR at current debt',
+    afterAprLabel = 'APR at target debt',
+    showAprColumns = true
+  }) => {
     const [sortConfig, setSortConfig] = useState<SortConfig>({
       key: 'targetRatio',
       direction: 'desc'
     })
-    const [isExpanded, setIsExpanded] = useState(true)
-
     const sortedStrategies = React.useMemo(() => {
       return [...strategies].sort((a, b) => {
         let aValue: number
@@ -73,16 +95,22 @@ export const ReallocationStrategyTable: React.FC<ReallocationStrategyTableProps>
             bValue = b.allocationDeltaPct
             break
           case 'currentApr':
-            aValue = a.currentAprPct ?? 0
-            bValue = b.currentAprPct ?? 0
+            if (a.currentAprPct === null) return b.currentAprPct === null ? 0 : 1
+            if (b.currentAprPct === null) return -1
+            aValue = a.currentAprPct
+            bValue = b.currentAprPct
             break
           case 'targetApr':
-            aValue = a.targetAprPct ?? 0
-            bValue = b.targetAprPct ?? 0
+            if (a.targetAprPct === null) return b.targetAprPct === null ? 0 : 1
+            if (b.targetAprPct === null) return -1
+            aValue = a.targetAprPct
+            bValue = b.targetAprPct
             break
           case 'aprDelta':
-            aValue = a.aprDeltaPct ?? 0
-            bValue = b.aprDeltaPct ?? 0
+            if (a.aprDeltaPct === null) return b.aprDeltaPct === null ? 0 : 1
+            if (b.aprDeltaPct === null) return -1
+            aValue = a.aprDeltaPct
+            bValue = b.aprDeltaPct
             break
           default:
             return 0
@@ -99,126 +127,113 @@ export const ReallocationStrategyTable: React.FC<ReallocationStrategyTableProps>
       }))
     }
 
-    const activeStrategies = strategies.filter((s) => !s.isUnallocated)
-
     return (
-      <div className="rounded-lg border border-border bg-card">
-        <button
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="flex w-full items-center justify-between px-4 py-3 hover:bg-muted/30"
-        >
-          <h3 className="font-semibold text-foreground">
-            Strategy Details
-            <span className="ml-2 text-sm font-normal text-muted-foreground">
-              ({activeStrategies.length} strategies)
-            </span>
-          </h3>
-          {isExpanded ? (
-            <ChevronDown className="h-5 w-5 text-muted-foreground" />
-          ) : (
-            <ChevronUp className="h-5 w-5 text-muted-foreground" />
-          )}
-        </button>
+      <div className="overflow-hidden rounded-lg border border-border bg-card">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-muted/40">
+              <tr className="border-b border-border text-left">
+                <th className="px-4 py-3">
+                  <SortHeader label="Strategy" sortKey="name" onSort={handleSort} />
+                </th>
+                <th className="px-4 py-3 text-right">
+                  <SortHeader label={beforeLabel} sortKey="currentRatio" onSort={handleSort} align="right" />
+                </th>
+                <th className="px-4 py-3 text-right">
+                  <SortHeader label={afterLabel} sortKey="targetRatio" onSort={handleSort} align="right" />
+                </th>
+                <th className="px-4 py-3 text-right">
+                  <SortHeader label="Δ Alloc" sortKey="allocationDelta" onSort={handleSort} align="right" />
+                </th>
+                {showAprColumns ? (
+                  <>
+                    <th className="px-4 py-3 text-right">
+                      <SortHeader label={beforeAprLabel} sortKey="currentApr" onSort={handleSort} align="right" />
+                    </th>
+                    <th className="px-4 py-3 text-right">
+                      <SortHeader label={afterAprLabel} sortKey="targetApr" onSort={handleSort} align="right" />
+                    </th>
+                    <th className="px-4 py-3 text-right">
+                      <SortHeader label="Δ APR" sortKey="aprDelta" onSort={handleSort} align="right" />
+                    </th>
+                  </>
+                ) : null}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border text-sm">
+              {sortedStrategies.map((strategy) => {
+                const isIncreasing = strategy.allocationDeltaPct >= 0
+                const aprIncreasing = strategy.aprDeltaPct !== null && strategy.aprDeltaPct >= 0
+                const displayAddress = strategy.strategyAddress ?? strategy.strategyKey
 
-        {isExpanded && (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-muted/40">
-                <tr className="border-b border-border text-left">
-                  <th className="px-4 py-3">
-                    <SortHeader label="Strategy" sortKey="name" onSort={handleSort} />
-                  </th>
-                  <th className="px-4 py-3 text-right">
-                    <SortHeader label={beforeLabel} sortKey="currentRatio" onSort={handleSort} />
-                  </th>
-                  <th className="px-4 py-3 text-right">
-                    <SortHeader label={afterLabel} sortKey="targetRatio" onSort={handleSort} />
-                  </th>
-                  <th className="px-4 py-3 text-right">
-                    <SortHeader label="Δ Alloc" sortKey="allocationDelta" onSort={handleSort} />
-                  </th>
-                  <th className="px-4 py-3 text-right">
-                    <SortHeader label={`${beforeLabel} APR`} sortKey="currentApr" onSort={handleSort} />
-                  </th>
-                  <th className="px-4 py-3 text-right">
-                    <SortHeader label={`${afterLabel} APR`} sortKey="targetApr" onSort={handleSort} />
-                  </th>
-                  <th className="px-4 py-3 text-right">
-                    <SortHeader label="Δ APR" sortKey="aprDelta" onSort={handleSort} />
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border text-sm">
-                {sortedStrategies.map((strategy) => {
-                  const isIncreasing = strategy.allocationDeltaPct >= 0
-                  const aprIncreasing = strategy.aprDeltaPct !== null && strategy.aprDeltaPct >= 0
-                  const displayAddress = strategy.strategyAddress ?? strategy.strategyKey
-
-                  return (
-                    <tr
-                      key={strategy.strategyKey}
-                      className={cn('hover:bg-muted/30', strategy.isUnallocated && 'opacity-50')}
-                    >
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: strategy.color }} />
-                          <div className="min-w-0 flex-1">
-                            <div className="font-medium text-foreground">{strategy.name}</div>
-                            {!strategy.isUnallocated && strategy.strategyAddress && (
-                              <a
-                                href={getExplorerUrl(chainId, displayAddress)}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="font-mono text-xs text-blue-600 hover:underline dark:text-blue-400"
-                              >
-                                {formatAddress(displayAddress)}
-                              </a>
-                            )}
-                          </div>
+                return (
+                  <tr
+                    key={strategy.strategyKey}
+                    className={cn('hover:bg-muted/30', strategy.isUnallocated && 'opacity-50')}
+                  >
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: strategy.color }} />
+                        <div className="min-w-0 flex-1">
+                          <div className="font-medium text-foreground">{strategy.name}</div>
+                          {!strategy.isUnallocated && strategy.strategyAddress && (
+                            <a
+                              href={getExplorerUrl(chainId, displayAddress)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="font-mono text-xs text-blue-600 hover:underline dark:text-blue-400"
+                            >
+                              {formatAddress(displayAddress)}
+                            </a>
+                          )}
                         </div>
-                      </td>
-                      <td className="px-4 py-3 text-right tabular-nums text-foreground">
-                        {formatPercent(strategy.currentRatioPct)}
-                      </td>
-                      <td className="px-4 py-3 text-right tabular-nums text-foreground">
-                        {formatPercent(strategy.targetRatioPct)}
-                      </td>
-                      <td
-                        className={cn(
-                          'px-4 py-3 text-right font-medium tabular-nums',
-                          isIncreasing ? 'text-green-600' : 'text-red-600'
-                        )}
-                      >
-                        {isIncreasing ? '+' : ''}
-                        {formatPercent(strategy.allocationDeltaPct)}
-                      </td>
-                      <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
-                        {formatPercent(strategy.currentAprPct)}
-                      </td>
-                      <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
-                        {formatPercent(strategy.targetAprPct)}
-                      </td>
-                      <td
-                        className={cn(
-                          'px-4 py-3 text-right font-medium tabular-nums',
-                          strategy.aprDeltaPct === null
-                            ? 'text-muted-foreground'
-                            : aprIncreasing
-                              ? 'text-green-600'
-                              : 'text-red-600'
-                        )}
-                      >
-                        {strategy.aprDeltaPct === null
-                          ? 'N/A'
-                          : `${aprIncreasing ? '+' : ''}${formatPercent(strategy.aprDeltaPct)}`}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums text-foreground">
+                      {formatPercent(strategy.currentRatioPct)}
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums text-foreground">
+                      {formatPercent(strategy.targetRatioPct)}
+                    </td>
+                    <td
+                      className={cn(
+                        'px-4 py-3 text-right font-medium tabular-nums',
+                        isIncreasing ? 'text-green-600' : 'text-red-600'
+                      )}
+                    >
+                      {isIncreasing ? '+' : ''}
+                      {formatPercent(strategy.allocationDeltaPct)}
+                    </td>
+                    {showAprColumns ? (
+                      <>
+                        <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
+                          {formatPercent(strategy.currentAprPct)}
+                        </td>
+                        <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
+                          {formatPercent(strategy.targetAprPct)}
+                        </td>
+                        <td
+                          className={cn(
+                            'px-4 py-3 text-right font-medium tabular-nums',
+                            strategy.aprDeltaPct === null
+                              ? 'text-muted-foreground'
+                              : aprIncreasing
+                                ? 'text-green-600'
+                                : 'text-red-600'
+                          )}
+                        >
+                          {strategy.aprDeltaPct === null
+                            ? 'N/A'
+                            : `${aprIncreasing ? '+' : ''}${formatPercent(strategy.aprDeltaPct)}`}
+                        </td>
+                      </>
+                    ) : null}
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
     )
   }
