@@ -1,5 +1,6 @@
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ExternalLink, Info } from 'lucide-react'
 import React from 'react'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { useRootDarkMode } from '@/hooks/useRootDarkMode'
 import { formatPercent } from '@/lib/formatters'
 import {
@@ -9,13 +10,16 @@ import {
   getReallocationPanelLabels
 } from '@/lib/reallocation-panels'
 import { cn } from '@/lib/utils'
-import type { ReallocationPanel, ReallocationState } from '@/types/reallocationTypes'
+import type { ReallocationPanel } from '@/types/reallocationTypes'
 
 interface ReallocationChartProps {
   panels: ReallocationPanel[]
   activePanelIndex: number
   onActivePanelIndexChange: (nextIndex: number) => void
   colorByStrategyKey: Record<string, string>
+  hasOlderPanels?: boolean
+  isLoadingOlderPanels?: boolean
+  onLoadOlderPanels?: () => void | Promise<void>
 }
 
 type Ribbon = {
@@ -28,6 +32,9 @@ type Ribbon = {
   targetId: string
   targetName: string
   value: number
+  attributions: string[]
+  sourceX: number
+  targetX: number
 }
 
 type HoverTarget =
@@ -55,12 +62,13 @@ const VIEWBOX_HEIGHT = 900
 const NODE_WIDTH = 22
 const BEFORE_NODE_X = 28
 const AFTER_NODE_X = VIEWBOX_WIDTH - BEFORE_NODE_X - NODE_WIDTH
+const CENTER_NODE_X = (VIEWBOX_WIDTH - NODE_WIDTH) / 2
 const CHART_TOP = 48
 const CHART_BOTTOM = 48
 const NODE_LABEL_PADDING = 20
 const SCENE_TRANSITION_MS = 380
 const SIDE_SCENE_SHIFT_PX = 980
-const FAR_SCENE_SHIFT_PX =1960
+const FAR_SCENE_SHIFT_PX = 1960
 const SIDE_SCENE_OPACITY = 0.4
 
 function toSvgSafeId(value: string): string {
@@ -85,12 +93,12 @@ function withAlpha(color: string, alpha: number): string {
   return `rgba(${red}, ${green}, ${blue}, ${alpha})`
 }
 
-function formatSignedPercent(value: number | null): string | null {
+function formatSignedPercentagePoints(value: number | null): string | null {
   if (value === null || !Number.isFinite(value)) {
     return null
   }
 
-  return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`
+  return `${value >= 0 ? '+' : ''}${value.toFixed(2)} pp`
 }
 
 function buildRibbonPath({
@@ -142,9 +150,28 @@ function SankeyNodeLabel({
   const chartHeight = VIEWBOX_HEIGHT - CHART_TOP - CHART_BOTTOM
   const centerY = CHART_TOP + (node.localY + node.heightRatio / 2) * chartHeight
   const labelLines = [...node.labelText.split('\n'), formatPercent(node.value, { decimals: 1 })]
-  const x = node.side === 'before' ? BEFORE_NODE_X + NODE_WIDTH + NODE_LABEL_PADDING : AFTER_NODE_X - NODE_LABEL_PADDING
-  const textAnchor = node.side === 'before' ? 'start' : 'end'
-  const startY = centerY - ((labelLines.length - 1) * lineHeight) / 2
+  const isCenterNode = node.side === 'center'
+  if (isCenterNode) {
+    const centerValue =
+      node.centerRole === 'source'
+        ? `+${formatPercent(node.outboundValue ?? 0, { decimals: 1 })}`
+        : node.centerRole === 'sink'
+          ? `-${formatPercent(node.inboundValue ?? 0, { decimals: 1 })}`
+          : `${formatPercent(node.inboundValue ?? 0, { decimals: 1 })} in · ${formatPercent(node.outboundValue ?? 0, {
+              decimals: 1
+            })} out`
+    labelLines.splice(labelLines.length - 1, 1, centerValue)
+  }
+  const x =
+    node.side === 'before'
+      ? BEFORE_NODE_X + NODE_WIDTH + NODE_LABEL_PADDING
+      : node.side === 'center'
+        ? CENTER_NODE_X + NODE_WIDTH / 2
+        : AFTER_NODE_X - NODE_LABEL_PADDING
+  const textAnchor = node.side === 'before' ? 'start' : node.side === 'center' ? 'middle' : 'end'
+  const startY = isCenterNode
+    ? CHART_TOP + node.localY * chartHeight - lineHeight * labelLines.length
+    : centerY - ((labelLines.length - 1) * lineHeight) / 2
 
   return (
     <text
@@ -173,33 +200,32 @@ function SankeyNodeLabel({
   )
 }
 
-function ReallocationSummary({
-  label,
+function OptimizerRecommendationSummary({
   timestampUtc,
-  vaultAprPct,
+  currentVaultAprPct,
+  proposedVaultAprPct,
   vaultAprDeltaPct,
   deltaColor,
-  align = 'left',
   className
 }: {
-  label: string
   timestampUtc: string | null
-  vaultAprPct: number | null
+  currentVaultAprPct: number | null
+  proposedVaultAprPct: number | null
   vaultAprDeltaPct: number | null
   deltaColor: string
-  align?: 'left' | 'right'
   className?: string
 }): React.ReactNode {
   return (
-    <div className={cn('min-w-0 space-y-1', align === 'right' && 'sm:text-right', className)}>
-      <div className="text-sm text-foreground">{label}</div>
-      <div className="text-xs text-muted-foreground">{formatReallocationTimestamp(timestampUtc)}</div>
-      <div className="text-xs text-muted-foreground">
-        <span>{'Vault APR/APY '}</span>
-        <span className="font-semibold text-foreground">{formatPercent(vaultAprPct)}</span>
+    <div className={cn('min-w-0 text-center', className)}>
+      <div className="text-sm font-medium text-foreground">{formatReallocationTimestamp(timestampUtc)}</div>
+      <div className="mt-1 flex flex-wrap items-baseline justify-center gap-x-1 text-xs text-muted-foreground">
+        <span>Vault APR/APY</span>
+        <span className="font-semibold text-foreground">{formatPercent(currentVaultAprPct)}</span>
+        <span aria-hidden="true">→</span>
+        <span className="font-semibold text-foreground">{formatPercent(proposedVaultAprPct)}</span>
         {vaultAprDeltaPct !== null ? (
           <span className="font-semibold" style={{ color: deltaColor }}>
-            {` (${formatSignedPercent(vaultAprDeltaPct)})`}
+            {`(${formatSignedPercentagePoints(vaultAprDeltaPct)})`}
           </span>
         ) : null}
       </div>
@@ -207,15 +233,96 @@ function ReallocationSummary({
   )
 }
 
+function formatFlowKind(kind: ReallocationPanel['flowKind']): string {
+  switch (kind) {
+    case 'idle_deployment':
+      return 'Idle deployment'
+    case 'idle_deallocation':
+      return 'Idle deallocation'
+    case 'strategy_reallocation':
+      return 'Strategy reallocation'
+    default:
+      return 'Allocation change'
+  }
+}
+
+function formatExecutionValue(value: string): string {
+  return value
+    .split('_')
+    .map((part) => `${part.slice(0, 1).toUpperCase()}${part.slice(1)}`)
+    .join(' ')
+}
+
+function formatTargetStatus(value: string): string {
+  return `Target ${formatExecutionValue(value).toLowerCase()}`
+}
+
+function formatAttribution(value: string): string {
+  switch (value) {
+    case 'observed_event':
+      return 'observed event'
+    case 'derived_from_debt_updates':
+      return 'derived from debt updates'
+    case 'residual_balance':
+      return 'residual balance'
+    case 'boundary_balance':
+      return 'opening balance'
+    default:
+      return value
+  }
+}
+
+function ExecutedAllocationSummary({ panel, className }: { panel: ReallocationPanel; className?: string }) {
+  const expectedAprImpact = panel.expectedAprImpact
+
+  return (
+    <div className={cn('min-w-0 text-center', className)}>
+      <div className="flex flex-wrap items-center justify-center gap-x-1 text-xs text-muted-foreground">
+        <span>DOA expected APR</span>
+        <TooltipProvider delayDuration={200}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button type="button" aria-label="About DOA expected APR" className="text-muted-foreground">
+                <Info className="h-3.5 w-3.5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-xs text-xs leading-5">
+              Expected, simulated APR change calculated by the DOA optimizer when this allocation was proposed. It is
+              not realized performance. Actual APR depends on execution, market conditions, strategy performance, and
+              data freshness.
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
+      {expectedAprImpact?.status === 'available' ? (
+        <div className="mt-1 flex flex-wrap items-baseline justify-center gap-x-1 text-sm tabular-nums text-foreground">
+          <span>{formatPercent(expectedAprImpact.baselineAprPct)}</span>
+          <span aria-hidden="true">→</span>
+          <span className="font-semibold">{formatPercent(expectedAprImpact.proposedAprPct)}</span>
+          <span className="text-xs text-muted-foreground">
+            ({formatSignedPercentagePoints(expectedAprImpact.deltaAprPct)} expected)
+          </span>
+        </div>
+      ) : (
+        <div className="mt-1 text-sm text-muted-foreground">Unavailable for this allocation</div>
+      )}
+    </div>
+  )
+}
+
 function buildRibbons(
-  beforeState: ReallocationState,
-  afterState: ReallocationState,
+  panel: ReallocationPanel,
   colorByStrategyKey: Record<string, string>
 ): {
   graph: ReturnType<typeof buildStateTransitionSankeyGraph>
   ribbons: Ribbon[]
 } {
-  const graph = buildStateTransitionSankeyGraph(beforeState.strategies, afterState.strategies)
+  const graph = buildStateTransitionSankeyGraph(
+    panel.beforeState.strategies,
+    panel.afterState.strategies,
+    panel.idleBridge,
+    panel.flowLedger
+  )
   const nodeById = new Map(graph.nodes.map((node) => [node.id, node]))
   const chartHeight = VIEWBOX_HEIGHT - CHART_TOP - CHART_BOTTOM
 
@@ -229,8 +336,8 @@ function buildRibbons(
 
       const sourceOffsetRatio = state.sourceOffsets.get(link.source) ?? 0
       const targetOffsetRatio = state.targetOffsets.get(link.target) ?? 0
-      const sourceScale = sourceNode.heightRatio / sourceNode.value
-      const targetScale = targetNode.heightRatio / targetNode.value
+      const sourceScale = sourceNode.heightRatio / (sourceNode.outboundValue ?? sourceNode.value)
+      const targetScale = targetNode.heightRatio / (targetNode.inboundValue ?? targetNode.value)
       const sourceHeightRatio = link.value * sourceScale
       const targetHeightRatio = link.value * targetScale
       const nextSourceOffsets = new Map(state.sourceOffsets)
@@ -238,8 +345,10 @@ function buildRibbons(
       const nextTargetOffsets = new Map(state.targetOffsets)
       nextTargetOffsets.set(link.target, targetOffsetRatio + targetHeightRatio)
 
-      const sourceColor = colorByStrategyKey[sourceNode.id.replace('before:', '')] ?? '#9ca3af'
-      const targetColor = colorByStrategyKey[targetNode.id.replace('after:', '')] ?? '#9ca3af'
+      const sourceColor = colorByStrategyKey[sourceNode.id.split(':')[1] ?? ''] ?? '#9ca3af'
+      const targetColor = colorByStrategyKey[targetNode.id.split(':')[1] ?? ''] ?? '#9ca3af'
+      const sourceX = sourceNode.side === 'before' ? BEFORE_NODE_X : CENTER_NODE_X
+      const targetX = targetNode.side === 'after' ? AFTER_NODE_X : CENTER_NODE_X
 
       return {
         sourceOffsets: nextSourceOffsets,
@@ -248,10 +357,10 @@ function buildRibbons(
           ...state.ribbons,
           {
             path: buildRibbonPath({
-              sourceLeft: BEFORE_NODE_X,
+              sourceLeft: sourceX,
               sourceTop: CHART_TOP + (sourceNode.localY + sourceOffsetRatio) * chartHeight,
               sourceBottom: CHART_TOP + (sourceNode.localY + sourceOffsetRatio + sourceHeightRatio) * chartHeight,
-              targetLeft: AFTER_NODE_X,
+              targetLeft: targetX,
               targetTop: CHART_TOP + (targetNode.localY + targetOffsetRatio) * chartHeight,
               targetBottom: CHART_TOP + (targetNode.localY + targetOffsetRatio + targetHeightRatio) * chartHeight
             }),
@@ -262,7 +371,10 @@ function buildRibbons(
             targetColor,
             targetId: targetNode.id,
             targetName: targetNode.displayName,
-            value: link.value
+            value: link.value,
+            attributions: link.attributions ?? [],
+            sourceX,
+            targetX
           }
         ]
       }
@@ -392,9 +504,9 @@ const ReallocationFlowScene: React.FC<{
               key={gradientId}
               id={gradientId}
               gradientUnits="userSpaceOnUse"
-              x1={BEFORE_NODE_X + NODE_WIDTH}
+              x1={ribbon.sourceX + NODE_WIDTH}
               y1={0}
-              x2={AFTER_NODE_X}
+              x2={ribbon.targetX}
               y2={0}
             >
               <stop offset="0%" stopColor={ribbon.sourceColor} />
@@ -449,14 +561,16 @@ const ReallocationFlowScene: React.FC<{
               transition: 'opacity 180ms ease, fill-opacity 180ms ease, stroke-opacity 180ms ease'
             }}
           >
-            <title>{`${ribbon.sourceName} → ${ribbon.targetName} • ${formatPercent(ribbon.value)}`}</title>
+            <title>
+              {`${ribbon.sourceName} → ${ribbon.targetName} • ${formatPercent(ribbon.value)}${ribbon.attributions.length > 0 ? ` • ${ribbon.attributions.map(formatAttribution).join(', ')}` : ''}`}
+            </title>
           </path>
         )
       })}
 
       {graph.nodes.map((node) => {
         const color = colorByStrategyKey[node.id.replace(`${node.side}:`, '')] ?? '#9ca3af'
-        const x = node.side === 'before' ? BEFORE_NODE_X : AFTER_NODE_X
+        const x = node.side === 'before' ? BEFORE_NODE_X : node.side === 'center' ? CENTER_NODE_X : AFTER_NODE_X
         const y = CHART_TOP + node.localY * chartHeight
         const height = node.heightRatio * chartHeight
         const hasHover = Boolean(hoverState)
@@ -532,22 +646,28 @@ const ReallocationFlowScene: React.FC<{
 })
 
 export const ReallocationChart: React.FC<ReallocationChartProps> = React.memo(
-  ({ panels, activePanelIndex, onActivePanelIndexChange, colorByStrategyKey }) => {
+  ({
+    panels,
+    activePanelIndex,
+    onActivePanelIndexChange,
+    colorByStrategyKey,
+    hasOlderPanels = false,
+    isLoadingOlderPanels = false,
+    onLoadOlderPanels
+  }) => {
     const isDark = useRootDarkMode()
     const [hoverTarget, setHoverTarget] = React.useState<HoverTarget>(null)
     const [stablePanelIndex, setStablePanelIndex] = React.useState(() => clampPanelIndex(activePanelIndex, panels))
     const [transitionShift, setTransitionShift] = React.useState(0)
     const [animation, setAnimation] = React.useState<PanelAnimation | null>(null)
+    const olderPrefetchInFlightRef = React.useRef(false)
     const animationFrameRef = React.useRef<number | null>(null)
     const animationTimeoutRef = React.useRef<number | null>(null)
     const resolvedPanelIndex = clampPanelIndex(activePanelIndex, panels)
     const activePanel = panels[resolvedPanelIndex] ?? null
     const activePanelId = activePanel?.id ?? null
     const sceneDataByPanelId = React.useMemo(
-      () =>
-        new Map(
-          panels.map((panel) => [panel.id, buildRibbons(panel.beforeState, panel.afterState, colorByStrategyKey)])
-        ),
+      () => new Map(panels.map((panel) => [panel.id, buildRibbons(panel, colorByStrategyKey)])),
       [colorByStrategyKey, panels]
     )
     const activeSceneData = activePanel ? (sceneDataByPanelId.get(activePanel.id) ?? null) : null
@@ -626,6 +746,23 @@ export const ReallocationChart: React.FC<ReallocationChartProps> = React.memo(
       }
     }, [activePanelId])
 
+    React.useEffect(() => {
+      if (
+        resolvedPanelIndex > 2 ||
+        !hasOlderPanels ||
+        isLoadingOlderPanels ||
+        !onLoadOlderPanels ||
+        olderPrefetchInFlightRef.current
+      ) {
+        return
+      }
+
+      olderPrefetchInFlightRef.current = true
+      Promise.resolve(onLoadOlderPanels()).finally(() => {
+        olderPrefetchInFlightRef.current = false
+      })
+    }, [hasOlderPanels, isLoadingOlderPanels, onLoadOlderPanels, resolvedPanelIndex])
+
     if (!activePanel) {
       return (
         <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">
@@ -653,48 +790,108 @@ export const ReallocationChart: React.FC<ReallocationChartProps> = React.memo(
     const negativeDeltaColor = isDark ? '#fca5a5' : '#dc2626'
     const deltaColor =
       vaultAprDeltaPct === null ? mutedTextColor : vaultAprDeltaPct >= 0 ? positiveDeltaColor : negativeDeltaColor
+    const isExecutedAllocation = activePanel.kind === 'executed'
+    const isOptimizerRecommendation = activePanel.kind === 'proposal' || activePanel.kind === 'historical'
 
     return (
-      <div className="overflow-hidden rounded-lg border border-border bg-card">
-        <div className="border-b border-border px-4 py-3">
-          <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] lg:grid-cols-[minmax(150px,auto)_minmax(180px,1fr)_minmax(180px,1fr)_auto] lg:items-start lg:gap-6">
+      <div className="relative z-0 isolate">
+        <div className="px-4 py-3 lg:h-28" data-testid="reallocation-chart-header">
+          <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] lg:h-full lg:grid-cols-[minmax(0,1fr)_minmax(280px,auto)_minmax(0,1fr)] lg:items-start lg:gap-6">
             <div className="min-w-0">
               <div className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
-                Reallocation Flow
+                {activePanel.kind === 'current'
+                  ? 'Live allocation comparison'
+                  : isExecutedAllocation
+                    ? formatFlowKind(activePanel.flowKind)
+                    : 'Optimizer recommendation'}
               </div>
-              <div className="text-xs text-muted-foreground">
-                Panel {resolvedPanelIndex + 1} of {panels.length}
-              </div>
+              {activePanel.kind === 'current' ? (
+                <div className="mt-1 truncate whitespace-nowrap text-xs text-muted-foreground">
+                  <span className="font-medium text-foreground">{beforeLabel}</span>{' '}
+                  {formatReallocationTimestamp(activePanel.beforeTimestampUtc)}
+                  <span aria-hidden="true" className="mx-1.5">
+                    ·
+                  </span>
+                  <span className="font-medium text-foreground">{afterLabel}</span>{' '}
+                  {formatReallocationTimestamp(activePanel.afterTimestampUtc)}
+                </div>
+              ) : isExecutedAllocation ? (
+                <>
+                  <div className="text-xs text-muted-foreground">
+                    {`${formatReallocationTimestamp(activePanel.beforeTimestampUtc)} → ${formatReallocationTimestamp(activePanel.afterTimestampUtc)}`}
+                  </div>
+                  {activePanel.idleBridge ? (
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      {activePanel.idleBridge.eventCount}{' '}
+                      {activePanel.idleBridge.eventCount === 1 ? 'idle event included' : 'idle events included'}
+                    </div>
+                  ) : null}
+                  {activePanel.execution ? (
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      {[
+                        formatExecutionValue(activePanel.execution.automation),
+                        formatExecutionValue(activePanel.execution.mechanism),
+                        activePanel.execution.targetStatus === 'not_applicable'
+                          ? null
+                          : formatTargetStatus(activePanel.execution.targetStatus)
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </div>
+                  ) : null}
+                  {activePanel.detailsHref ? (
+                    <a
+                      href={activePanel.detailsHref}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline"
+                    >
+                      Allocation data
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  ) : null}
+                </>
+              ) : null}
             </div>
 
-            <ReallocationSummary
-              label={beforeLabel}
-              timestampUtc={activePanel.beforeTimestampUtc}
-              vaultAprPct={beforeVaultAprPct}
-              vaultAprDeltaPct={null}
-              deltaColor={deltaColor}
-              className="sm:col-start-1 sm:row-start-2 lg:col-start-2 lg:row-start-1"
-            />
-            <ReallocationSummary
-              label={afterLabel}
-              timestampUtc={activePanel.afterTimestampUtc}
-              vaultAprPct={afterVaultAprPct}
-              vaultAprDeltaPct={vaultAprDeltaPct}
-              deltaColor={deltaColor}
-              align="right"
-              className="sm:col-start-2 sm:row-start-2 lg:col-start-3 lg:row-start-1"
-            />
+            {isExecutedAllocation ? (
+              activePanel.flowKind === 'strategy_reallocation' ? (
+                <ExecutedAllocationSummary
+                  panel={activePanel}
+                  className="sm:col-span-2 sm:row-start-2 lg:col-span-1 lg:col-start-2 lg:row-start-1"
+                />
+              ) : null
+            ) : isOptimizerRecommendation ? (
+              <OptimizerRecommendationSummary
+                timestampUtc={activePanel.afterTimestampUtc}
+                currentVaultAprPct={beforeVaultAprPct}
+                proposedVaultAprPct={afterVaultAprPct}
+                vaultAprDeltaPct={vaultAprDeltaPct}
+                deltaColor={deltaColor}
+                className="sm:col-span-2 sm:row-start-2 lg:col-span-1 lg:col-start-2 lg:row-start-1"
+              />
+            ) : null}
 
-            {panels.length > 1 && (
-              <div className="flex items-center gap-2 sm:justify-self-end lg:col-start-4 lg:row-start-1">
+            {(panels.length > 1 || hasOlderPanels) && (
+              <div className="flex items-center gap-2 sm:col-start-2 sm:row-start-1 sm:justify-self-end lg:col-start-3">
                 <button
                   type="button"
-                  onClick={() => onActivePanelIndexChange(clampPanelIndex(resolvedPanelIndex - 1, panels))}
-                  disabled={isAnimating || resolvedPanelIndex === 0}
+                  onClick={() => {
+                    if (resolvedPanelIndex === 0) {
+                      onLoadOlderPanels?.()
+                      return
+                    }
+                    onActivePanelIndexChange(clampPanelIndex(resolvedPanelIndex - 1, panels))
+                  }}
+                  disabled={isAnimating || isLoadingOlderPanels || (resolvedPanelIndex === 0 && !hasOlderPanels)}
                   className="inline-flex items-center gap-1 rounded border border-border px-3 py-2 text-xs font-semibold text-foreground transition hover:bg-secondary/60 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <ChevronLeft className="h-4 w-4" />
-                  Older
+                  {isLoadingOlderPanels
+                    ? 'Loading…'
+                    : resolvedPanelIndex === 0 && hasOlderPanels
+                      ? 'Load older'
+                      : 'Older'}
                 </button>
                 <button
                   type="button"
@@ -710,7 +907,10 @@ export const ReallocationChart: React.FC<ReallocationChartProps> = React.memo(
           </div>
         </div>
 
-        <div className="relative h-[460px] w-full overflow-hidden sm:h-[560px] lg:h-[620px]">
+        <div
+          className="relative h-[460px] w-full overflow-hidden rounded-lg border border-border bg-card sm:h-[560px] lg:h-[620px]"
+          data-testid="reallocation-chart-viewport"
+        >
           {visibleSceneIndices.map((sceneIndex) => {
             const panel = panels[sceneIndex]
             if (!panel) {

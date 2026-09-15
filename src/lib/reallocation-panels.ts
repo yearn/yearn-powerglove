@@ -1,5 +1,8 @@
+import { decomposeReallocationLedger } from '@/lib/reallocation-ledger'
 import type { StrategyAllocationChartDatum } from '@/types/dataTypes'
 import type {
+  ReallocationFlowLedger,
+  ReallocationIdleBridge,
   ReallocationPanel,
   ReallocationState,
   ReallocationStateStrategy,
@@ -17,8 +20,7 @@ const UNALLOCATED_COLOR = '#9ca3af'
 const timestampFormatter = new Intl.DateTimeFormat('en-US', {
   month: 'short',
   day: 'numeric',
-  hour: 'numeric',
-  minute: '2-digit',
+  year: 'numeric',
   timeZone: 'UTC'
 })
 
@@ -65,13 +67,17 @@ export interface SankeyNode {
   value: number
   localY: number
   heightRatio: number
-  side: 'before' | 'after'
+  side: 'before' | 'center' | 'after'
+  inboundValue?: number
+  outboundValue?: number
+  centerRole?: 'bridge' | 'source' | 'sink'
 }
 
 export interface SankeyLink {
   source: string
   target: string
   value: number
+  attributions?: string[]
 }
 
 export interface SankeyGraph {
@@ -315,13 +321,6 @@ function alignStateStrategyOrder(
   }
 }
 
-function alignChronologicalStateStrategies(states: readonly ReallocationState[]): ReallocationState[] {
-  return states.reduce((orderedStates, state) => {
-    orderedStates.push(alignStateStrategyOrder(orderedStates[orderedStates.length - 1], state))
-    return orderedStates
-  }, [] as ReallocationState[])
-}
-
 function buildStateAllocationMap(state: ReallocationState): Map<string, number> {
   return state.strategies.reduce((allocationByStrategyKey, strategy) => {
     const nextAllocationByStrategyKey = new Map(allocationByStrategyKey)
@@ -482,6 +481,129 @@ function allocateRemainingFlows(
   ]
 }
 
+function mergeSankeyLinks(links: readonly SankeyLink[]): SankeyLink[] {
+  const mergedLinks = new Map<string, SankeyLink>()
+
+  for (const link of links) {
+    const key = `${link.source}->${link.target}`
+    const existingLink = mergedLinks.get(key)
+    const attributions = [...new Set([...(existingLink?.attributions ?? []), ...(link.attributions ?? [])])]
+    mergedLinks.set(key, {
+      source: link.source,
+      target: link.target,
+      value: roundFlowValue((existingLink?.value ?? 0) + link.value),
+      ...(attributions.length > 0 ? { attributions } : {})
+    })
+  }
+
+  return [...mergedLinks.values()]
+}
+
+function rawAmountAsPercent(amount: bigint, denominator: bigint): number {
+  if (amount <= 0n || denominator <= 0n) {
+    return 0
+  }
+  return Number((amount * 100_000_000n) / denominator) / 1_000_000
+}
+
+function buildLedgerSankeyGraph(
+  beforeStrategies: readonly ReallocationStateStrategy[],
+  afterStrategies: readonly ReallocationStateStrategy[],
+  ledger: ReallocationFlowLedger
+): SankeyGraph | null {
+  const routes = decomposeReallocationLedger(beforeStrategies, afterStrategies, ledger)
+  if (!routes) {
+    return null
+  }
+
+  const openingTotal = beforeStrategies.reduce((sum, strategy) => sum + BigInt(strategy.allocationAmount ?? '0'), 0n)
+  const closingTotal = afterStrategies.reduce((sum, strategy) => sum + BigInt(strategy.allocationAmount ?? '0'), 0n)
+  const denominator = openingTotal > closingTotal ? openingTotal : closingTotal
+  if (denominator <= 0n) {
+    return null
+  }
+
+  const links = routes.flatMap((route): SankeyLink[] => {
+    const value = roundFlowValue(rawAmountAsPercent(route.amount, denominator))
+    if (!isPositive(value) || (route.source.type === 'boundary' && route.target.type === 'boundary')) {
+      return []
+    }
+
+    const attributions = route.attributions
+    const sourceId =
+      route.source.type === 'balance' ? `before:${route.source.key}` : `center:${route.source.key}-source`
+    const targetId = route.target.type === 'balance' ? `after:${route.target.key}` : `center:${route.target.key}-sink`
+    return [{ source: sourceId, target: targetId, value, attributions }]
+  })
+  const mergedLinks = mergeSankeyLinks(links)
+  const outboundByNode = new Map<string, number>()
+  const inboundByNode = new Map<string, number>()
+  for (const link of mergedLinks) {
+    outboundByNode.set(link.source, roundFlowValue((outboundByNode.get(link.source) ?? 0) + link.value))
+    inboundByNode.set(link.target, roundFlowValue((inboundByNode.get(link.target) ?? 0) + link.value))
+  }
+
+  const beforeNodes = buildOrderedNodes(
+    beforeStrategies
+      .filter((strategy) => isPositive(strategy.allocationPct))
+      .map((strategy) => ({
+        strategyKey: strategy.isUnallocated ? UNALLOCATED_STRATEGY_KEY : strategy.strategyKey,
+        name: strategy.name,
+        allocationPct: strategy.allocationPct
+      })),
+    'before'
+  ).map((node) => ({ ...node, outboundValue: outboundByNode.get(node.id) ?? 0 }))
+  const afterNodes = buildOrderedNodes(
+    afterStrategies
+      .filter((strategy) => isPositive(strategy.allocationPct))
+      .map((strategy) => ({
+        strategyKey: strategy.isUnallocated ? UNALLOCATED_STRATEGY_KEY : strategy.strategyKey,
+        name: strategy.name,
+        allocationPct: strategy.allocationPct
+      })),
+    'after'
+  ).map((node) => ({ ...node, inboundValue: inboundByNode.get(node.id) ?? 0 }))
+
+  const centerDefinitions = [
+    { id: 'center:external-source', name: 'External inflow', role: 'source' as const },
+    { id: 'center:accounting-source', name: 'Reported gain', role: 'source' as const },
+    { id: 'center:external-sink', name: 'External outflow', role: 'sink' as const },
+    { id: 'center:accounting-sink', name: 'Reported loss / adjustment', role: 'sink' as const },
+    { id: `center:${UNALLOCATED_STRATEGY_KEY}`, name: 'Unallocated', role: 'bridge' as const }
+  ]
+    .map((definition) => {
+      const inboundValue = inboundByNode.get(definition.id) ?? 0
+      const outboundValue = outboundByNode.get(definition.id) ?? 0
+      return { ...definition, inboundValue, outboundValue, value: Math.max(inboundValue, outboundValue) }
+    })
+    .filter(({ value }) => isPositive(value))
+  const centerGap = 0.075
+  const availableCenterHeight = Math.max(0, 1 - Math.max(0, centerDefinitions.length - 1) * centerGap)
+  const totalCenterValue = centerDefinitions.reduce((sum, node) => sum + node.value, 0)
+  const centerScale = Math.min(1 / 100, totalCenterValue > 0 ? availableCenterHeight / totalCenterValue : 0)
+  const usedCenterHeight = totalCenterValue * centerScale + Math.max(0, centerDefinitions.length - 1) * centerGap
+  let centerOffset = Math.max(0, 1 - usedCenterHeight)
+  const centerNodes = centerDefinitions.map((definition): SankeyNode => {
+    const heightRatio = definition.value * centerScale
+    const node = {
+      id: definition.id,
+      displayName: definition.name,
+      labelText: wrapLabelText(definition.name),
+      value: definition.value,
+      localY: centerOffset,
+      heightRatio,
+      side: 'center' as const,
+      inboundValue: definition.inboundValue,
+      outboundValue: definition.outboundValue,
+      centerRole: definition.role
+    }
+    centerOffset += heightRatio + centerGap
+    return node
+  })
+
+  return { nodes: [...beforeNodes, ...afterNodes, ...centerNodes], links: mergedLinks }
+}
+
 function compactNumber(value: number): string {
   const absValue = Math.abs(value)
   const formatter =
@@ -522,30 +644,47 @@ export function formatReallocationTimestamp(timestamp: string | null): string {
     return timestamp
   }
 
-  return `${timestampFormatter.format(parsedDate)} UTC`
+  return timestampFormatter.format(parsedDate)
 }
 
 export function getReallocationPanelLabels(panel: Pick<ReallocationPanel, 'kind'>): {
   beforeLabel: string
   afterLabel: string
+  beforeAprLabel: string
+  afterAprLabel: string
 } {
-  if (panel.kind === 'proposal') {
+  if (panel.kind === 'executed') {
+    return {
+      beforeLabel: 'Start state',
+      afterLabel: 'End state',
+      beforeAprLabel: 'Start APR',
+      afterAprLabel: 'End APR'
+    }
+  }
+
+  if (panel.kind === 'proposal' || panel.kind === 'historical') {
     return {
       beforeLabel: 'Current',
-      afterLabel: 'Proposed'
+      afterLabel: 'Proposed',
+      beforeAprLabel: 'APR at current debt',
+      afterAprLabel: 'APR at target debt'
     }
   }
 
   if (panel.kind === 'current') {
     return {
       beforeLabel: 'Last Seen',
-      afterLabel: 'Current'
+      afterLabel: 'Current',
+      beforeAprLabel: 'Last Seen APR',
+      afterAprLabel: 'Current APR'
     }
   }
 
   return {
     beforeLabel: 'Before',
-    afterLabel: 'After'
+    afterLabel: 'After',
+    beforeAprLabel: 'Before APR',
+    afterAprLabel: 'After APR'
   }
 }
 
@@ -555,23 +694,33 @@ export function buildReallocationPanels(
 ): ReallocationPanel[] {
   const dedupedHistory = dedupeHistory(changes)
   const chronologicalHistory = dedupedHistory.slice().reverse()
-  const chronologicalSnapshotStates = alignChronologicalStateStrategies(chronologicalHistory.map(buildSnapshotState))
+  const historicalPanels = chronologicalHistory.reduce(
+    (state, change) => {
+      const beforeState = alignStateStrategyOrder(state.previousBeforeState, buildSnapshotState(change))
+      const afterState = alignStateStrategyOrder(beforeState, buildProposalState(change))
 
-  const historicalPanels = chronologicalSnapshotStates.slice(1).map((afterState, index) => {
-    const beforeState = chronologicalSnapshotStates[index]
-
-    return {
-      id: `historical:${beforeState.id}->${afterState.id}`,
-      beforeState,
-      afterState,
-      beforeTimestampUtc: beforeState.timestampUtc,
-      afterTimestampUtc: afterState.timestampUtc,
-      kind: 'historical' as const
+      return {
+        previousBeforeState: beforeState,
+        panels: [
+          ...state.panels,
+          {
+            id: `historical:${change.sourceKey}`,
+            beforeState,
+            afterState,
+            beforeTimestampUtc: change.timestampUtc,
+            afterTimestampUtc: change.timestampUtc,
+            kind: 'historical' as const
+          }
+        ]
+      }
+    },
+    {
+      previousBeforeState: undefined as ReallocationState | undefined,
+      panels: [] as ReallocationPanel[]
     }
-  })
+  ).panels
 
-  const latestChange = dedupedHistory[0]
-  const latestSnapshotState = chronologicalSnapshotStates[chronologicalSnapshotStates.length - 1]
+  const latestSnapshotState = historicalPanels[historicalPanels.length - 1]?.beforeState
   const currentPanel =
     latestSnapshotState && currentAllocation
       ? (() => {
@@ -590,53 +739,14 @@ export function buildReallocationPanels(
           }
         })()
       : null
-  const proposalPanel = latestChange
-    ? latestSnapshotState
-      ? [
-          {
-            id: `proposal:${latestChange.sourceKey}`,
-            beforeState: latestSnapshotState,
-            afterState: alignStateStrategyOrder(latestSnapshotState, buildProposalState(latestChange)),
-            beforeTimestampUtc: latestSnapshotState.timestampUtc,
-            afterTimestampUtc: latestChange.timestampUtc,
-            kind: 'proposal' as const
-          }
-        ]
-      : []
-    : []
 
   const currentMatchesLatestSnapshot = currentPanel
     ? statesMatch(currentPanel.beforeState, currentPanel.afterState)
     : false
-  const adjustedHistoricalPanels =
-    currentMatchesLatestSnapshot && historicalPanels.length > 0 && currentAllocation
-      ? historicalPanels.map((panel, index) => {
-          if (index !== historicalPanels.length - 1) {
-            return panel
-          }
+  const terminalPanels =
+    currentPanel && !currentMatchesLatestSnapshot && panelHasAllocations(currentPanel) ? [currentPanel] : []
 
-          return {
-            ...panel,
-            afterState: {
-              ...panel.afterState,
-              timestampUtc: currentAllocation.timestampUtc,
-              tvl: currentAllocation.tvl,
-              tvlUnit: currentAllocation.tvlUnit,
-              vaultAprPct: currentAllocation.vaultAprPct
-            },
-            afterTimestampUtc: currentAllocation.timestampUtc
-          }
-        })
-      : historicalPanels
-  const terminalPanels = currentPanel
-    ? currentMatchesLatestSnapshot
-      ? historicalPanels.length > 0
-        ? []
-        : [currentPanel]
-      : [currentPanel]
-    : proposalPanel
-
-  return [...adjustedHistoricalPanels, ...terminalPanels].filter(panelHasAllocations)
+  return [...historicalPanels, ...terminalPanels]
 }
 
 export function buildColorByStrategyKey(panels: readonly ReallocationPanel[]): string[] {
@@ -749,8 +859,16 @@ export function getAfterStateUnallocatedPct(panel: ReallocationPanel): number {
 
 export function buildStateTransitionSankeyGraph(
   beforeStrategies: readonly ReallocationStateStrategy[],
-  afterStrategies: readonly ReallocationStateStrategy[]
+  afterStrategies: readonly ReallocationStateStrategy[],
+  idleBridge?: ReallocationIdleBridge,
+  flowLedger?: ReallocationFlowLedger
 ): SankeyGraph {
+  if (flowLedger) {
+    const ledgerGraph = buildLedgerSankeyGraph(beforeStrategies, afterStrategies, flowLedger)
+    if (ledgerGraph) {
+      return ledgerGraph
+    }
+  }
   const indexedBeforeStrategies = beforeStrategies
     .filter((strategy) => isPositive(strategy.allocationPct))
     .map((strategy) => ({
@@ -763,6 +881,53 @@ export function buildStateTransitionSankeyGraph(
       ...strategy,
       strategyKey: strategy.isUnallocated ? UNALLOCATED_STRATEGY_KEY : strategy.strategyKey
     }))
+
+  const deallocationByStrategyKey = new Map(
+    idleBridge?.deallocations.map((flow) => [flow.strategyKey, flow.allocationPct]) ?? []
+  )
+  const deploymentByStrategyKey = new Map(
+    idleBridge?.deployments.map((flow) => [flow.strategyKey, flow.allocationPct]) ?? []
+  )
+  const centerInbound = indexedBeforeStrategies
+    .map((strategy) => ({
+      source: `before:${strategy.strategyKey}`,
+      strategyKey: strategy.strategyKey,
+      value: roundFlowValue(Math.min(strategy.allocationPct, deallocationByStrategyKey.get(strategy.strategyKey) ?? 0))
+    }))
+    .filter(({ value }) => isPositive(value))
+  const centerOutbound = indexedAfterStrategies
+    .map((strategy) => ({
+      target: `after:${strategy.strategyKey}`,
+      strategyKey: strategy.strategyKey,
+      value: roundFlowValue(Math.min(strategy.allocationPct, deploymentByStrategyKey.get(strategy.strategyKey) ?? 0))
+    }))
+    .filter(({ value }) => isPositive(value))
+  const bridgedStrategyLinks = allocateRemainingFlows(
+    centerInbound.map((flow) => ({ source: flow.source, remaining: flow.value })),
+    centerOutbound.map((flow) => ({ target: flow.target, remaining: flow.value }))
+  )
+  const bridgedValueBySource = new Map<string, number>()
+  const bridgedValueByTarget = new Map<string, number>()
+  for (const link of bridgedStrategyLinks) {
+    bridgedValueBySource.set(link.source, (bridgedValueBySource.get(link.source) ?? 0) + link.value)
+    bridgedValueByTarget.set(link.target, (bridgedValueByTarget.get(link.target) ?? 0) + link.value)
+  }
+  const unmatchedCenterInbound = centerInbound
+    .map((flow) => ({
+      ...flow,
+      value: roundFlowValue(flow.value - (bridgedValueBySource.get(flow.source) ?? 0))
+    }))
+    .filter(({ value }) => isPositive(value))
+  const unmatchedCenterOutbound = centerOutbound
+    .map((flow) => ({
+      ...flow,
+      value: roundFlowValue(flow.value - (bridgedValueByTarget.get(flow.target) ?? 0))
+    }))
+    .filter(({ value }) => isPositive(value))
+  const centerInboundValue = roundFlowValue(unmatchedCenterInbound.reduce((sum, flow) => sum + flow.value, 0))
+  const centerOutboundValue = roundFlowValue(unmatchedCenterOutbound.reduce((sum, flow) => sum + flow.value, 0))
+  const centerValue = Math.max(centerInboundValue, centerOutboundValue)
+  const centerHeightRatio = centerValue / 100
 
   const nodes = [
     ...buildOrderedNodes(
@@ -780,7 +945,22 @@ export function buildStateTransitionSankeyGraph(
         allocationPct: strategy.allocationPct
       })),
       'after'
-    )
+    ),
+    ...(isPositive(centerValue)
+      ? [
+          {
+            id: `center:${UNALLOCATED_STRATEGY_KEY}`,
+            displayName: 'Unallocated',
+            labelText: 'Unallocated',
+            value: centerValue,
+            localY: Math.max(0, 1 - centerHeightRatio),
+            heightRatio: centerHeightRatio,
+            side: 'center' as const,
+            inboundValue: centerInboundValue,
+            outboundValue: centerOutboundValue
+          }
+        ]
+      : [])
   ]
 
   const afterValueByStrategyKey = new Map(
@@ -792,7 +972,14 @@ export function buildStateTransitionSankeyGraph(
 
   const directLinks = indexedBeforeStrategies
     .map((strategy) => {
-      const overlap = Math.min(strategy.allocationPct, afterValueByStrategyKey.get(strategy.strategyKey) ?? 0)
+      const beforeResidual =
+        strategy.allocationPct -
+        (deallocationByStrategyKey.has(strategy.strategyKey)
+          ? Math.min(strategy.allocationPct, deallocationByStrategyKey.get(strategy.strategyKey) ?? 0)
+          : 0)
+      const afterValue = afterValueByStrategyKey.get(strategy.strategyKey) ?? 0
+      const afterResidual = afterValue - Math.min(afterValue, deploymentByStrategyKey.get(strategy.strategyKey) ?? 0)
+      const overlap = Math.min(beforeResidual, afterResidual)
       return isPositive(overlap)
         ? {
             source: `before:${strategy.strategyKey}`,
@@ -805,27 +992,50 @@ export function buildStateTransitionSankeyGraph(
 
   const outgoing = indexedBeforeStrategies
     .map((strategy) => {
-      const overlap = Math.min(strategy.allocationPct, afterValueByStrategyKey.get(strategy.strategyKey) ?? 0)
+      const centerFlow = Math.min(strategy.allocationPct, deallocationByStrategyKey.get(strategy.strategyKey) ?? 0)
+      const beforeResidual = strategy.allocationPct - centerFlow
+      const afterValue = afterValueByStrategyKey.get(strategy.strategyKey) ?? 0
+      const afterResidual = afterValue - Math.min(afterValue, deploymentByStrategyKey.get(strategy.strategyKey) ?? 0)
+      const overlap = Math.min(beforeResidual, afterResidual)
       return {
         source: `before:${strategy.strategyKey}`,
-        remaining: roundFlowValue(strategy.allocationPct - overlap)
+        remaining: roundFlowValue(beforeResidual - overlap)
       }
     })
     .filter(({ remaining }) => isPositive(remaining))
 
   const incoming = indexedAfterStrategies
     .map((strategy) => {
-      const overlap = Math.min(strategy.allocationPct, beforeValueByStrategyKey.get(strategy.strategyKey) ?? 0)
+      const centerFlow = Math.min(strategy.allocationPct, deploymentByStrategyKey.get(strategy.strategyKey) ?? 0)
+      const afterResidual = strategy.allocationPct - centerFlow
+      const beforeValue = beforeValueByStrategyKey.get(strategy.strategyKey) ?? 0
+      const beforeResidual =
+        beforeValue - Math.min(beforeValue, deallocationByStrategyKey.get(strategy.strategyKey) ?? 0)
+      const overlap = Math.min(afterResidual, beforeResidual)
       return {
         target: `after:${strategy.strategyKey}`,
-        remaining: roundFlowValue(strategy.allocationPct - overlap)
+        remaining: roundFlowValue(afterResidual - overlap)
       }
     })
     .filter(({ remaining }) => isPositive(remaining))
 
   return {
     nodes,
-    links: [...directLinks, ...allocateRemainingFlows(outgoing, incoming)]
+    links: mergeSankeyLinks([
+      ...directLinks,
+      ...allocateRemainingFlows(outgoing, incoming),
+      ...bridgedStrategyLinks,
+      ...unmatchedCenterInbound.map((flow) => ({
+        source: flow.source,
+        target: `center:${UNALLOCATED_STRATEGY_KEY}`,
+        value: flow.value
+      })),
+      ...unmatchedCenterOutbound.map((flow) => ({
+        source: `center:${UNALLOCATED_STRATEGY_KEY}`,
+        target: flow.target,
+        value: flow.value
+      }))
+    ])
   }
 }
 

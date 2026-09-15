@@ -1,95 +1,55 @@
 import { describe, expect, it } from 'vitest'
-import { isValidOptimizationRecord } from '@/hooks/useReallocationData'
-import type { RawStrategyDebtRatio } from '@/lib/explain-parser'
+import { isValidAllocationHistoryEntry } from '@/hooks/useReallocationData'
 
-describe('isValidOptimizationRecord', () => {
-  const makeRecord = (
-    overrides: Partial<{
-      currentApr: number
-      proposedApr: number
-      strategyDebtRatios: RawStrategyDebtRatio[]
-    }> = {}
-  ) => ({
-    vault: '0x1111111111111111111111111111111111111111',
-    strategyDebtRatios: overrides.strategyDebtRatios ?? [
+function makeEntry() {
+  const state = {
+    blockNumber: 100,
+    blockTimestamp: 1000,
+    totalAssets: '1000000',
+    totalIdle: '250000',
+    allocations: [
       {
-        strategy: '0x2222222222222222222222222222222222222222',
-        name: 'Strategy A',
-        currentRatio: 6000,
-        targetRatio: 6500,
-        currentApr: 12,
-        targetApr: 13
+        strategyAddress: '0x1111111111111111111111111111111111111111',
+        currentDebt: '750000'
       }
-    ],
-    currentApr: overrides.currentApr ?? 12,
-    proposedApr: overrides.proposedApr ?? 13,
-    explain: 'ignored',
-    source: {
-      key: 'api',
-      chainId: 1,
-      revision: '1',
-      isLatestAlias: false,
-      timestampUtc: '2025-01-01T00:00:00Z',
-      latestMatchedTimestampUtc: null
-    }
+    ]
+  }
+
+  return {
+    id: 'entry-1',
+    kind: 'strategy_reallocation' as const,
+    after: state,
+    endBlock: 101,
+    endTimestamp: '2026-08-01T00:01:00Z',
+    execution: {
+      automation: 'automatic' as const,
+      mechanism: 'allocator_keeper' as const,
+      targetStatus: 'matched' as const
+    },
+    expectedAprImpact: {
+      status: 'unavailable' as const,
+      reason: 'no_matched_doa_policy'
+    },
+    detailsHref: '/details/entry-1',
+    interval: null
+  }
+}
+
+describe('isValidAllocationHistoryEntry', () => {
+  it('accepts a reconciled observed allocation entry', () => {
+    expect(isValidAllocationHistoryEntry(makeEntry())).toBe(true)
   })
 
-  it('accepts a valid record', () => {
-    expect(isValidOptimizationRecord(makeRecord())).toBe(true)
+  it('rejects allocation states whose raw balances do not equal total assets', () => {
+    const entry = makeEntry()
+    entry.after = { ...entry.after, totalIdle: '0' }
+
+    expect(isValidAllocationHistoryEntry(entry as never)).toBe(false)
   })
 
-  it('accepts high but plausible APRs independently of allocation limits', () => {
-    expect(isValidOptimizationRecord(makeRecord({ currentApr: 150, proposedApr: 175 }))).toBe(true)
-  })
+  it('rejects unsupported flow kinds', () => {
+    const entry = { ...makeEntry(), kind: 'allocator_override' }
 
-  it('rejects non-finite or negative numeric fields', () => {
-    expect(
-      isValidOptimizationRecord(
-        makeRecord({
-          currentApr: Number.POSITIVE_INFINITY
-        })
-      )
-    ).toBe(false)
-
-    expect(
-      isValidOptimizationRecord(
-        makeRecord({
-          strategyDebtRatios: [
-            {
-              strategy: '0x2222222222222222222222222222222222222222',
-              currentRatio: -1,
-              targetRatio: 6500,
-              currentApr: 12,
-              targetApr: 13
-            }
-          ]
-        })
-      )
-    ).toBe(false)
-  })
-
-  it('rejects records whose allocations exceed 100% beyond tolerance', () => {
-    expect(
-      isValidOptimizationRecord(
-        makeRecord({
-          strategyDebtRatios: [
-            {
-              strategy: '0x2222222222222222222222222222222222222222',
-              currentRatio: 7000,
-              targetRatio: 7000,
-              currentApr: 12,
-              targetApr: 13
-            },
-            {
-              strategy: '0x3333333333333333333333333333333333333333',
-              currentRatio: 4000,
-              targetRatio: 4000,
-              currentApr: 5,
-              targetApr: 6
-            }
-          ]
-        })
-      )
-    ).toBe(false)
+    expect(isValidAllocationHistoryEntry(entry as never)).toBe(false)
   })
 })
