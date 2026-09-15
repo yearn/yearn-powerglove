@@ -286,7 +286,7 @@ describe('buildObservedReallocationPanels', () => {
         'safe_head'
       )
     }
-    const panels = buildObservedReallocationPanels(
+    const { panels, issues } = buildObservedReallocationPanels(
       entries,
       currentSnapshot,
       new Map([['strategy-0', boundaryState]]),
@@ -296,6 +296,7 @@ describe('buildObservedReallocationPanels', () => {
       ])
     )
 
+    expect(issues).toEqual([])
     expect(panels).toHaveLength(3)
     expect(panels[0]?.beforeState.strategies.map((strategy) => strategy.allocationAmount)).toEqual(['800', '200'])
     expect(panels[0]?.afterState.strategies).toEqual(panels[1]?.beforeState.strategies)
@@ -341,6 +342,9 @@ describe('buildObservedReallocationPanels', () => {
           [strategyB, 'Strategy B']
         ])
       )
-    ).toEqual([])
+    ).toEqual({
+      panels: [],
+      issues: [{ entryId: 'strategy-1', reason: 'Interval flows do not reconcile with observed balances' }]
+    })
   })
 })

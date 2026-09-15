@@ -62,6 +62,8 @@ type SingleVaultPageContentProps = {
   isYvUsd?: boolean
   mainInfoPanelProps: ReturnType<typeof useMainInfoPanelData>
   reallocationData: ReturnType<typeof useReallocationData>['data']
+  reallocationError?: ReturnType<typeof useReallocationData>['error']
+  reallocationIssues?: ReturnType<typeof useReallocationData>['issues']
   hasOlderReallocations?: ReturnType<typeof useReallocationData>['hasOlderEntries']
   isLoadingOlderReallocations?: ReturnType<typeof useReallocationData>['isLoadingOlderEntries']
   onLoadOlderReallocations?: ReturnType<typeof useReallocationData>['loadOlderEntries']
@@ -85,6 +87,8 @@ export function SingleVaultPageContent({
   isYvUsd = false,
   mainInfoPanelProps,
   reallocationData,
+  reallocationError,
+  reallocationIssues,
   hasOlderReallocations = false,
   isLoadingOlderReallocations = false,
   onLoadOlderReallocations
@@ -166,6 +170,8 @@ export function SingleVaultPageContent({
           aboutDescription={mainInfoPanelProps.description}
           aboutLink={mainInfoPanelProps.yearnVaultLink}
           reallocationData={reallocationData}
+          reallocationError={reallocationError}
+          reallocationIssues={reallocationIssues}
           hasOlderReallocations={hasOlderReallocations}
           isLoadingOlderReallocations={isLoadingOlderReallocations}
           onLoadOlderReallocations={onLoadOlderReallocations}
@@ -261,6 +267,8 @@ function ValidVaultPage({ chainId, vaultAddress }: { chainId: string; vaultAddre
 
   const {
     data: reallocationData,
+    error: reallocationError,
+    issues: reallocationIssues,
     hasOlderEntries,
     isLoadingOlderEntries,
     loadOlderEntries
@@ -287,6 +295,8 @@ function ValidVaultPage({ chainId, vaultAddress }: { chainId: string; vaultAddre
       isYvUsd={isYvUsd}
       mainInfoPanelProps={mainInfoPanelProps}
       reallocationData={reallocationData}
+      reallocationError={reallocationError}
+      reallocationIssues={reallocationIssues}
       hasOlderReallocations={hasOlderEntries}
       isLoadingOlderReallocations={isLoadingOlderEntries}
       onLoadOlderReallocations={loadOlderEntries}

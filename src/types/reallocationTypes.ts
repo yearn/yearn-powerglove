@@ -154,3 +154,8 @@ export interface ReallocationData {
   chainName: string | null
   panels: ReallocationPanel[]
 }
+
+export interface AllocationHistoryIssue {
+  entryId: string
+  reason: string
+}

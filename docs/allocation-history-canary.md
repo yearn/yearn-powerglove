@@ -13,7 +13,7 @@ state and callbacks are threaded through those components; selection is keyed
 by panel ID so prepending older entries preserves the selected interval.
 
 No QTOV reporting, fee/TVL dashboards, strategy detail templates, RPC client,
-route changes, dependency changes, or lazy-asset recovery are required. Earlier
+new routes, dependency changes, or lazy-asset recovery are required. Earlier
 allocation-specific optimizer labels and helper behavior travel with the shared
 chart files to preserve their tested behavior.
 
@@ -47,10 +47,12 @@ interval flows and reconciliation, execution metadata, `expectedAprImpact`,
 - Follow execution and evidence links; relative `detailsHref` resolves against
   the configured API origin.
 - Keep DOA proposal APR estimates separate from observed allocation balances.
-- A 404 or empty history hides the tab. Other failures are retried once and
-  logged to the browser console; the inherited consumer does not expose a
-  dedicated API-error panel. Inspect network/console output when evaluating
-  whether an absent tab means unsupported history or an integration failure.
+- A 404 or empty history hides the tab. Malformed responses and request
+  failures show an allocation-specific error notice; the vault page remains
+  usable. Failed requests are retried once.
+- Missing boundary states and intervals whose flows fail exact balance checks
+  show an incomplete-history notice with affected entry IDs. Verified intervals
+  remain available; the omitted intervals are never presented as valid flows.
 
 Run `bun run test` and `bun run build` when switching the backend contract.
 
@@ -71,3 +73,11 @@ Run `bun run test` and `bun run build` when switching the backend contract.
 The local API snapshot observed during this check ended on September 10, 2026;
 this validates consumer integration, not live indexing freshness or Kong's
 future implementation.
+
+## Review fixes
+
+Runtime validation now rejects malformed APR and execution metadata before
+normalization. Query failures appear in an allocation-specific notice without
+replacing the vault page. Interval reconstruction returns diagnostic entry IDs
+for missing boundary states, invalid references, and failed balance checks;
+verified intervals remain visible beside an incomplete-history notice.

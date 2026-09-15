@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { ReallocationChart, ReallocationStrategyTable } from '@/components/reallocation-panel'
+import { AllocationHistoryNotice } from '@/components/reallocation-panel/AllocationHistoryNotice'
 import StrategiesSkeleton from '@/components/strategies-panel/StrategiesSkeleton'
 import { useIsMobile } from '@/components/ui/use-mobile'
 import { VaultEventsPanel, VaultManagementEventsPanel } from '@/components/vault-events'
@@ -14,7 +15,7 @@ import {
   getReallocationPanelLabels
 } from '@/lib/reallocation-panels'
 import { cn } from '@/lib/utils'
-import type { ReallocationData } from '@/types/reallocationTypes'
+import type { AllocationHistoryIssue, ReallocationData } from '@/types/reallocationTypes'
 import type { VaultExtended } from '@/types/vaultTypes'
 import type { ChainId } from '../../constants/chains'
 import { StrategyAllocationChart } from './StrategyAllocationChart'
@@ -26,6 +27,8 @@ interface StrategiesPanelProps {
   aboutDescription?: string
   aboutLink?: string
   reallocationData?: ReallocationData | null
+  reallocationError?: string | null
+  reallocationIssues?: AllocationHistoryIssue[]
   hasOlderReallocations?: boolean
   isLoadingOlderReallocations?: boolean
   onLoadOlderReallocations?: () => void
@@ -40,6 +43,8 @@ export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
     aboutDescription,
     aboutLink,
     reallocationData,
+    reallocationError,
+    reallocationIssues,
     hasOlderReallocations = false,
     isLoadingOlderReallocations = false,
     onLoadOlderReallocations
@@ -349,6 +354,7 @@ export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
             ))}
           </div>
 
+          <AllocationHistoryNotice error={reallocationError} issues={reallocationIssues} />
           {renderMainTabContent()}
           {eventTabs.length > 0 ? (
             <div className="border-t border-border">

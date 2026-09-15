@@ -2,6 +2,7 @@ import { useInfiniteQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { CHAIN_ID_TO_NAME, type ChainId } from '@/constants/chains'
 import type {
+  AllocationHistoryIssue,
   ReallocationData,
   ReallocationExecution,
   ReallocationExpectedAprImpact,
@@ -110,10 +111,10 @@ function isUnsignedIntegerString(value: unknown): value is string {
   return typeof value === 'string' && /^\d+$/.test(value)
 }
 
-function isValidState(state: AllocationHistoryChartState): boolean {
+function isValidState(state: unknown): state is AllocationHistoryChartState {
   if (
-    !state ||
-    !Number.isSafeInteger(state.blockNumber) ||
+    !isObjectRecord(state) ||
+    !isBlockNumber(state.blockNumber) ||
     normalizeTimestamp(state.blockTimestamp) === null ||
     !Array.isArray(state.allocations) ||
     !isUnsignedIntegerString(state.totalAssets) ||
@@ -125,7 +126,8 @@ function isValidState(state: AllocationHistoryChartState): boolean {
   const strategyAddresses = new Set<string>()
   let accountedAssets = BigInt(state.totalIdle)
   for (const allocation of state.allocations) {
-    const strategyAddress = normalizeVaultAddress(allocation.strategyAddress ?? '')
+    if (!isObjectRecord(allocation) || typeof allocation.strategyAddress !== 'string') return false
+    const strategyAddress = normalizeVaultAddress(allocation.strategyAddress)
     if (!/^0x[a-f0-9]{40}$/.test(strategyAddress) || strategyAddresses.has(strategyAddress)) {
       return false
     }
@@ -139,12 +141,68 @@ function isValidState(state: AllocationHistoryChartState): boolean {
   return accountedAssets === BigInt(state.totalAssets)
 }
 
-export function isValidAllocationHistoryEntry(entry: AllocationHistoryChartEntry): boolean {
+function isBlockNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
+}
+
+function isValidExpectedApr(value: unknown): value is AllocationHistoryChartExpectedApr {
+  if (!isObjectRecord(value)) return false
+  if (value.status === 'unavailable') return typeof value.reason === 'string'
   return (
-    typeof entry?.id === 'string' &&
+    value.status === 'available' &&
+    value.source === 'doa' &&
+    value.scope === 'proposal' &&
+    typeof value.policyId === 'string' &&
+    [value.baselineAprBps, value.proposedAprBps, value.deltaAprBps].every(
+      (number) => typeof number === 'number' && Number.isFinite(number)
+    ) &&
+    normalizeTimestamp(value.publishedAt) !== null &&
+    typeof value.relationship === 'string' &&
+    typeof value.applicationStatus === 'string'
+  )
+}
+
+function isValidExecution(value: unknown): value is ReallocationExecution {
+  if (!isObjectRecord(value)) return false
+  return (
+    typeof value.automation === 'string' &&
+    ['automatic', 'manual', 'mixed', 'unknown'].includes(value.automation) &&
+    typeof value.mechanism === 'string' &&
+    [
+      'allocator_keeper',
+      'direct_vault_role',
+      'governance_safe',
+      'governance',
+      'role_manager',
+      'mixed',
+      'unknown'
+    ].includes(value.mechanism) &&
+    typeof value.targetStatus === 'string' &&
+    ['matched', 'overridden', 'unavailable', 'not_applicable', 'mixed'].includes(value.targetStatus) &&
+    (value.transactions === undefined ||
+      (Array.isArray(value.transactions) &&
+        value.transactions.every(
+          (transaction) =>
+            isObjectRecord(transaction) &&
+            typeof transaction.transactionHash === 'string' &&
+            /^0x[a-fA-F0-9]{64}$/.test(transaction.transactionHash) &&
+            isBlockNumber(transaction.blockNumber)
+        )))
+  )
+}
+
+export function isValidAllocationHistoryEntry(entry: unknown): entry is AllocationHistoryChartEntry {
+  return (
+    isObjectRecord(entry) &&
+    typeof entry.id === 'string' &&
+    entry.id.length > 0 &&
     entry.kind === 'strategy_reallocation' &&
+    isBlockNumber(entry.endBlock) &&
     normalizeTimestamp(entry.endTimestamp) !== null &&
     isValidState(entry.after) &&
+    isValidExecution(entry.execution) &&
+    isValidExpectedApr(entry.expectedAprImpact) &&
+    typeof entry.detailsHref === 'string' &&
     (entry.interval === null || isValidInterval(entry.interval))
   )
 }
@@ -158,7 +216,12 @@ function isValidFlowNode(value: unknown): value is ReallocationLedgerNode {
     return true
   }
 
-  return value.type === 'strategy' && 'address' in value && typeof value.address === 'string'
+  return (
+    value.type === 'strategy' &&
+    'address' in value &&
+    typeof value.address === 'string' &&
+    /^0x[a-fA-F0-9]{40}$/.test(value.address)
+  )
 }
 
 function isObjectRecord(value: unknown): value is Record<string, unknown> {
@@ -176,26 +239,28 @@ function isValidStrategyDictionary(value: unknown): value is Record<string, stri
 }
 
 function isValidBoundaryStates(value: unknown): value is Record<string, AllocationHistoryChartState> {
-  return (
-    isObjectRecord(value) &&
-    Object.entries(value).every(([id, state]) => id.length > 0 && isValidState(state as AllocationHistoryChartState))
-  )
+  return isObjectRecord(value) && Object.entries(value).every(([id, state]) => id.length > 0 && isValidState(state))
 }
 
-function isValidInterval(interval: AllocationHistoryChartInterval): boolean {
+function isValidInterval(interval: unknown): interval is AllocationHistoryChartInterval {
   return (
+    isObjectRecord(interval) &&
     typeof interval.fromEntryId === 'string' &&
     (typeof interval.toEntryId === 'string' || interval.toEntryId === null) &&
     (interval.endKind === 'allocation_entry' || interval.endKind === 'safe_head') &&
     Array.isArray(interval.flows) &&
     interval.flows.every(
       (flow) =>
+        isObjectRecord(flow) &&
         isValidFlowNode(flow.source) &&
         isValidFlowNode(flow.target) &&
         isUnsignedIntegerString(flow.amount) &&
+        typeof flow.attribution === 'string' &&
         ['observed_event', 'derived_from_debt_updates', 'residual_balance'].includes(flow.attribution)
     ) &&
-    interval.reconciliation?.balanceStatus === 'reconciled' &&
+    isObjectRecord(interval.reconciliation) &&
+    interval.reconciliation.balanceStatus === 'reconciled' &&
+    typeof interval.reconciliation.attributionStatus === 'string' &&
     ['complete', 'partial'].includes(interval.reconciliation.attributionStatus) &&
     isUnsignedIntegerString(interval.reconciliation.unattributedAmount)
   )
@@ -296,7 +361,8 @@ function composeFlowLedger(
   }
 }
 
-function normalizeTimestamp(value: string | number): string | null {
+function normalizeTimestamp(value: unknown): string | null {
+  if (typeof value !== 'string' && typeof value !== 'number') return null
   const parsedDate =
     typeof value === 'number' ? new Date(value * 1000) : new Date(value.replace(' UTC', 'Z').replace(' ', 'T'))
 
@@ -430,7 +496,11 @@ export function buildObservedReallocationPanels(
   boundaryStates: ReadonlyMap<string, AllocationHistoryChartState>,
   strategyNames: ReadonlyMap<string, string | null>,
   apiUrl = ''
-): ReallocationPanel[] {
+): { panels: ReallocationPanel[]; issues: AllocationHistoryIssue[] } {
+  const issues: AllocationHistoryIssue[] = []
+  const reject = (entryId: string, reason: string) => {
+    issues.push({ entryId, reason })
+  }
   const chronologicalEntries = [...entries].sort(
     (left, right) => left.endBlock - right.endBlock || left.id.localeCompare(right.id)
   )
@@ -443,16 +513,20 @@ export function buildObservedReallocationPanels(
 
   const historicalPanels = chronologicalEntries.flatMap((entry) => {
     const interval = entry.interval
-    if (!interval || interval.endKind !== 'allocation_entry' || interval.toEntryId !== entry.id) {
+    if (!interval) return [] // The first observed allocation has no preceding interval.
+    if (interval.endKind !== 'allocation_entry' || interval.toEntryId !== entry.id) {
+      reject(entry.id, 'Invalid interval reference')
       return []
     }
     const previousState = entryById.get(interval.fromEntryId)?.after ?? boundaryStates.get(interval.fromEntryId)
     if (!previousState) {
+      reject(entry.id, `Missing boundary state: ${interval.fromEntryId}`)
       return []
     }
 
     const flowLedger = composeFlowLedger(interval.fromEntryId, entry.id, previousState, entry.after, [interval])
     if (!flowLedger) {
+      reject(entry.id, 'Interval flows do not reconcile with observed balances')
       return []
     }
 
@@ -481,62 +555,75 @@ export function buildObservedReallocationPanels(
   })
 
   const tailInterval = currentSnapshot.interval
-  if (!tailInterval || tailInterval.endKind !== 'safe_head' || tailInterval.toEntryId !== null) {
-    return historicalPanels
+  if (!tailInterval) return { panels: historicalPanels, issues }
+  if (tailInterval.endKind !== 'safe_head' || tailInterval.toEntryId !== null) {
+    reject(currentSnapshot.id, 'Invalid current interval reference')
+    return { panels: historicalPanels, issues }
   }
   const latestState = entryById.get(tailInterval.fromEntryId)?.after ?? boundaryStates.get(tailInterval.fromEntryId)
   if (!latestState) {
-    return historicalPanels
+    reject(currentSnapshot.id, `Missing boundary state: ${tailInterval.fromEntryId}`)
+    return { panels: historicalPanels, issues }
   }
   const tailLedger = composeFlowLedger(tailInterval.fromEntryId, null, latestState, currentSnapshot, [tailInterval])
   if (!tailLedger) {
-    return historicalPanels
+    reject(currentSnapshot.id, 'Current interval flows do not reconcile with observed balances')
+    return { panels: historicalPanels, issues }
   }
 
-  return [
-    ...historicalPanels,
-    {
-      id: `current-interval:${tailInterval.fromEntryId}->${currentSnapshot.id}`,
-      beforeState: buildState(
-        tailInterval.fromEntryId,
-        'after',
-        latestState,
-        latestState.blockTimestamp,
-        strategyOrder,
-        strategyNames
-      ),
-      afterState: buildState(
-        currentSnapshot.id,
-        'after',
-        currentSnapshot,
-        currentSnapshot.blockTimestamp,
-        strategyOrder,
-        strategyNames
-      ),
-      beforeTimestampUtc: normalizeTimestamp(latestState.blockTimestamp),
-      afterTimestampUtc: normalizeTimestamp(currentSnapshot.blockTimestamp),
-      kind: 'current',
-      flowLedger: tailLedger
-    }
-  ]
+  return {
+    issues,
+    panels: [
+      ...historicalPanels,
+      {
+        id: `current-interval:${tailInterval.fromEntryId}->${currentSnapshot.id}`,
+        beforeState: buildState(
+          tailInterval.fromEntryId,
+          'after',
+          latestState,
+          latestState.blockTimestamp,
+          strategyOrder,
+          strategyNames
+        ),
+        afterState: buildState(
+          currentSnapshot.id,
+          'after',
+          currentSnapshot,
+          currentSnapshot.blockTimestamp,
+          strategyOrder,
+          strategyNames
+        ),
+        beforeTimestampUtc: normalizeTimestamp(latestState.blockTimestamp),
+        afterTimestampUtc: normalizeTimestamp(currentSnapshot.blockTimestamp),
+        kind: 'current',
+        flowLedger: tailLedger
+      }
+    ]
+  }
 }
 
 export function isValidChartResponse(
-  response: AllocationHistoryChartResponse,
+  response: unknown,
   requestedVaultAddress: string,
   requestedChainId: ChainId,
   requireCurrentSnapshot: boolean
-): boolean {
+): response is AllocationHistoryChartResponse {
   const hasValidEnvelope =
-    response?.projection === 'chart' &&
+    isObjectRecord(response) &&
+    response.projection === 'chart' &&
     response.schemaVersion === 2 &&
-    response.vault?.chainId === requestedChainId &&
-    normalizeVaultAddress(response.vault.address ?? '') === normalizeVaultAddress(requestedVaultAddress) &&
+    isObjectRecord(response.vault) &&
+    response.vault.chainId === requestedChainId &&
+    typeof response.vault.address === 'string' &&
+    [response.vault.name, response.vault.label].every((name) => name == null || typeof name === 'string') &&
+    normalizeVaultAddress(response.vault.address) === normalizeVaultAddress(requestedVaultAddress) &&
     isValidStrategyDictionary(response.strategies) &&
     isValidBoundaryStates(response.boundaryStates) &&
     Array.isArray(response.entries) &&
     response.entries.every(isValidAllocationHistoryEntry) &&
-    Boolean(response.pagination)
+    isObjectRecord(response.pagination) &&
+    (response.pagination.nextCursor === null ||
+      (typeof response.pagination.nextCursor === 'string' && response.pagination.nextCursor.length > 0))
   if (!hasValidEnvelope) {
     return false
   }
@@ -546,6 +633,8 @@ export function isValidChartResponse(
   }
 
   return (
+    isObjectRecord(response.currentSnapshot) &&
+    typeof response.currentSnapshot.id === 'string' &&
     response.currentSnapshot.kind === 'current_snapshot' &&
     isValidState(response.currentSnapshot) &&
     (response.currentSnapshot.interval === null || isValidInterval(response.currentSnapshot.interval))
@@ -559,6 +648,8 @@ export function useReallocationData(
   _currentVaultSnapshotTimestampUtc?: string | null
 ): {
   data: ReallocationData | null
+  issues: AllocationHistoryIssue[]
+  error: string | null
   isLoading: boolean
   hasOlderEntries: boolean
   isLoadingOlderEntries: boolean
@@ -585,7 +676,7 @@ export function useReallocationData(
         throw new Error(`Allocation history API returned ${response.status}`)
       }
 
-      const payload = (await response.json()) as AllocationHistoryChartResponse
+      const payload: unknown = await response.json()
       if (!isValidChartResponse(payload, vaultAddress, vaultChainId, pageParam === null)) {
         throw new Error('Allocation history API returned an invalid chart response')
       }
@@ -598,21 +689,21 @@ export function useReallocationData(
     retry: 1
   })
 
-  const transformedData = useMemo<ReallocationData | null>(() => {
+  const transformed = useMemo<{ data: ReallocationData | null; issues: AllocationHistoryIssue[] }>(() => {
     const pages = query.data?.pages.filter((page): page is AllocationHistoryChartResponse => page !== null)
     if (!pages?.length) {
-      return null
+      return { data: null, issues: [] }
     }
 
     const firstPage = pages[0]
     if (!firstPage?.currentSnapshot) {
-      return null
+      return { data: null, issues: [] }
     }
 
     const uniqueEntries = [...new Map(pages.flatMap((page) => page.entries).map((entry) => [entry.id, entry])).values()]
 
     if (uniqueEntries.length === 0) {
-      return null
+      return { data: null, issues: [] }
     }
 
     const strategyNames = new Map(
@@ -621,7 +712,7 @@ export function useReallocationData(
       )
     )
     const boundaryStates = new Map(pages.flatMap((page) => Object.entries(page.boundaryStates)))
-    const panels = buildObservedReallocationPanels(
+    const { panels, issues } = buildObservedReallocationPanels(
       uniqueEntries,
       firstPage.currentSnapshot,
       boundaryStates,
@@ -629,19 +720,22 @@ export function useReallocationData(
       allocationHistoryApiUrl
     )
     if (panels.length === 0) {
-      return null
+      return { data: null, issues }
     }
 
     return {
-      vault: normalizeVaultAddress(firstPage.vault.address),
-      vaultLabel:
-        firstPage.vault.name?.trim() ||
-        firstPage.vault.label?.trim() ||
-        currentVaultDetails?.name ||
-        firstPage.vault.address,
-      chainId: firstPage.vault.chainId,
-      chainName: CHAIN_ID_TO_NAME[firstPage.vault.chainId as ChainId] ?? null,
-      panels
+      issues,
+      data: {
+        vault: normalizeVaultAddress(firstPage.vault.address),
+        vaultLabel:
+          firstPage.vault.name?.trim() ||
+          firstPage.vault.label?.trim() ||
+          currentVaultDetails?.name ||
+          firstPage.vault.address,
+        chainId: firstPage.vault.chainId,
+        chainName: CHAIN_ID_TO_NAME[firstPage.vault.chainId as ChainId] ?? null,
+        panels
+      }
     }
   }, [allocationHistoryApiUrl, currentVaultDetails?.name, query.data?.pages])
 
@@ -650,7 +744,9 @@ export function useReallocationData(
   }
 
   return {
-    data: transformedData,
+    data: transformed.data,
+    issues: transformed.issues,
+    error: query.error ? query.error.message : null,
     isLoading: query.isLoading,
     hasOlderEntries: Boolean(query.hasNextPage),
     isLoadingOlderEntries: query.isFetchingNextPage,
