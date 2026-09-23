@@ -55,6 +55,7 @@ export type KongVaultListItem = {
   category?: string | null
   type?: string | null
   kind?: string | null
+  vaultType?: KongNullableNumberish
   v3?: boolean
   yearn?: boolean
   isRetired?: boolean
@@ -130,6 +131,10 @@ export type KongVaultSnapshotDebt = {
 }
 
 export type KongVaultSnapshot = {
+  v3?: boolean
+  vaultType?: KongNullableNumberish
+  keeper?: string | null
+  performanceFeeRecipient?: string | null
   address: string
   chainId: number
   blockNumber?: KongNullableNumberish

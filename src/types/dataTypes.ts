@@ -103,6 +103,8 @@ type StrategyDetails = {
   performanceFee: number
   isVault: boolean
   isEndorsed?: boolean
+  supportsStrategyPage: boolean
+  supportsVaultAction: boolean
 }
 
 // Define the type for strategy data

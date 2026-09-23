@@ -44,7 +44,7 @@ function Stat({ label, children, className = '' }: { label: string; children: Re
   )
 }
 
-export function MainInfoPanel(data: MainInfoPanelProps) {
+export function MainInfoPanel({ showAction = true, ...data }: MainInfoPanelProps & { showAction?: boolean }) {
   const [copied, setCopied] = useState(false)
 
   const handleCopy = () => {
@@ -152,14 +152,16 @@ export function MainInfoPanel(data: MainInfoPanelProps) {
               <p className="max-w-2xl whitespace-pre-line text-gray-600">{data.description}</p>
             </div>
 
-            <a
-              className="mt-4 inline-flex shrink-0 items-center rounded-none bg-[#0657f9] px-4 py-2 text-white hover:bg-[#0657f9]/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0657f9] focus-visible:ring-offset-2"
-              href={data.yearnVaultLink}
-              target="_blank"
-              rel="noreferrer"
-            >
-              View vault on yearn.fi <ExternalLink className="ml-2 h-4 w-4" />
-            </a>
+            {showAction ? (
+              <a
+                className="mt-4 inline-flex shrink-0 items-center rounded-none bg-[#0657f9] px-4 py-2 text-white hover:bg-[#0657f9]/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0657f9] focus-visible:ring-offset-2"
+                href={data.yearnVaultLink}
+                target="_blank"
+                rel="noreferrer"
+              >
+                View vault on yearn.fi <ExternalLink className="ml-2 h-4 w-4" />
+              </a>
+            ) : null}
           </div>
         </div>
       </div>

@@ -13,18 +13,19 @@ const sections = [
 
 type StandardVaultPageProps = {
   mainInfo: MainInfoPanelProps
+  showAction: boolean
   charts: ReactNode
   strategies: ReactNode
   vaultActivity: ReactNode
 }
 
-export function StandardVaultPage({ mainInfo, charts, strategies, vaultActivity }: StandardVaultPageProps) {
+export function StandardVaultPage({ mainInfo, showAction, charts, strategies, vaultActivity }: StandardVaultPageProps) {
   const content = { performance: charts, strategies, activity: vaultActivity }
   return (
     <div className="vault-ledger bg-[#f3f3f1] pb-10 text-[#151515]" data-testid="standard-vault-page">
       <VaultStickyTitle vaultName={mainInfo.vaultName} />
       <section id={getVaultReportSectionId('vault', 'overview')} className="scroll-mt-28 bg-white">
-        <MainInfoPanel {...mainInfo} />
+        <MainInfoPanel {...mainInfo} showAction={showAction} />
       </section>
       <VaultReportNavigation ariaLabel="Vault report sections" prefix="vault" sections={sections} />
       {sections
