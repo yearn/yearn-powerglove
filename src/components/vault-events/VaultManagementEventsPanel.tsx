@@ -10,6 +10,7 @@ import { VaultDebtReallocationRow } from './VaultDebtReallocationRow'
 import { VaultDebtSequenceRow } from './VaultDebtSequenceRow'
 import { VaultEventRow } from './VaultEventRow'
 import { VaultEventsLoadingState } from './VaultEventsLoadingState'
+import { VaultEventsPagination } from './VaultEventsPagination'
 
 interface VaultManagementEventsPanelProps {
   vaultChainId: ChainId
@@ -20,6 +21,7 @@ interface VaultManagementEventsPanelProps {
   shareSymbol?: string
   shareDecimals?: number
   strategyDetails?: VaultDerivedStrategy[]
+  loadingMinHeight?: number
 }
 
 const PAGE_SIZE = 50
@@ -33,7 +35,8 @@ export const VaultManagementEventsPanel: React.FC<VaultManagementEventsPanelProp
     assetDecimals,
     shareSymbol,
     shareDecimals,
-    strategyDetails = []
+    strategyDetails = [],
+    loadingMinHeight
   }) => {
     const {
       allEvents,
@@ -162,7 +165,12 @@ export const VaultManagementEventsPanel: React.FC<VaultManagementEventsPanelProp
     }
 
     if (isTimelineLoading) {
-      return <VaultEventsLoadingState loadingState={isLoading ? 'loading management events' : 'combining event rows'} />
+      return (
+        <VaultEventsLoadingState
+          loadingState={isLoading ? 'loading management events' : 'combining event rows'}
+          minHeight={loadingMinHeight}
+        />
+      )
     }
 
     if (allEventCount === 0 && eventType === 'all') {
@@ -177,8 +185,8 @@ export const VaultManagementEventsPanel: React.FC<VaultManagementEventsPanelProp
     const activeTypeCount = timelineItems.length
 
     return (
-      <div className="px-4 py-4">
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+      <div className="py-4">
+        <div className="mb-4 flex flex-col gap-3 px-4 sm:flex-row sm:items-center">
           <div className="flex flex-wrap items-center gap-4 text-xs text-[#808080]">
             <span>
               <span className="font-semibold text-black">{allEventCount}</span> management events
@@ -198,22 +206,25 @@ export const VaultManagementEventsPanel: React.FC<VaultManagementEventsPanelProp
             ) : null}
           </div>
           <div className="flex-1" />
-          <div className="flex items-center gap-2">
-            <label className="text-xs text-[#808080]">Filter:</label>
-            <select
-              value={eventType}
-              onChange={(e) => {
-                setEventType(e.target.value as typeof eventType)
-                setCurrentPage(1)
-              }}
-              className="rounded border border-border bg-white px-2 py-1 text-xs"
-            >
-              {availableEventTypeOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+          <div className="flex flex-wrap items-center gap-3 sm:justify-end">
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-[#808080]">Filter:</label>
+              <select
+                value={eventType}
+                onChange={(e) => {
+                  setEventType(e.target.value as typeof eventType)
+                  setCurrentPage(1)
+                }}
+                className="rounded-none border border-border bg-white px-2 py-1 text-xs"
+              >
+                {availableEventTypeOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <VaultEventsPagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
           </div>
         </div>
 
@@ -222,7 +233,7 @@ export const VaultManagementEventsPanel: React.FC<VaultManagementEventsPanelProp
             <p className="text-sm text-gray-500">No management events match the selected filter.</p>
           </div>
         ) : (
-          <div className="overflow-hidden rounded-lg border border-border bg-white">
+          <div className="overflow-hidden border-y border-border bg-white">
             {paginatedTimelineItems.map((item) =>
               item.kind === 'reallocation' ? (
                 <VaultDebtReallocationRow
@@ -255,48 +266,6 @@ export const VaultManagementEventsPanel: React.FC<VaultManagementEventsPanelProp
             )}
           </div>
         )}
-
-        {totalPages > 1 ? (
-          <div className="mt-3 flex items-center justify-between text-xs text-[#808080]">
-            <span>
-              Page {currentPage} of {totalPages}
-            </span>
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => setCurrentPage(1)}
-                disabled={currentPage === 1}
-                className="rounded border border-border px-2 py-1 disabled:opacity-50 hover:bg-gray-50"
-              >
-                First
-              </button>
-              <button
-                type="button"
-                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-                disabled={currentPage === 1}
-                className="rounded border border-border px-2 py-1 disabled:opacity-50 hover:bg-gray-50"
-              >
-                Prev
-              </button>
-              <button
-                type="button"
-                onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
-                disabled={currentPage === totalPages}
-                className="rounded border border-border px-2 py-1 disabled:opacity-50 hover:bg-gray-50"
-              >
-                Next
-              </button>
-              <button
-                type="button"
-                onClick={() => setCurrentPage(totalPages)}
-                disabled={currentPage === totalPages}
-                className="rounded border border-border px-2 py-1 disabled:opacity-50 hover:bg-gray-50"
-              >
-                Last
-              </button>
-            </div>
-          </div>
-        ) : null}
       </div>
     )
   }
