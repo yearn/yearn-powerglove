@@ -14,6 +14,7 @@ const makeStrategy = (overrides: Partial<Strategy> = {}): Strategy => ({
   allocationAmountUsd: 400,
   estimatedAPY: '4.00%',
   estimatedApySource: 'graph',
+  valuationBasis: 'currentDebtUsd',
   tokenSymbol: 'ETH',
   tokenIconUri: '',
   details: {
@@ -21,6 +22,11 @@ const makeStrategy = (overrides: Partial<Strategy> = {}): Strategy => ({
     vaultAddress: '0x0000000000000000000000000000000000000001',
     managementFee: 0,
     performanceFee: 0,
+    parentVaultChainId: 1,
+    parentVaultAddress: '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+    assetAddress: '0xcccccccccccccccccccccccccccccccccccccccc',
+    assetDecimals: 6,
+    assetSymbol: 'USDC',
     isVault: false
   },
   ...overrides

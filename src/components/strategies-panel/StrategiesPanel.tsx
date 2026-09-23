@@ -31,7 +31,7 @@ export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
     const sortingState = useSortingAndFiltering(strategiesData.strategies)
 
     // UI state
-    const [expandedRow, setExpandedRow] = useState<number | null>(null)
+    const [expandedRows, setExpandedRows] = useState<Set<number>>(() => new Set())
     const [activeMainTab, setActiveMainTab] = useState<string>('Current Strategy Allocations')
     const [showUnallocated, setShowUnallocated] = useState<boolean>(false)
     const [activeReallocationIndex, setActiveReallocationIndex] = useState<number>(0)
@@ -111,7 +111,12 @@ export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
     }, [activeReallocationPanel, reallocationColorByStrategyKey])
 
     const toggleRow = (index: number) => {
-      setExpandedRow(expandedRow === index ? null : index)
+      setExpandedRows((current) => {
+        const next = new Set(current)
+        if (next.has(index)) next.delete(index)
+        else next.add(index)
+        return next
+      })
     }
 
     const renderMainTabContent = () => {
@@ -156,7 +161,7 @@ export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
                   sortColumn={sortingState.sortColumn}
                   sortDirection={sortingState.sortDirection}
                   onSort={sortingState.handleSort}
-                  expandedRow={expandedRow}
+                  expandedRows={expandedRows}
                   onToggleRow={toggleRow}
                   showUnallocated={showUnallocated}
                   onToggleUnallocated={() => setShowUnallocated(!showUnallocated)}

@@ -13,7 +13,7 @@ interface StrategyTableProps {
   sortColumn: StrategySortColumn
   sortDirection: SortDirection
   onSort: (column: StrategySortColumn) => void
-  expandedRow: number | null
+  expandedRows: ReadonlySet<number>
   onToggleRow: (id: number) => void
   showUnallocated: boolean
   onToggleUnallocated: () => void
@@ -26,7 +26,7 @@ export const StrategyTable: React.FC<StrategyTableProps> = React.memo(
     sortColumn,
     sortDirection,
     onSort,
-    expandedRow,
+    expandedRows,
     onToggleRow,
     showUnallocated,
     onToggleUnallocated
@@ -103,7 +103,7 @@ export const StrategyTable: React.FC<StrategyTableProps> = React.memo(
             <StrategyRow
               key={strategy.id}
               strategy={strategy}
-              isExpanded={expandedRow === strategy.id}
+              isExpanded={expandedRows.has(strategy.id)}
               onToggle={() => onToggleRow(strategy.id)}
             />
           ))}
@@ -128,7 +128,7 @@ export const StrategyTable: React.FC<StrategyTableProps> = React.memo(
                   <StrategyRow
                     key={strategy.id}
                     strategy={strategy}
-                    isExpanded={expandedRow === strategy.id}
+                    isExpanded={expandedRows.has(strategy.id)}
                     onToggle={() => onToggleRow(strategy.id)}
                     isUnallocated
                   />
