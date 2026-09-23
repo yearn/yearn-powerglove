@@ -1,14 +1,15 @@
+import { format, parseISO } from 'date-fns'
 import { useState } from 'react'
-import APYChart, {
-  APYSeriesSelector,
-  type APYVisibleSeries,
-  buildApyVisibleSeries,
-  getAvailableApySeries
-} from '@/components/charts/APYChart'
+import APYChart, { APYSeriesSelector, type APYVisibleSeries, buildApyVisibleSeries } from '@/components/charts/APYChart'
 import ChartSkeleton from '@/components/charts/ChartSkeleton'
 import ChartsLoader from '@/components/charts/ChartsLoader'
 import { FixedHeightChartContainer } from '@/components/charts/chart-container'
-import { calculatePpsPeriodApy, getTimeframeLimit } from '@/components/charts/chart-utils'
+import {
+  type ChartDateRange,
+  calculatePpsHistoricalApySeries,
+  filterChartTimeframe
+} from '@/components/charts/chart-utils'
+import { CustomTimeframePicker } from '@/components/charts/custom-timeframe-picker'
 import PPSChart from '@/components/charts/PPSChart'
 import TVLChart from '@/components/charts/TVLChart'
 import YvUsdDualLineChart from '@/components/charts/YvUsdDualLineChart'
@@ -72,7 +73,7 @@ const timeframes = [
   { label: 'All Time', mobileLabel: 'All', value: 'all' }
 ] as const
 
-type Timeframe = (typeof timeframes)[number]
+type Timeframe = (typeof timeframes)[number] | { value: 'custom'; label: string; mobileLabel: string }
 type YvUsdSeriesScope = 'primary' | 'both' | 'comparison'
 
 type ApySeriesAvailability = {
@@ -95,7 +96,7 @@ export function buildDefaultApyVisibleSeries({
       derivedApy: false,
       sevenDayApy: isYBold,
       thirtyDayApy: true,
-      ppsPeriodApy: true,
+      ppsAllTimeApy: true,
       estimatedApy: false,
       estimatedApy30dAvg: true,
       yBoldEstimatedApy: true,
@@ -113,7 +114,7 @@ export function buildDefaultApyVisibleSeries({
     derivedApy: false,
     sevenDayApy: false,
     thirtyDayApy: true,
-    ppsPeriodApy: true,
+    ppsAllTimeApy: true,
     estimatedApy: useEstimate,
     estimatedApy30dAvg: useAveragedEstimate,
     yBoldEstimatedApy: useYBoldEstimate,
@@ -169,10 +170,17 @@ export function ChartsPanel(data: ChartData) {
     hasErrors = false
   } = data
   const [timeframe, setTimeframe] = useState<Timeframe>(timeframes[timeframes.length - 1])
+  const [customDateRange, setCustomDateRange] = useState<ChartDateRange | null>(null)
+  const chartTimeframe = timeframe.value === 'custom' && customDateRange ? customDateRange : timeframe.value
+  const applyCustomRange = (range: ChartDateRange) => {
+    const label = `${format(parseISO(range.start), 'MMM d, yyyy')} – ${format(parseISO(range.end), 'MMM d, yyyy')}`
+    setCustomDateRange(range)
+    setTimeframe({ value: 'custom', label, mobileLabel: label })
+    setIsTimeframeDialogOpen(false)
+  }
   const [apyVisibleSeries, setApyVisibleSeries] = useState<APYVisibleSeries | null>(null)
   const [yvUsdSeriesScope, setYvUsdSeriesScope] = useState<YvUsdSeriesScope>('both')
   const [isTimeframeDialogOpen, setIsTimeframeDialogOpen] = useState(false)
-  const [isDataDialogOpen, setIsDataDialogOpen] = useState(false)
 
   if (hasErrors) {
     return (
@@ -194,13 +202,12 @@ export function ChartsPanel(data: ChartData) {
   }
 
   const activeAprApyData = yvUsdChartData?.unlockedAprApyData ?? aprApyData
-  const filteredAprApyData = activeAprApyData.slice(-getTimeframeLimit(timeframe.value))
+  const filteredAprApyData = filterChartTimeframe(activeAprApyData, chartTimeframe)
   const hasYvUsdChartData = Boolean(yvUsdChartData)
-  const ppsPeriodApy = calculatePpsPeriodApy(ppsData, timeframe.value)
-  const lockedPpsPeriodApy = yvUsdChartData
-    ? calculatePpsPeriodApy(yvUsdChartData.lockedPpsData, timeframe.value)
+  const historicalApySeries = calculatePpsHistoricalApySeries(ppsData)
+  const lockedHistoricalApySeries = yvUsdChartData
+    ? calculatePpsHistoricalApySeries(yvUsdChartData.lockedPpsData)
     : null
-  const hasPpsPeriodApy = typeof ppsPeriodApy === 'number'
   const hasOracleApy = filteredAprApyData.some((point) => typeof point.oracleApy === 'number')
   const hasOracleApy30dAvg = filteredAprApyData.some((point) => typeof point.oracleApy30dAvg === 'number')
   const hasYBoldEstimatedApy = filteredAprApyData.some((point) => typeof point.yBoldEstimatedApy === 'number')
@@ -219,15 +226,6 @@ export function ChartsPanel(data: ChartData) {
     hasYBoldEstimatedApy
   })
   const resolvedApyVisibleSeries = apyVisibleSeries ?? defaultApyVisibleSeries
-  const availableApySeries = getAvailableApySeries({
-    hasPpsPeriodApy,
-    hasOracleApy,
-    hasOracleApy30dAvg,
-    hasYBoldEstimatedApy,
-    hasEstimatedApy,
-    hasEstimatedApy30dAvg
-  })
-  const selectedApySeriesCount = availableApySeries.filter((seriesKey) => resolvedApyVisibleSeries[seriesKey]).length
   const chartInfo = {
     'historical-apy': {
       title: hasYvUsdChartData ? 'yvUSD Performance' : 'Vault Performance',
@@ -265,6 +263,22 @@ export function ChartsPanel(data: ChartData) {
   } satisfies Record<ChartTab, number>
 
   const chartBody = (() => {
+    const activeData =
+      activeTab === 'historical-apy'
+        ? activeAprApyData
+        : activeTab === 'historical-pps'
+          ? (yvUsdChartData?.ppsData ?? ppsData)
+          : (yvUsdChartData?.tvlData ?? tvlData)
+    if (
+      timeframe.value === 'custom' &&
+      filterChartTimeframe<{ date: string }>(activeData, chartTimeframe).length === 0
+    ) {
+      return (
+        <output className={`${chartHeightClassName} flex items-center justify-center text-sm text-gray-500`}>
+          No chart data available for this date range.
+        </output>
+      )
+    }
     switch (activeTab) {
       case 'historical-apy':
         if (yvUsdChartData) {
@@ -276,13 +290,13 @@ export function ChartsPanel(data: ChartData) {
                   comparisonChartData={yvUsdChartData.lockedAprApyData}
                   primaryLabel="Unlocked yvUSD"
                   comparisonLabel="Locked yvUSD"
-                  timeframe={timeframe.value}
+                  timeframe={chartTimeframe}
                   visibleSeries={resolvedApyVisibleSeries}
                   onVisibleSeriesChange={setApyVisibleSeries}
                   hideSeriesControls={true}
                   seriesScope={yvUsdSeriesScope}
-                  ppsPeriodApy={ppsPeriodApy}
-                  lockedPpsPeriodApy={lockedPpsPeriodApy}
+                  historicalApySeries={historicalApySeries}
+                  lockedHistoricalApySeries={lockedHistoricalApySeries}
                 />
               </ChartErrorBoundary>
             </FixedHeightChartContainer>
@@ -294,11 +308,11 @@ export function ChartsPanel(data: ChartData) {
             <ChartErrorBoundary>
               <APYChart
                 chartData={aprApyData}
-                timeframe={timeframe.value}
+                timeframe={chartTimeframe}
                 visibleSeries={resolvedApyVisibleSeries}
                 onVisibleSeriesChange={setApyVisibleSeries}
                 hideSeriesControls={true}
-                ppsPeriodApy={ppsPeriodApy}
+                historicalApySeries={historicalApySeries}
               />
             </ChartErrorBoundary>
             {showGhostedOverlay && (
@@ -306,7 +320,7 @@ export function ChartsPanel(data: ChartData) {
                 <ChartErrorBoundary>
                   <TVLChart
                     chartData={tvlData}
-                    timeframe={timeframe.value}
+                    timeframe={chartTimeframe}
                     hideAxes={true}
                     hideTooltip={true}
                     chartMargin={{ bottom: desktopAlignedChartBottom }}
@@ -322,7 +336,7 @@ export function ChartsPanel(data: ChartData) {
           return (
             <FixedHeightChartContainer heightClassName={chartHeightClassName}>
               <ChartErrorBoundary>
-                <YvUsdDualLineChart chartData={yvUsdChartData.ppsData} timeframe={timeframe.value} valueType="pps" />
+                <YvUsdDualLineChart chartData={yvUsdChartData.ppsData} timeframe={chartTimeframe} valueType="pps" />
               </ChartErrorBoundary>
             </FixedHeightChartContainer>
           )
@@ -331,14 +345,14 @@ export function ChartsPanel(data: ChartData) {
         return (
           <FixedHeightChartContainer heightClassName={chartHeightClassName}>
             <ChartErrorBoundary>
-              <PPSChart chartData={ppsData} timeframe={timeframe.value} />
+              <PPSChart chartData={ppsData} timeframe={chartTimeframe} />
             </ChartErrorBoundary>
             {showGhostedOverlay && (
               <div className="pointer-events-none absolute inset-0 opacity-30">
                 <ChartErrorBoundary>
                   <APYChart
                     chartData={aprApyData}
-                    timeframe={timeframe.value}
+                    timeframe={chartTimeframe}
                     hideAxes={true}
                     hideTooltip={true}
                     chartMargin={{ bottom: desktopAlignedChartBottom }}
@@ -361,7 +375,7 @@ export function ChartsPanel(data: ChartData) {
           return (
             <FixedHeightChartContainer heightClassName={chartHeightClassName}>
               <ChartErrorBoundary>
-                <YvUsdTVLChart chartData={yvUsdChartData.tvlData} timeframe={timeframe.value} />
+                <YvUsdTVLChart chartData={yvUsdChartData.tvlData} timeframe={chartTimeframe} />
               </ChartErrorBoundary>
             </FixedHeightChartContainer>
           )
@@ -370,14 +384,14 @@ export function ChartsPanel(data: ChartData) {
         return (
           <FixedHeightChartContainer heightClassName={chartHeightClassName}>
             <ChartErrorBoundary>
-              <TVLChart chartData={tvlData} timeframe={timeframe.value} />
+              <TVLChart chartData={tvlData} timeframe={chartTimeframe} />
             </ChartErrorBoundary>
             {showGhostedOverlay && (
               <div className="pointer-events-none absolute inset-0 opacity-30">
                 <ChartErrorBoundary>
                   <APYChart
                     chartData={aprApyData}
-                    timeframe={timeframe.value}
+                    timeframe={chartTimeframe}
                     hideAxes={true}
                     hideTooltip={true}
                     chartMargin={{ bottom: desktopAlignedChartBottom }}
@@ -419,12 +433,12 @@ export function ChartsPanel(data: ChartData) {
       {hasYvUsdChartData && activeTab === 'historical-apy' ? (
         <YvUsdScopeControl value={yvUsdSeriesScope} onChange={setYvUsdSeriesScope} />
       ) : null}
-      <div className="grid w-full grid-cols-2 gap-2">
+      <div className="w-full">
         <Dialog open={isTimeframeDialogOpen} onOpenChange={setIsTimeframeDialogOpen}>
           <DialogTrigger asChild>
             <Button
               variant="outline"
-              className="flex h-auto flex-col items-start rounded-md border-border px-3 py-2 text-left"
+              className="flex h-auto w-full flex-col items-start rounded-md border-border px-3 py-2 text-left"
             >
               <span className="text-[11px] font-medium uppercase tracking-[0.08em] text-gray-500">Timeframe</span>
               <span className="text-sm text-foreground">{timeframe.mobileLabel}</span>
@@ -453,52 +467,38 @@ export function ChartsPanel(data: ChartData) {
                   {tf.label}
                 </button>
               ))}
+              <CustomTimeframePicker
+                value={customDateRange}
+                active={timeframe.value === 'custom'}
+                onApply={applyCustomRange}
+                className={`rounded-md border px-3 py-3 text-left text-sm font-medium transition-colors ${timeframe.value === 'custom' ? 'border-[#0657f9] bg-[#0657f9]/5 text-[#0657f9]' : 'border-border text-foreground hover:bg-gray-50'}`}
+              />
             </div>
           </DialogContent>
         </Dialog>
-
-        <Dialog open={isDataDialogOpen} onOpenChange={setIsDataDialogOpen}>
-          <DialogTrigger asChild>
-            <Button
-              variant="outline"
-              disabled={activeTab !== 'historical-apy'}
-              className="flex h-auto flex-col items-start rounded-md border-border px-3 py-2 text-left disabled:opacity-40"
-            >
-              <span className="text-[11px] font-medium uppercase tracking-[0.08em] text-gray-500">Data</span>
-              <span className="text-sm text-foreground">
-                {activeTab === 'historical-apy' ? `${selectedApySeriesCount} series` : 'Unavailable'}
-              </span>
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-[calc(100vw-2rem)] rounded-lg p-4 sm:max-w-sm">
-            <DialogHeader>
-              <DialogTitle>Data</DialogTitle>
-              <DialogDescription>Choose which APY series are visible on the chart.</DialogDescription>
-            </DialogHeader>
-            <APYSeriesSelector
-              visibleSeries={resolvedApyVisibleSeries}
-              onVisibleSeriesChange={setApyVisibleSeries}
-              hasPpsPeriodApy={hasPpsPeriodApy}
-              hasOracleApy={hasOracleApy}
-              hasOracleApy30dAvg={hasOracleApy30dAvg}
-              hasYBoldEstimatedApy={hasYBoldEstimatedApy}
-              hasEstimatedApy={hasEstimatedApy}
-              hasEstimatedApy30dAvg={hasEstimatedApy30dAvg}
-              className="grid gap-2 border-none bg-transparent p-0"
-              itemClassName="min-w-0 rounded-md border border-border px-3 py-3"
-              idPrefix="dialog-toggle"
-            />
-          </DialogContent>
-        </Dialog>
       </div>
+      {activeTab === 'historical-apy' ? (
+        <APYSeriesSelector
+          visibleSeries={resolvedApyVisibleSeries}
+          onVisibleSeriesChange={setApyVisibleSeries}
+          historicalApySeries={historicalApySeries}
+          lockedHistoricalApySeries={lockedHistoricalApySeries}
+          hasOracleApy={hasOracleApy}
+          hasOracleApy30dAvg={hasOracleApy30dAvg}
+          hasYBoldEstimatedApy={hasYBoldEstimatedApy}
+          hasEstimatedApy={hasEstimatedApy}
+          hasEstimatedApy30dAvg={hasEstimatedApy30dAvg}
+        />
+      ) : null}
     </div>
   )
 
   const desktopChartControls = (
-    <div className="grid grid-cols-5 gap-2 sm:flex sm:flex-wrap">
+    <div className="flex flex-wrap gap-2">
       {timeframes.map((tf) => (
         <button
           key={tf.value}
+          aria-pressed={timeframe.value === tf.value}
           onClick={() => setTimeframe(tf)}
           className={`min-w-0 rounded-md px-3 py-2 text-center text-xs font-medium transition-colors sm:text-sm ${
             timeframe.value === tf.value ? 'bg-[#0657f9] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -508,6 +508,12 @@ export function ChartsPanel(data: ChartData) {
           {tf.label}
         </button>
       ))}
+      <CustomTimeframePicker
+        value={customDateRange}
+        active={timeframe.value === 'custom'}
+        onApply={applyCustomRange}
+        className={`min-w-0 rounded-md px-3 py-2 text-center text-xs font-medium transition-colors sm:text-sm ${timeframe.value === 'custom' ? 'bg-[#0657f9] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+      />
     </div>
   )
 
@@ -516,16 +522,14 @@ export function ChartsPanel(data: ChartData) {
       <APYSeriesSelector
         visibleSeries={resolvedApyVisibleSeries}
         onVisibleSeriesChange={setApyVisibleSeries}
-        hasPpsPeriodApy={hasPpsPeriodApy}
+        historicalApySeries={historicalApySeries}
+        lockedHistoricalApySeries={lockedHistoricalApySeries}
         hasOracleApy={hasOracleApy}
         hasOracleApy30dAvg={hasOracleApy30dAvg}
         hasYBoldEstimatedApy={hasYBoldEstimatedApy}
         hasEstimatedApy={hasEstimatedApy}
         hasEstimatedApy30dAvg={hasEstimatedApy30dAvg}
-        compact={true}
-        className="w-full justify-center bg-transparent p-0 text-xs sm:text-sm"
-        itemClassName="min-w-0 rounded-md px-3 py-2"
-        idPrefix="desktop-chart-toggle"
+        className="w-full justify-center"
       />
     </div>
   )
@@ -551,11 +555,7 @@ export function ChartsPanel(data: ChartData) {
           value={activeTab}
           className="w-full"
           onValueChange={(value) => {
-            const nextTab = value as ChartTab
-            setActiveTab(nextTab)
-            if (nextTab !== 'historical-apy') {
-              setIsDataDialogOpen(false)
-            }
+            setActiveTab(value as ChartTab)
           }}
         >
           <div className="border-b border-border">
@@ -589,11 +589,7 @@ export function ChartsPanel(data: ChartData) {
         value={activeTab}
         className="w-full"
         onValueChange={(value) => {
-          const nextTab = value as ChartTab
-          setActiveTab(nextTab)
-          if (nextTab !== 'historical-apy') {
-            setIsDataDialogOpen(false)
-          }
+          setActiveTab(value as ChartTab)
         }}
       >
         <div className="border-b border-border">

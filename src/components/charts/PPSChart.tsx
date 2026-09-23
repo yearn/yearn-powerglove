@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react'
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, XAxis, YAxis } from 'recharts'
-import { getTimeframeLimit } from '@/components/charts/chart-utils'
+import { type ChartTimeframe, filterChartTimeframe } from '@/components/charts/chart-utils'
 import { ChartContainer, ChartTooltip } from '@/components/ui/chart'
 import { useIsMobile } from '@/components/ui/use-mobile'
 import type { ChartDataPoint } from '@/types/dataTypes'
@@ -9,7 +9,7 @@ type PercentSeriesKey = 'derivedApr'
 
 interface PPSChartProps {
   chartData: ChartDataPoint[]
-  timeframe: string
+  timeframe: ChartTimeframe
   hideAxes?: boolean
   hideTooltip?: boolean
   dataKey?: 'PPS' | PercentSeriesKey
@@ -25,7 +25,7 @@ interface PPSChartProps {
 export const PPSChart: React.FC<PPSChartProps> = React.memo(
   ({ chartData, timeframe, hideAxes, hideTooltip, dataKey = 'PPS', chartMargin, yAxisWidth }) => {
     const isMobile = useIsMobile()
-    const filteredData = useMemo(() => chartData.slice(-getTimeframeLimit(timeframe)), [chartData, timeframe])
+    const filteredData = useMemo(() => filterChartTimeframe(chartData, timeframe), [chartData, timeframe])
     const chartBottomPadding = isMobile ? 12 : 16
     const yAxisMargin = yAxisWidth ?? (isMobile ? 44 : 60)
 
