@@ -144,18 +144,27 @@ const isV3Vault = (apiVersion?: string | null, explicitV3?: boolean): boolean =>
 }
 
 const deriveVaultType = ({
+  vaultType,
   kind,
   type,
   name,
   apiVersion,
-  v3
+  v3,
+  tokenizedStrategy
 }: {
+  vaultType?: KongNullableNumberish
   kind?: string | null
   type?: string | null
   name?: string | null
   apiVersion?: string | null
   v3?: boolean
+  tokenizedStrategy?: boolean
 }): string | undefined => {
+  const explicitVaultType = Number(vaultType)
+  if (explicitVaultType === 1 || explicitVaultType === 2) {
+    return String(explicitVaultType)
+  }
+
   const normalizedKind = kind?.toLowerCase() ?? ''
   if (normalizedKind.includes('multi')) {
     return '1'
@@ -178,6 +187,9 @@ const deriveVaultType = ({
   }
   if ((apiVersion ?? '').startsWith('0')) {
     return 'Legacy Vault'
+  }
+  if (tokenizedStrategy) {
+    return '2'
   }
   if (v3) {
     return '1'
@@ -477,6 +489,7 @@ export const mapKongListItemToVault = (item: KongVaultListItem): Vault => {
       close: toNumber(item.tvl, 0)
     },
     vaultType: deriveVaultType({
+      vaultType: item.vaultType,
       kind: item.kind,
       type: item.type,
       name: item.name,
@@ -511,7 +524,7 @@ export const mapKongSnapshotToVaultExtended = (
   snapshot: KongVaultSnapshot,
   baseVault?: VaultExtended | null
 ): VaultExtended => {
-  const v3 = isV3Vault(snapshot.apiVersion, baseVault?.v3)
+  const v3 = isV3Vault(snapshot.apiVersion, snapshot.v3 ?? baseVault?.v3)
   const performance = snapshot.performance
   const historical = snapshot.performance?.historical
   const managementFee = normalizeFeeToBps(snapshot.fees?.managementFee, baseVault?.fees?.managementFee ?? 0)
@@ -569,11 +582,13 @@ export const mapKongSnapshotToVaultExtended = (
       close: toNumber(snapshot.tvl?.close, baseVault?.tvl?.close ?? 0)
     },
     vaultType: deriveVaultType({
+      vaultType: snapshot.vaultType,
       kind: snapshot.meta?.kind || baseVault?.kind,
       type: snapshot.meta?.type,
       name: snapshot.name || snapshot.meta?.name || baseVault?.name,
       apiVersion: snapshot.apiVersion ?? baseVault?.apiVersion,
-      v3
+      v3,
+      tokenizedStrategy: snapshot.keeper !== undefined || snapshot.performanceFeeRecipient !== undefined
     }),
     yearn: resolveYearnFlag(snapshot.inclusion, baseVault?.yearn, true),
     v3,

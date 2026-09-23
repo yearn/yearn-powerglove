@@ -20,6 +20,7 @@ import { useChartData } from '@/hooks/useChartData'
 import { useMainInfoPanelData } from '@/hooks/useMainInfoPanelData'
 import { useReallocationData } from '@/hooks/useReallocationData'
 // Import our new data hooks and layout components
+import { supportsYearnVaultAction } from '@/hooks/useStrategiesData'
 import { useVaultPageData } from '@/hooks/useVaultPageData'
 import { useYvUsdChartData } from '@/hooks/useYvUsdChartData'
 import { buildPairedApyDisplay, buildSingleApyDisplay } from '@/lib/apy-display'
@@ -143,6 +144,7 @@ export function SingleVaultPageContent({
       )}
       <StandardVaultPage
         mainInfo={mainInfoPanelProps}
+        showAction={supportsYearnVaultAction(vaultDetails)}
         charts={
           <Suspense fallback={null}>
             <ChartsPanel

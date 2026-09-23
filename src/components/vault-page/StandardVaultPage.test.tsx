@@ -27,6 +27,7 @@ describe('Vault report activity availability', () => {
     vi.stubEnv('VITE_PUBLIC_ENVIO_GRAPHQL_URL', env)
     const { container } = render(
       <StandardVaultPage
+        showAction
         mainInfo={mainInfo}
         charts={<p>Charts</p>}
         strategies={<p>Allocations</p>}
@@ -44,7 +45,13 @@ describe('Vault report activity availability', () => {
   it('keeps the activity navigation and content when Envio is configured', () => {
     vi.stubEnv('VITE_PUBLIC_ENVIO_GRAPHQL_URL', 'https://events.example/graphql')
     render(
-      <StandardVaultPage mainInfo={mainInfo} charts={null} strategies={null} vaultActivity={<p>Recorded activity</p>} />
+      <StandardVaultPage
+        showAction
+        mainInfo={mainInfo}
+        charts={null}
+        strategies={null}
+        vaultActivity={<p>Recorded activity</p>}
+      />
     )
     expect(screen.getByRole('heading', { name: 'Vault activity' })).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Vault activity' }).getAttribute('href')).toBe('#vault-activity')
