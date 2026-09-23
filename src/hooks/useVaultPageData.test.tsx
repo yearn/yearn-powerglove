@@ -151,12 +151,14 @@ describe('useVaultPageData', () => {
     const unlockedVault = {
       ...makeVault(YVUSD_UNLOCKED_ADDRESS),
       forwardApyNet: 0.03,
+      historicalWeeklyApy: 0.02,
       estimatedApySource: 'est-yvusd' as const,
       strategyDetails: []
     }
     const lockedVault = {
       ...makeVault(YVUSD_LOCKED_ADDRESS),
       forwardApyNet: 0.07,
+      historicalWeeklyApy: 0.06,
       estimatedApySource: 'est-yvusd' as const,
       strategyDetails: []
     }
@@ -181,6 +183,7 @@ describe('useVaultPageData', () => {
 
     const { result } = renderHook(() => useVaultPageData({ vaultAddress: YVUSD_UNLOCKED_ADDRESS, vaultChainId: 1 }))
 
+    expect(result.current.vaultDetails?.pairedSevenDayApy).toEqual({ locked: 0.06, unlocked: 0.02 })
     expect(result.current.vaultDetails?.pairedEstimatedApy).toEqual({ locked: 0.07, unlocked: 0.03 })
   })
 

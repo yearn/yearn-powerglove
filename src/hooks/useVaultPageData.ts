@@ -141,6 +141,10 @@ const applyYvUsdAprData = (
       locked: lockedEstimatedApy,
       unlocked: unlockedEstimatedApy
     },
+    pairedSevenDayApy: {
+      locked: lockedVault?.historicalWeeklyApy ?? null,
+      unlocked: vault.historicalWeeklyApy ?? null
+    },
     pairedThirtyDayApy: {
       locked: lockedVault?.historicalMonthlyApy ?? null,
       unlocked: vault.historicalMonthlyApy ?? null
