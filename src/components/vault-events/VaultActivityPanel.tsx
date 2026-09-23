@@ -43,7 +43,8 @@ export function VaultActivityPanel({ vaultChainId, vaultDetails, maxHeight }: Va
     assetSymbol: vaultDetails.asset?.symbol,
     assetDecimals: vaultDetails.asset?.decimals,
     shareSymbol: vaultDetails.symbol,
-    shareDecimals: vaultDetails.decimals ?? vaultDetails.asset?.decimals
+    shareDecimals: vaultDetails.decimals ?? vaultDetails.asset?.decimals,
+    loadingMinHeight: maxHeight
   }
 
   return (
