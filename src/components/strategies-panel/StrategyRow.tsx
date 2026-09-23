@@ -122,7 +122,7 @@ export const StrategyRow: React.FC<StrategyRowProps> = React.memo(
           <div className="border-t border-[#f5f5f5] bg-[#f5f5f5]/30 px-4 py-4 md:px-3">
             <div className="pl-5 md:pl-8">
               <div className="mb-4 flex flex-wrap gap-2">
-                {strategy.details.isVault && (
+                {strategy.details.supportsStrategyPage && (
                   <Link
                     to="/vaults/$chainId/$vaultAddress"
                     params={{
@@ -134,7 +134,7 @@ export const StrategyRow: React.FC<StrategyRowProps> = React.memo(
                     Data
                   </Link>
                 )}
-                {strategy.details.isEndorsed && strategy.details.isVault && (
+                {strategy.details.supportsVaultAction && (
                   <a
                     href={`https://yearn.fi/v3/${strategy.details.chainId}/${strategy.details.vaultAddress}`}
                     target="_blank"

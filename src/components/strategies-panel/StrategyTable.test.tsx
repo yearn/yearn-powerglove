@@ -63,6 +63,8 @@ const strategies: Strategy[] = [
       assetSymbol: 'USDC',
       managementFee: 0,
       performanceFee: 0,
+      supportsStrategyPage: false,
+      supportsVaultAction: false,
       isVault: false
     }
   },
@@ -86,6 +88,8 @@ const strategies: Strategy[] = [
       assetSymbol: 'USDC',
       managementFee: 0,
       performanceFee: 0,
+      supportsStrategyPage: true,
+      supportsVaultAction: false,
       isVault: true,
       isEndorsed: true
     }
@@ -110,6 +114,8 @@ const strategies: Strategy[] = [
       assetSymbol: 'USDC',
       managementFee: 0,
       performanceFee: 0,
+      supportsStrategyPage: true,
+      supportsVaultAction: true,
       isVault: true,
       isEndorsed: true
     }
@@ -151,6 +157,12 @@ describe('StrategyTable expansion', () => {
     fireEvent.click(strategyRows[2])
 
     expect(screen.getAllByRole('button', { expanded: true })).toHaveLength(3)
+    const strategyPageLinks = screen.getAllByRole('link', { name: 'Data' })
+    expect(strategyPageLinks).toHaveLength(2)
+    expect(strategyPageLinks[0].getAttribute('href')).toBe('/vaults/1/0x2222222222222222222222222222222222222222')
+    const vaultLinks = screen.getAllByRole('link', { name: 'Vault' })
+    expect(vaultLinks).toHaveLength(1)
+    expect(vaultLinks[0].getAttribute('href')).toBe('https://yearn.fi/v3/1/0x3333333333333333333333333333333333333333')
     expect(screen.getByText('NAV valuation basis: Kong totalDebtUsd')).toBeTruthy()
     expect(screen.getAllByText('Current debt:', { exact: false })).toHaveLength(2)
     expect(screen.getAllByText('Underlying price:', { exact: false })).toHaveLength(2)

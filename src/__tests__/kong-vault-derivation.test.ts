@@ -172,6 +172,19 @@ describe('deriveKongSnapshotStrategies', () => {
 })
 
 describe('mapKongSnapshotToVaultExtended', () => {
+  it('recognizes tokenized strategies when snapshot metadata omits the vault kind', () => {
+    const mapped = mapKongSnapshotToVaultExtended({
+      address: '0x1111111111111111111111111111111111111111',
+      chainId: 1,
+      apiVersion: '3.0.4',
+      v3: true,
+      keeper: '0x2222222222222222222222222222222222222222',
+      performanceFeeRecipient: '0x3333333333333333333333333333333333333333'
+    })
+
+    expect(mapped.vaultType).toBe('2')
+  })
+
   it('maps snapshot with yearn.fi APY precedence and exposes strategy details', () => {
     const snapshot: KongVaultSnapshot = {
       address: '0x1111111111111111111111111111111111111111',

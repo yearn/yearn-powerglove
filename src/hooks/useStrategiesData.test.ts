@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
   buildAllocationChartData,
   hasAllocatedDebt,
-  resolveStrategyAllocationAmountUsd
+  resolveStrategyAllocationAmountUsd,
+  supportsYearnVaultAction
 } from '@/hooks/useStrategiesData'
 import type { Strategy } from '@/types/dataTypes'
 
@@ -27,7 +28,9 @@ const makeStrategy = (overrides: Partial<Strategy> = {}): Strategy => ({
     assetAddress: '0xcccccccccccccccccccccccccccccccccccccccc',
     assetDecimals: 6,
     assetSymbol: 'USDC',
-    isVault: false
+    isVault: false,
+    supportsStrategyPage: true,
+    supportsVaultAction: false
   },
   ...overrides
 })
@@ -136,5 +139,15 @@ describe('buildAllocationChartData', () => {
         amount: '$500'
       }
     ])
+  })
+})
+
+describe('supportsYearnVaultAction', () => {
+  it('offers vault actions only for endorsed allocator vaults and legacy vaults', () => {
+    expect(supportsYearnVaultAction({ yearn: true, v3: true, vaultType: '1' })).toBe(true)
+    expect(supportsYearnVaultAction({ yearn: true, v3: true, vaultType: '2' })).toBe(false)
+    expect(supportsYearnVaultAction({ yearn: false, v3: true, vaultType: '1' })).toBe(false)
+    expect(supportsYearnVaultAction({ yearn: true, v3: false, vaultType: '0' })).toBe(true)
+    expect(supportsYearnVaultAction(null)).toBe(false)
   })
 })

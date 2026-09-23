@@ -4,7 +4,7 @@ import { useTokenAssetsContext } from '@/contexts/useTokenAssets'
 import { useVaults } from '@/contexts/useVaults'
 import { formatApyDisplay, formatTvlDisplay } from '@/lib/formatters'
 import type { Strategy, StrategyAllocationChartDatum } from '@/types/dataTypes'
-import type { VaultDerivedStrategy, VaultExtended } from '@/types/vaultTypes'
+import type { Vault, VaultDerivedStrategy, VaultExtended } from '@/types/vaultTypes'
 import { isLegacyVaultType } from '@/utils/vaultDataUtils'
 
 export interface StrategiesData {
@@ -64,6 +64,12 @@ export const resolveStrategyAllocationAmountUsd = (
 
 export const resolveStrategyValuationBasis = (isLegacyVault: boolean): Strategy['valuationBasis'] =>
   isLegacyVault ? 'totalDebtUsd' : 'currentDebtUsd'
+
+export const supportsYearnVaultAction = (vault?: Pick<Vault, 'yearn' | 'v3' | 'vaultType'> | null): boolean => {
+  if (!vault?.yearn) return false
+  if (!vault.v3) return true
+  return Number(vault.vaultType) === 1
+}
 
 export const buildAllocationChartData = ({
   chartStrategies,
@@ -164,7 +170,9 @@ export function useStrategiesData(vaultChainId: ChainId, vaultDetails: VaultExte
           performanceFee:
             strategy.performanceFee || vaultDetails.fees?.performanceFee || vaultDetails.performanceFee || 0,
           isVault: Boolean(linkedVault),
-          isEndorsed: linkedVault?.yearn || false
+          isEndorsed: linkedVault?.yearn || false,
+          supportsStrategyPage: !isLegacyVault,
+          supportsVaultAction: supportsYearnVaultAction(linkedVault)
         }
       }
     })
