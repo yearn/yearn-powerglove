@@ -46,7 +46,7 @@ export const StrategyTable: React.FC<StrategyTableProps> = React.memo(
 
     return (
       <div className="w-full">
-        <div className="border border-[#f5f5f5]">
+        <div className="w-full border-y border-[#f5f5f5]">
           {isMobile ? (
             <div className="border-b border-[#f5f5f5] p-3">
               <div className="text-[11px] font-medium uppercase tracking-[0.08em] text-[#808080]">Sort strategies</div>
@@ -61,7 +61,7 @@ export const StrategyTable: React.FC<StrategyTableProps> = React.memo(
                     type="button"
                     onClick={() => onSort(column as StrategySortColumn)}
                     className={cn(
-                      'rounded-full border px-3 py-1.5 text-xs font-medium transition-colors',
+                      'rounded-none border px-3 py-1.5 text-xs font-medium transition-colors',
                       sortColumn === column
                         ? 'border-[#0657f9] bg-[#0657f9]/10 text-[#0657f9]'
                         : 'border-[#e5e5e5] text-[#4f4f4f] hover:bg-[#f5f5f5]'

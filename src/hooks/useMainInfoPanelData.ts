@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { isYvUsdAddress } from '@/constants/featuredVaults'
 import { buildSingleApyDisplay } from '@/lib/apy-display'
+import { formatTvlDisplay } from '@/lib/formatters'
 import type { MainInfoPanelProps } from '@/types/dataTypes'
 import type { TokenAsset } from '@/types/tokenAsset'
 import type { VaultExtended } from '@/types/vaultTypes'
@@ -72,8 +73,10 @@ export function useMainInfoPanelData({
       description,
       vaultToken,
       totalSupply,
+      compactTotalSupply: formatTvlDisplay(vaultDetails.tvl?.close ?? 0),
       network,
       oneDayAPY,
+      sevenDayAPY: buildSingleApyDisplay(vaultDetails.apy?.weeklyNet),
       thirtyDayAPY,
       managementFee,
       performanceFee,

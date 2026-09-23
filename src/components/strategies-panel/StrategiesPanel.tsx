@@ -2,12 +2,9 @@ import React, { useState } from 'react'
 import { ReallocationChart, ReallocationStrategyTable } from '@/components/reallocation-panel'
 import StrategiesSkeleton from '@/components/strategies-panel/StrategiesSkeleton'
 import { useIsMobile } from '@/components/ui/use-mobile'
-import { VaultEventsPanel, VaultManagementEventsPanel } from '@/components/vault-events'
-import { getVaultEventAddresses } from '@/constants/featuredVaults'
 import { useRootDarkMode } from '@/hooks/useRootDarkMode'
 import { useSortingAndFiltering } from '@/hooks/useSortingAndFiltering'
 import { useStrategiesData } from '@/hooks/useStrategiesData'
-import { isEnvioConfigured } from '@/lib/envio-client'
 import {
   buildComparisonStrategies,
   buildReallocationColorMap,
@@ -40,61 +37,28 @@ export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
 
     // UI state
     const [expandedRow, setExpandedRow] = useState<number | null>(null)
-    const [activeMainTab, setActiveMainTab] = useState<string>('Current Strategies')
-    const [activeEventsTab, setActiveEventsTab] = useState<string>('Vault Management Events')
+    const [activeMainTab, setActiveMainTab] = useState<string>('Current Strategy Allocations')
     const [showUnallocated, setShowUnallocated] = useState<boolean>(false)
     const [activeReallocationIndex, setActiveReallocationIndex] = useState<number>(0)
-    const [eventsContentMinHeight, setEventsContentMinHeight] = useState<number>(0)
     const isMobile = useIsMobile()
     const isDark = useRootDarkMode()
-    const eventsContentRef = React.useRef<HTMLDivElement | null>(null)
     const hasAbout = Boolean(aboutDescription?.trim())
     const hasReallocation = Boolean(reallocationData)
-    const hasHistoricalUserEvents = isEnvioConfigured()
-    const hasVaultManagementEvents = isEnvioConfigured()
-    const vaultEventAddresses = React.useMemo(
-      () => getVaultEventAddresses(vaultChainId, vaultDetails.address),
-      [vaultChainId, vaultDetails.address]
-    )
     const latestReallocationPanelId = reallocationData?.panels.length
       ? reallocationData.panels[reallocationData.panels.length - 1]?.id
       : undefined
     const mainTabs = React.useMemo(() => {
-      const list: string[] = ['Current Strategies']
+      const list: string[] = ['Current Strategy Allocations']
       if (hasReallocation) list.push('Current Reallocation')
       if (isMobile && hasAbout) list.push('About')
       return list
     }, [hasReallocation, isMobile, hasAbout])
 
-    const eventTabs = React.useMemo(() => {
-      const list: string[] = []
-      if (hasVaultManagementEvents) list.push('Vault Management Events')
-      if (hasHistoricalUserEvents) list.push('Historical User Events')
-      return list
-    }, [hasHistoricalUserEvents, hasVaultManagementEvents])
-
     React.useEffect(() => {
       if (!mainTabs.includes(activeMainTab)) {
-        setActiveMainTab('Current Strategies')
+        setActiveMainTab('Current Strategy Allocations')
       }
     }, [mainTabs, activeMainTab])
-
-    React.useEffect(() => {
-      if (eventTabs.length === 0) {
-        return
-      }
-
-      if (!eventTabs.includes(activeEventsTab)) {
-        setActiveEventsTab(eventTabs[0] ?? 'Vault Management Events')
-      }
-    }, [eventTabs, activeEventsTab])
-
-    React.useLayoutEffect(() => {
-      const nextHeight = eventsContentRef.current?.offsetHeight ?? 0
-      if (nextHeight > eventsContentMinHeight) {
-        setEventsContentMinHeight(nextHeight)
-      }
-    })
 
     React.useEffect(() => {
       if (!reallocationData?.panels.length) {
@@ -160,7 +124,7 @@ export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
 
     const renderMainTabContent = () => {
       switch (activeMainTab) {
-        case 'Current Strategies': {
+        case 'Current Strategy Allocations': {
           if (strategiesData.isLoading) {
             return <StrategiesSkeleton />
           }
@@ -186,17 +150,14 @@ export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
           }
 
           return (
-            <div className="flex flex-col pb-4 lg:flex-row lg:gap-6">
+            <div className="pb-4 min-[900px]:flex min-[900px]:gap-6">
               {strategiesData.allocationChartData.length > 0 && (
-                <div className="order-1 w-full border-b border-border px-4 py-4 lg:order-2 lg:basis-1/4 lg:border-b-0 lg:px-0 lg:py-0">
-                  <div className="text-[11px] font-medium uppercase tracking-[0.08em] text-[#808080]">
-                    Allocation overview
-                  </div>
+                <div className="hidden min-[900px]:order-2 min-[900px]:flex min-[900px]:basis-1/4 min-[900px]:items-center">
                   <StrategyAllocationChart allocationData={strategiesData.allocationChartData} />
                 </div>
               )}
 
-              <div className="order-2 w-full lg:order-1 lg:basis-3/4">
+              <div className="w-full min-[900px]:order-1 min-[900px]:min-w-0 min-[900px]:basis-3/4">
                 <StrategyTable
                   allocatedStrategies={sortingState.allocatedStrategies}
                   unallocatedStrategies={sortingState.unallocatedStrategies}
@@ -296,82 +257,27 @@ export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
       }
     }
 
-    const renderEventsTabContent = () => {
-      switch (activeEventsTab) {
-        case 'Vault Management Events':
-          return (
-            <VaultManagementEventsPanel
-              vaultChainId={vaultChainId}
-              vaultAddress={vaultDetails.address}
-              vaultEventAddresses={vaultEventAddresses}
-              assetSymbol={vaultDetails.asset?.symbol}
-              assetDecimals={vaultDetails.asset?.decimals}
-              shareSymbol={vaultDetails.symbol}
-              shareDecimals={vaultDetails.decimals ?? vaultDetails.asset?.decimals}
-              strategyDetails={vaultDetails.strategyDetails}
-            />
-          )
-        case 'Historical User Events':
-          return (
-            <VaultEventsPanel
-              vaultChainId={vaultChainId}
-              vaultAddress={vaultDetails.address}
-              vaultEventAddresses={vaultEventAddresses}
-              assetSymbol={vaultDetails.asset?.symbol}
-              assetDecimals={vaultDetails.asset?.decimals}
-              shareSymbol={vaultDetails.symbol}
-              shareDecimals={vaultDetails.decimals ?? vaultDetails.asset?.decimals}
-            />
-          )
-        default:
-          return null
-      }
-    }
-
     return (
       <div className="w-full">
-        <div className="w-full mx-auto border-b border-border bg-white sm:border-x">
-          <div className="flex items-center border-b border-border">
+        <div className="mx-auto w-full border-b border-border bg-white">
+          <div className="flex items-center overflow-x-auto border-b border-border">
             {mainTabs.map((tab) => (
-              <div
+              <button
+                type="button"
+                aria-pressed={activeMainTab === tab}
                 key={tab}
                 className={cn(
-                  'px-6 py-3 cursor-pointer',
-                  activeMainTab === tab ? 'text-black font-medium border-b-2 border-[#0657f9]' : 'text-[#808080]'
+                  'shrink-0 whitespace-nowrap border-b-2 border-transparent px-6 py-3 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0657f9]',
+                  activeMainTab === tab ? 'border-[#0657f9] font-medium text-black' : 'text-[#808080]'
                 )}
                 onClick={() => setActiveMainTab(tab)}
               >
                 {tab}
-              </div>
+              </button>
             ))}
           </div>
 
           {renderMainTabContent()}
-          {eventTabs.length > 0 ? (
-            <div className="border-t border-border">
-              <div className="flex items-center border-b border-border">
-                {eventTabs.map((tab) => (
-                  <div
-                    key={tab}
-                    className={cn(
-                      'px-6 py-3 cursor-pointer',
-                      activeEventsTab === tab ? 'text-black font-medium border-b-2 border-[#0657f9]' : 'text-[#808080]'
-                    )}
-                    onClick={() => setActiveEventsTab(tab)}
-                  >
-                    {tab}
-                  </div>
-                ))}
-              </div>
-
-              <div
-                ref={eventsContentRef}
-                style={eventsContentMinHeight > 0 ? { minHeight: eventsContentMinHeight } : undefined}
-              >
-                {renderEventsTabContent()}
-              </div>
-            </div>
-          ) : null}
         </div>
       </div>
     )

@@ -145,7 +145,7 @@ function YvUsdScopeControl({
           type="button"
           aria-pressed={value === scope.value}
           onClick={() => onChange(scope.value)}
-          className={`rounded-md px-3 py-2 text-xs font-medium transition-colors sm:text-sm ${
+          className={`rounded-none px-3 py-2 text-xs font-medium transition-colors sm:text-sm ${
             value === scope.value ? 'bg-[#0657f9] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
           }`}
         >
@@ -438,7 +438,7 @@ export function ChartsPanel(data: ChartData) {
           <DialogTrigger asChild>
             <Button
               variant="outline"
-              className="flex h-auto w-full flex-col items-start rounded-md border-border px-3 py-2 text-left"
+              className="flex h-auto w-full flex-col items-start rounded-none border-border px-3 py-2 text-left"
             >
               <span className="text-[11px] font-medium uppercase tracking-[0.08em] text-gray-500">Timeframe</span>
               <span className="text-sm text-foreground">{timeframe.mobileLabel}</span>
@@ -458,7 +458,7 @@ export function ChartsPanel(data: ChartData) {
                     setTimeframe(tf)
                     setIsTimeframeDialogOpen(false)
                   }}
-                  className={`rounded-md border px-3 py-3 text-left text-sm font-medium transition-colors ${
+                  className={`rounded-none border px-3 py-3 text-left text-sm font-medium transition-colors ${
                     timeframe.value === tf.value
                       ? 'border-[#0657f9] bg-[#0657f9]/5 text-[#0657f9]'
                       : 'border-border text-foreground hover:bg-gray-50'
@@ -471,7 +471,7 @@ export function ChartsPanel(data: ChartData) {
                 value={customDateRange}
                 active={timeframe.value === 'custom'}
                 onApply={applyCustomRange}
-                className={`rounded-md border px-3 py-3 text-left text-sm font-medium transition-colors ${timeframe.value === 'custom' ? 'border-[#0657f9] bg-[#0657f9]/5 text-[#0657f9]' : 'border-border text-foreground hover:bg-gray-50'}`}
+                className={`rounded-none border px-3 py-3 text-left text-sm font-medium transition-colors ${timeframe.value === 'custom' ? 'border-[#0657f9] bg-[#0657f9]/5 text-[#0657f9]' : 'border-border text-foreground hover:bg-gray-50'}`}
               />
             </div>
           </DialogContent>
@@ -500,7 +500,7 @@ export function ChartsPanel(data: ChartData) {
           key={tf.value}
           aria-pressed={timeframe.value === tf.value}
           onClick={() => setTimeframe(tf)}
-          className={`min-w-0 rounded-md px-3 py-2 text-center text-xs font-medium transition-colors sm:text-sm ${
+          className={`min-w-0 rounded-none px-3 py-2 text-center text-xs font-medium transition-colors sm:text-sm ${
             timeframe.value === tf.value ? 'bg-[#0657f9] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
           }`}
           type="button"
@@ -512,7 +512,7 @@ export function ChartsPanel(data: ChartData) {
         value={customDateRange}
         active={timeframe.value === 'custom'}
         onApply={applyCustomRange}
-        className={`min-w-0 rounded-md px-3 py-2 text-center text-xs font-medium transition-colors sm:text-sm ${timeframe.value === 'custom' ? 'bg-[#0657f9] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+        className={`min-w-0 rounded-none px-3 py-2 text-center text-xs font-medium transition-colors sm:text-sm ${timeframe.value === 'custom' ? 'bg-[#0657f9] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
       />
     </div>
   )
@@ -559,7 +559,7 @@ export function ChartsPanel(data: ChartData) {
           }}
         >
           <div className="border-b border-border">
-            <div className="px-4 pt-4 sm:px-6">
+            <div className="px-4 sm:px-6">
               <TabsList className="grid h-auto w-full grid-cols-3 gap-0 bg-transparent p-0">
                 {chartTabs.map((tab) => (
                   <TabsTrigger
@@ -593,7 +593,7 @@ export function ChartsPanel(data: ChartData) {
         }}
       >
         <div className="border-b border-border">
-          <div className="px-4 pt-4 sm:px-6">
+          <div className="px-4 sm:px-6">
             <TabsList className="grid h-auto w-fit grid-cols-3 gap-0 bg-transparent p-0">
               {chartTabs.map((tab) => (
                 <TabsTrigger

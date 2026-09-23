@@ -63,6 +63,7 @@ export type VaultSimple = {
   historicalWeeklyApy?: number | null
   historicalMonthlyApy?: number | null
   pairedEstimatedApy?: PairedApyValues
+  pairedSevenDayApy?: PairedApyValues
   pairedThirtyDayApy?: PairedApyValues
   pairedFees?: {
     locked: VaultFeeValues | null
