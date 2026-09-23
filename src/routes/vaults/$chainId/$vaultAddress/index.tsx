@@ -1,7 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router'
 import React, { lazy, Suspense } from 'react'
 import { isAddress } from 'viem'
-import { MainInfoPanel } from '@/components/main-info-panel'
+import { VaultActivityPanel } from '@/components/vault-events'
+import { StandardVaultPage } from '@/components/vault-page/StandardVaultPage'
 
 // Lazy load ChartsPanel for code splitting (reduces initial bundle size)
 const ChartsPanel = lazy(() =>
@@ -140,28 +141,33 @@ export function SingleVaultPageContent({
           </div>
         </div>
       )}
-      <div className="space-y-0">
-        <MainInfoPanel {...mainInfoPanelProps} />
-        <Suspense fallback={null}>
-          <ChartsPanel
-            aprApyData={transformedAprApyData}
-            tvlData={transformedTvlData}
-            ppsData={transformedPpsData}
-            yvUsdChartData={yvUsdChartData}
-            isV3Vault={isV3Vault}
-            isYBold={isYBold}
-            isLoading={chartsLoading}
-            hasErrors={chartsError}
+      <StandardVaultPage
+        mainInfo={mainInfoPanelProps}
+        charts={
+          <Suspense fallback={null}>
+            <ChartsPanel
+              aprApyData={transformedAprApyData}
+              tvlData={transformedTvlData}
+              ppsData={transformedPpsData}
+              yvUsdChartData={yvUsdChartData}
+              isV3Vault={isV3Vault}
+              isYBold={isYBold}
+              isLoading={chartsLoading}
+              hasErrors={chartsError}
+            />
+          </Suspense>
+        }
+        strategies={
+          <StrategiesPanel
+            vaultChainId={vaultChainId}
+            vaultDetails={vaultDetails}
+            aboutDescription={mainInfoPanelProps.description}
+            aboutLink={mainInfoPanelProps.yearnVaultLink}
+            reallocationData={reallocationData}
           />
-        </Suspense>
-        <StrategiesPanel
-          vaultChainId={vaultChainId}
-          vaultDetails={vaultDetails}
-          aboutDescription={mainInfoPanelProps.description}
-          aboutLink={mainInfoPanelProps.yearnVaultLink}
-          reallocationData={reallocationData}
-        />
-      </div>
+        }
+        vaultActivity={<VaultActivityPanel vaultChainId={vaultChainId} vaultDetails={vaultDetails} />}
+      />
     </VaultPageLayout>
   )
 }
@@ -233,6 +239,7 @@ function ValidVaultPage({ chainId, vaultAddress }: { chainId: string; vaultAddre
       return {
         ...mainInfoPanelData,
         oneDayAPY: buildPairedApyDisplay(pairedEstimatedApy),
+        sevenDayAPY: buildPairedApyDisplay(vaultDetails?.pairedSevenDayApy ?? { locked: null, unlocked: null }),
         thirtyDayAPY: buildPairedApyDisplay(pairedThirtyDayApy)
       }
     }
@@ -247,6 +254,7 @@ function ValidVaultPage({ chainId, vaultAddress }: { chainId: string; vaultAddre
     isYvUsd,
     vaultDetails?.forwardApyNet,
     vaultDetails?.pairedEstimatedApy,
+    vaultDetails?.pairedSevenDayApy,
     vaultDetails?.pairedThirtyDayApy
   ])
 

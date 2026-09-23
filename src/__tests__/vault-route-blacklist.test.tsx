@@ -15,6 +15,10 @@ vi.mock('@/components/strategies-panel/index', () => ({
   StrategiesPanel: () => <div data-testid="strategies-panel" />
 }))
 
+vi.mock('@/components/vault-events', () => ({
+  VaultActivityPanel: () => <div data-testid="vault-activity-panel" />
+}))
+
 vi.mock('@/components/vault-page', () => ({
   VaultPageBreadcrumb: ({ vaultName }: { vaultName: string }) => <div>{vaultName}</div>,
   VaultPageLayout: ({ children }: { children: ReactNode }) => <div>{children}</div>

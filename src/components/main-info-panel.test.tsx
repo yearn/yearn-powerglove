@@ -19,6 +19,7 @@ const props: MainInfoPanelProps = {
       { label: 'Unlocked yvUSD', value: '3.00%' }
     ]
   },
+  sevenDayAPY: { display: '4.00%' },
   thirtyDayAPY: {
     display: '8.00% | 2.00%',
     tooltipItems: [
