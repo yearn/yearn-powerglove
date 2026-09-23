@@ -3,6 +3,7 @@ import ChartsLoader from '@/components/charts/ChartsLoader'
 
 interface VaultEventsLoadingStateProps {
   loadingState: string
+  minHeight?: number
 }
 
 const loadingRowKeys = [
@@ -14,10 +15,10 @@ const loadingRowKeys = [
   'events-loading-row-6'
 ]
 
-export const VaultEventsLoadingState: React.FC<VaultEventsLoadingStateProps> = React.memo(({ loadingState }) => {
-  return (
-    <div className="px-4 py-4">
-      <div className="relative overflow-hidden rounded-lg border border-border bg-white">
+export const VaultEventsLoadingState: React.FC<VaultEventsLoadingStateProps> = React.memo(
+  ({ loadingState, minHeight }) => (
+    <div className="flex px-4 py-4" style={minHeight !== undefined ? { minHeight } : undefined}>
+      <div className="relative flex-1 overflow-hidden rounded-lg bg-white">
         <div className="divide-y divide-border opacity-60">
           {loadingRowKeys.map((rowKey) => (
             <div key={rowKey} className="flex items-center gap-3 px-4 py-3">
@@ -39,4 +40,4 @@ export const VaultEventsLoadingState: React.FC<VaultEventsLoadingStateProps> = R
       </div>
     </div>
   )
-})
+)
