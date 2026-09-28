@@ -1,3 +1,4 @@
+import { isExcludedTransactionFrom } from '@/constants/excludedAddresses'
 import { queryEnvio } from '@/lib/envio-client'
 import type { VaultActivityEvent, VaultEventType, VaultManagementEvent, VaultUserEvent } from '@/types/vaultEventTypes'
 
@@ -88,7 +89,8 @@ const USER_EVENT_DEFINITIONS: readonly EnvioEventDefinition<VaultUserEvent>[] = 
       'blockNumber',
       'blockTimestamp',
       'logIndex',
-      'transactionHash'
+      'transactionHash',
+      'transactionFrom'
     ],
     map: (row) => ({
       ...mapBaseEvent('deposit', row),
@@ -117,7 +119,8 @@ const USER_EVENT_DEFINITIONS: readonly EnvioEventDefinition<VaultUserEvent>[] = 
       'blockNumber',
       'blockTimestamp',
       'logIndex',
-      'transactionHash'
+      'transactionHash',
+      'transactionFrom'
     ],
     map: (row) => ({
       ...mapBaseEvent('withdraw', row),

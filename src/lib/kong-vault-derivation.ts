@@ -486,6 +486,8 @@ export const mapKongListItemToVault = (item: KongVaultListItem): Vault => {
     yearn: resolveYearnFlag(item.inclusion, item.yearn, true),
     v3,
     erc4626: v3,
+    isRetired: !!item.isRetired,
+    isHidden: !!item.isHidden,
     fees: {
       managementFee,
       performanceFee
@@ -578,6 +580,8 @@ export const mapKongSnapshotToVaultExtended = (
     yearn: resolveYearnFlag(snapshot.inclusion, baseVault?.yearn, true),
     v3,
     erc4626: v3,
+    isRetired: snapshot.meta?.isRetired ?? baseVault?.isRetired ?? false,
+    isHidden: snapshot.meta?.isHidden ?? baseVault?.isHidden ?? false,
     fees: {
       managementFee,
       performanceFee

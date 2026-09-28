@@ -1,6 +1,5 @@
 import React from 'react'
 import { useIsMobile } from '@/components/ui/use-mobile'
-import { YearnVaultsSummary } from '@/components/YearnVaultsSummary'
 import { useViewportHeight } from '@/hooks/useResponsiveHeight'
 import { useVaultFiltering } from '@/hooks/useVaultFiltering'
 import { useVaultListData } from '@/hooks/useVaultListData'
@@ -46,7 +45,6 @@ export const VaultsList: React.FC<VaultsListProps> = React.memo(({ vaults, token
 
   return (
     <div>
-      {!isMobile && <YearnVaultsSummary />}
       {/* Filters Bar */}
       <VaultsFilterBar
         selectedChains={selectedChains}
