@@ -1,13 +1,13 @@
 import React, { useMemo } from 'react'
 import { Bar, CartesianGrid, ComposedChart, ResponsiveContainer, XAxis, YAxis } from 'recharts'
-import { getTimeframeLimit } from '@/components/charts/chart-utils'
+import { type ChartTimeframe, filterChartTimeframe } from '@/components/charts/chart-utils'
 import { ChartContainer, ChartTooltip } from '@/components/ui/chart'
 import { useIsMobile } from '@/components/ui/use-mobile'
 import type { ChartDataPoint } from '@/types/dataTypes'
 
 interface TVLChartProps {
   chartData: ChartDataPoint[]
-  timeframe: string
+  timeframe: ChartTimeframe
   hideAxes?: boolean
   hideTooltip?: boolean
   chartMargin?: Partial<{
@@ -26,7 +26,7 @@ const formatTooltipValue = (value: number) => {
 export const TVLChart: React.FC<TVLChartProps> = React.memo(
   ({ chartData, timeframe, hideAxes, hideTooltip, chartMargin, yAxisWidth }) => {
     const isMobile = useIsMobile()
-    const filteredData = useMemo(() => chartData.slice(-getTimeframeLimit(timeframe)), [chartData, timeframe])
+    const filteredData = useMemo(() => filterChartTimeframe(chartData, timeframe), [chartData, timeframe])
     const chartBottomPadding = isMobile ? 12 : 16
     const yAxisMargin = yAxisWidth ?? (isMobile ? 52 : 68)
 
