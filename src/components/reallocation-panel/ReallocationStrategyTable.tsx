@@ -42,10 +42,19 @@ interface ReallocationStrategyTableProps {
   chainId: number | null
   beforeLabel?: string
   afterLabel?: string
+  beforeAprLabel?: string
+  afterAprLabel?: string
 }
 
 export const ReallocationStrategyTable: React.FC<ReallocationStrategyTableProps> = React.memo(
-  ({ strategies, chainId, beforeLabel = 'Current', afterLabel = 'Target' }) => {
+  ({
+    strategies,
+    chainId,
+    beforeLabel = 'Current',
+    afterLabel = 'Proposed',
+    beforeAprLabel = 'APR at current debt',
+    afterAprLabel = 'APR at target debt'
+  }) => {
     const [sortConfig, setSortConfig] = useState<SortConfig>({
       key: 'targetRatio',
       direction: 'desc'
@@ -73,16 +82,22 @@ export const ReallocationStrategyTable: React.FC<ReallocationStrategyTableProps>
             bValue = b.allocationDeltaPct
             break
           case 'currentApr':
-            aValue = a.currentAprPct ?? 0
-            bValue = b.currentAprPct ?? 0
+            if (a.currentAprPct === null) return b.currentAprPct === null ? 0 : 1
+            if (b.currentAprPct === null) return -1
+            aValue = a.currentAprPct
+            bValue = b.currentAprPct
             break
           case 'targetApr':
-            aValue = a.targetAprPct ?? 0
-            bValue = b.targetAprPct ?? 0
+            if (a.targetAprPct === null) return b.targetAprPct === null ? 0 : 1
+            if (b.targetAprPct === null) return -1
+            aValue = a.targetAprPct
+            bValue = b.targetAprPct
             break
           case 'aprDelta':
-            aValue = a.aprDeltaPct ?? 0
-            bValue = b.aprDeltaPct ?? 0
+            if (a.aprDeltaPct === null) return b.aprDeltaPct === null ? 0 : 1
+            if (b.aprDeltaPct === null) return -1
+            aValue = a.aprDeltaPct
+            bValue = b.aprDeltaPct
             break
           default:
             return 0
@@ -138,10 +153,10 @@ export const ReallocationStrategyTable: React.FC<ReallocationStrategyTableProps>
                     <SortHeader label="Δ Alloc" sortKey="allocationDelta" onSort={handleSort} />
                   </th>
                   <th className="px-4 py-3 text-right">
-                    <SortHeader label={`${beforeLabel} APR`} sortKey="currentApr" onSort={handleSort} />
+                    <SortHeader label={beforeAprLabel} sortKey="currentApr" onSort={handleSort} />
                   </th>
                   <th className="px-4 py-3 text-right">
-                    <SortHeader label={`${afterLabel} APR`} sortKey="targetApr" onSort={handleSort} />
+                    <SortHeader label={afterAprLabel} sortKey="targetApr" onSort={handleSort} />
                   </th>
                   <th className="px-4 py-3 text-right">
                     <SortHeader label="Δ APR" sortKey="aprDelta" onSort={handleSort} />
