@@ -1,7 +1,6 @@
 import React, { useState } from 'react'
 import { ReallocationChart, ReallocationStrategyTable } from '@/components/reallocation-panel'
 import StrategiesSkeleton from '@/components/strategies-panel/StrategiesSkeleton'
-import { useIsMobile } from '@/components/ui/use-mobile'
 import { useRootDarkMode } from '@/hooks/useRootDarkMode'
 import { useSortingAndFiltering } from '@/hooks/useSortingAndFiltering'
 import { useStrategiesData } from '@/hooks/useStrategiesData'
@@ -22,15 +21,11 @@ import { StrategyTable } from './StrategyTable'
 interface StrategiesPanelProps {
   vaultChainId: ChainId
   vaultDetails: VaultExtended
-  aboutDescription?: string
-  aboutLink?: string
   reallocationData?: ReallocationData | null
 }
 
-const ABOUT_TAB_TEXT = `No additional vault description is currently available.`
-
 export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
-  ({ vaultChainId, vaultDetails, aboutDescription, aboutLink, reallocationData }) => {
+  ({ vaultChainId, vaultDetails, reallocationData }) => {
     // Extract data logic to custom hooks
     const strategiesData = useStrategiesData(vaultChainId, vaultDetails)
     const sortingState = useSortingAndFiltering(strategiesData.strategies)
@@ -40,9 +35,7 @@ export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
     const [activeMainTab, setActiveMainTab] = useState<string>('Current Strategy Allocations')
     const [showUnallocated, setShowUnallocated] = useState<boolean>(false)
     const [activeReallocationIndex, setActiveReallocationIndex] = useState<number>(0)
-    const isMobile = useIsMobile()
     const isDark = useRootDarkMode()
-    const hasAbout = Boolean(aboutDescription?.trim())
     const hasReallocation = Boolean(reallocationData)
     const latestReallocationPanelId = reallocationData?.panels.length
       ? reallocationData.panels[reallocationData.panels.length - 1]?.id
@@ -50,9 +43,8 @@ export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
     const mainTabs = React.useMemo(() => {
       const list: string[] = ['Current Strategy Allocations']
       if (hasReallocation) list.push('Current Reallocation')
-      if (isMobile && hasAbout) list.push('About')
       return list
-    }, [hasReallocation, isMobile, hasAbout])
+    }, [hasReallocation])
 
     React.useEffect(() => {
       if (!mainTabs.includes(activeMainTab)) {
@@ -219,23 +211,6 @@ export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
                   )}
                 </div>
               </div>
-            </div>
-          )
-        }
-        case 'About': {
-          return (
-            <div className="flex flex-col gap-4 px-4 py-6 sm:px-6 sm:py-8">
-              <p className="text-sm leading-relaxed text-[#4f4f4f]">{hasAbout ? aboutDescription : ABOUT_TAB_TEXT}</p>
-              {!isMobile && aboutLink ? (
-                <a
-                  className="inline-flex w-fit items-center gap-2 rounded-none bg-[#0657f9] px-4 py-2 text-white hover:bg-[#0657f9]/90"
-                  href={aboutLink}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Go to Vault
-                </a>
-              ) : null}
             </div>
           )
         }
