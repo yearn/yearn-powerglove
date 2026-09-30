@@ -26,13 +26,15 @@ export function VaultActivityPanel({ vaultChainId, vaultDetails, maxHeight }: Va
   )
 
   React.useLayoutEffect(() => {
-    if (maxHeight !== undefined) return
+    const content = contentRef.current
+    if (maxHeight !== undefined || !content) return
 
-    const nextHeight = contentRef.current?.offsetHeight ?? 0
-    if (nextHeight > contentMinHeight) {
-      setContentMinHeight(nextHeight)
-    }
-  }, [contentMinHeight, maxHeight])
+    const updateHeight = () => setContentMinHeight((height) => Math.max(height, content.offsetHeight))
+    updateHeight()
+    const observer = new ResizeObserver(updateHeight)
+    observer.observe(content)
+    return () => observer.disconnect()
+  }, [maxHeight])
 
   if (!isEnvioConfigured()) return null
 
