@@ -22,11 +22,13 @@ export type MainInfoPanelProps = {
     name: string
   }
   totalSupply: string
+  compactTotalSupply?: string
   network: {
     icon: string
     name: string
   }
   oneDayAPY: ApyDisplayValue
+  sevenDayAPY: ApyDisplayValue
   thirtyDayAPY: ApyDisplayValue
   managementFee: string
   performanceFee: string
