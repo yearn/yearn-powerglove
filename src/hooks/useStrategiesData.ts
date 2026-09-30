@@ -62,8 +62,8 @@ export const resolveStrategyAllocationAmountUsd = (
   return strategy.currentDebtUsd
 }
 
-export const resolveStrategyValuationBasis = (isLegacyVault: boolean): Strategy['valuationBasis'] =>
-  isLegacyVault ? 'totalDebtUsd' : 'currentDebtUsd'
+export const resolveStrategyValuationBasis = (isV3Vault: boolean): Strategy['valuationBasis'] =>
+  isV3Vault ? 'currentDebtUsd' : 'totalDebtUsd'
 
 export const buildAllocationChartData = ({
   chartStrategies,
@@ -147,7 +147,7 @@ export function useStrategiesData(vaultChainId: ChainId, vaultDetails: VaultExte
         allocationPercent,
         allocationAmount: formatTvlDisplay(strategyUsdValue),
         allocationAmountUsd: strategyUsdValue,
-        valuationBasis: resolveStrategyValuationBasis(isLegacyVault),
+        valuationBasis: resolveStrategyValuationBasis(vaultDetails.v3),
         estimatedAPY,
         tokenSymbol,
         tokenIconUri,
