@@ -93,6 +93,11 @@ export type yvUsdChartData = {
 
 type StrategyDetails = {
   chainId: ChainId
+  parentVaultChainId: ChainId
+  parentVaultAddress: string
+  assetAddress: string
+  assetDecimals: number
+  assetSymbol: string
   vaultAddress: string
   managementFee: number
   performanceFee: number
@@ -107,6 +112,7 @@ export type Strategy = {
   allocationPercent: number
   allocationAmount: string
   allocationAmountUsd: number
+  valuationBasis: 'totalDebtUsd' | 'currentDebtUsd'
   estimatedAPY: string
   estimatedApySource?: 'ydaemon' | 'oracle' | 'graph'
   tokenSymbol: string
