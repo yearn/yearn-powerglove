@@ -147,7 +147,7 @@ export function useStrategiesData(vaultChainId: ChainId, vaultDetails: VaultExte
         allocationPercent,
         allocationAmount: formatTvlDisplay(strategyUsdValue),
         allocationAmountUsd: strategyUsdValue,
-        valuationBasis: resolveStrategyValuationBasis(vaultDetails.v3),
+        valuationBasis: resolveStrategyValuationBasis(vaultDetails.v3 === true),
         estimatedAPY,
         tokenSymbol,
         tokenIconUri,
