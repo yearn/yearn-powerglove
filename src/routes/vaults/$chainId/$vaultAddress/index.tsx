@@ -163,8 +163,6 @@ export function SingleVaultPageContent({
           <StrategiesPanel
             vaultChainId={vaultChainId}
             vaultDetails={vaultDetails}
-            aboutDescription={mainInfoPanelProps.description}
-            aboutLink={mainInfoPanelProps.yearnVaultLink}
             reallocationData={reallocationData}
           />
         }

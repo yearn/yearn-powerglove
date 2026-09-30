@@ -1,5 +1,6 @@
-import type { ReactNode } from 'react'
+import { type ReactNode, useMemo } from 'react'
 import { MainInfoPanel } from '@/components/main-info-panel'
+import { isEnvioConfigured } from '@/lib/envio-client'
 import type { MainInfoPanelProps } from '@/types/dataTypes'
 import { getVaultReportSectionId, VaultReportNavigation } from './VaultReportNavigation'
 import { VaultStickyTitle } from './VaultStickyTitle'
@@ -20,6 +21,11 @@ type StandardVaultPageProps = {
 }
 
 export function StandardVaultPage({ mainInfo, showAction, charts, strategies, vaultActivity }: StandardVaultPageProps) {
+  const hasActivity = isEnvioConfigured()
+  const visibleSections = useMemo(
+    () => sections.filter((section) => section.id !== 'activity' || hasActivity),
+    [hasActivity]
+  )
   const content = { performance: charts, strategies, activity: vaultActivity }
   return (
     <div className="vault-ledger bg-[#f3f3f1] pb-10 text-[#151515]" data-testid="standard-vault-page">
@@ -27,8 +33,8 @@ export function StandardVaultPage({ mainInfo, showAction, charts, strategies, va
       <section id={getVaultReportSectionId('vault', 'overview')} className="scroll-mt-28 bg-white">
         <MainInfoPanel {...mainInfo} showAction={showAction} />
       </section>
-      <VaultReportNavigation ariaLabel="Vault report sections" prefix="vault" sections={sections} />
-      {sections
+      <VaultReportNavigation ariaLabel="Vault report sections" prefix="vault" sections={visibleSections} />
+      {visibleSections
         .filter((section) => section.id !== 'overview')
         .map((section) => (
           <section
