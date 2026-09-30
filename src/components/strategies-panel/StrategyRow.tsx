@@ -1,10 +1,13 @@
+import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { ChevronDown, ChevronRight, ExternalLink, Info } from 'lucide-react'
 import React from 'react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { CHAIN_ID_TO_BLOCK_EXPLORER, CHAIN_ID_TO_NAME } from '@/constants/chains'
+import { getCanonicalVaultAddress } from '@/constants/featuredVaults'
 import { useStrategyDebtEvidence } from '@/hooks/useStrategyDebtEvidence'
 import { formatAllocationPercent, formatTvlDisplay } from '@/lib/formatters'
+import { fetchKongVaultSnapshotRaw } from '@/lib/kong-vault-client'
 import { cn } from '@/lib/utils'
 import type { Strategy } from '@/types/dataTypes'
 
@@ -31,6 +34,14 @@ const formatUsdPrice = (value: number) =>
 export const StrategyRow: React.FC<StrategyRowProps> = React.memo(
   ({ strategy, isExpanded, onToggle, isUnallocated = false }) => {
     const shortVaultAddress = `${strategy.details.vaultAddress.slice(0, 6)}...${strategy.details.vaultAddress.slice(-4)}`
+    const snapshotAddress = getCanonicalVaultAddress(strategy.details.chainId, strategy.details.vaultAddress)
+    const strategySnapshot = useQuery({
+      // Share the destination page's cache so following the link reuses this request.
+      queryKey: ['kong', 'vault', 'snapshot', strategy.details.chainId, snapshotAddress.toLowerCase()],
+      queryFn: () => fetchKongVaultSnapshotRaw(strategy.details.chainId, snapshotAddress),
+      staleTime: 30 * 1000,
+      enabled: isExpanded && strategy.details.supportsStrategyPage
+    })
     const vaultVersion = strategy.valuationBasis === 'currentDebtUsd' ? 3 : 2
     const supportsLiveDebt = vaultVersion === 3 || /^0\.[34]\./.test(strategy.details.parentVaultApiVersion ?? '')
     const debtLabel = vaultVersion === 2 ? 'Total debt' : 'Current debt'
@@ -126,7 +137,7 @@ export const StrategyRow: React.FC<StrategyRowProps> = React.memo(
           <div className="border-t border-[#f5f5f5] bg-[#f5f5f5]/30 px-4 py-4 md:px-3">
             <div className="pl-5 md:pl-8">
               <div className="mb-4 flex flex-wrap gap-2">
-                {strategy.details.supportsStrategyPage && (
+                {strategy.details.supportsStrategyPage && strategySnapshot.isSuccess && strategySnapshot.data && (
                   <Link
                     to="/vaults/$chainId/$vaultAddress"
                     params={{
