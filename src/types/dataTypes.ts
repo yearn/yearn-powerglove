@@ -22,11 +22,13 @@ export type MainInfoPanelProps = {
     name: string
   }
   totalSupply: string
+  compactTotalSupply?: string
   network: {
     icon: string
     name: string
   }
   oneDayAPY: ApyDisplayValue
+  sevenDayAPY: ApyDisplayValue
   thirtyDayAPY: ApyDisplayValue
   managementFee: string
   performanceFee: string
@@ -91,11 +93,19 @@ export type yvUsdChartData = {
 
 type StrategyDetails = {
   chainId: ChainId
+  parentVaultChainId: ChainId
+  parentVaultApiVersion?: string
+  parentVaultAddress: string
+  assetAddress: string
+  assetDecimals: number
+  assetSymbol: string
   vaultAddress: string
   managementFee: number
   performanceFee: number
   isVault: boolean
   isEndorsed?: boolean
+  supportsStrategyPage: boolean
+  supportsVaultAction: boolean
 }
 
 // Define the type for strategy data
@@ -105,6 +115,7 @@ export type Strategy = {
   allocationPercent: number
   allocationAmount: string
   allocationAmountUsd: number
+  valuationBasis: 'totalDebtUsd' | 'currentDebtUsd'
   estimatedAPY: string
   estimatedApySource?: 'ydaemon' | 'oracle' | 'graph'
   tokenSymbol: string

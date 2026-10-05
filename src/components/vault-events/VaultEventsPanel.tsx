@@ -4,6 +4,7 @@ import { useVaultEvents } from '@/hooks/useVaultEvents'
 import { USER_EVENT_TYPE_OPTIONS } from '@/lib/vault-events'
 import { VaultEventRow } from './VaultEventRow'
 import { VaultEventsLoadingState } from './VaultEventsLoadingState'
+import { VaultEventsPagination } from './VaultEventsPagination'
 
 interface VaultEventsPanelProps {
   vaultChainId: ChainId
@@ -13,10 +14,20 @@ interface VaultEventsPanelProps {
   assetDecimals?: number
   shareSymbol?: string
   shareDecimals?: number
+  loadingMinHeight?: number
 }
 
 export const VaultEventsPanel: React.FC<VaultEventsPanelProps> = React.memo(
-  ({ vaultChainId, vaultAddress, vaultEventAddresses, assetSymbol, assetDecimals, shareSymbol, shareDecimals }) => {
+  ({
+    vaultChainId,
+    vaultAddress,
+    vaultEventAddresses,
+    assetSymbol,
+    assetDecimals,
+    shareSymbol,
+    shareDecimals,
+    loadingMinHeight
+  }) => {
     const {
       events,
       totalCount,
@@ -42,7 +53,7 @@ export const VaultEventsPanel: React.FC<VaultEventsPanelProps> = React.memo(
     }
 
     if (isLoading) {
-      return <VaultEventsLoadingState loadingState="loading events" />
+      return <VaultEventsLoadingState loadingState="loading events" minHeight={loadingMinHeight} />
     }
 
     if (totalCount === 0 && eventType === 'all') {
@@ -54,8 +65,8 @@ export const VaultEventsPanel: React.FC<VaultEventsPanelProps> = React.memo(
     }
 
     return (
-      <div className="px-4 py-4">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
+      <div className="py-4">
+        <div className="mb-4 flex flex-col gap-3 px-4 sm:flex-row sm:items-center">
           <div className="flex items-center gap-4 text-xs text-[#808080]">
             <span>
               <span className="font-semibold text-black">{depositCount}</span> deposits
@@ -69,22 +80,25 @@ export const VaultEventsPanel: React.FC<VaultEventsPanelProps> = React.memo(
             {isTruncated ? <span className="font-semibold text-amber-700">Recent events only</span> : null}
           </div>
           <div className="flex-1" />
-          <div className="flex items-center gap-2">
-            <label className="text-xs text-[#808080]">Filter:</label>
-            <select
-              value={eventType}
-              onChange={(e) => {
-                setEventType(e.target.value as typeof eventType)
-                setCurrentPage(1)
-              }}
-              className="text-xs border border-border rounded px-2 py-1 bg-white"
-            >
-              {USER_EVENT_TYPE_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
+          <div className="flex flex-wrap items-center gap-3 sm:justify-end">
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-[#808080]">Filter:</label>
+              <select
+                value={eventType}
+                onChange={(e) => {
+                  setEventType(e.target.value as typeof eventType)
+                  setCurrentPage(1)
+                }}
+                className="rounded-none border border-border bg-white px-2 py-1 text-xs"
+              >
+                {USER_EVENT_TYPE_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <VaultEventsPagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
           </div>
         </div>
 
@@ -93,7 +107,7 @@ export const VaultEventsPanel: React.FC<VaultEventsPanelProps> = React.memo(
             <p className="text-gray-500 text-sm">No events match the selected filter.</p>
           </div>
         ) : (
-          <div className="border border-border rounded-lg overflow-hidden bg-white">
+          <div className="overflow-hidden border-y border-border bg-white">
             {events.map((event) => (
               <VaultEventRow
                 key={event.id}
@@ -104,48 +118,6 @@ export const VaultEventsPanel: React.FC<VaultEventsPanelProps> = React.memo(
                 shareDecimals={shareDecimals}
               />
             ))}
-          </div>
-        )}
-
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between mt-3 text-xs text-[#808080]">
-            <span>
-              Page {currentPage} of {totalPages}
-            </span>
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => setCurrentPage(1)}
-                disabled={currentPage === 1}
-                className="px-2 py-1 border border-border rounded disabled:opacity-50 hover:bg-gray-50"
-              >
-                First
-              </button>
-              <button
-                type="button"
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className="px-2 py-1 border border-border rounded disabled:opacity-50 hover:bg-gray-50"
-              >
-                Prev
-              </button>
-              <button
-                type="button"
-                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-                className="px-2 py-1 border border-border rounded disabled:opacity-50 hover:bg-gray-50"
-              >
-                Next
-              </button>
-              <button
-                type="button"
-                onClick={() => setCurrentPage(totalPages)}
-                disabled={currentPage === totalPages}
-                className="px-2 py-1 border border-border rounded disabled:opacity-50 hover:bg-gray-50"
-              >
-                Last
-              </button>
-            </div>
           </div>
         )}
       </div>

@@ -4,7 +4,7 @@ import { useTokenAssetsContext } from '@/contexts/useTokenAssets'
 import { useVaults } from '@/contexts/useVaults'
 import { formatApyDisplay, formatTvlDisplay } from '@/lib/formatters'
 import type { Strategy, StrategyAllocationChartDatum } from '@/types/dataTypes'
-import type { VaultDerivedStrategy, VaultExtended } from '@/types/vaultTypes'
+import type { Vault, VaultDerivedStrategy, VaultExtended } from '@/types/vaultTypes'
 import { isLegacyVaultType } from '@/utils/vaultDataUtils'
 
 export interface StrategiesData {
@@ -60,6 +60,15 @@ export const resolveStrategyAllocationAmountUsd = (
   }
 
   return strategy.currentDebtUsd
+}
+
+export const resolveStrategyValuationBasis = (isV3Vault: boolean): Strategy['valuationBasis'] =>
+  isV3Vault ? 'currentDebtUsd' : 'totalDebtUsd'
+
+export const supportsYearnVaultAction = (vault?: Pick<Vault, 'yearn' | 'v3' | 'vaultType'> | null): boolean => {
+  if (!vault?.yearn) return false
+  if (!vault.v3) return true
+  return Number(vault.vaultType) === 1
 }
 
 export const buildAllocationChartData = ({
@@ -144,6 +153,7 @@ export function useStrategiesData(vaultChainId: ChainId, vaultDetails: VaultExte
         allocationPercent,
         allocationAmount: formatTvlDisplay(strategyUsdValue),
         allocationAmountUsd: strategyUsdValue,
+        valuationBasis: resolveStrategyValuationBasis(vaultDetails.v3 === true),
         estimatedAPY,
         tokenSymbol,
         tokenIconUri,
@@ -151,11 +161,19 @@ export function useStrategiesData(vaultChainId: ChainId, vaultDetails: VaultExte
         details: {
           chainId: linkedVault?.chainId ?? vaultChainId,
           vaultAddress: strategy.address,
+          parentVaultChainId: vaultChainId,
+          parentVaultAddress: vaultDetails.address,
+          parentVaultApiVersion: vaultDetails.apiVersion,
+          assetAddress: vaultDetails.asset.address,
+          assetDecimals: vaultDetails.asset.decimals,
+          assetSymbol: vaultDetails.asset.symbol,
           managementFee,
           performanceFee:
             strategy.performanceFee || vaultDetails.fees?.performanceFee || vaultDetails.performanceFee || 0,
           isVault: Boolean(linkedVault),
-          isEndorsed: linkedVault?.yearn || false
+          isEndorsed: linkedVault?.yearn || false,
+          supportsStrategyPage: !isLegacyVault,
+          supportsVaultAction: supportsYearnVaultAction(linkedVault)
         }
       }
     })

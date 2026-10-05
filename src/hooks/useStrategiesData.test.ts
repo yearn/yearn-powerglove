@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
   buildAllocationChartData,
   hasAllocatedDebt,
-  resolveStrategyAllocationAmountUsd
+  resolveStrategyAllocationAmountUsd,
+  supportsYearnVaultAction
 } from '@/hooks/useStrategiesData'
 import type { Strategy } from '@/types/dataTypes'
 
@@ -14,6 +15,7 @@ const makeStrategy = (overrides: Partial<Strategy> = {}): Strategy => ({
   allocationAmountUsd: 400,
   estimatedAPY: '4.00%',
   estimatedApySource: 'graph',
+  valuationBasis: 'currentDebtUsd',
   tokenSymbol: 'ETH',
   tokenIconUri: '',
   details: {
@@ -21,7 +23,14 @@ const makeStrategy = (overrides: Partial<Strategy> = {}): Strategy => ({
     vaultAddress: '0x0000000000000000000000000000000000000001',
     managementFee: 0,
     performanceFee: 0,
-    isVault: false
+    parentVaultChainId: 1,
+    parentVaultAddress: '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+    assetAddress: '0xcccccccccccccccccccccccccccccccccccccccc',
+    assetDecimals: 6,
+    assetSymbol: 'USDC',
+    isVault: false,
+    supportsStrategyPage: true,
+    supportsVaultAction: false
   },
   ...overrides
 })
@@ -130,5 +139,15 @@ describe('buildAllocationChartData', () => {
         amount: '$500'
       }
     ])
+  })
+})
+
+describe('supportsYearnVaultAction', () => {
+  it('offers vault actions only for endorsed allocator vaults and legacy vaults', () => {
+    expect(supportsYearnVaultAction({ yearn: true, v3: true, vaultType: '1' })).toBe(true)
+    expect(supportsYearnVaultAction({ yearn: true, v3: true, vaultType: '2' })).toBe(false)
+    expect(supportsYearnVaultAction({ yearn: false, v3: true, vaultType: '1' })).toBe(false)
+    expect(supportsYearnVaultAction({ yearn: true, v3: false, vaultType: '0' })).toBe(true)
+    expect(supportsYearnVaultAction(null)).toBe(false)
   })
 })

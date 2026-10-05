@@ -13,7 +13,7 @@ interface StrategyTableProps {
   sortColumn: StrategySortColumn
   sortDirection: SortDirection
   onSort: (column: StrategySortColumn) => void
-  expandedRow: number | null
+  expandedRows: ReadonlySet<number>
   onToggleRow: (id: number) => void
   showUnallocated: boolean
   onToggleUnallocated: () => void
@@ -26,7 +26,7 @@ export const StrategyTable: React.FC<StrategyTableProps> = React.memo(
     sortColumn,
     sortDirection,
     onSort,
-    expandedRow,
+    expandedRows,
     onToggleRow,
     showUnallocated,
     onToggleUnallocated
@@ -46,7 +46,7 @@ export const StrategyTable: React.FC<StrategyTableProps> = React.memo(
 
     return (
       <div className="w-full">
-        <div className="border border-[#f5f5f5]">
+        <div className="w-full border-y border-[#f5f5f5]">
           {isMobile ? (
             <div className="border-b border-[#f5f5f5] p-3">
               <div className="text-[11px] font-medium uppercase tracking-[0.08em] text-[#808080]">Sort strategies</div>
@@ -61,7 +61,7 @@ export const StrategyTable: React.FC<StrategyTableProps> = React.memo(
                     type="button"
                     onClick={() => onSort(column as StrategySortColumn)}
                     className={cn(
-                      'rounded-full border px-3 py-1.5 text-xs font-medium transition-colors',
+                      'rounded-none border px-3 py-1.5 text-xs font-medium transition-colors',
                       sortColumn === column
                         ? 'border-[#0657f9] bg-[#0657f9]/10 text-[#0657f9]'
                         : 'border-[#e5e5e5] text-[#4f4f4f] hover:bg-[#f5f5f5]'
@@ -103,7 +103,7 @@ export const StrategyTable: React.FC<StrategyTableProps> = React.memo(
             <StrategyRow
               key={strategy.id}
               strategy={strategy}
-              isExpanded={expandedRow === strategy.id}
+              isExpanded={expandedRows.has(strategy.id)}
               onToggle={() => onToggleRow(strategy.id)}
             />
           ))}
@@ -128,7 +128,7 @@ export const StrategyTable: React.FC<StrategyTableProps> = React.memo(
                   <StrategyRow
                     key={strategy.id}
                     strategy={strategy}
-                    isExpanded={expandedRow === strategy.id}
+                    isExpanded={expandedRows.has(strategy.id)}
                     onToggle={() => onToggleRow(strategy.id)}
                     isUnallocated
                   />
