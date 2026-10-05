@@ -94,6 +94,7 @@ export type yvUsdChartData = {
 type StrategyDetails = {
   chainId: ChainId
   parentVaultChainId: ChainId
+  parentVaultApiVersion?: string
   parentVaultAddress: string
   assetAddress: string
   assetDecimals: number

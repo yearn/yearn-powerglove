@@ -157,6 +157,7 @@ export function useStrategiesData(vaultChainId: ChainId, vaultDetails: VaultExte
           vaultAddress: strategy.address,
           parentVaultChainId: vaultChainId,
           parentVaultAddress: vaultDetails.address,
+          parentVaultApiVersion: vaultDetails.apiVersion,
           assetAddress: vaultDetails.asset.address,
           assetDecimals: vaultDetails.asset.decimals,
           assetSymbol: vaultDetails.asset.symbol,

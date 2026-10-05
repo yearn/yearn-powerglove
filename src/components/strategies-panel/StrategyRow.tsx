@@ -31,9 +31,13 @@ const formatUsdPrice = (value: number) =>
 export const StrategyRow: React.FC<StrategyRowProps> = React.memo(
   ({ strategy, isExpanded, onToggle, isUnallocated = false }) => {
     const shortVaultAddress = `${strategy.details.vaultAddress.slice(0, 6)}...${strategy.details.vaultAddress.slice(-4)}`
-    const shouldLoadDebtEvidence = isExpanded && strategy.valuationBasis === 'currentDebtUsd'
+    const vaultVersion = strategy.valuationBasis === 'currentDebtUsd' ? 3 : 2
+    const supportsLiveDebt = vaultVersion === 3 || /^0\.[34]\./.test(strategy.details.parentVaultApiVersion ?? '')
+    const debtLabel = vaultVersion === 2 ? 'Total debt' : 'Current debt'
+    const shouldLoadDebtEvidence = isExpanded && supportsLiveDebt
     const debtEvidence = useStrategyDebtEvidence(
       {
+        vaultVersion,
         chainId: strategy.details.parentVaultChainId,
         vaultAddress: strategy.details.parentVaultAddress,
         strategyAddress: strategy.details.vaultAddress,
@@ -170,10 +174,8 @@ export const StrategyRow: React.FC<StrategyRowProps> = React.memo(
                     ? `${(Number(strategy.details.performanceFee) / 100).toFixed(0)}%`
                     : '0%'}
                 </div>
-                {strategy.valuationBasis === 'totalDebtUsd' && (
-                  <div>NAV valuation basis: Kong {strategy.valuationBasis}</div>
-                )}
-                {strategy.valuationBasis === 'currentDebtUsd' && (
+                {!supportsLiveDebt && <div>NAV valuation basis: Kong {strategy.valuationBasis}</div>}
+                {supportsLiveDebt && (
                   <div className="pt-1">
                     <TooltipProvider delayDuration={200}>
                       <Tooltip>
@@ -187,9 +189,9 @@ export const StrategyRow: React.FC<StrategyRowProps> = React.memo(
                           </button>
                         </TooltipTrigger>
                         <TooltipContent className="max-w-80 leading-relaxed">
-                          This live calculation reads current debt over RPC and combines it with a current DefiLlama
-                          price. It may differ from other values on this site because each data source can update at a
-                          different time.
+                          This calculation reads vault-recorded debt over RPC and multiplies it by the current DefiLlama
+                          price. It excludes unreported strategy gains and losses. Sources may update at different
+                          times.
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
@@ -199,21 +201,21 @@ export const StrategyRow: React.FC<StrategyRowProps> = React.memo(
                       {debtEvidence.data && (
                         <>
                           <div>
-                            Current debt:{' '}
+                            {debtLabel}:{' '}
                             <a
                               href={debtEvidence.data.debtSourceUrl}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="inline-flex items-center gap-1 text-[#4f4f4f] hover:underline"
                               title={
-                                debtEvidence.data.currentDebtRaw === null
+                                debtEvidence.data.debtRaw === null
                                   ? 'Open the vault strategies(address) field'
-                                  : `${debtEvidence.data.currentDebtRaw.toString()} base units from strategies(address)`
+                                  : `${debtEvidence.data.debtRaw.toString()} base units from strategies(address)`
                               }
                             >
-                              {debtEvidence.data.currentDebtTokens === null
+                              {debtEvidence.data.debtTokens === null
                                 ? 'Unavailable from RPC'
-                                : `${formatTokenAmount(debtEvidence.data.currentDebtTokens)} ${strategy.details.assetSymbol}`}
+                                : `${formatTokenAmount(debtEvidence.data.debtTokens)} ${strategy.details.assetSymbol}`}
                               <ExternalLink className="h-3 w-3" />
                             </a>
                           </div>
@@ -239,7 +241,7 @@ export const StrategyRow: React.FC<StrategyRowProps> = React.memo(
                             )}
                           </div>
                           <div>
-                            Live calculation: current debt × underlying price ={' '}
+                            Live calculation: {debtLabel.toLowerCase()} × underlying price ={' '}
                             {debtEvidence.data.calculatedDebtUsd === null
                               ? 'Unavailable without both inputs'
                               : formatTvlDisplay(debtEvidence.data.calculatedDebtUsd)}

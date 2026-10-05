@@ -30,8 +30,8 @@ vi.mock('@/hooks/useStrategyDebtEvidence', () => ({
     isPending: false,
     data: enabled
       ? {
-          currentDebtRaw: 400_000_000n,
-          currentDebtTokens: 400,
+          debtRaw: 400_000_000n,
+          debtTokens: 400,
           priceUsd: 0.9999,
           priceTimestamp: 1_700_000_000,
           calculatedDebtUsd: 399.96,
@@ -158,9 +158,7 @@ describe('StrategyTable expansion', () => {
     const liveNavTriggers = screen.getAllByRole('button', { name: 'Live NAV calculation' })
     expect(liveNavTriggers).toHaveLength(2)
     fireEvent.focus(liveNavTriggers[0])
-    const tooltipCopies = await screen.findAllByText(
-      /may differ from other values on this site because each data source can update/i
-    )
+    const tooltipCopies = await screen.findAllByText(/excludes unreported strategy gains and losses/i)
     expect(tooltipCopies.length).toBeGreaterThan(0)
     expect(screen.queryByText(/Kong snapshot:/)).toBeNull()
     expect(screen.getAllByRole('link', { name: /400 USDC/ })[0].getAttribute('href')).toBe(

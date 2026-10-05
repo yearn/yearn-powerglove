@@ -4,6 +4,10 @@ import type { ChainId } from '@/constants/chains'
 import { CHAIN_ID_TO_BLOCK_EXPLORER } from '@/constants/chains'
 import { getPublicClient } from '@/lib/public-client'
 
+const v2VaultStrategiesAbi = parseAbi([
+  'function strategies(address) view returns (uint256 performanceFee, uint256 activation, uint256 debtRatio, uint256 minDebtPerHarvest, uint256 maxDebtPerHarvest, uint256 lastReport, uint256 totalDebt, uint256 totalGain, uint256 totalLoss)'
+])
+
 const v3VaultStrategiesAbi = parseAbi([
   'function strategies(address) view returns (uint256 activation, uint256 lastReport, uint256 currentDebt, uint256 maxDebt)'
 ])
@@ -31,8 +35,8 @@ type DefiLlamaPriceResponse = {
 }
 
 export type StrategyDebtEvidence = {
-  currentDebtRaw: bigint | null
-  currentDebtTokens: number | null
+  debtRaw: bigint | null
+  debtTokens: number | null
   priceUsd: number | null
   priceTimestamp: number | null
   calculatedDebtUsd: number | null
@@ -41,6 +45,7 @@ export type StrategyDebtEvidence = {
 }
 
 export type StrategyDebtEvidenceParams = {
+  vaultVersion: 2 | 3
   chainId: ChainId
   vaultAddress: string
   strategyAddress: string
@@ -50,9 +55,9 @@ export type StrategyDebtEvidenceParams = {
 
 const trimTrailingSlash = (value: string) => value.replace(/\/$/, '')
 
-export function buildStrategyDebtSourceUrl(chainId: ChainId, vaultAddress: string): string {
+export function buildStrategyDebtSourceUrl(chainId: ChainId, vaultAddress: string, vaultVersion: 2 | 3 = 3): string {
   const explorer = trimTrailingSlash(CHAIN_ID_TO_BLOCK_EXPLORER[chainId])
-  const readAnchor = chainId === 1 ? '#readContract#F34' : '#readContract'
+  const readAnchor = chainId === 1 && vaultVersion === 3 ? '#readContract#F34' : '#readContract'
   return `${explorer}/address/${vaultAddress}${readAnchor}`
 }
 
@@ -85,6 +90,7 @@ async function fetchDefiLlamaPrice(priceSourceUrl: string | null, coinKey: strin
 }
 
 export async function fetchStrategyDebtEvidence({
+  vaultVersion,
   chainId,
   vaultAddress,
   strategyAddress,
@@ -98,26 +104,26 @@ export async function fetchStrategyDebtEvidence({
   const [debtResult, priceResult] = await Promise.allSettled([
     getPublicClient(chainId).readContract({
       address: vaultAddress as Address,
-      abi: v3VaultStrategiesAbi,
+      abi: vaultVersion === 2 ? v2VaultStrategiesAbi : v3VaultStrategiesAbi,
       functionName: 'strategies',
       args: [strategyAddress as Address]
     }),
     fetchDefiLlamaPrice(priceSourceUrl, coinKey)
   ])
 
-  const currentDebtRaw = debtResult.status === 'fulfilled' ? debtResult.value[2] : null
-  const parsedCurrentDebt = currentDebtRaw === null ? null : Number(formatUnits(currentDebtRaw, assetDecimals))
-  const currentDebtTokens = parsedCurrentDebt !== null && Number.isFinite(parsedCurrentDebt) ? parsedCurrentDebt : null
+  const debtRaw = debtResult.status === 'fulfilled' ? (debtResult.value[vaultVersion === 2 ? 6 : 2] ?? null) : null
+  const parsedDebt = debtRaw === null ? null : Number(formatUnits(debtRaw, assetDecimals))
+  const debtTokens = parsedDebt !== null && Number.isFinite(parsedDebt) ? parsedDebt : null
   const { priceUsd, priceTimestamp } =
     priceResult.status === 'fulfilled' ? priceResult.value : { priceUsd: null, priceTimestamp: null }
 
   return {
-    currentDebtRaw,
-    currentDebtTokens,
+    debtRaw,
+    debtTokens,
     priceUsd,
     priceTimestamp,
-    calculatedDebtUsd: currentDebtTokens !== null && priceUsd !== null ? currentDebtTokens * priceUsd : null,
-    debtSourceUrl: buildStrategyDebtSourceUrl(chainId, vaultAddress),
+    calculatedDebtUsd: debtTokens !== null && priceUsd !== null ? debtTokens * priceUsd : null,
+    debtSourceUrl: buildStrategyDebtSourceUrl(chainId, vaultAddress, vaultVersion),
     priceSourceUrl
   }
 }
@@ -126,6 +132,7 @@ export function useStrategyDebtEvidence(params: StrategyDebtEvidenceParams, enab
   return useQuery({
     queryKey: [
       'strategy-debt-evidence',
+      params.vaultVersion,
       params.chainId,
       params.vaultAddress.toLowerCase(),
       params.strategyAddress.toLowerCase(),

@@ -12,6 +12,7 @@ vi.mock('@/lib/public-client', () => ({
 }))
 
 const params = {
+  vaultVersion: 3 as const,
   chainId: 1 as const,
   vaultAddress: '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
   strategyAddress: '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
@@ -53,8 +54,8 @@ describe('strategy debt evidence', () => {
 
     const result = await fetchStrategyDebtEvidence(params)
 
-    expect(result.currentDebtRaw).toBe(1_234_567_000_000n)
-    expect(result.currentDebtTokens).toBe(1_234_567)
+    expect(result.debtRaw).toBe(1_234_567_000_000n)
+    expect(result.debtTokens).toBe(1_234_567)
     expect(result.priceUsd).toBe(0.999)
     expect(result.priceTimestamp).toBe(1_700_000_000)
     expect(result.calculatedDebtUsd).toBeCloseTo(1_233_332.433)
@@ -66,8 +67,8 @@ describe('strategy debt evidence', () => {
 
     const result = await fetchStrategyDebtEvidence(params)
 
-    expect(result.currentDebtRaw).toBeNull()
-    expect(result.currentDebtTokens).toBeNull()
+    expect(result.debtRaw).toBeNull()
+    expect(result.debtTokens).toBeNull()
     expect(result.priceUsd).toBeNull()
     expect(result.calculatedDebtUsd).toBeNull()
   })
@@ -89,7 +90,7 @@ describe('strategy debt evidence', () => {
 
     const result = await fetchStrategyDebtEvidence(params)
 
-    expect(result.currentDebtRaw).toBe(debt)
+    expect(result.debtRaw).toBe(debt)
     expect(result.priceUsd).toBe(price)
     expect(result.calculatedDebtUsd).toBe(expected)
     expect(readContract).toHaveBeenCalledWith(
