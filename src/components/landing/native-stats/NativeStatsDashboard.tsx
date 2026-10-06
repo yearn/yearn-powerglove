@@ -1,0 +1,168 @@
+import { List, Rows3 } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { AuditPanel } from './AuditPanel'
+import { ComparisonPanel } from './ComparisonPanel'
+import { CurationProductsPanel } from './CurationProductsPanel'
+import { ErrorBoundary } from './ErrorBoundary'
+import { FeesPanel } from './FeesPanel'
+import { HAS_FEES_API, HAS_TVL_API, timeAgo } from './hooks'
+import { StatsContext, type StatsDensity } from './StatsContext'
+import { STATS_TABS, type StatsTab } from './stats-navigation'
+import { TvlOverview } from './TvlOverview'
+import './styles.css'
+
+const CHAINS = [
+  { id: 'all', label: 'All Chains' },
+  { id: '1', label: 'Ethereum' },
+  { id: '10', label: 'Optimism' },
+  { id: '137', label: 'Polygon' },
+  { id: '999', label: 'HyperEVM' },
+  { id: '42161', label: 'Arbitrum' },
+  { id: '8453', label: 'Base' },
+  { id: '100', label: 'Gnosis' },
+  { id: '747474', label: 'Katana' },
+  { id: '80094', label: 'Berachain' },
+  { id: '146', label: 'Sonic' }
+]
+
+function MissingApiNotice({ lane }: { lane: 'TVL' | 'fees' }) {
+  const environmentVariable = lane === 'TVL' ? 'VITE_PUBLIC_YEARN_TVL_API_URL' : 'VITE_PUBLIC_YEARN_FEES_API_URL'
+  const localPort = lane === 'TVL' ? '3460' : '3482'
+  return (
+    <div className="card">
+      <h2>Yearn {lane} API not configured</h2>
+      <p className="text-dim" style={{ marginTop: '0.5rem', lineHeight: 1.6 }}>
+        Set <code>{environmentVariable}</code> to a reachable service base. The local proxy expects{' '}
+        <code>http://127.0.0.1:{localPort}</code> by default.
+      </p>
+    </div>
+  )
+}
+
+export function NativeStatsDashboard({ tab, onTabChange }: { tab: StatsTab; onTabChange: (tab: StatsTab) => void }) {
+  const [chainFilter, setChainFilter] = useState('all')
+  const [density, setDensity] = useState<StatsDensity>('comfortable')
+  const [lastFetchedAt, setLastFetchedAt] = useState<number | null>(null)
+
+  const contextValue = useMemo(
+    () => ({ chainFilter, density, lastFetchedAt, setLastFetchedAt }),
+    [chainFilter, density, lastFetchedAt]
+  )
+
+  return (
+    <StatsContext.Provider value={contextValue}>
+      <section className="pg-stats">
+        <div className="top-bar">
+          <div>
+            <div className="top-bar-title">Yearn Metrics</div>
+            <div className="top-bar-subtitle">TVL, fees, curation, and DefiLlama reconciliation</div>
+          </div>
+          <div className="toolbar-right">
+            {lastFetchedAt && (
+              <span className="freshness-indicator" title={new Date(lastFetchedAt).toLocaleTimeString()}>
+                <span className={`freshness-dot${Date.now() - lastFetchedAt > 5 * 60_000 ? ' stale' : ''}`} />
+                <span className="text-dim" style={{ fontSize: '0.7rem' }}>
+                  {timeAgo(lastFetchedAt)}
+                </span>
+              </span>
+            )}
+            <select
+              className="filter-select"
+              value={chainFilter}
+              onChange={(event) => setChainFilter(event.target.value)}
+            >
+              {CHAINS.map((chain) => (
+                <option key={chain.id} value={chain.id}>
+                  {chain.label}
+                </option>
+              ))}
+            </select>
+            <fieldset className="density-toggle" aria-label="Table density">
+              <button
+                type="button"
+                className={density === 'comfortable' ? 'active' : ''}
+                onClick={() => setDensity('comfortable')}
+                title="Comfortable"
+                aria-pressed={density === 'comfortable'}
+              >
+                <Rows3 className="h-4 w-4" aria-hidden="true" />
+                <span className="sr-only">Comfortable density</span>
+              </button>
+              <button
+                type="button"
+                className={density === 'compact' ? 'active' : ''}
+                onClick={() => setDensity('compact')}
+                title="Compact"
+                aria-pressed={density === 'compact'}
+              >
+                <List className="h-4 w-4" aria-hidden="true" />
+                <span className="sr-only">Compact density</span>
+              </button>
+            </fieldset>
+          </div>
+        </div>
+
+        <div className="stats-tabs-shell">
+          <Tabs value={tab} onValueChange={(value) => onTabChange(value as StatsTab)} className="w-full">
+            <TabsList className="stats-tabs-list">
+              {STATS_TABS.map((item) => (
+                <TabsTrigger key={item.key} value={item.key} className="stats-tab">
+                  {item.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+
+            <div className="stats-tab-panel">
+              <TabsContent value="overview" className="mt-0">
+                {!HAS_TVL_API ? (
+                  <MissingApiNotice lane="TVL" />
+                ) : (
+                  <ErrorBoundary>
+                    <TvlOverview />
+                  </ErrorBoundary>
+                )}
+              </TabsContent>
+              <TabsContent value="curation" className="mt-0">
+                {!HAS_TVL_API ? (
+                  <MissingApiNotice lane="TVL" />
+                ) : (
+                  <ErrorBoundary>
+                    <CurationProductsPanel />
+                  </ErrorBoundary>
+                )}
+              </TabsContent>
+              <TabsContent value="fees" className="mt-0">
+                {!HAS_FEES_API ? (
+                  <MissingApiNotice lane="fees" />
+                ) : (
+                  <ErrorBoundary>
+                    <FeesPanel />
+                  </ErrorBoundary>
+                )}
+              </TabsContent>
+              <TabsContent value="vaults" className="mt-0">
+                {!HAS_TVL_API ? (
+                  <MissingApiNotice lane="TVL" />
+                ) : (
+                  <ErrorBoundary>
+                    <AuditPanel />
+                  </ErrorBoundary>
+                )}
+              </TabsContent>
+              <TabsContent value="comparison" className="mt-0">
+                {!HAS_TVL_API ? (
+                  <MissingApiNotice lane="TVL" />
+                ) : (
+                  <ErrorBoundary>
+                    <ComparisonPanel />
+                  </ErrorBoundary>
+                )}
+              </TabsContent>
+            </div>
+          </Tabs>
+        </div>
+      </section>
+    </StatsContext.Provider>
+  )
+}
