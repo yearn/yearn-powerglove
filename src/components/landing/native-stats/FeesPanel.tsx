@@ -13,10 +13,12 @@ import {
   YAxis,
   ZAxis
 } from 'recharts'
+import { ChainFeeHistoryCharts, type ChainFeeHistoryView } from './ChainFeeHistoryCharts'
 import {
   type CanonicalFeeHistory,
   type CanonicalFeeSummary,
   type CanonicalVaultFee,
+  type FeeHistoryInterval,
   isCanonicalFeeSummary
 } from './canonical-fees'
 import {
@@ -25,6 +27,7 @@ import {
   canonicalDecimalToNumber,
   completedMonthlyBuckets,
   type FeeHistoryPoint,
+  formatFeeHistoryTick,
   utcMonthStartTimestamp
 } from './fee-history'
 import {
@@ -208,12 +211,14 @@ function FeeHistoryChart({
   title,
   data,
   series,
-  description
+  description,
+  interval
 }: {
   title: string
   data: FeeHistoryPoint[]
   series: FeeHistoryChartSeries[]
   description: string
+  interval: FeeHistoryInterval
 }) {
   const [visibleSeries, setVisibleSeries] = useState<Set<FeeHistorySeriesKey>>(
     () => new Set(series.map((item) => item.dataKey))
@@ -263,7 +268,7 @@ function FeeHistoryChart({
             <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
             <XAxis
               dataKey="period"
-              tickFormatter={(period: string) => period.slice(0, 7)}
+              tickFormatter={(period: string) => formatFeeHistoryTick(period, interval)}
               tick={{ fill: 'var(--text-3)', fontSize: 11 }}
               interval={Math.max(0, Math.floor(data.length / 10) - 1)}
               angle={-35}
@@ -307,10 +312,12 @@ function FeeHistoryChart({
 export function FeesPanel({ chainSelector }: { chainSelector: ReactNode }) {
   const { chainFilter, density, setLastFetchedAt } = useContext(StatsContext)
   const [timePreset, setTimePreset] = useState(TIME_PRESETS.length - 1)
+  const [chainChartView, setChainChartView] = useState<ChainFeeHistoryView>('cumulative')
   const [showLoadingOverlay, setShowLoadingOverlay] = useState(false)
 
   const currentMonthStartTs = utcMonthStartTimestamp(Math.floor(Date.now() / 1000))
   const sinceTs = timePreset === 0 ? utcMonthStartTimestamp(currentMonthStartTs, -12) : null
+  const historyInterval: FeeHistoryInterval = timePreset === 0 ? 'weekly' : 'monthly'
   const feeFilters = new URLSearchParams()
   if (sinceTs != null) {
     feeFilters.set('since', String(sinceTs))
@@ -322,7 +329,7 @@ export function FeesPanel({ chainSelector }: { chainSelector: ReactNode }) {
   if (sinceTs != null) historyFilters.set('since', String(utcMonthStartTimestamp(sinceTs)))
   historyFilters.set('until', String(currentMonthStartTs))
   if (chainFilter !== 'all') historyFilters.set('chainId', chainFilter)
-  historyFilters.set('interval', 'monthly')
+  historyFilters.set('interval', historyInterval)
   const profitabilityFilters = new URLSearchParams()
   if (chainFilter !== 'all') profitabilityFilters.set('chainId', chainFilter)
 
@@ -369,12 +376,22 @@ export function FeesPanel({ chainSelector }: { chainSelector: ReactNode }) {
   }, [fetchedAt, setLastFetchedAt])
 
   const feeHistorySeries = useMemo(
-    () => buildFeeHistorySeries(completedMonthlyBuckets(history?.buckets ?? [], currentMonthStartTs)),
-    [history, currentMonthStartTs]
+    () =>
+      buildFeeHistorySeries(
+        historyInterval === 'monthly'
+          ? completedMonthlyBuckets(history?.buckets ?? [], currentMonthStartTs)
+          : (history?.buckets ?? []),
+        { since: sinceTs ?? undefined, until: currentMonthStartTs }
+      ),
+    [history, historyInterval, currentMonthStartTs, sinceTs]
   )
   const cumulativeFeeHistorySeries = useMemo(
     () => buildCumulativeFeeHistorySeries(feeHistorySeries),
     [feeHistorySeries]
+  )
+  const historyChainIds = useMemo(
+    () => [...new Set(vaultData?.vaults.map((vault) => vault.chainId) ?? [])].sort((a, b) => a - b),
+    [vaultData]
   )
 
   // Build a lookup map for vault fees from the time-filtered vaultData
@@ -578,6 +595,7 @@ export function FeesPanel({ chainSelector }: { chainSelector: ReactNode }) {
         <FeeHistoryChart
           title="Cumulative Earnings & Fees"
           data={cumulativeFeeHistorySeries}
+          interval={historyInterval}
           series={[
             { dataKey: 'cumulativeGrossGainsUsd', label: 'Gross Gains', color: '#46a2ff' },
             {
@@ -592,12 +610,13 @@ export function FeesPanel({ chainSelector }: { chainSelector: ReactNode }) {
               strokeDasharray: '6 3'
             }
           ]}
-          description="Line chart comparing cumulative canonical gross gains, net yield, and gross fees at month boundaries, starting at zero before the first month."
+          description={`Line chart comparing cumulative canonical gross gains, net yield, and gross fees at ${historyInterval === 'weekly' ? 'week' : 'month'} boundaries, starting at zero.`}
         />
 
         <FeeHistoryChart
-          title="Monthly Earnings & Fees"
+          title={historyInterval === 'weekly' ? 'Weekly Earnings & Fees' : 'Monthly Earnings & Fees'}
           data={feeHistorySeries}
+          interval={historyInterval}
           series={[
             { dataKey: 'grossGainsUsd', label: 'Gross Gains', color: '#46a2ff' },
             { dataKey: 'netYieldUsd', label: 'Net Yield', color: '#94adf2' },
@@ -608,10 +627,19 @@ export function FeesPanel({ chainSelector }: { chainSelector: ReactNode }) {
               strokeDasharray: '6 3'
             }
           ]}
-          description="Line chart comparing monthly canonical gross gains, net yield, and gross fees on the same dollar scale over the selected time range."
+          description={`Line chart comparing ${historyInterval} canonical gross gains, net yield, and gross fees on the same dollar scale over the selected time range.`}
         />
 
         {/* ---- TVL vs Fee Yield Scatter ---- */}
+        <ChainFeeHistoryCharts
+          query={historyFilters.toString()}
+          chainIds={historyChainIds}
+          periods={feeHistorySeries}
+          view={chainChartView}
+          onViewChange={setChainChartView}
+          interval={historyInterval}
+        />
+
         {profData && (
           <div className="card fee-chart-card">
             <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>

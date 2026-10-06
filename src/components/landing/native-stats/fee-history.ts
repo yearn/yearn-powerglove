@@ -1,13 +1,31 @@
-import type { CanonicalFeeHistoryBucket } from './canonical-fees'
+import type { CanonicalFeeHistoryBucket, FeeHistoryInterval } from './canonical-fees'
 
-export interface FeeHistoryPoint {
+export interface FeeHistoryPeriod {
   period: string
+  startTimestamp?: number
+  endTimestamp?: number
+}
+
+export interface FeeHistoryPoint extends FeeHistoryPeriod {
   grossGainsUsd: number | null
   netYieldUsd: number | null
   totalFeesPaidUsd: number | null
   cumulativeGrossGainsUsd: number | null
   cumulativeNetYieldUsd: number | null
   cumulativeFeesPaidUsd: number | null
+}
+
+export function feeHistoryBoundary(point: FeeHistoryPeriod, edge: 'start' | 'end'): string {
+  const timestamp = edge === 'start' ? point.startTimestamp : point.endTimestamp
+  if (timestamp !== undefined) return new Date(timestamp * 1000).toISOString().slice(0, 10)
+  const [year, month] = point.period.split('-').map(Number)
+  return edge === 'start' ? `${point.period}-01` : new Date(Date.UTC(year, month, 1)).toISOString().slice(0, 10)
+}
+
+export function formatFeeHistoryTick(period: string, interval: FeeHistoryInterval): string {
+  return interval === 'monthly'
+    ? period.slice(0, 7)
+    : new Date(`${period}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
 }
 
 export function canonicalDecimalToNumber(value: string | null): number | null {
@@ -35,7 +53,10 @@ function addCumulative(total: number | null, value: number | null): number | nul
   return (total ?? 0) + value
 }
 
-export function buildFeeHistorySeries(buckets: CanonicalFeeHistoryBucket[]): FeeHistoryPoint[] {
+export function buildFeeHistorySeries(
+  buckets: CanonicalFeeHistoryBucket[],
+  range: { since?: number; until?: number } = {}
+): FeeHistoryPoint[] {
   let cumulativeGrossGainsUsd: number | null = null
   let cumulativeNetYieldUsd: number | null = null
   let cumulativeFeesPaidUsd: number | null = null
@@ -51,6 +72,12 @@ export function buildFeeHistorySeries(buckets: CanonicalFeeHistoryBucket[]): Fee
 
     return {
       period: bucket.period,
+      ...(bucket.startTimestamp === undefined
+        ? {}
+        : { startTimestamp: Math.max(bucket.startTimestamp, range.since ?? bucket.startTimestamp) }),
+      ...(bucket.endTimestamp === undefined
+        ? {}
+        : { endTimestamp: Math.min(bucket.endTimestamp, range.until ?? bucket.endTimestamp) }),
       grossGainsUsd,
       netYieldUsd,
       totalFeesPaidUsd,
@@ -66,7 +93,7 @@ export function buildCumulativeFeeHistorySeries(points: FeeHistoryPoint[]): FeeH
   if (!first) return []
 
   const opening: FeeHistoryPoint = {
-    period: `${first.period}-01`,
+    period: feeHistoryBoundary(first, 'start'),
     grossGainsUsd: null,
     netYieldUsd: null,
     totalFeesPaidUsd: null,
@@ -75,11 +102,5 @@ export function buildCumulativeFeeHistorySeries(points: FeeHistoryPoint[]): FeeH
     cumulativeFeesPaidUsd: points.some((point) => point.totalFeesPaidUsd !== null) ? 0 : null
   }
 
-  return [
-    opening,
-    ...points.map((point) => {
-      const [year, month] = point.period.split('-').map(Number)
-      return { ...point, period: new Date(Date.UTC(year, month, 1)).toISOString().slice(0, 10) }
-    })
-  ]
+  return [opening, ...points.map((point) => ({ ...point, period: feeHistoryBoundary(point, 'end') }))]
 }

@@ -27,11 +27,15 @@ export interface CanonicalFeeSummary extends DepositorFeeTotals {
 
 export interface CanonicalFeeHistoryBucket extends DepositorFeeTotals {
   period: string
+  startTimestamp?: number
+  endTimestamp?: number
   lifetimeEarnings: LifetimeEarnings
 }
 
+export type FeeHistoryInterval = 'monthly' | 'weekly'
+
 export interface CanonicalFeeHistory {
-  interval: string
+  interval: FeeHistoryInterval
   buckets: CanonicalFeeHistoryBucket[]
   datasetId?: string
 }

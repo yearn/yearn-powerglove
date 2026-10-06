@@ -1227,6 +1227,34 @@
   height: 360px;
 }
 
+.pg-stats .chain-fee-charts {
+  display: grid;
+  gap: 1rem;
+}
+
+.pg-stats .chain-fee-charts > .time-presets {
+  margin-bottom: 0;
+}
+
+.pg-stats .chain-fee-tooltip {
+  min-width: 180px;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.pg-stats .chain-fee-tooltip > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.pg-stats .chain-fee-tooltip-total {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+}
+
 .pg-stats .time-presets {
   display: inline-flex;
   gap: 0.4rem;

@@ -5,6 +5,7 @@ import {
   buildFeeHistorySeries,
   canonicalDecimalToNumber,
   completedMonthlyBuckets,
+  formatFeeHistoryTick,
   utcMonthStartTimestamp
 } from './fee-history'
 
@@ -107,6 +108,37 @@ describe('buildFeeHistorySeries', () => {
 })
 
 describe('buildCumulativeFeeHistorySeries', () => {
+  it('uses weekly timestamps and clips partial weeks to the selected year', () => {
+    const since = Date.parse('2025-10-01T00:00:00Z') / 1000
+    const until = Date.parse('2026-10-01T00:00:00Z') / 1000
+    const weekly = buildFeeHistorySeries(
+      [
+        {
+          ...historyBucket('2025-09-29', '10', '100', '20', '80'),
+          startTimestamp: Date.parse('2025-09-29T00:00:00Z') / 1000,
+          endTimestamp: Date.parse('2025-10-06T00:00:00Z') / 1000
+        },
+        {
+          ...historyBucket('2026-09-28', '20', '200', '40', '160'),
+          startTimestamp: Date.parse('2026-09-28T00:00:00Z') / 1000,
+          endTimestamp: Date.parse('2026-10-05T00:00:00Z') / 1000
+        }
+      ],
+      { since, until }
+    )
+    const cumulative = buildCumulativeFeeHistorySeries(weekly)
+    expect(weekly[0].startTimestamp).toBe(since)
+    expect(weekly[1].endTimestamp).toBe(until)
+    expect(cumulative.map((point) => point.period)).toEqual(['2025-10-01', '2025-10-06', '2026-10-01'])
+    expect(cumulative.map((point) => point.cumulativeFeesPaidUsd)).toEqual([0, 10, 30])
+    expect(cumulative.map((point) => point.cumulativeNetYieldUsd)).toEqual([0, 80, 240])
+  })
+
+  it('labels weekly points with the day and keeps monthly tick labels unchanged', () => {
+    expect(formatFeeHistoryTick('2025-10-06', 'weekly')).toBe('Oct 6')
+    expect(formatFeeHistoryTick('2025-10-01', 'monthly')).toBe('2025-10')
+  })
+
   it('spans all twelve completed months from an opening zero to the final total', () => {
     const buckets = Array.from({ length: 12 }, (_, month) =>
       historyBucket(`2025-${String(month + 1).padStart(2, '0')}`, '10', '100', '20', '80')
