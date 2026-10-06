@@ -16,9 +16,9 @@ export function canonicalDecimalToNumber(value: string | null): number | null {
   return Number.isFinite(parsed) ? parsed : null
 }
 
-export function utcMonthStartTimestamp(timestampSeconds: number): number {
+export function utcMonthStartTimestamp(timestampSeconds: number, monthOffset = 0): number {
   const date = new Date(timestampSeconds * 1000)
-  return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1) / 1000
+  return Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + monthOffset, 1) / 1000
 }
 
 export function completedMonthlyBuckets(
@@ -59,4 +59,27 @@ export function buildFeeHistorySeries(buckets: CanonicalFeeHistoryBucket[]): Fee
       cumulativeFeesPaidUsd
     }
   })
+}
+
+export function buildCumulativeFeeHistorySeries(points: FeeHistoryPoint[]): FeeHistoryPoint[] {
+  const first = points[0]
+  if (!first) return []
+
+  const opening: FeeHistoryPoint = {
+    period: `${first.period}-01`,
+    grossGainsUsd: null,
+    netYieldUsd: null,
+    totalFeesPaidUsd: null,
+    cumulativeGrossGainsUsd: points.some((point) => point.grossGainsUsd !== null) ? 0 : null,
+    cumulativeNetYieldUsd: points.some((point) => point.netYieldUsd !== null) ? 0 : null,
+    cumulativeFeesPaidUsd: points.some((point) => point.totalFeesPaidUsd !== null) ? 0 : null
+  }
+
+  return [
+    opening,
+    ...points.map((point) => {
+      const [year, month] = point.period.split('-').map(Number)
+      return { ...point, period: new Date(Date.UTC(year, month, 1)).toISOString().slice(0, 10) }
+    })
+  ]
 }

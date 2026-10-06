@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { CanonicalFeeHistoryBucket, LifetimeEarnings } from './canonical-fees'
 import {
+  buildCumulativeFeeHistorySeries,
   buildFeeHistorySeries,
   canonicalDecimalToNumber,
   completedMonthlyBuckets,
@@ -87,6 +88,7 @@ describe('buildFeeHistorySeries', () => {
   it('aligns timestamps to the start of their UTC month', () => {
     const timestamp = Date.parse('2026-08-04T16:00:00Z') / 1000
     expect(utcMonthStartTimestamp(timestamp)).toBe(Date.parse('2026-08-01T00:00:00Z') / 1000)
+    expect(utcMonthStartTimestamp(timestamp, -12)).toBe(Date.parse('2025-08-01T00:00:00Z') / 1000)
   })
 
   it('keeps only completed calendar-month buckets', () => {
@@ -101,5 +103,43 @@ describe('buildFeeHistorySeries', () => {
       '2026-06',
       '2026-07'
     ])
+  })
+})
+
+describe('buildCumulativeFeeHistorySeries', () => {
+  it('spans all twelve completed months from an opening zero to the final total', () => {
+    const buckets = Array.from({ length: 12 }, (_, month) =>
+      historyBucket(`2025-${String(month + 1).padStart(2, '0')}`, '10', '100', '20', '80')
+    )
+    const monthly = buildFeeHistorySeries(buckets)
+    const cumulative = buildCumulativeFeeHistorySeries(monthly)
+
+    expect(cumulative).toHaveLength(13)
+    expect(cumulative[0]).toEqual({
+      period: '2025-01-01',
+      grossGainsUsd: null,
+      netYieldUsd: null,
+      totalFeesPaidUsd: null,
+      cumulativeGrossGainsUsd: 0,
+      cumulativeNetYieldUsd: 0,
+      cumulativeFeesPaidUsd: 0
+    })
+    expect(cumulative[1]).toMatchObject({ period: '2025-02-01', cumulativeNetYieldUsd: 80 })
+    expect(cumulative[12]).toMatchObject({
+      period: '2026-01-01',
+      cumulativeGrossGainsUsd: 1200,
+      cumulativeNetYieldUsd: 960,
+      cumulativeFeesPaidUsd: 120
+    })
+    expect(monthly).toHaveLength(12)
+    expect(monthly[0]).toMatchObject({ period: '2025-01', netYieldUsd: 80, totalFeesPaidUsd: 10 })
+  })
+
+  it('does not invent zero-valued evidence for missing history or unavailable fees', () => {
+    expect(buildCumulativeFeeHistorySeries([])).toEqual([])
+    const missing = { ...historyBucket('2026-01', '0', '100', '20', '80'), totalFeesPaidUsd: null }
+    const cumulative = buildCumulativeFeeHistorySeries(buildFeeHistorySeries([missing]))
+    expect(cumulative.map((point) => point.cumulativeFeesPaidUsd)).toEqual([null, null])
+    expect(cumulative.map((point) => point.cumulativeNetYieldUsd)).toEqual([0, 80])
   })
 })

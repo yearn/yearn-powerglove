@@ -1,4 +1,3 @@
-import { List, Rows3 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AuditPanel } from './AuditPanel'
@@ -6,7 +5,7 @@ import { ComparisonPanel } from './ComparisonPanel'
 import { CurationProductsPanel } from './CurationProductsPanel'
 import { ErrorBoundary } from './ErrorBoundary'
 import { FeesPanel } from './FeesPanel'
-import { HAS_FEES_API, HAS_TVL_API, timeAgo } from './hooks'
+import { HAS_FEES_API, HAS_TVL_API } from './hooks'
 import { StatsContext, type StatsDensity } from './StatsContext'
 import { STATS_TABS, type StatsTab } from './stats-navigation'
 import { TvlOverview } from './TvlOverview'
@@ -42,67 +41,32 @@ function MissingApiNotice({ lane }: { lane: 'TVL' | 'fees' }) {
 
 export function NativeStatsDashboard({ tab, onTabChange }: { tab: StatsTab; onTabChange: (tab: StatsTab) => void }) {
   const [chainFilter, setChainFilter] = useState('all')
-  const [density, setDensity] = useState<StatsDensity>('comfortable')
+  const density: StatsDensity = 'comfortable'
   const [lastFetchedAt, setLastFetchedAt] = useState<number | null>(null)
 
   const contextValue = useMemo(
     () => ({ chainFilter, density, lastFetchedAt, setLastFetchedAt }),
-    [chainFilter, density, lastFetchedAt]
+    [chainFilter, lastFetchedAt]
+  )
+
+  const chainSelector = (
+    <select
+      className="filter-select"
+      aria-label="Chain"
+      value={chainFilter}
+      onChange={(event) => setChainFilter(event.target.value)}
+    >
+      {CHAINS.map((chain) => (
+        <option key={chain.id} value={chain.id}>
+          {chain.label}
+        </option>
+      ))}
+    </select>
   )
 
   return (
     <StatsContext.Provider value={contextValue}>
       <section className="pg-stats">
-        <div className="top-bar">
-          <div>
-            <div className="top-bar-title">Yearn Metrics</div>
-            <div className="top-bar-subtitle">TVL, fees, curation, and DefiLlama reconciliation</div>
-          </div>
-          <div className="toolbar-right">
-            {lastFetchedAt && (
-              <span className="freshness-indicator" title={new Date(lastFetchedAt).toLocaleTimeString()}>
-                <span className={`freshness-dot${Date.now() - lastFetchedAt > 5 * 60_000 ? ' stale' : ''}`} />
-                <span className="text-dim" style={{ fontSize: '0.7rem' }}>
-                  {timeAgo(lastFetchedAt)}
-                </span>
-              </span>
-            )}
-            <select
-              className="filter-select"
-              value={chainFilter}
-              onChange={(event) => setChainFilter(event.target.value)}
-            >
-              {CHAINS.map((chain) => (
-                <option key={chain.id} value={chain.id}>
-                  {chain.label}
-                </option>
-              ))}
-            </select>
-            <fieldset className="density-toggle" aria-label="Table density">
-              <button
-                type="button"
-                className={density === 'comfortable' ? 'active' : ''}
-                onClick={() => setDensity('comfortable')}
-                title="Comfortable"
-                aria-pressed={density === 'comfortable'}
-              >
-                <Rows3 className="h-4 w-4" aria-hidden="true" />
-                <span className="sr-only">Comfortable density</span>
-              </button>
-              <button
-                type="button"
-                className={density === 'compact' ? 'active' : ''}
-                onClick={() => setDensity('compact')}
-                title="Compact"
-                aria-pressed={density === 'compact'}
-              >
-                <List className="h-4 w-4" aria-hidden="true" />
-                <span className="sr-only">Compact density</span>
-              </button>
-            </fieldset>
-          </div>
-        </div>
-
         <div className="stats-tabs-shell">
           <Tabs value={tab} onValueChange={(value) => onTabChange(value as StatsTab)} className="w-full">
             <TabsList className="stats-tabs-list">
@@ -114,6 +78,7 @@ export function NativeStatsDashboard({ tab, onTabChange }: { tab: StatsTab; onTa
             </TabsList>
 
             <div className="stats-tab-panel">
+              {tab !== 'fees' && <div className="stats-chain-filter">{chainSelector}</div>}
               <TabsContent value="overview" className="mt-0">
                 {!HAS_TVL_API ? (
                   <MissingApiNotice lane="TVL" />
@@ -137,7 +102,7 @@ export function NativeStatsDashboard({ tab, onTabChange }: { tab: StatsTab; onTa
                   <MissingApiNotice lane="fees" />
                 ) : (
                   <ErrorBoundary>
-                    <FeesPanel />
+                    <FeesPanel chainSelector={chainSelector} />
                   </ErrorBoundary>
                 )}
               </TabsContent>

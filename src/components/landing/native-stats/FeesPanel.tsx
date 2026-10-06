@@ -1,5 +1,5 @@
 import { ChevronDown, ChevronRight } from 'lucide-react'
-import { Fragment, useContext, useEffect, useMemo, useState } from 'react'
+import { Fragment, type ReactNode, useContext, useEffect, useMemo, useState } from 'react'
 import {
   CartesianGrid,
   Cell,
@@ -20,6 +20,7 @@ import {
   isCanonicalFeeSummary
 } from './canonical-fees'
 import {
+  buildCumulativeFeeHistorySeries,
   buildFeeHistorySeries,
   canonicalDecimalToNumber,
   completedMonthlyBuckets,
@@ -153,17 +154,9 @@ function flattenTree(
 }
 
 const TIME_PRESETS = [
-  { label: '30D', ariaLabel: '30 days', days: 30 },
-  { label: '90D', ariaLabel: '90 days', days: 90 },
-  { label: '1Y', ariaLabel: '1 year', days: 365 },
-  { label: 'All Time', ariaLabel: 'All time', days: 0 }
+  { label: '1Y', ariaLabel: '1 year' },
+  { label: 'All Time', ariaLabel: 'All time' }
 ] as const
-
-function getSinceTs(days: number): number | null {
-  if (days === 0) return null
-  const now = new Date()
-  return Math.floor((now.getTime() - days * 86_400_000) / 1000)
-}
 
 function vaultFeeKey(vault: { address: string; chainId: number }): string {
   return `${vault.address.toLowerCase()}-${vault.chainId}`
@@ -270,6 +263,7 @@ function FeeHistoryChart({
             <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
             <XAxis
               dataKey="period"
+              tickFormatter={(period: string) => period.slice(0, 7)}
               tick={{ fill: 'var(--text-3)', fontSize: 11 }}
               interval={Math.max(0, Math.floor(data.length / 10) - 1)}
               angle={-35}
@@ -310,15 +304,18 @@ function FeeHistoryChart({
   )
 }
 
-export function FeesPanel() {
+export function FeesPanel({ chainSelector }: { chainSelector: ReactNode }) {
   const { chainFilter, density, setLastFetchedAt } = useContext(StatsContext)
   const [timePreset, setTimePreset] = useState(TIME_PRESETS.length - 1)
   const [showLoadingOverlay, setShowLoadingOverlay] = useState(false)
 
-  const sinceTs = useMemo(() => getSinceTs(TIME_PRESETS[timePreset]?.days ?? 0), [timePreset])
   const currentMonthStartTs = utcMonthStartTimestamp(Math.floor(Date.now() / 1000))
+  const sinceTs = timePreset === 0 ? utcMonthStartTimestamp(currentMonthStartTs, -12) : null
   const feeFilters = new URLSearchParams()
-  if (sinceTs != null) feeFilters.set('since', String(sinceTs))
+  if (sinceTs != null) {
+    feeFilters.set('since', String(sinceTs))
+    feeFilters.set('until', String(currentMonthStartTs))
+  }
   if (chainFilter !== 'all') feeFilters.set('chainId', chainFilter)
   const feeFilterQuery = feeFilters.toString()
   const historyFilters = new URLSearchParams()
@@ -374,6 +371,10 @@ export function FeesPanel() {
   const feeHistorySeries = useMemo(
     () => buildFeeHistorySeries(completedMonthlyBuckets(history?.buckets ?? [], currentMonthStartTs)),
     [history, currentMonthStartTs]
+  )
+  const cumulativeFeeHistorySeries = useMemo(
+    () => buildCumulativeFeeHistorySeries(feeHistorySeries),
+    [feeHistorySeries]
   )
 
   // Build a lookup map for vault fees from the time-filtered vaultData
@@ -477,35 +478,66 @@ export function FeesPanel() {
     return () => window.clearTimeout(timeout)
   }, [isRefreshing])
 
+  const controls = (
+    <div className="fees-toolbar">
+      <span
+        className="text-dim"
+        style={{ fontSize: '0.75rem', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em' }}
+      >
+        Time Range
+      </span>
+      <fieldset className="time-presets" aria-label="Time range">
+        {TIME_PRESETS.map((preset, index) => (
+          <button
+            key={preset.label}
+            className={timePreset === index ? 'active' : ''}
+            onClick={() => setTimePreset(index)}
+            aria-label={preset.ariaLabel}
+            aria-pressed={timePreset === index}
+          >
+            {preset.label}
+          </button>
+        ))}
+      </fieldset>
+      {chainSelector}
+    </div>
+  )
+
   if (summaryError || historyError || vaultError || (summary && !validSummary))
     return (
-      <div className="card">
-        <h2>Fee data could not be loaded</h2>
-        <p className="text-dim">Please try again.</p>
-        <button
-          className="page-btn"
-          onClick={() => {
-            retrySummary()
-            retryHistory()
-            retryVaults()
-          }}
-        >
-          Retry fee data
-        </button>
-      </div>
+      <>
+        {controls}
+        <div className="card">
+          <h2>Fee data could not be loaded</h2>
+          <p className="text-dim">Please try again.</p>
+          <button
+            className="page-btn"
+            onClick={() => {
+              retrySummary()
+              retryHistory()
+              retryVaults()
+            }}
+          >
+            Retry fee data
+          </button>
+        </div>
+      </>
     )
 
   if (!hasData && (l1 || l2 || l3))
     return (
-      <div className="fees-panel fees-panel-initial" aria-busy="true">
-        <div className="fees-loading-overlay fees-loading-overlay-initial">
-          <FeesLoadingStatus label="Loading fee data" />
+      <>
+        {controls}
+        <div className="fees-panel fees-panel-initial" aria-busy="true">
+          <div className="fees-loading-overlay fees-loading-overlay-initial">
+            <FeesLoadingStatus label="Loading fee data" />
+          </div>
+          <SkeletonCards count={5} />
+          <SkeletonChart />
         </div>
-        <SkeletonCards count={5} />
-        <SkeletonChart />
-      </div>
+      </>
     )
-  if (!hasData) return null
+  if (!hasData) return controls
 
   return (
     <div className="fees-panel" aria-busy={isFetching}>
@@ -515,28 +547,7 @@ export function FeesPanel() {
         </div>
       )}
 
-      {/* ---- Time Range Presets ---- */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-        <span
-          className="text-dim"
-          style={{ fontSize: '0.75rem', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em' }}
-        >
-          Time Range
-        </span>
-        <fieldset className="time-presets" aria-label="Time range">
-          {TIME_PRESETS.map((p, i) => (
-            <button
-              key={p.label}
-              className={timePreset === i ? 'active' : ''}
-              onClick={() => setTimePreset(i)}
-              aria-label={p.ariaLabel}
-              aria-pressed={timePreset === i}
-            >
-              {p.label}
-            </button>
-          ))}
-        </fieldset>
-      </div>
+      {controls}
 
       {/* ---- Metric Cards ---- */}
       <div className="metric-grid">
@@ -566,7 +577,7 @@ export function FeesPanel() {
       <div className="row fee-chart-row">
         <FeeHistoryChart
           title="Cumulative Earnings & Fees"
-          data={feeHistorySeries}
+          data={cumulativeFeeHistorySeries}
           series={[
             { dataKey: 'cumulativeGrossGainsUsd', label: 'Gross Gains', color: '#46a2ff' },
             {
@@ -581,7 +592,7 @@ export function FeesPanel() {
               strokeDasharray: '6 3'
             }
           ]}
-          description="Line chart comparing cumulative canonical gross gains, net yield, and gross fees over the selected time range."
+          description="Line chart comparing cumulative canonical gross gains, net yield, and gross fees at month boundaries, starting at zero before the first month."
         />
 
         <FeeHistoryChart
