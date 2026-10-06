@@ -6,12 +6,25 @@ const canonicalSummary = {
   grossGainsUsd: '300',
   lossesUsd: '25',
   netLifetimeEarningsUsd: '275',
-  lifetimeEarnings: {},
-  tokenizedStrategyYield: {},
-  feeCoverage: { status: 'partial' }
+  lifetimeEarnings: { grossGainsUsd: '300', lossesUsd: '25', netYieldUsd: '275' }
 }
 
 describe('isCanonicalFeeSummary', () => {
+  it('accepts unavailable monetary values without diagnostic fields', () => {
+    expect(
+      isCanonicalFeeSummary({
+        ...canonicalSummary,
+        totalFeesPaidUsd: null,
+        grossGainsUsd: null,
+        lossesUsd: null,
+        netLifetimeEarningsUsd: null,
+        lifetimeEarnings: { grossGainsUsd: null, lossesUsd: null, netYieldUsd: null }
+      })
+    ).toBe(true)
+    expect(isCanonicalFeeSummary({ ...canonicalSummary, totalFeesPaidUsd: 'NaN' })).toBe(false)
+    expect(isCanonicalFeeSummary({ ...canonicalSummary, lifetimeEarnings: {} })).toBe(false)
+  })
+
   it('accepts the canonical summary contract', () => {
     expect(isCanonicalFeeSummary(canonicalSummary)).toBe(true)
   })

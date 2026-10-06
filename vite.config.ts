@@ -36,11 +36,13 @@ export default defineConfig(({ mode }) => {
     env.VITE_PUBLIC_YEARN_FEES_API_URL ||
     legacyMetricsApiTarget ||
     'http://127.0.0.1:3482'
+  const yearnDataApiTarget = env.VITE_YEARN_DATA_API_TARGET || env.VITE_PUBLIC_YEARN_DATA_API_URL || yearnFeesApiTarget
   const statsApiProxy = {
     '/api/audit': proxyTo(yearnTvlApiTarget),
     '/api/comparison': proxyTo(yearnTvlApiTarget),
     '/api/tvl': proxyTo(yearnTvlApiTarget),
-    '/api/fees': proxyTo(yearnFeesApiTarget),
+    '/api/fees/stack': proxyTo(yearnFeesApiTarget),
+    '/api/fees': proxyTo(yearnDataApiTarget),
     '/api/profitability': proxyTo(yearnFeesApiTarget)
   }
   const appApiProxy = { ...yvUsdAprProxy, ...statsApiProxy }

@@ -31,14 +31,14 @@ export function completedMonthlyBuckets(
 }
 
 function addCumulative(total: number | null, value: number | null): number | null {
-  if (total === null || value === null) return null
-  return total + value
+  if (value === null) return total
+  return (total ?? 0) + value
 }
 
 export function buildFeeHistorySeries(buckets: CanonicalFeeHistoryBucket[]): FeeHistoryPoint[] {
-  let cumulativeGrossGainsUsd: number | null = 0
-  let cumulativeNetYieldUsd: number | null = 0
-  let cumulativeFeesPaidUsd: number | null = 0
+  let cumulativeGrossGainsUsd: number | null = null
+  let cumulativeNetYieldUsd: number | null = null
+  let cumulativeFeesPaidUsd: number | null = null
 
   return buckets.map((bucket) => {
     const grossGainsUsd = canonicalDecimalToNumber(bucket.lifetimeEarnings.grossGainsUsd)

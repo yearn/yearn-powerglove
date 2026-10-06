@@ -9,16 +9,6 @@ import {
 
 function lifetimeEarnings(grossGainsUsd: string, lossesUsd: string, netYieldUsd: string): LifetimeEarnings {
   return {
-    methodologyVersion: 'yearn-data-eod-1',
-    definition: 'incident-adjusted-net-strategy-pnl',
-    scope: 'yearn-data-comparable',
-    priceBasis: 'canonical-utc-eod',
-    includedContractFamilies: ['yearn-v2-vault', 'yearn-v3-allocator'],
-    excludedFeeEventCount: 0,
-    reportCount: 1,
-    pricedReportCount: 1,
-    unpricedReportCount: 0,
-    incidentAdjustedReportCount: 0,
     rawGrossGainsUsd: grossGainsUsd,
     rawLossesUsd: lossesUsd,
     rawNetYieldUsd: netYieldUsd,
@@ -44,27 +34,22 @@ function historyBucket(
     managementFeesUsd: null,
     strategistFeesUsd: null,
     totalRefundsUsd: null,
-    lifetimeEarnings: lifetimeEarnings(grossGainsUsd, lossesUsd, netYieldUsd),
-    tokenizedStrategyYield: {
-      methodologyVersion: 'tokenized-strategy-reported-pnl-1',
-      definition: 'v3-tokenized-strategy-reported-pnl',
-      scope: 'v3-tokenized-strategies',
-      priceBasis: 'canonical-utc-eod',
-      includedContractFamilies: ['yearn-v3-tokenized-strategy'],
-      reportCount: 0,
-      pricedReportCount: 0,
-      unpricedReportCount: 0,
-      grossGainsUsd: '0',
-      lossesUsd: '0',
-      netYieldUsd: '0'
-    },
-    canonicalEventCount: 1,
-    zeroFeeReportCount: 0,
-    unpricedEventCount: 0
+    lifetimeEarnings: lifetimeEarnings(grossGainsUsd, lossesUsd, netYieldUsd)
   }
 }
 
 describe('buildFeeHistorySeries', () => {
+  it('accumulates published values without turning absent history into zero or nulling later totals', () => {
+    const missing = { ...historyBucket('2026-01', '0', '0', '0', '0'), totalFeesPaidUsd: null }
+    const known = historyBucket('2026-02', '10', '100', '0', '100')
+    const laterMissing = { ...missing, period: '2026-03' }
+    expect(buildFeeHistorySeries([missing, known, laterMissing]).map((row) => row.cumulativeFeesPaidUsd)).toEqual([
+      null,
+      10,
+      10
+    ])
+  })
+
   it('converts canonical decimal strings only when building chart data', () => {
     const buckets = [
       historyBucket('2026-01', '10.5', '100.25', '20', '80.25'),

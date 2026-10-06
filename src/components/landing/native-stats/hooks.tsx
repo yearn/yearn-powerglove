@@ -1,6 +1,6 @@
 import { type KeyboardEvent, useCallback, useEffect, useRef, useState } from 'react'
 
-type StatsApiLane = 'tvl' | 'fees'
+type StatsApiLane = 'tvl' | 'fees' | 'fee-analytics'
 
 function isLocalStatsHost(): boolean {
   if (typeof window !== 'undefined') {
@@ -14,14 +14,20 @@ function isLocalStatsHost(): boolean {
 }
 
 export function getStatsApiLane(url: string): StatsApiLane {
-  return url.startsWith('/api/fees') || url.startsWith('/api/profitability') ? 'fees' : 'tvl'
+  const path = url.split('?')[0].replace(/\/$/, '')
+  if (['/api/fees', '/api/fees/history', '/api/fees/vaults'].includes(path)) return 'fees'
+  return path.startsWith('/api/fees') || path.startsWith('/api/profitability') ? 'fee-analytics' : 'tvl'
 }
 
 export function resolveStatsApiBase(lane: StatsApiLane): string | null {
   if (isLocalStatsHost()) return ''
 
   const configuredUrl = (
-    lane === 'fees' ? import.meta.env.VITE_PUBLIC_YEARN_FEES_API_URL : import.meta.env.VITE_PUBLIC_YEARN_TVL_API_URL
+    lane === 'tvl'
+      ? import.meta.env.VITE_PUBLIC_YEARN_TVL_API_URL
+      : lane === 'fees'
+        ? import.meta.env.VITE_PUBLIC_YEARN_DATA_API_URL || import.meta.env.VITE_PUBLIC_YEARN_FEES_API_URL
+        : import.meta.env.VITE_PUBLIC_YEARN_FEES_API_URL
   )?.trim()
   const legacyUrl = import.meta.env.VITE_PUBLIC_YEARN_METRICS_API_URL?.trim()
   const apiUrl = configuredUrl || legacyUrl
@@ -48,122 +54,117 @@ interface HttpError extends Error {
   status: number
 }
 
+interface FetchState<T> {
+  key: string
+  data: T | null
+  loading: boolean
+  error: string | null
+  status: number | null
+  fetchedAt: number | null
+}
+
 export function useFetch<T>(url: string, options: UseFetchOptions = {}) {
   const apiBase = resolveStatsApiBase(getStatsApiLane(url)) ?? ''
+  const key = `${apiBase}${url}`
   const enabled = options.enabled ?? true
-  const [data, setData] = useState<T | null>(() => {
-    const cached = fetchCache.get(url)
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL) return cached.data as T
-    return null
-  })
-  const [loading, setLoading] = useState(() => {
-    if (!enabled) return false
-    const cached = fetchCache.get(url)
-    return !(cached && Date.now() - cached.timestamp < CACHE_TTL)
-  })
-  const [error, setError] = useState<string | null>(null)
-  const [status, setStatus] = useState<number | null>(null)
-  const [fetchedAt, setFetchedAt] = useState<number | null>(() => {
-    const cached = fetchCache.get(url)
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL) return cached.timestamp
-    return null
+  const [state, setState] = useState<FetchState<T>>(() => {
+    const cached = fetchCache.get(key)
+    const fresh = cached && Date.now() - cached.timestamp < CACHE_TTL ? cached : null
+    return {
+      key,
+      data: (fresh?.data as T) ?? null,
+      loading: enabled && !fresh,
+      error: null,
+      status: fresh ? 200 : null,
+      fetchedAt: fresh?.timestamp ?? null
+    }
   })
   const requestIdRef = useRef(0)
 
   const doFetch = useCallback(
     (bypassCache = false) => {
+      if (!enabled) return
       requestIdRef.current += 1
       const requestId = requestIdRef.current
-
-      if (!bypassCache) {
-        const cached = fetchCache.get(url)
-        if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-          setData(cached.data as T)
-          setFetchedAt(cached.timestamp)
-          setLoading(false)
-          setError(null)
-          setStatus(200)
-          return
-        }
+      const cached = fetchCache.get(key)
+      if (!bypassCache && cached && Date.now() - cached.timestamp < CACHE_TTL) {
+        setState({ key, data: cached.data as T, loading: false, error: null, status: 200, fetchedAt: cached.timestamp })
+        return
       }
-
-      setLoading(true)
-      setError(null)
-      setStatus(null)
-
-      const request =
-        !bypassCache && inFlightFetches.has(url)
-          ? inFlightFetches.get(url)!
-          : (() => {
-              const fetchPromise = fetch(`${apiBase}${url}`)
-                .then(async (response) => {
-                  if (!response.ok) {
-                    const payload = (await response.json().catch(() => null)) as { error?: string } | null
-                    const requestError = new Error(
-                      payload?.error || `${response.status} ${response.statusText}`
-                    ) as HttpError
-                    requestError.status = response.status
-                    throw requestError
-                  }
-                  return { payload: await response.json(), status: response.status }
-                })
-                .then(({ payload, status }) => {
-                  const now = Date.now()
-                  fetchCache.set(url, { data: payload, timestamp: now })
-                  return { payload, timestamp: now, status }
-                })
-                .finally(() => {
-                  inFlightFetches.delete(url)
-                })
-
-              inFlightFetches.set(url, fetchPromise)
-              return fetchPromise
-            })()
-
+      setState((previous) => ({
+        key,
+        data: previous.key === key ? previous.data : null,
+        loading: true,
+        error: null,
+        status: null,
+        fetchedAt: previous.key === key ? previous.fetchedAt : null
+      }))
+      let request = !bypassCache ? inFlightFetches.get(key) : undefined
+      if (!request) {
+        const pending = fetch(key)
+          .then(async (response) => {
+            if (!response.ok) {
+              const payload = (await response.json().catch(() => null)) as { error?: string } | null
+              const error = new Error(payload?.error || `${response.status} ${response.statusText}`) as HttpError
+              error.status = response.status
+              throw error
+            }
+            return { payload: await response.json(), timestamp: Date.now(), status: response.status }
+          })
+          .then((result) => {
+            if (inFlightFetches.get(key) === pending)
+              fetchCache.set(key, { data: result.payload, timestamp: result.timestamp })
+            return result
+          })
+          .finally(() => {
+            if (inFlightFetches.get(key) === pending) inFlightFetches.delete(key)
+          })
+        inFlightFetches.set(key, pending)
+        request = pending
+      }
       request
-        .then(({ payload, timestamp, status: responseStatus }) => {
-          if (requestId !== requestIdRef.current) return
-          setData(payload as T)
-          setFetchedAt(timestamp)
-          setError(null)
-          setStatus(responseStatus)
+        .then(({ payload, timestamp, status }) => {
+          if (requestId === requestIdRef.current)
+            setState({ key, data: payload as T, loading: false, error: null, status, fetchedAt: timestamp })
         })
-        .catch((err: HttpError) => {
-          if (requestId !== requestIdRef.current) return
-          setError(err.message)
-          setStatus(err.status ?? null)
-        })
-        .finally(() => {
-          if (requestId === requestIdRef.current) setLoading(false)
+        .catch((error: HttpError) => {
+          if (requestId === requestIdRef.current)
+            setState({
+              key,
+              data: null,
+              loading: false,
+              error: error.message,
+              status: error.status ?? null,
+              fetchedAt: null
+            })
         })
     },
-    [apiBase, url]
+    [enabled, key]
   )
 
   useEffect(() => {
-    if (!enabled) {
-      setLoading(false)
-      return () => {
-        requestIdRef.current += 1
-      }
-    }
     doFetch()
     return () => {
       requestIdRef.current += 1
     }
-  }, [doFetch, enabled])
-
+  }, [doFetch])
   const retry = useCallback(() => {
-    fetchCache.delete(url)
-    setError(null)
+    fetchCache.delete(key)
     doFetch(true)
-  }, [doFetch, url])
-
+  }, [doFetch, key])
   const refresh = useCallback(() => {
     doFetch(true)
   }, [doFetch])
-
-  return { data, loading, error, status, fetchedAt, retry, refresh }
+  const current = enabled && state.key === key
+  return {
+    data: current ? state.data : null,
+    loading: enabled && (!current || state.loading),
+    error: current ? state.error : null,
+    status: current ? state.status : null,
+    fetchedAt: current ? state.fetchedAt : null,
+    retry,
+    refresh
+  }
 }
 
 export function fmt(n: number, decimals = 1): string {

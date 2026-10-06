@@ -329,11 +329,33 @@ export function FeesPanel() {
   const profitabilityFilters = new URLSearchParams()
   if (chainFilter !== 'all') profitabilityFilters.set('chainId', chainFilter)
 
-  const { data: summary, loading: l1, fetchedAt } = useFetch<CanonicalFeeSummary>(`/api/fees?${feeFilterQuery}`)
-  const { data: history, loading: l2 } = useFetch<CanonicalFeeHistory>(`/api/fees/history?${historyFilters}`)
-  const { data: vaultData, loading: l3 } = useFetch<{ count: number; vaults: CanonicalVaultFee[] }>(
-    `/api/fees/vaults?${feeFilterQuery}`
-  )
+  const {
+    data: summary,
+    loading: l1,
+    fetchedAt,
+    error: summaryError,
+    retry: retrySummary
+  } = useFetch<CanonicalFeeSummary>(`/api/fees?${feeFilterQuery}`)
+  const validSummary = summary !== null && isCanonicalFeeSummary(summary)
+  const vaultFilters = new URLSearchParams(feeFilters)
+  if (validSummary && summary.datasetId) {
+    historyFilters.set('datasetId', summary.datasetId)
+    vaultFilters.set('datasetId', summary.datasetId)
+  }
+  const {
+    data: history,
+    loading: l2,
+    error: historyError,
+    retry: retryHistory
+  } = useFetch<CanonicalFeeHistory>(`/api/fees/history?${historyFilters}`, { enabled: validSummary })
+  const {
+    data: vaultData,
+    loading: l3,
+    error: vaultError,
+    retry: retryVaults
+  } = useFetch<{ count: number; vaults: CanonicalVaultFee[]; datasetId?: string }>(`/api/fees/vaults?${vaultFilters}`, {
+    enabled: validSummary
+  })
   const {
     data: feeStack,
     loading: l4,
@@ -438,7 +460,11 @@ export function FeesPanel() {
   }, [scatterData])
 
   // Only show skeletons on initial load, not when switching time ranges
-  const hasData = summary && history && vaultData
+  const hasData =
+    validSummary &&
+    history &&
+    vaultData &&
+    (!summary.datasetId || (history.datasetId === summary.datasetId && vaultData.datasetId === summary.datasetId))
   const isFetching = l1 || l2 || l3 || l4 || l5
   const isRefreshing = Boolean(hasData) && isFetching
   useEffect(() => {
@@ -451,6 +477,24 @@ export function FeesPanel() {
     return () => window.clearTimeout(timeout)
   }, [isRefreshing])
 
+  if (summaryError || historyError || vaultError || (summary && !validSummary))
+    return (
+      <div className="card">
+        <h2>Fee data could not be loaded</h2>
+        <p className="text-dim">Please try again.</p>
+        <button
+          className="page-btn"
+          onClick={() => {
+            retrySummary()
+            retryHistory()
+            retryVaults()
+          }}
+        >
+          Retry fee data
+        </button>
+      </div>
+    )
+
   if (!hasData && (l1 || l2 || l3))
     return (
       <div className="fees-panel fees-panel-initial" aria-busy="true">
@@ -461,17 +505,6 @@ export function FeesPanel() {
         <SkeletonChart />
       </div>
     )
-  if (summary && !isCanonicalFeeSummary(summary)) {
-    return (
-      <div className="card">
-        <h2>Canonical fees API required</h2>
-        <p className="text-dim" style={{ marginTop: '0.5rem', lineHeight: 1.6 }}>
-          This endpoint returned the legacy fees contract. Configure Powerglove to use the current canonical
-          yearn-fees-service API.
-        </p>
-      </div>
-    )
-  }
   if (!hasData) return null
 
   return (
@@ -508,9 +541,9 @@ export function FeesPanel() {
       {/* ---- Metric Cards ---- */}
       <div className="metric-grid">
         <div className="metric metric-accent">
-          <div className="label">Gross Vault Fees</div>
+          <div className="label">Gross Fees</div>
           <div className="value">{formatCanonicalUsd(summary.totalFeesPaidUsd)}</div>
-          <div className="sub">{summary.feeCoverage.canonicalEventCount.toLocaleString()} canonical events</div>
+          <div className="sub">Fees charged across the stack</div>
         </div>
         <div className="metric metric-green">
           <div className="label">Net Yield</div>
@@ -520,14 +553,12 @@ export function FeesPanel() {
         <div className="metric metric-blue">
           <div className="label">Gross Gains</div>
           <div className="value text-blue">{formatCanonicalUsd(summary.grossGainsUsd)}</div>
-          <div className="sub">Yearn Data-comparable reports</div>
+          <div className="sub">Reported vault gains</div>
         </div>
         <div className="metric metric-red">
           <div className="label">Losses</div>
           <div className="value text-red">{formatCanonicalUsd(summary.lossesUsd)}</div>
-          <div className="sub">
-            {summary.lifetimeEarnings.incidentAdjustedReportCount.toLocaleString()} incident-adjusted reports
-          </div>
+          <div className="sub">Reported vault losses</div>
         </div>
       </div>
 
@@ -672,37 +703,6 @@ export function FeesPanel() {
             <span className="sr-only">Scatter plot showing TVL vs fee yield for {scatterData.length} vaults.</span>
           </div>
         )}
-      </div>
-
-      <div className="card canonical-coverage" data-status={summary.feeCoverage.status}>
-        <div className="canonical-coverage-summary">
-          <strong>Canonical coverage</strong>
-          <span className="canonical-coverage-status">{summary.feeCoverage.status}</span>
-          <span className="text-dim">
-            {(summary.feeCoverage.canonicalEventCount - summary.feeCoverage.unpricedEventCount).toLocaleString()} of{' '}
-            {summary.feeCoverage.canonicalEventCount.toLocaleString()} fee events priced
-          </span>
-          <span className="text-dim">
-            {summary.lifetimeEarnings.pricedReportCount.toLocaleString()} of{' '}
-            {summary.lifetimeEarnings.reportCount.toLocaleString()} lifetime reports priced
-          </span>
-          {summary.feeCoverage.unpricedEventCount > 0 && (
-            <span className="text-yellow">
-              {summary.feeCoverage.unpricedEventCount.toLocaleString()} unpriced fee events
-            </span>
-          )}
-          {summary.feeCoverage.unresolvedReportCount > 0 && (
-            <span className="text-yellow">
-              {summary.feeCoverage.unresolvedReportCount.toLocaleString()} unresolved reports
-            </span>
-          )}
-        </div>
-        <div className="canonical-coverage-note text-dim">
-          Fees are gross amounts paid by vault depositors. Net Yield, Gross Gains, and Losses use the canonical Yearn
-          Data-comparable lifetime-earnings layer. Tokenized Strategy yield (
-          {formatCanonicalUsd(summary.tokenizedStrategyYield.netYieldUsd)}) is tracked separately and is not included in
-          Net Yield.
-        </div>
       </div>
 
       {/* ---- Fee Analysis ---- */}
