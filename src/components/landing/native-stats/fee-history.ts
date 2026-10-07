@@ -18,6 +18,11 @@ export interface FeeHistoryPoint extends FeeHistoryPeriod {
 export function feeHistoryBoundary(point: FeeHistoryPeriod, edge: 'start' | 'end'): string {
   const timestamp = edge === 'start' ? point.startTimestamp : point.endTimestamp
   if (timestamp !== undefined) return new Date(timestamp * 1000).toISOString().slice(0, 10)
+  if (point.period.length === 10) {
+    return edge === 'start'
+      ? point.period
+      : new Date(Date.parse(`${point.period}T00:00:00Z`) + 7 * 86400000).toISOString().slice(0, 10)
+  }
   const [year, month] = point.period.split('-').map(Number)
   return edge === 'start' ? `${point.period}-01` : new Date(Date.UTC(year, month, 1)).toISOString().slice(0, 10)
 }
@@ -39,13 +44,15 @@ export function utcMonthStartTimestamp(timestampSeconds: number, monthOffset = 0
   return Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + monthOffset, 1) / 1000
 }
 
-export function completedMonthlyBuckets(
+export function completedFeeHistoryBuckets(
   buckets: CanonicalFeeHistoryBucket[],
-  currentMonthStartTimestamp: number
+  until: number
 ): CanonicalFeeHistoryBucket[] {
-  const currentMonth = new Date(currentMonthStartTimestamp * 1000)
-  const currentPeriod = `${currentMonth.getUTCFullYear()}-${String(currentMonth.getUTCMonth() + 1).padStart(2, '0')}`
-  return buckets.filter((bucket) => bucket.period < currentPeriod)
+  return buckets.filter((bucket) => {
+    // Check the original calendar boundary before clipping it to the requested range.
+    const endTimestamp = bucket.endTimestamp ?? Date.parse(feeHistoryBoundary(bucket, 'end')) / 1000
+    return endTimestamp <= until
+  })
 }
 
 function addCumulative(total: number | null, value: number | null): number | null {
@@ -70,14 +77,17 @@ export function buildFeeHistorySeries(
     cumulativeNetYieldUsd = addCumulative(cumulativeNetYieldUsd, netYieldUsd)
     cumulativeFeesPaidUsd = addCumulative(cumulativeFeesPaidUsd, totalFeesPaidUsd)
 
+    const startTimestamp = bucket.startTimestamp ?? Date.parse(feeHistoryBoundary(bucket, 'start')) / 1000
+    const endTimestamp = bucket.endTimestamp ?? Date.parse(feeHistoryBoundary(bucket, 'end')) / 1000
+
     return {
       period: bucket.period,
-      ...(bucket.startTimestamp === undefined
+      ...(bucket.startTimestamp === undefined && range.since === undefined
         ? {}
-        : { startTimestamp: Math.max(bucket.startTimestamp, range.since ?? bucket.startTimestamp) }),
-      ...(bucket.endTimestamp === undefined
+        : { startTimestamp: Math.max(startTimestamp, range.since ?? startTimestamp) }),
+      ...(bucket.endTimestamp === undefined && range.until === undefined
         ? {}
-        : { endTimestamp: Math.min(bucket.endTimestamp, range.until ?? bucket.endTimestamp) }),
+        : { endTimestamp: Math.min(endTimestamp, range.until ?? endTimestamp) }),
       grossGainsUsd,
       netYieldUsd,
       totalFeesPaidUsd,

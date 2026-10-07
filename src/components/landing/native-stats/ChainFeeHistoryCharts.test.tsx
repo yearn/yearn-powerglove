@@ -62,7 +62,6 @@ describe('chain fee chart stacking', () => {
         periods={periods}
         view="periodic"
         interval="monthly"
-        onViewChange={vi.fn()}
       />
     )
     const chart = screen.getByRole('heading', { name: 'Earnings by Chain' }).closest('.fee-chart-card')

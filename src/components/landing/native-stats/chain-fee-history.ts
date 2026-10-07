@@ -10,8 +10,8 @@ export type ChainFeeMetric = 'earnings' | 'fees'
 
 export interface ChainFeeHistoryPoint {
   period: string
-  earnings: Record<number, number>
-  fees: Record<number, number>
+  earnings: Record<string, number>
+  fees: Record<string, number>
 }
 
 export function buildChainFeeHistorySeries(histories: ChainFeeHistory[], periods: FeeHistoryPeriod[]) {

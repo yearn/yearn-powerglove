@@ -13,6 +13,9 @@ import {
   YAxis,
   ZAxis
 } from 'recharts'
+import type { ChartDateRange } from '@/components/charts/chart-utils'
+import { CustomTimeframePicker } from '@/components/charts/custom-timeframe-picker'
+import { Tooltip as HelpTooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { ChainFeeHistoryCharts, type ChainFeeHistoryView } from './ChainFeeHistoryCharts'
 import {
   type CanonicalFeeHistory,
@@ -25,11 +28,11 @@ import {
   buildCumulativeFeeHistorySeries,
   buildFeeHistorySeries,
   canonicalDecimalToNumber,
-  completedMonthlyBuckets,
+  completedFeeHistoryBuckets,
   type FeeHistoryPoint,
-  formatFeeHistoryTick,
-  utcMonthStartTimestamp
+  formatFeeHistoryTick
 } from './fee-history'
+import { resolveFeeTimeframe } from './fee-timeframe'
 import {
   bpsPct,
   CHAIN_COLORS,
@@ -44,6 +47,7 @@ import {
 } from './hooks'
 import { StatsContext } from './StatsContext'
 import type { FeeStackChain, FeeStackNode, FeeStackSummary } from './types'
+import { VaultTypeFeeCharts } from './VaultTypeFeeCharts'
 
 type Trend = 'improving' | 'declining' | 'stable' | 'insufficient_data'
 type PricingConfidence = 'high' | 'medium' | 'low'
@@ -157,9 +161,15 @@ function flattenTree(
 }
 
 const TIME_PRESETS = [
-  { label: '1Y', ariaLabel: '1 year' },
-  { label: 'All Time', ariaLabel: 'All time' }
+  { value: '1y', label: '1 Year', ariaLabel: '1 year' },
+  { value: 'all', label: 'All Time', ariaLabel: 'All time' }
 ] as const
+
+function timeframeButtonClass(active: boolean) {
+  return `min-w-0 rounded-none px-3 py-2 text-center text-xs font-medium transition-colors sm:text-sm ${
+    active ? 'bg-[#0657f9] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+  }`
+}
 
 function vaultFeeKey(vault: { address: string; chainId: number }): string {
   return `${vault.address.toLowerCase()}-${vault.chainId}`
@@ -192,10 +202,24 @@ type FeeHistorySeriesKey =
   | 'cumulativeFeesPaidUsd'
 
 interface FeeHistoryChartSeries {
+  key: 'gains' | 'yield' | 'fees'
   dataKey: FeeHistorySeriesKey
   label: string
   color: string
   strokeDasharray?: string
+}
+
+function FeeMetricTitle({ title, description }: { title: string; description: string }) {
+  return (
+    <HelpTooltip>
+      <TooltipTrigger asChild>
+        <button type="button" className="label cursor-help text-left">
+          {title}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent>{description}</TooltipContent>
+    </HelpTooltip>
+  )
 }
 
 function FeesLoadingStatus({ label }: { label: string }) {
@@ -220,19 +244,28 @@ function FeeHistoryChart({
   description: string
   interval: FeeHistoryInterval
 }) {
-  const [visibleSeries, setVisibleSeries] = useState<Set<FeeHistorySeriesKey>>(
-    () => new Set(series.map((item) => item.dataKey))
+  const [visibleSeries, setVisibleSeries] = useState<Set<FeeHistoryChartSeries['key']>>(
+    () => new Set(series.map((item) => item.key))
   )
   const seriesLabels = new Map(series.map((item) => [item.dataKey, item.label]))
-  const activeSeries = series.filter((item) => visibleSeries.has(item.dataKey))
+  const activeSeries = series.filter((item) => visibleSeries.has(item.key))
 
-  const toggleSeries = (dataKey: FeeHistorySeriesKey) => {
+  const toggleSeries = (key: FeeHistoryChartSeries['key']) => {
     setVisibleSeries((current) => {
       const next = new Set(current)
-      if (next.has(dataKey)) next.delete(dataKey)
-      else next.add(dataKey)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
       return next
     })
+  }
+
+  if (data.length === 0) {
+    return (
+      <div className="card fee-chart-card">
+        <h2>{title}</h2>
+        <p className="text-dim">No completed history in this range.</p>
+      </div>
+    )
   }
 
   return (
@@ -242,14 +275,14 @@ function FeeHistoryChart({
         <fieldset className="fee-series-toggles">
           <legend className="sr-only">{title} data series</legend>
           {series.map((item) => {
-            const isVisible = visibleSeries.has(item.dataKey)
+            const isVisible = visibleSeries.has(item.key)
             return (
               <button
                 type="button"
-                key={item.dataKey}
+                key={item.key}
                 className="fee-series-toggle"
                 aria-pressed={isVisible}
-                onClick={() => toggleSeries(item.dataKey)}
+                onClick={() => toggleSeries(item.key)}
               >
                 <span
                   className="fee-series-swatch"
@@ -291,12 +324,13 @@ function FeeHistoryChart({
             />
             {activeSeries.map((item) => (
               <Line
-                key={item.dataKey}
+                key={item.key}
                 type="monotone"
                 dataKey={item.dataKey}
                 stroke={item.color}
                 strokeDasharray={item.strokeDasharray}
                 strokeWidth={2}
+                isAnimationActive={false}
                 dot={false}
                 name={item.dataKey}
               />
@@ -311,23 +345,28 @@ function FeeHistoryChart({
 
 export function FeesPanel({ chainSelector }: { chainSelector: ReactNode }) {
   const { chainFilter, density, setLastFetchedAt } = useContext(StatsContext)
-  const [timePreset, setTimePreset] = useState(TIME_PRESETS.length - 1)
-  const [chainChartView, setChainChartView] = useState<ChainFeeHistoryView>('cumulative')
+  const [timePreset, setTimePreset] = useState<'1y' | 'all' | 'custom'>('all')
+  const [customDateRange, setCustomDateRange] = useState<ChartDateRange | null>(null)
+  const [chartView, setChartView] = useState<ChainFeeHistoryView>('periodic')
   const [showLoadingOverlay, setShowLoadingOverlay] = useState(false)
 
-  const currentMonthStartTs = utcMonthStartTimestamp(Math.floor(Date.now() / 1000))
-  const sinceTs = timePreset === 0 ? utcMonthStartTimestamp(currentMonthStartTs, -12) : null
-  const historyInterval: FeeHistoryInterval = timePreset === 0 ? 'weekly' : 'monthly'
+  const nowTs = Math.floor(Date.now() / 1000)
+  const {
+    since: sinceTs,
+    until: untilTs,
+    interval: historyInterval
+  } = resolveFeeTimeframe(timePreset === 'custom' ? (customDateRange ?? 'all') : timePreset, nowTs)
+  const completedUntilTs = Math.min(untilTs, nowTs)
   const feeFilters = new URLSearchParams()
   if (sinceTs != null) {
     feeFilters.set('since', String(sinceTs))
-    feeFilters.set('until', String(currentMonthStartTs))
+    feeFilters.set('until', String(untilTs))
   }
   if (chainFilter !== 'all') feeFilters.set('chainId', chainFilter)
   const feeFilterQuery = feeFilters.toString()
   const historyFilters = new URLSearchParams()
-  if (sinceTs != null) historyFilters.set('since', String(utcMonthStartTimestamp(sinceTs)))
-  historyFilters.set('until', String(currentMonthStartTs))
+  if (sinceTs != null) historyFilters.set('since', String(sinceTs))
+  historyFilters.set('until', String(untilTs))
   if (chainFilter !== 'all') historyFilters.set('chainId', chainFilter)
   historyFilters.set('interval', historyInterval)
   const profitabilityFilters = new URLSearchParams()
@@ -377,13 +416,11 @@ export function FeesPanel({ chainSelector }: { chainSelector: ReactNode }) {
 
   const feeHistorySeries = useMemo(
     () =>
-      buildFeeHistorySeries(
-        historyInterval === 'monthly'
-          ? completedMonthlyBuckets(history?.buckets ?? [], currentMonthStartTs)
-          : (history?.buckets ?? []),
-        { since: sinceTs ?? undefined, until: currentMonthStartTs }
-      ),
-    [history, historyInterval, currentMonthStartTs, sinceTs]
+      buildFeeHistorySeries(completedFeeHistoryBuckets(history?.buckets ?? [], completedUntilTs), {
+        since: sinceTs,
+        until: untilTs
+      }),
+    [history, completedUntilTs, sinceTs, untilTs]
   )
   const cumulativeFeeHistorySeries = useMemo(
     () => buildCumulativeFeeHistorySeries(feeHistorySeries),
@@ -503,16 +540,39 @@ export function FeesPanel({ chainSelector }: { chainSelector: ReactNode }) {
       >
         Time Range
       </span>
-      <fieldset className="time-presets" aria-label="Time range">
-        {TIME_PRESETS.map((preset, index) => (
+      <fieldset className="fees-timeframes flex flex-wrap gap-2" aria-label="Time range">
+        {TIME_PRESETS.map((preset) => (
           <button
             key={preset.label}
-            className={timePreset === index ? 'active' : ''}
-            onClick={() => setTimePreset(index)}
+            type="button"
+            className={timeframeButtonClass(timePreset === preset.value)}
+            onClick={() => setTimePreset(preset.value)}
             aria-label={preset.ariaLabel}
-            aria-pressed={timePreset === index}
+            aria-pressed={timePreset === preset.value}
           >
             {preset.label}
+          </button>
+        ))}
+        <CustomTimeframePicker
+          value={customDateRange}
+          active={timePreset === 'custom'}
+          className={timeframeButtonClass(timePreset === 'custom')}
+          onApply={(range) => {
+            setCustomDateRange(range)
+            setTimePreset('custom')
+          }}
+        />
+      </fieldset>
+      <fieldset className="fees-chart-view flex flex-wrap gap-2" aria-label="Chart view">
+        {(['periodic', 'cumulative'] as const).map((view) => (
+          <button
+            key={view}
+            type="button"
+            className={timeframeButtonClass(chartView === view)}
+            aria-pressed={chartView === view}
+            onClick={() => setChartView(view)}
+          >
+            {view === 'cumulative' ? 'Cumulative' : historyInterval === 'weekly' ? 'Weekly' : 'Monthly'}
           </button>
         ))}
       </fieldset>
@@ -567,77 +627,76 @@ export function FeesPanel({ chainSelector }: { chainSelector: ReactNode }) {
       {controls}
 
       {/* ---- Metric Cards ---- */}
-      <div className="metric-grid">
-        <div className="metric metric-accent">
-          <div className="label">Gross Fees</div>
-          <div className="value">{formatCanonicalUsd(summary.totalFeesPaidUsd)}</div>
-          <div className="sub">Fees charged across the stack</div>
+      <TooltipProvider delayDuration={200}>
+        <div className="metric-grid">
+          <div className="metric">
+            <FeeMetricTitle title="Gross Fees" description="Fees charged across the stack" />
+            <div className="value">{formatCanonicalUsd(summary.totalFeesPaidUsd)}</div>
+          </div>
+          <div className="metric metric-green">
+            <FeeMetricTitle title="Net Yield" description="Gross gains less losses" />
+            <div className="value text-green">{formatCanonicalUsd(summary.netLifetimeEarningsUsd)}</div>
+          </div>
+          <div className="metric metric-blue">
+            <FeeMetricTitle title="Gross Gains" description="Reported vault gains" />
+            <div className="value text-blue">{formatCanonicalUsd(summary.grossGainsUsd)}</div>
+          </div>
+          <div className="metric metric-red">
+            <FeeMetricTitle title="Losses" description="Reported vault losses" />
+            <div className="value text-red">{formatCanonicalUsd(summary.lossesUsd)}</div>
+          </div>
         </div>
-        <div className="metric metric-green">
-          <div className="label">Net Yield</div>
-          <div className="value text-green">{formatCanonicalUsd(summary.netLifetimeEarningsUsd)}</div>
-          <div className="sub">Gross gains less losses</div>
-        </div>
-        <div className="metric metric-blue">
-          <div className="label">Gross Gains</div>
-          <div className="value text-blue">{formatCanonicalUsd(summary.grossGainsUsd)}</div>
-          <div className="sub">Reported vault gains</div>
-        </div>
-        <div className="metric metric-red">
-          <div className="label">Losses</div>
-          <div className="value text-red">{formatCanonicalUsd(summary.lossesUsd)}</div>
-          <div className="sub">Reported vault losses</div>
-        </div>
-      </div>
+      </TooltipProvider>
 
       {/* ---- Full-width fee history charts ---- */}
       <div className="row fee-chart-row">
         <FeeHistoryChart
-          title="Cumulative Earnings & Fees"
-          data={cumulativeFeeHistorySeries}
+          title={
+            chartView === 'cumulative'
+              ? 'Cumulative Earnings & Fees'
+              : historyInterval === 'weekly'
+                ? 'Weekly Earnings & Fees'
+                : 'Monthly Earnings & Fees'
+          }
+          data={chartView === 'cumulative' ? cumulativeFeeHistorySeries : feeHistorySeries}
           interval={historyInterval}
           series={[
-            { dataKey: 'cumulativeGrossGainsUsd', label: 'Gross Gains', color: '#46a2ff' },
             {
-              dataKey: 'cumulativeNetYieldUsd',
+              key: 'gains',
+              dataKey: chartView === 'cumulative' ? 'cumulativeGrossGainsUsd' : 'grossGainsUsd',
+              label: 'Gross Gains',
+              color: '#46a2ff'
+            },
+            {
+              key: 'yield',
+              dataKey: chartView === 'cumulative' ? 'cumulativeNetYieldUsd' : 'netYieldUsd',
               label: 'Net Yield',
               color: '#94adf2'
             },
             {
-              dataKey: 'cumulativeFeesPaidUsd',
+              key: 'fees',
+              dataKey: chartView === 'cumulative' ? 'cumulativeFeesPaidUsd' : 'totalFeesPaidUsd',
               label: 'Gross Fees',
               color: '#16a34a',
               strokeDasharray: '6 3'
             }
           ]}
-          description={`Line chart comparing cumulative canonical gross gains, net yield, and gross fees at ${historyInterval === 'weekly' ? 'week' : 'month'} boundaries, starting at zero.`}
+          description={`Line chart comparing ${chartView === 'cumulative' ? 'cumulative' : historyInterval} canonical gross gains, net yield, and gross fees over completed periods in the selected time range.`}
         />
 
-        <FeeHistoryChart
-          title={historyInterval === 'weekly' ? 'Weekly Earnings & Fees' : 'Monthly Earnings & Fees'}
-          data={feeHistorySeries}
-          interval={historyInterval}
-          series={[
-            { dataKey: 'grossGainsUsd', label: 'Gross Gains', color: '#46a2ff' },
-            { dataKey: 'netYieldUsd', label: 'Net Yield', color: '#94adf2' },
-            {
-              dataKey: 'totalFeesPaidUsd',
-              label: 'Gross Fees',
-              color: '#16a34a',
-              strokeDasharray: '6 3'
-            }
-          ]}
-          description={`Line chart comparing ${historyInterval} canonical gross gains, net yield, and gross fees on the same dollar scale over the selected time range.`}
-        />
-
-        {/* ---- TVL vs Fee Yield Scatter ---- */}
         <ChainFeeHistoryCharts
           query={historyFilters.toString()}
           chainIds={historyChainIds}
           periods={feeHistorySeries}
-          view={chainChartView}
-          onViewChange={setChainChartView}
+          view={chartView}
           interval={historyInterval}
+        />
+
+        <VaultTypeFeeCharts
+          query={historyFilters.toString()}
+          periods={feeHistorySeries}
+          interval={historyInterval}
+          view={chartView}
         />
 
         {profData && (

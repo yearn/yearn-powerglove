@@ -778,6 +778,9 @@
 }
 
 .pg-stats .stats-tabs-list {
+  position: sticky;
+  top: var(--stats-header-height, 60px);
+  z-index: 30;
   display: flex;
   height: auto;
   max-width: 100%;
@@ -785,7 +788,7 @@
   justify-content: flex-start;
   overflow: visible;
   border-bottom: 1px solid var(--border);
-  background: transparent;
+  background: var(--surface);
   padding: 0 1.5rem;
 }
 
@@ -816,6 +819,10 @@
   padding-top: 1rem;
 }
 
+.pg-stats .stats-fees-tab-panel {
+  padding-top: 0;
+}
+
 .pg-stats .stats-chain-filter {
   display: flex;
   justify-content: flex-end;
@@ -823,19 +830,25 @@
 }
 
 .pg-stats .fees-toolbar {
+  position: sticky;
+  top: calc(var(--stats-header-height, 60px) + var(--stats-tabs-height, 44px));
+  z-index: 20;
+  background: var(--surface);
   display: flex;
   align-items: center;
   gap: 0.75rem;
   flex-wrap: wrap;
-  margin-bottom: 1rem;
+  margin-bottom: 0;
+  padding: 1rem 0;
 }
 
 .pg-stats .fees-toolbar .filter-select {
   margin-left: auto;
 }
 
-.pg-stats .fees-toolbar .time-presets {
-  margin-bottom: 0;
+.pg-stats .fees-chart-view {
+  border-left: 1px solid var(--border);
+  padding-left: 0.75rem;
 }
 
 .pg-stats .chart-container {
@@ -1230,10 +1243,6 @@
 .pg-stats .chain-fee-charts {
   display: grid;
   gap: 1rem;
-}
-
-.pg-stats .chain-fee-charts > .time-presets {
-  margin-bottom: 0;
 }
 
 .pg-stats .chain-fee-tooltip {

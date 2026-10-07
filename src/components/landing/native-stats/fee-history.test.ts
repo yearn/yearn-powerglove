@@ -4,7 +4,7 @@ import {
   buildCumulativeFeeHistorySeries,
   buildFeeHistorySeries,
   canonicalDecimalToNumber,
-  completedMonthlyBuckets,
+  completedFeeHistoryBuckets,
   formatFeeHistoryTick,
   utcMonthStartTimestamp
 } from './fee-history'
@@ -100,14 +100,71 @@ describe('buildFeeHistorySeries', () => {
     ]
     const currentMonthStart = Date.parse('2026-08-01T00:00:00Z') / 1000
 
-    expect(completedMonthlyBuckets(buckets, currentMonthStart).map((bucket) => bucket.period)).toEqual([
+    expect(completedFeeHistoryBuckets(buckets, currentMonthStart).map((bucket) => bucket.period)).toEqual([
       '2026-06',
       '2026-07'
     ])
   })
+
+  it('drops a trailing week truncated by the selected timeframe before accumulating earnings and fees', () => {
+    const until = Date.parse('2026-10-01T00:00:00Z') / 1000
+    const buckets = [
+      {
+        ...historyBucket('2026-09-21', '20', '100', '10', '90'),
+        startTimestamp: Date.parse('2026-09-21T00:00:00Z') / 1000,
+        endTimestamp: Date.parse('2026-09-28T00:00:00Z') / 1000
+      },
+      {
+        ...historyBucket('2026-09-28', '5', '25', '0', '25'),
+        startTimestamp: Date.parse('2026-09-28T00:00:00Z') / 1000,
+        endTimestamp: Date.parse('2026-10-05T00:00:00Z') / 1000
+      }
+    ]
+    const completed = completedFeeHistoryBuckets(buckets, until)
+    const series = buildCumulativeFeeHistorySeries(buildFeeHistorySeries(completed, { until }))
+    expect(completed.map((bucket) => bucket.period)).toEqual(['2026-09-21'])
+    expect(series.map((point) => point.period)).toEqual(['2026-09-21', '2026-09-28'])
+    expect(series[1].cumulativeFeesPaidUsd).toBe(20)
+    expect(series[1].cumulativeNetYieldUsd).toBe(90)
+  })
+
+  it('excludes the current week or month and includes a period exactly when it closes', () => {
+    const weeks = ['2026-09-28', '2026-10-05'].map((period) => historyBucket(period, '10', '100', '0', '100'))
+    const months = ['2026-09', '2026-10'].map((period) => historyBucket(period, '10', '100', '0', '100'))
+    const now = Date.parse('2026-10-06T18:00:00Z') / 1000
+    expect(completedFeeHistoryBuckets(weeks, now).map((bucket) => bucket.period)).toEqual(['2026-09-28'])
+    expect(completedFeeHistoryBuckets(months, now).map((bucket) => bucket.period)).toEqual(['2026-09'])
+    expect(completedFeeHistoryBuckets(weeks, Date.parse('2026-10-05T00:00:00Z') / 1000)).toHaveLength(1)
+    expect(completedFeeHistoryBuckets(weeks, Date.parse('2026-10-04T23:59:59Z') / 1000)).toHaveLength(0)
+  })
+
+  it('omits partial end periods for past custom ranges, and returns no chart points if none completed', () => {
+    const monthly = ['2025-01', '2025-02'].map((period) => historyBucket(period, '10', '100', '0', '100'))
+    const weekly = ['2025-02-03', '2025-02-10'].map((period) => historyBucket(period, '10', '100', '0', '100'))
+    const until = Date.parse('2025-02-11T00:00:00Z') / 1000
+    expect(completedFeeHistoryBuckets(monthly, until).map((bucket) => bucket.period)).toEqual(['2025-01'])
+    expect(completedFeeHistoryBuckets(weekly, until).map((bucket) => bucket.period)).toEqual(['2025-02-03'])
+    expect(completedFeeHistoryBuckets([weekly[1]], until)).toEqual([])
+  })
 })
 
 describe('buildCumulativeFeeHistorySeries', () => {
+  it('clips monthly boundaries to arbitrary custom dates for cumulative and vault breakdown charts', () => {
+    const since = Date.parse('2025-01-15T00:00:00Z') / 1000
+    const until = Date.parse('2025-02-11T00:00:00Z') / 1000
+    const monthly = buildFeeHistorySeries(
+      [historyBucket('2025-01', '10', '100', '20', '80'), historyBucket('2025-02', '20', '200', '40', '160')],
+      { since, until }
+    )
+    expect(monthly[0].startTimestamp).toBe(since)
+    expect(monthly[1].endTimestamp).toBe(until)
+    expect(buildCumulativeFeeHistorySeries(monthly).map((point) => point.period)).toEqual([
+      '2025-01-15',
+      '2025-02-01',
+      '2025-02-11'
+    ])
+  })
+
   it('uses weekly timestamps and clips partial weeks to the selected year', () => {
     const since = Date.parse('2025-10-01T00:00:00Z') / 1000
     const until = Date.parse('2026-10-01T00:00:00Z') / 1000
