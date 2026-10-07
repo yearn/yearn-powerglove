@@ -13,6 +13,15 @@ afterEach(() => {
 })
 
 describe('published fee requests', () => {
+  it('retains the existing TVL origin when the new data origin is absent', () => {
+    vi.stubGlobal('window', undefined)
+    vi.stubEnv('VITE_PUBLIC_YEARN_DATA_API_URL', '')
+    vi.stubEnv('VITE_PUBLIC_YEARN_TVL_API_URL', 'https://tvl.example/')
+    vi.stubEnv('VITE_PUBLIC_YEARN_FEES_API_URL', 'https://fees.example/')
+    expect(resolveStatsApiBase('tvl')).toBe('https://tvl.example')
+    expect(resolveStatsApiBase('fees')).toBe('https://fees.example')
+  })
+
   it('keeps production core, analytics and TVL origins independent', () => {
     vi.stubGlobal('window', undefined)
     vi.stubEnv('VITE_PUBLIC_YEARN_DATA_API_URL', 'https://data.example/')
@@ -20,7 +29,8 @@ describe('published fee requests', () => {
     vi.stubEnv('VITE_PUBLIC_YEARN_TVL_API_URL', 'https://tvl.example/')
     expect(resolveStatsApiBase('fees')).toBe('https://data.example')
     expect(resolveStatsApiBase('fee-analytics')).toBe('https://analytics.example')
-    expect(resolveStatsApiBase('tvl')).toBe('https://tvl.example')
+    expect(resolveStatsApiBase('tvl')).toBe('https://data.example')
+    expect(resolveStatsApiBase('tvl-analytics')).toBe('https://tvl.example')
   })
 
   it('does not expose a previous range while the next range loads', async () => {

@@ -9,16 +9,16 @@ export type LegacyTvlSummary = Omit<
   | 'overlapByChain'
   | 'crossChainOverlapByChain'
 > & {
-  activeVaultTvl?: number
-  retiredVaultTvl?: number
-  overlapExcluded?: number
-  vaultBridgeExcluded?: number
-  overlapByChain?: Record<string, number>
-  crossChainOverlapByChain?: Record<string, number>
-  activeTvl?: number
-  retiredTvl?: number
-  overlapAmount?: number
-  crossChainOverlap?: number
+  activeVaultTvl?: number | null
+  retiredVaultTvl?: number | null
+  overlapExcluded?: number | null
+  vaultBridgeExcluded?: number | null
+  overlapByChain?: Record<string, number | null>
+  crossChainOverlapByChain?: Record<string, number | null>
+  activeTvl?: number | null
+  retiredTvl?: number | null
+  overlapAmount?: number | null
+  crossChainOverlap?: number | null
 }
 
 export interface AdjustedChainTvl {
@@ -31,20 +31,22 @@ const TVL_BY_CHAIN_EXCLUDED_CHAINS = new Set(['Berachain', 'Sonic'])
 export function normalizeTvlSummary(data: LegacyTvlSummary): TvlSummary {
   return {
     ...data,
-    activeVaultTvl: data.activeVaultTvl ?? data.activeTvl ?? 0,
-    retiredVaultTvl: data.retiredVaultTvl ?? data.retiredTvl ?? 0,
-    overlapExcluded: data.overlapExcluded ?? data.overlapAmount ?? 0,
-    vaultBridgeExcluded: data.vaultBridgeExcluded ?? data.crossChainOverlap ?? 0,
+    activeVaultTvl: data.activeVaultTvl === undefined ? (data.activeTvl ?? 0) : data.activeVaultTvl,
+    retiredVaultTvl: data.retiredVaultTvl === undefined ? (data.retiredTvl ?? 0) : data.retiredVaultTvl,
+    overlapExcluded: data.overlapExcluded === undefined ? (data.overlapAmount ?? 0) : data.overlapExcluded,
+    vaultBridgeExcluded:
+      data.vaultBridgeExcluded === undefined ? (data.crossChainOverlap ?? 0) : data.vaultBridgeExcluded,
     overlapByChain: data.overlapByChain ?? {},
     crossChainOverlapByChain: data.crossChainOverlapByChain ?? {}
   }
 }
 
 export function getAdjustedChainTvl(
-  rawTvl: number,
-  nestedOverlap: number | undefined,
-  crossChainOverlap: number | undefined
-): number {
+  rawTvl: number | null,
+  nestedOverlap: number | null | undefined,
+  crossChainOverlap: number | null | undefined
+): number | null {
+  if (rawTvl === null || nestedOverlap === null || crossChainOverlap === null) return null
   return rawTvl - (nestedOverlap ?? 0) - (crossChainOverlap ?? 0)
 }
 
@@ -60,7 +62,7 @@ export function buildAdjustedChainTvl(
         tvl: getAdjustedChainTvl(rawTvl, data.overlapByChain[chain], data.crossChainOverlapByChain[chain])
       }))
       // Keep negative adjusted values visible. They signal upstream overlap larger than raw TVL and must not disappear silently.
-      .filter(({ tvl }) => tvl !== 0)
+      .filter((row): row is AdjustedChainTvl => row.tvl !== null && row.tvl !== 0)
       .sort((a, b) => b.tvl - a.tvl)
   )
 }

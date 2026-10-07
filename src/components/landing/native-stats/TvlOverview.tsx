@@ -345,19 +345,30 @@ export function TvlOverview() {
   const [tvlHistoryView, setTvlHistoryView] = useState<TvlHistoryView>('line')
   const [selectedHistoryChain, setSelectedHistoryChain] = useState<string | null>(null)
   const [historyEndAnchor] = useState(() => Math.floor(Date.now() / 1000))
-  const tvlHistoryMode = tvlHistoryBreakdown === 'category' ? 'external' : getHistoryMode(tvlHistoryRange)
+  const tvlHistoryMode =
+    rawData?.datasetId || tvlHistoryBreakdown === 'category' ? 'external' : getHistoryMode(tvlHistoryRange)
   const tvlHistoryInterval = tvlHistoryBreakdown === 'category' ? 'weekly' : getHistoryInterval(tvlHistoryRange)
-  const tvlHistoryUrl = buildTvlHistoryUrl({
+  const baseTvlHistoryUrl = buildTvlHistoryUrl({
     breakdown: tvlHistoryBreakdown,
     mode: tvlHistoryMode,
     interval: tvlHistoryInterval
   })
+  const tvlHistoryFilters = new URLSearchParams(baseTvlHistoryUrl.split('?')[1])
+  if (rawData?.datasetId) {
+    tvlHistoryFilters.set('datasetId', rawData.datasetId)
+    if (tvlHistoryRange === '30d' || tvlHistoryRange === '90d') {
+      const bounds = getTvlHistoryRangeBounds(tvlHistoryRange, rawData.asOfTimestamp ?? historyEndAnchor, 0)
+      tvlHistoryFilters.set('from', String(bounds.from))
+      tvlHistoryFilters.set('to', String(bounds.to))
+    }
+  }
+  const tvlHistoryUrl = `/api/tvl/history/runs/latest?${tvlHistoryFilters}`
   const {
     data: rawTvlHistory,
     loading: tvlHistoryLoading,
     error: tvlHistoryError,
     retry: retryTvlHistory
-  } = useFetch<TvlHistoryRun>(tvlHistoryUrl)
+  } = useFetch<TvlHistoryRun>(tvlHistoryUrl, { enabled: Boolean(rawData) })
   const constantPriceRange = useMemo(
     () =>
       getTvlHistoryRangeBounds(
@@ -367,7 +378,8 @@ export function TvlOverview() {
       ),
     [historyEndAnchor, rawTvlHistory?.range.from, rawTvlHistory?.range.to, tvlHistoryRange]
   )
-  const constantPriceUrl = buildConstantPriceTvlUrl(constantPriceRange)
+  const constantPriceUrl =
+    buildConstantPriceTvlUrl(constantPriceRange) + (rawData?.datasetId ? `&datasetId=${rawData.datasetId}` : '')
   const {
     data: constantPriceHistory,
     loading: constantPriceLoading,
@@ -409,13 +421,17 @@ export function TvlOverview() {
   }[tvlHistoryBreakdown]
   const tvlHistoryScaleFactor = useMemo(() => {
     if (!rawTvlHistory || rawTvlHistory.mode !== 'raw' || !data?.totalTvl) return 1
-    const completeRows = filterPartialHistoryRows(rawTvlHistory.chart, rawTvlHistory.series.length)
+    const completeRows = rawData?.datasetId
+      ? rawTvlHistory.chart
+      : filterPartialHistoryRows(rawTvlHistory.chart, rawTvlHistory.series.length)
     const latestTotal = getLatestRowTotal(completeRows, rawTvlHistory.series)
     return latestTotal > 0 ? data.totalTvl / latestTotal : 1
-  }, [data?.totalTvl, rawTvlHistory])
+  }, [data?.totalTvl, rawTvlHistory, rawData?.datasetId])
   const tvlHistoryChart = useMemo(() => {
     if (!rawTvlHistory) return { rows: [], series: [] }
-    const completeRows = filterPartialHistoryRows(rawTvlHistory.chart, rawTvlHistory.series.length)
+    const completeRows = rawData?.datasetId
+      ? rawTvlHistory.chart
+      : filterPartialHistoryRows(rawTvlHistory.chart, rawTvlHistory.series.length)
     const scaledRows = scaleRows(completeRows, rawTvlHistory.series, tvlHistoryScaleFactor)
     const topTvlHistory = buildTopTvlHistoryChart(scaledRows, rawTvlHistory.series, tvlHistoryRemainingSeries)
     const labeledHistory =
@@ -424,10 +440,20 @@ export function TvlOverview() {
         : topTvlHistory
     const rangedRows = filterRowsByRange(labeledHistory.rows, tvlHistoryRange)
     return {
-      rows: tvlHistoryBreakdown === 'category' ? rangedRows : addZeroStartPoints(rangedRows, labeledHistory.series),
+      rows:
+        rawData?.datasetId || tvlHistoryBreakdown === 'category'
+          ? rangedRows
+          : addZeroStartPoints(rangedRows, labeledHistory.series),
       series: labeledHistory.series
     }
-  }, [rawTvlHistory, tvlHistoryBreakdown, tvlHistoryRange, tvlHistoryRemainingSeries, tvlHistoryScaleFactor])
+  }, [
+    rawTvlHistory,
+    rawData?.datasetId,
+    tvlHistoryBreakdown,
+    tvlHistoryRange,
+    tvlHistoryRemainingSeries,
+    tvlHistoryScaleFactor
+  ])
   const tvlHistoryRows = useMemo(
     () => addTotalTvlSeries(tvlHistoryChart.rows, tvlHistoryChart.series),
     [tvlHistoryChart.rows, tvlHistoryChart.series]
@@ -457,9 +483,9 @@ export function TvlOverview() {
     if (!constantPriceHistory) return { rows: [], series: [] }
     const sourceRows = selectConstantPriceChart(constantPriceHistory, 'constant-price')
     const series = getAvailableChartSeries(sourceRows)
-    const completeRows = filterPartialHistoryRows(sourceRows, series.length)
+    const completeRows = rawData?.datasetId ? sourceRows : filterPartialHistoryRows(sourceRows, series.length)
     return buildTopTvlHistoryChart(completeRows, series, TVL_HISTORY_REMAINING_CHAIN_SERIES)
-  }, [constantPriceHistory])
+  }, [constantPriceHistory, rawData?.datasetId])
   const isPriceNeutralVisible = isPriceNeutralOverlayVisible(tvlHistoryView, showPriceNeutral)
   const displayedHistoryRows = useMemo(
     () =>
@@ -883,6 +909,7 @@ export function TvlOverview() {
                   <ChainTvlHistory
                     chainId={c.chainId}
                     chainLabel={c.label}
+                    datasetId={rawData?.datasetId}
                     allTimeRange={{
                       from: rawTvlHistory?.range.from ?? historyEndAnchor - 365 * DAY_SECONDS,
                       to: rawTvlHistory?.range.to ?? historyEndAnchor

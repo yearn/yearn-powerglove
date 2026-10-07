@@ -1,6 +1,6 @@
 import { type KeyboardEvent, useCallback, useEffect, useRef, useState } from 'react'
 
-type StatsApiLane = 'tvl' | 'fees' | 'fee-analytics'
+type StatsApiLane = 'tvl' | 'tvl-analytics' | 'fees' | 'fee-analytics'
 
 function isLocalStatsHost(): boolean {
   if (typeof window !== 'undefined') {
@@ -15,8 +15,19 @@ function isLocalStatsHost(): boolean {
 
 export function getStatsApiLane(url: string): StatsApiLane {
   const path = url.split('?')[0].replace(/\/$/, '')
+  if (
+    [
+      '/api/tvl',
+      '/api/tvl/history/runs/latest',
+      '/api/tvl/history/runs/latest/constant-price',
+      '/api/tvl/curation-products',
+      '/api/audit/tree',
+      '/api/comparison'
+    ].includes(path)
+  )
+    return 'tvl'
   if (['/api/fees', '/api/fees/history', '/api/fees/vaults'].includes(path)) return 'fees'
-  return path.startsWith('/api/fees') || path.startsWith('/api/profitability') ? 'fee-analytics' : 'tvl'
+  return path.startsWith('/api/fees') || path.startsWith('/api/profitability') ? 'fee-analytics' : 'tvl-analytics'
 }
 
 export function resolveStatsApiBase(lane: StatsApiLane): string | null {
@@ -24,10 +35,12 @@ export function resolveStatsApiBase(lane: StatsApiLane): string | null {
 
   const configuredUrl = (
     lane === 'tvl'
-      ? import.meta.env.VITE_PUBLIC_YEARN_TVL_API_URL
-      : lane === 'fees'
-        ? import.meta.env.VITE_PUBLIC_YEARN_DATA_API_URL || import.meta.env.VITE_PUBLIC_YEARN_FEES_API_URL
-        : import.meta.env.VITE_PUBLIC_YEARN_FEES_API_URL
+      ? import.meta.env.VITE_PUBLIC_YEARN_DATA_API_URL || import.meta.env.VITE_PUBLIC_YEARN_TVL_API_URL
+      : lane === 'tvl-analytics'
+        ? import.meta.env.VITE_PUBLIC_YEARN_TVL_API_URL
+        : lane === 'fees'
+          ? import.meta.env.VITE_PUBLIC_YEARN_DATA_API_URL || import.meta.env.VITE_PUBLIC_YEARN_FEES_API_URL
+          : import.meta.env.VITE_PUBLIC_YEARN_FEES_API_URL
   )?.trim()
   const legacyUrl = import.meta.env.VITE_PUBLIC_YEARN_METRICS_API_URL?.trim()
   const apiUrl = configuredUrl || legacyUrl
@@ -167,7 +180,8 @@ export function useFetch<T>(url: string, options: UseFetchOptions = {}) {
   }
 }
 
-export function fmt(n: number, decimals = 1): string {
+export function fmt(n: number | null | undefined, decimals = 1): string {
+  if (n == null || !Number.isFinite(n)) return '—'
   if (Math.abs(n) >= 1e9) return `$${(n / 1e9).toFixed(decimals)}B`
   if (Math.abs(n) >= 1e6) return `$${(n / 1e6).toFixed(decimals)}M`
   if (Math.abs(n) >= 1e3) return `$${(n / 1e3).toFixed(decimals)}K`

@@ -37,10 +37,16 @@ export default defineConfig(({ mode }) => {
     legacyMetricsApiTarget ||
     'http://127.0.0.1:3482'
   const yearnDataApiTarget = env.VITE_YEARN_DATA_API_TARGET || env.VITE_PUBLIC_YEARN_DATA_API_URL || yearnFeesApiTarget
+  const migratedTvlApiTarget = env.VITE_YEARN_DATA_API_TARGET || env.VITE_PUBLIC_YEARN_DATA_API_URL || yearnTvlApiTarget
   const statsApiProxy = {
+    '/api/audit/tree': proxyTo(migratedTvlApiTarget),
     '/api/audit': proxyTo(yearnTvlApiTarget),
-    '/api/comparison': proxyTo(yearnTvlApiTarget),
-    '/api/tvl': proxyTo(yearnTvlApiTarget),
+    '/api/comparison/defillama-comparable': proxyTo(yearnTvlApiTarget),
+    '/api/comparison': proxyTo(migratedTvlApiTarget),
+    '/api/tvl/graph': proxyTo(yearnTvlApiTarget),
+    '/api/tvl/overlap': proxyTo(yearnTvlApiTarget),
+    '/api/tvl/vaults': proxyTo(yearnTvlApiTarget),
+    '/api/tvl': proxyTo(migratedTvlApiTarget),
     '/api/fees/stack': proxyTo(yearnFeesApiTarget),
     '/api/fees': proxyTo(yearnDataApiTarget),
     '/api/profitability': proxyTo(yearnFeesApiTarget)

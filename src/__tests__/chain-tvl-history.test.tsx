@@ -49,6 +49,27 @@ afterEach(() => {
 })
 
 describe('chain TVL history drilldown', () => {
+  it('pins native chain history across timeframe changes', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => history
+    } as Response)
+    render(
+      <ChainTvlHistory
+        chainId={1}
+        chainLabel="Ethereum"
+        datasetId="native-dataset"
+        allTimeRange={{ from: 1_900_000_000, to: 2_000_000_000 }}
+      />
+    )
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+    expect(String(fetchMock.mock.calls[0][0])).toContain('datasetId=native-dataset')
+    fireEvent.click(screen.getByRole('button', { name: '90D' }))
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+    expect(String(fetchMock.mock.calls[1][0])).toContain('datasetId=native-dataset')
+  })
+
   it('fetches chain-scoped vault history and refetches when the timeframe changes', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: true,

@@ -49,6 +49,25 @@ function legacySummary(overrides: Partial<LegacyTvlSummary> = {}): LegacyTvlSumm
 }
 
 describe('TVL by Chain adjustment', () => {
+  it('retains explicit unavailable amounts and skips unavailable chart values', () => {
+    const data = normalizeTvlSummary(
+      legacySummary({
+        totalTvl: null,
+        activeVaultTvl: null,
+        retiredVaultTvl: null,
+        overlapExcluded: null,
+        vaultBridgeExcluded: null,
+        tvlByChain: { Katana: null, Ethereum: 100 },
+        overlapByChain: { Katana: null, Ethereum: 10 }
+      })
+    )
+    expect(data.totalTvl).toBeNull()
+    expect(data.activeVaultTvl).toBeNull()
+    expect(data.overlapExcluded).toBeNull()
+    expect(data.vaultBridgeExcluded).toBeNull()
+    expect(buildAdjustedChainTvl(data, 'all')).toEqual([{ chain: 'Ethereum', tvl: 90 }])
+  })
+
   it('subtracts nested and cross-chain overlap from the raw chain TVL', () => {
     const data = normalizeTvlSummary(
       legacySummary({

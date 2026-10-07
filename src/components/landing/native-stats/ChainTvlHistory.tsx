@@ -102,11 +102,13 @@ function ChainTvlTooltip({
 export function ChainTvlHistory({
   chainId,
   chainLabel,
-  allTimeRange
+  allTimeRange,
+  datasetId
 }: {
   chainId: number
   chainLabel: string
   allTimeRange: { from: number; to: number }
+  datasetId?: string
 }) {
   const isDark = useRootDarkMode()
   const [breakdown, setBreakdown] = useState<ChainTvlHistoryBreakdown>('vault')
@@ -114,7 +116,7 @@ export function ChainTvlHistory({
   const [view, setView] = useState<'line' | 'bar'>('line')
   const [showPriceNeutral, setShowPriceNeutral] = useState(true)
   const bounds = getTvlHistoryRangeBounds(range, allTimeRange.to, allTimeRange.from)
-  const url = buildChainTvlHistoryUrl({ breakdown, chainId, ...bounds })
+  const url = buildChainTvlHistoryUrl({ breakdown, chainId, ...bounds }) + (datasetId ? `&datasetId=${datasetId}` : '')
   const { data, loading, error, status, retry } = useFetch<ConstantPriceTvlHistory>(url)
   const colors = useMemo(() => buildBlueShadePalette(isDark), [isDark])
   const fillId = `chain-tvl-fill-${useId().replace(/:/g, '')}`

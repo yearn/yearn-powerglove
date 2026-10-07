@@ -10,21 +10,23 @@ export interface RetiredVaultSummary {
 }
 
 export interface TvlSummary {
-  totalTvl: number
-  activeVaultTvl: number
-  retiredVaultTvl: number
-  v1Tvl: number
-  v2Tvl: number
-  v3Tvl: number
-  curationTvl: number
-  overlapExcluded: number
-  vaultBridgeExcluded: number
-  crossChainOverlapByCategory: Record<VaultCategory, number>
-  overlapByChain: Record<string, number>
-  crossChainOverlapByChain: Record<string, number>
-  tvlByChain: Record<string, number>
-  tvlByCategory: Record<VaultCategory, number>
-  retiredTvlByCategory: Record<VaultCategory, number>
+  datasetId?: string
+  asOfTimestamp?: number
+  totalTvl: number | null
+  activeVaultTvl: number | null
+  retiredVaultTvl: number | null
+  v1Tvl: number | null
+  v2Tvl: number | null
+  v3Tvl: number | null
+  curationTvl: number | null
+  overlapExcluded: number | null
+  vaultBridgeExcluded: number | null
+  crossChainOverlapByCategory: Record<VaultCategory, number | null>
+  overlapByChain: Record<string, number | null>
+  crossChainOverlapByChain: Record<string, number | null>
+  tvlByChain: Record<string, number | null>
+  tvlByCategory: Record<VaultCategory, number | null>
+  retiredTvlByCategory: Record<VaultCategory, number | null>
   retiredVaults: RetiredVaultSummary[]
   vaultCount: {
     total: number
@@ -63,7 +65,7 @@ export interface ConstantPriceTvlPoint {
   timestamp: number
   series: string
   actualTvlUsd: number
-  constantPriceTvlUsd: number
+  constantPriceTvlUsd: number | null
 }
 
 export interface ConstantPriceReference {
@@ -88,11 +90,11 @@ export interface ConstantPriceTvlHistory {
   constantPriceChart: TvlHistoryChartRow[]
   references: ConstantPriceReference[]
   meta: {
-    rawPointCount: number
-    valuedVaults: number
-    skippedVaults: number
-    depegCandidatesSkipped: number
-    referenceWindowPoints: number
+    rawPointCount?: number
+    valuedVaults?: number
+    skippedVaults?: number
+    depegCandidatesSkipped?: number
+    referenceWindowPoints?: number
     appendedCurrentActualSnapshot?: boolean
     currentActualSnapshot?: {
       timestamp: number

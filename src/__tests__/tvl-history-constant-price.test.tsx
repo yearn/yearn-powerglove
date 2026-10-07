@@ -210,5 +210,6 @@ describe('constant-price TVL history integration', () => {
       'Coverage excludes 1 vault without a usable reference price; 2 valued.'
     )
     expect(getPriceNeutralCoverageLabel({ skippedVaults: 0, valuedVaults: 2 })).toBeNull()
+    expect(getPriceNeutralCoverageLabel({})).toBeNull()
   })
 })

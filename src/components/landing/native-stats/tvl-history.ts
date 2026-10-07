@@ -199,9 +199,9 @@ export function getTvlHistoryErrorMessage({
 }
 
 export function getPriceNeutralCoverageLabel(
-  meta: Pick<ConstantPriceTvlHistory['meta'], 'skippedVaults' | 'valuedVaults'>
+  meta: Partial<Pick<ConstantPriceTvlHistory['meta'], 'skippedVaults' | 'valuedVaults'>>
 ): string | null {
-  if (meta.skippedVaults <= 0) return null
+  if (meta.skippedVaults === undefined || meta.valuedVaults === undefined || meta.skippedVaults <= 0) return null
   return `Coverage excludes ${meta.skippedVaults.toLocaleString()} vault${
     meta.skippedVaults === 1 ? '' : 's'
   } without a usable reference price; ${meta.valuedVaults.toLocaleString()} valued.`
