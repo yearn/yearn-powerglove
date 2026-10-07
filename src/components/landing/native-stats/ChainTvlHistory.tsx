@@ -327,7 +327,6 @@ export function ChainTvlHistory({
                       strokeOpacity={0.5}
                       strokeWidth={1.1}
                       isAnimationActive={false}
-                      connectNulls
                     />
                   ))}
                   <Line

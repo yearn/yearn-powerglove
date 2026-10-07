@@ -793,7 +793,6 @@ export function TvlOverview() {
                         fillOpacity={0.16}
                         strokeOpacity={0.54}
                         strokeWidth={1.25}
-                        connectNulls
                         isAnimationActive={false}
                       />
                     ))}
