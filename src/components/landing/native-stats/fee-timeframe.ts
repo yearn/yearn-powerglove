@@ -2,6 +2,16 @@ import type { ChartDateRange } from '@/components/charts/chart-utils'
 import type { FeeHistoryInterval } from './canonical-fees'
 import { utcMonthStartTimestamp } from './fee-history'
 
+export function defaultFeeTimeRange(now: number): ChartDateRange {
+  const end = new Date(now * 1000)
+  end.setUTCHours(0, 0, 0, 0)
+  // End on the Sunday of the latest completed Monday-to-Monday UTC week.
+  end.setUTCDate(end.getUTCDate() - ((end.getUTCDay() + 6) % 7) - 1)
+  const start = new Date(end)
+  start.setUTCFullYear(start.getUTCFullYear() - 4)
+  return { start: start.toISOString().slice(0, 10), end: end.toISOString().slice(0, 10) }
+}
+
 export function resolveFeeTimeframe(timeframe: '1y' | 'all' | ChartDateRange, now: number) {
   const currentMonthStart = utcMonthStartTimestamp(now)
   if (typeof timeframe !== 'string') {

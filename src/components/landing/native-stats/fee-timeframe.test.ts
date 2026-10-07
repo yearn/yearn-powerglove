@@ -1,9 +1,26 @@
 import { describe, expect, it } from 'vitest'
-import { resolveFeeTimeframe } from './fee-timeframe'
+import { defaultFeeTimeRange, resolveFeeTimeframe } from './fee-timeframe'
 
 const now = Date.parse('2026-10-06T18:00:00Z') / 1000
 
 describe('fee chart timeframe', () => {
+  it('defaults to the last four calendar years ending with a completed UTC week', () => {
+    expect(defaultFeeTimeRange(now)).toEqual({ start: '2022-10-04', end: '2026-10-04' })
+    expect(resolveFeeTimeframe(defaultFeeTimeRange(now), now)).toEqual({
+      since: Date.parse('2022-10-04T00:00:00Z') / 1000,
+      until: Date.parse('2026-10-05T00:00:00Z') / 1000,
+      interval: 'monthly'
+    })
+    expect(defaultFeeTimeRange(Date.parse('2026-10-04T23:59:59Z') / 1000)).toEqual({
+      start: '2022-09-27',
+      end: '2026-09-27'
+    })
+    expect(defaultFeeTimeRange(Date.parse('2026-10-05T00:00:00Z') / 1000)).toEqual({
+      start: '2022-10-04',
+      end: '2026-10-04'
+    })
+  })
+
   it('preserves the completed-year and all-time presets', () => {
     expect(resolveFeeTimeframe('1y', now)).toEqual({
       since: Date.parse('2025-10-01T00:00:00Z') / 1000,

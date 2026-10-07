@@ -15,6 +15,7 @@ vi.mock('./ChainFeeHistoryCharts', () => ({
 vi.mock('./VaultTypeFeeCharts', () => ({
   VaultTypeFeeCharts: ({ view }: { view: string }) => <div data-testid="vault-view" data-view={view} />
 }))
+vi.mock('./FeeTimeRangeSlider', () => ({ FeeTimeRangeSlider: () => null }))
 vi.mock('./hooks', async (importOriginal) => ({
   ...(await importOriginal<typeof import('./hooks')>()),
   useFetch: (url: string) => ({
@@ -64,6 +65,31 @@ afterEach(() => {
 })
 
 describe('shared fee chart view', () => {
+  it('preserves the chart view and mounted controls when collapsing and reopening the toolbar', () => {
+    render(
+      <FeesPanel
+        chainSelector={
+          <select aria-label="Chain" defaultValue="10">
+            <option value="10">Optimism</option>
+          </select>
+        }
+      />
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Cumulative' }))
+    const chain = screen.getByRole('combobox', { name: 'Chain' })
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse chart controls' }))
+    expect(screen.queryByRole('group', { name: 'Chart view' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Expand chart controls' }).getAttribute('aria-expanded')).toBe('false')
+    expect(screen.getByRole('heading', { name: 'Cumulative Earnings & Fees' })).toBeTruthy()
+    expect(screen.getByTestId('chain-view').getAttribute('data-view')).toBe('cumulative')
+    expect(screen.getByTestId('vault-view').getAttribute('data-view')).toBe('cumulative')
+    fireEvent.click(screen.getByRole('button', { name: 'Expand chart controls' }))
+    expect(screen.getByRole('combobox', { name: 'Chain' })).toBe(chain)
+    expect((chain as HTMLSelectElement).value).toBe('10')
+    expect(screen.getByRole('button', { name: 'Cumulative' }).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByRole('button', { name: 'Collapse chart controls' }).getAttribute('aria-expanded')).toBe('true')
+  })
+
   it('switches all chart groups together and preserves hidden main-chart series across modes', () => {
     vi.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-10-06T18:00:00Z'))
     render(<FeesPanel chainSelector={<select aria-label="Chain" />} />)

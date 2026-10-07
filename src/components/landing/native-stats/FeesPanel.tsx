@@ -1,5 +1,5 @@
-import { ChevronDown, ChevronRight } from 'lucide-react'
-import { Fragment, type ReactNode, useContext, useEffect, useMemo, useState } from 'react'
+import { ChevronDown, ChevronRight, ChevronUp } from 'lucide-react'
+import { Fragment, type ReactNode, useContext, useEffect, useId, useMemo, useState } from 'react'
 import {
   CartesianGrid,
   Cell,
@@ -14,7 +14,6 @@ import {
   ZAxis
 } from 'recharts'
 import type { ChartDateRange } from '@/components/charts/chart-utils'
-import { CustomTimeframePicker } from '@/components/charts/custom-timeframe-picker'
 import { Tooltip as HelpTooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { ChainFeeHistoryCharts, type ChainFeeHistoryView } from './ChainFeeHistoryCharts'
 import {
@@ -24,6 +23,7 @@ import {
   type FeeHistoryInterval,
   isCanonicalFeeSummary
 } from './canonical-fees'
+import { FeeTimeRangeSlider } from './FeeTimeRangeSlider'
 import {
   buildCumulativeFeeHistorySeries,
   buildFeeHistorySeries,
@@ -32,7 +32,7 @@ import {
   type FeeHistoryPoint,
   formatFeeHistoryTick
 } from './fee-history'
-import { resolveFeeTimeframe } from './fee-timeframe'
+import { defaultFeeTimeRange, resolveFeeTimeframe } from './fee-timeframe'
 import {
   bpsPct,
   CHAIN_COLORS,
@@ -159,11 +159,6 @@ function flattenTree(
   })
   return rows
 }
-
-const TIME_PRESETS = [
-  { value: '1y', label: '1 Year', ariaLabel: '1 year' },
-  { value: 'all', label: 'All Time', ariaLabel: 'All time' }
-] as const
 
 function timeframeButtonClass(active: boolean) {
   return `min-w-0 rounded-none px-3 py-2 text-center text-xs font-medium transition-colors sm:text-sm ${
@@ -345,17 +340,16 @@ function FeeHistoryChart({
 
 export function FeesPanel({ chainSelector }: { chainSelector: ReactNode }) {
   const { chainFilter, density, setLastFetchedAt } = useContext(StatsContext)
-  const [timePreset, setTimePreset] = useState<'1y' | 'all' | 'custom'>('all')
-  const [customDateRange, setCustomDateRange] = useState<ChartDateRange | null>(null)
+  const [selectedRange, setSelectedRange] = useState<ChartDateRange>(() =>
+    defaultFeeTimeRange(Math.floor(Date.now() / 1000))
+  )
   const [chartView, setChartView] = useState<ChainFeeHistoryView>('periodic')
+  const [controlsExpanded, setControlsExpanded] = useState(true)
+  const controlsId = useId()
   const [showLoadingOverlay, setShowLoadingOverlay] = useState(false)
 
   const nowTs = Math.floor(Date.now() / 1000)
-  const {
-    since: sinceTs,
-    until: untilTs,
-    interval: historyInterval
-  } = resolveFeeTimeframe(timePreset === 'custom' ? (customDateRange ?? 'all') : timePreset, nowTs)
+  const { since: sinceTs, until: untilTs, interval: historyInterval } = resolveFeeTimeframe(selectedRange, nowTs)
   const completedUntilTs = Math.min(untilTs, nowTs)
   const feeFilters = new URLSearchParams()
   if (sinceTs != null) {
@@ -533,56 +527,41 @@ export function FeesPanel({ chainSelector }: { chainSelector: ReactNode }) {
   }, [isRefreshing])
 
   const controls = (
-    <div className="fees-toolbar">
-      <span
-        className="text-dim"
-        style={{ fontSize: '0.75rem', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em' }}
+    <div key="fees-controls" className={`fees-toolbar${controlsExpanded ? '' : ' fees-toolbar-collapsed'}`}>
+      {!controlsExpanded && <span className="fees-controls-label text-dim">Chart controls</span>}
+      <div id={controlsId} className="fees-toolbar-controls" hidden={!controlsExpanded}>
+        {chainSelector}
+        <fieldset className="fees-chart-view flex flex-wrap gap-2" aria-label="Chart view">
+          {(['periodic', 'cumulative'] as const).map((view) => (
+            <button
+              key={view}
+              type="button"
+              className={timeframeButtonClass(chartView === view)}
+              aria-pressed={chartView === view}
+              onClick={() => setChartView(view)}
+            >
+              {view === 'cumulative' ? 'Cumulative' : historyInterval === 'weekly' ? 'Weekly' : 'Monthly'}
+            </button>
+          ))}
+        </fieldset>
+        <FeeTimeRangeSlider datasetId={summary?.datasetId} selected={selectedRange} onApply={setSelectedRange} />
+      </div>
+      <button
+        type="button"
+        className="fees-toolbar-collapse"
+        aria-expanded={controlsExpanded}
+        aria-controls={controlsId}
+        aria-label={controlsExpanded ? 'Collapse chart controls' : 'Expand chart controls'}
+        onClick={() => setControlsExpanded((expanded) => !expanded)}
       >
-        Time Range
-      </span>
-      <fieldset className="fees-timeframes flex flex-wrap gap-2" aria-label="Time range">
-        {TIME_PRESETS.map((preset) => (
-          <button
-            key={preset.label}
-            type="button"
-            className={timeframeButtonClass(timePreset === preset.value)}
-            onClick={() => setTimePreset(preset.value)}
-            aria-label={preset.ariaLabel}
-            aria-pressed={timePreset === preset.value}
-          >
-            {preset.label}
-          </button>
-        ))}
-        <CustomTimeframePicker
-          value={customDateRange}
-          active={timePreset === 'custom'}
-          className={timeframeButtonClass(timePreset === 'custom')}
-          onApply={(range) => {
-            setCustomDateRange(range)
-            setTimePreset('custom')
-          }}
-        />
-      </fieldset>
-      <fieldset className="fees-chart-view flex flex-wrap gap-2" aria-label="Chart view">
-        {(['periodic', 'cumulative'] as const).map((view) => (
-          <button
-            key={view}
-            type="button"
-            className={timeframeButtonClass(chartView === view)}
-            aria-pressed={chartView === view}
-            onClick={() => setChartView(view)}
-          >
-            {view === 'cumulative' ? 'Cumulative' : historyInterval === 'weekly' ? 'Weekly' : 'Monthly'}
-          </button>
-        ))}
-      </fieldset>
-      {chainSelector}
+        {controlsExpanded ? <ChevronUp size={18} aria-hidden="true" /> : <ChevronDown size={18} aria-hidden="true" />}
+      </button>
     </div>
   )
 
   if (summaryError || historyError || vaultError || (summary && !validSummary))
     return (
-      <>
+      <div className="fees-panel">
         {controls}
         <div className="card">
           <h2>Fee data could not be loaded</h2>
@@ -598,23 +577,23 @@ export function FeesPanel({ chainSelector }: { chainSelector: ReactNode }) {
             Retry fee data
           </button>
         </div>
-      </>
+      </div>
     )
 
   if (!hasData && (l1 || l2 || l3))
     return (
-      <>
+      <div className="fees-panel" aria-busy="true">
         {controls}
         <div className="fees-panel fees-panel-initial" aria-busy="true">
           <div className="fees-loading-overlay fees-loading-overlay-initial">
             <FeesLoadingStatus label="Loading fee data" />
           </div>
-          <SkeletonCards count={5} />
+          <SkeletonCards count={4} />
           <SkeletonChart />
         </div>
-      </>
+      </div>
     )
-  if (!hasData) return controls
+  if (!hasData) return <div className="fees-panel">{controls}</div>
 
   return (
     <div className="fees-panel" aria-busy={isFetching}>

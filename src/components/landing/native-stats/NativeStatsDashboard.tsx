@@ -6,24 +6,11 @@ import { CurationProductsPanel } from './CurationProductsPanel'
 import { ErrorBoundary } from './ErrorBoundary'
 import { FeesPanel } from './FeesPanel'
 import { HAS_FEES_API, HAS_TVL_API } from './hooks'
+import { StatsChainSelector } from './StatsChainSelector'
 import { StatsContext, type StatsDensity } from './StatsContext'
 import { STATS_TABS, type StatsTab } from './stats-navigation'
 import { TvlOverview } from './TvlOverview'
 import './styles.css'
-
-const CHAINS = [
-  { id: 'all', label: 'All Chains' },
-  { id: '1', label: 'Ethereum' },
-  { id: '10', label: 'Optimism' },
-  { id: '137', label: 'Polygon' },
-  { id: '999', label: 'HyperEVM' },
-  { id: '42161', label: 'Arbitrum' },
-  { id: '8453', label: 'Base' },
-  { id: '100', label: 'Gnosis' },
-  { id: '747474', label: 'Katana' },
-  { id: '80094', label: 'Berachain' },
-  { id: '146', label: 'Sonic' }
-]
 
 function MissingApiNotice({ lane }: { lane: 'TVL' | 'fees' }) {
   const environmentVariable = lane === 'TVL' ? 'VITE_PUBLIC_YEARN_TVL_API_URL' : 'VITE_PUBLIC_YEARN_FEES_API_URL'
@@ -68,20 +55,7 @@ export function NativeStatsDashboard({ tab, onTabChange }: { tab: StatsTab; onTa
     [chainFilter, lastFetchedAt]
   )
 
-  const chainSelector = (
-    <select
-      className="filter-select"
-      aria-label="Chain"
-      value={chainFilter}
-      onChange={(event) => setChainFilter(event.target.value)}
-    >
-      {CHAINS.map((chain) => (
-        <option key={chain.id} value={chain.id}>
-          {chain.label}
-        </option>
-      ))}
-    </select>
-  )
+  const chainSelector = <StatsChainSelector value={chainFilter} onValueChange={setChainFilter} />
 
   return (
     <StatsContext.Provider value={contextValue}>
