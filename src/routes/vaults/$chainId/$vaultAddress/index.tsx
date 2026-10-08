@@ -23,8 +23,7 @@ import { useReallocationData } from '@/hooks/useReallocationData'
 import { supportsYearnVaultAction } from '@/hooks/useStrategiesData'
 import { useVaultPageData } from '@/hooks/useVaultPageData'
 import { useYvUsdChartData } from '@/hooks/useYvUsdChartData'
-import { buildPairedApyDisplay, buildSingleApyDisplay } from '@/lib/apy-display'
-import { isLegacyVaultType } from '@/utils/vaultDataUtils'
+import { buildPairedApyDisplay } from '@/lib/apy-display'
 import { getVaultOverrideDisplayItems } from '@/utils/vaultOverrides'
 
 function InvalidVaultParamsPage() {
@@ -228,8 +227,6 @@ function ValidVaultPage({ chainId, vaultAddress }: { chainId: string; vaultAddre
     lockedFees: vaultDetails?.pairedFees?.locked ?? null
   })
 
-  const legacyVault = vaultDetails ? isLegacyVaultType(vaultDetails) : false
-
   const mainInfoPanelProps = React.useMemo(() => {
     if (!mainInfoPanelData) return null
     const pairedEstimatedApy = vaultDetails?.pairedEstimatedApy
@@ -244,15 +241,10 @@ function ValidVaultPage({ chainId, vaultAddress }: { chainId: string; vaultAddre
       }
     }
 
-    return {
-      ...mainInfoPanelData,
-      oneDayAPY: buildSingleApyDisplay(legacyVault ? null : vaultDetails?.forwardApyNet)
-    }
+    return mainInfoPanelData
   }, [
     mainInfoPanelData,
-    legacyVault,
     isYvUsd,
-    vaultDetails?.forwardApyNet,
     vaultDetails?.pairedEstimatedApy,
     vaultDetails?.pairedSevenDayApy,
     vaultDetails?.pairedThirtyDayApy

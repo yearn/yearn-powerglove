@@ -1,5 +1,6 @@
 import { getAddress, isAddress } from 'viem'
 import type { ChainId } from '@/constants/chains'
+import { KATANA_CHAIN_ID } from '@/lib/katana-apy'
 import { resolveOracleNetApy } from '@/lib/oracle-apy'
 import type {
   KongNullableNumberish,
@@ -232,6 +233,30 @@ export const resolveEstimatedApy = (
   return { value: null, source: null }
 }
 
+// Match yearn.fi's Katana base-rate precedence, then add app rewards once.
+const resolveVaultEstimatedApy = (
+  chainId: number,
+  performance: KongVaultPerformance | null | undefined,
+  fees: { managementFeeBps: number; performanceFeeBps: number },
+  appRewardsApr: number | null
+): { value: number | null; source: EstimatedApySource | null } => {
+  if (chainId !== KATANA_CHAIN_ID) {
+    return resolveEstimatedApy(performance, fees)
+  }
+
+  const base =
+    toNumberOrNull(
+      performance?.estimated?.apy,
+      performance?.estimated?.apr,
+      performance?.oracle?.netAPY,
+      performance?.oracle?.apy,
+      performance?.oracle?.netAPR,
+      performance?.oracle?.apr,
+      performance?.historical?.net
+    ) ?? 0
+  return { value: base + (appRewardsApr ?? 0), source: 'est-katana' }
+}
+
 const resolveYearnFlag = (inclusion?: Record<string, boolean>, explicitYearn?: boolean, fallback = true): boolean => {
   if (typeof inclusion?.isYearn === 'boolean') {
     return inclusion.isYearn
@@ -458,10 +483,16 @@ export const mapKongListItemToVault = (item: KongVaultListItem): Vault => {
   const historical = performance?.historical
   const managementFee = normalizeFeeToBps(item.fees?.managementFee)
   const performanceFee = normalizeFeeToBps(item.fees?.performanceFee)
-  const estimatedApy = resolveEstimatedApy(performance, {
-    managementFeeBps: managementFee,
-    performanceFeeBps: performanceFee
-  })
+  const katanaAppRewardsApr = toNumberOrNull(performance?.estimated?.components?.katanaAppRewardsAPR)
+  const estimatedApy = resolveVaultEstimatedApy(
+    item.chainId,
+    performance,
+    {
+      managementFeeBps: managementFee,
+      performanceFeeBps: performanceFee
+    },
+    katanaAppRewardsApr
+  )
 
   return {
     address: normalizeAddress(item.address),
@@ -505,6 +536,7 @@ export const mapKongListItemToVault = (item: KongVaultListItem): Vault => {
     },
     managementFee,
     performanceFee,
+    katanaAppRewardsApr,
     forwardApyNet: estimatedApy.value,
     oracleNetApy: resolveOracleNetApy({
       netApy: toNumberOrNull(performance?.oracle?.netAPY),
@@ -540,10 +572,17 @@ export const mapKongSnapshotToVaultExtended = (
     return acc
   }, {})
 
-  const estimatedApy = resolveEstimatedApy(performance, {
-    managementFeeBps: managementFee,
-    performanceFeeBps: performanceFee
-  })
+  const katanaAppRewardsApr =
+    toNumberOrNull(performance?.estimated?.components?.katanaAppRewardsAPR) ?? baseVault?.katanaAppRewardsApr ?? null
+  const estimatedApy = resolveVaultEstimatedApy(
+    snapshot.chainId,
+    performance,
+    {
+      managementFeeBps: managementFee,
+      performanceFeeBps: performanceFee
+    },
+    katanaAppRewardsApr
+  )
   const hasSnapshotPerformance = performance !== null && performance !== undefined
   const forwardApyNet = hasSnapshotPerformance ? estimatedApy.value : (baseVault?.forwardApyNet ?? null)
   const estimatedApySource = hasSnapshotPerformance ? estimatedApy.source : (baseVault?.estimatedApySource ?? null)
@@ -599,6 +638,7 @@ export const mapKongSnapshotToVaultExtended = (
     },
     managementFee,
     performanceFee,
+    katanaAppRewardsApr,
     forwardApyNet,
     oracleNetApy:
       (hasSnapshotPerformance

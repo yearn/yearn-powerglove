@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { isYvUsdAddress } from '@/constants/featuredVaults'
-import { buildSingleApyDisplay } from '@/lib/apy-display'
 import { formatTvlDisplay } from '@/lib/formatters'
+import { buildKatanaApyDisplay, getSevenDayDisplayApy, getThirtyDayDisplayApy } from '@/lib/katana-apy'
 import type { MainInfoPanelProps } from '@/types/dataTypes'
 import type { TokenAsset } from '@/types/tokenAsset'
 import type { VaultExtended } from '@/types/vaultTypes'
@@ -55,8 +55,8 @@ export function useMainInfoPanelData({
     // APY formatting
     const isLegacyVault = isLegacyVaultType(vaultDetails)
     const forwardApyNet = isLegacyVault ? null : (vaultDetails.forwardApyNet ?? null)
-    const oneDayAPY = buildSingleApyDisplay(isLegacyVault ? null : forwardApyNet)
-    const thirtyDayAPY = buildSingleApyDisplay(vaultDetails.apy?.monthlyNet)
+    const oneDayAPY = buildKatanaApyDisplay(vaultDetails, isLegacyVault ? null : forwardApyNet)
+    const thirtyDayAPY = buildKatanaApyDisplay(vaultDetails, getThirtyDayDisplayApy(vaultDetails))
 
     // Fee formatting
     const { managementFee, performanceFee } = formatVaultMetrics(vaultDetails)
@@ -76,7 +76,7 @@ export function useMainInfoPanelData({
       compactTotalSupply: formatTvlDisplay(vaultDetails.tvl?.close ?? 0),
       network,
       oneDayAPY,
-      sevenDayAPY: buildSingleApyDisplay(vaultDetails.apy?.weeklyNet),
+      sevenDayAPY: buildKatanaApyDisplay(vaultDetails, getSevenDayDisplayApy(vaultDetails)),
       thirtyDayAPY,
       managementFee,
       performanceFee,

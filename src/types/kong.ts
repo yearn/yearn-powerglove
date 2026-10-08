@@ -13,6 +13,7 @@ export type KongVaultPerformance = {
     apy?: KongNullableNumberish
     type?: string | null
     components?: {
+      katanaAppRewardsAPR?: KongNullableNumberish
       boost?: KongNullableNumberish
       poolAPY?: KongNullableNumberish
       boostedAPR?: KongNullableNumberish
