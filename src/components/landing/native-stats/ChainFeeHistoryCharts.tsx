@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import type { StatsChartType } from './ChartTypeToggle'
 import type { FeeHistoryInterval } from './canonical-fees'
 import { buildChainFeeHistorySeries } from './chain-fee-history'
 import { FeeBreakdownChart } from './FeeBreakdownChart'
@@ -13,13 +14,15 @@ export function ChainFeeHistoryCharts({
   chainIds,
   periods,
   view,
-  interval
+  interval,
+  renderType = 'bar'
 }: {
   query: string
   chainIds: number[]
   periods: FeeHistoryPeriod[]
   view: ChainFeeHistoryView
   interval: FeeHistoryInterval
+  renderType?: StatsChartType
 }) {
   const { data, loading, error, retry } = useChainFeeHistories(query, chainIds)
   const chartSeries = chainIds.map((chainId) => ({
@@ -43,6 +46,7 @@ export function ChainFeeHistoryCharts({
       ) : (
         <>
           <FeeBreakdownChart
+            renderType={renderType}
             title="Earnings by Chain"
             subtitle="Gross gains less losses"
             metric="earnings"
@@ -51,6 +55,7 @@ export function ChainFeeHistoryCharts({
             interval={interval}
           />
           <FeeBreakdownChart
+            renderType={renderType}
             title="Fees by Chain"
             subtitle="Gross fees charged"
             metric="fees"

@@ -1,10 +1,11 @@
 import { ChevronDown, ChevronRight, ChevronUp } from 'lucide-react'
 import { Fragment, type ReactNode, useContext, useEffect, useId, useMemo, useState } from 'react'
 import {
+  Bar,
   CartesianGrid,
   Cell,
+  ComposedChart,
   Line,
-  LineChart,
   ResponsiveContainer,
   Scatter,
   ScatterChart,
@@ -16,6 +17,7 @@ import {
 import type { ChartDateRange } from '@/components/charts/chart-utils'
 import { Tooltip as HelpTooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { ChainFeeHistoryCharts, type ChainFeeHistoryView } from './ChainFeeHistoryCharts'
+import { ChartTypeToggle, type StatsChartType } from './ChartTypeToggle'
 import {
   type CanonicalFeeHistory,
   type CanonicalFeeSummary,
@@ -24,6 +26,7 @@ import {
   isCanonicalFeeSummary
 } from './canonical-fees'
 import { FeeTimeRangeSlider } from './FeeTimeRangeSlider'
+import { FeeYieldChart } from './FeeYieldChart'
 import {
   buildCumulativeFeeHistorySeries,
   buildFeeHistorySeries,
@@ -231,13 +234,15 @@ function FeeHistoryChart({
   data,
   series,
   description,
-  interval
+  interval,
+  renderType
 }: {
   title: string
   data: FeeHistoryPoint[]
   series: FeeHistoryChartSeries[]
   description: string
   interval: FeeHistoryInterval
+  renderType: StatsChartType
 }) {
   const [visibleSeries, setVisibleSeries] = useState<Set<FeeHistoryChartSeries['key']>>(
     () => new Set(series.map((item) => item.key))
@@ -292,7 +297,7 @@ function FeeHistoryChart({
       </div>
       <div className="chart-container fee-history-chart">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
+          <ComposedChart data={data} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
             <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
             <XAxis
               dataKey="period"
@@ -317,20 +322,31 @@ function FeeHistoryChart({
               ]}
               cursor={{ stroke: 'rgba(6, 87, 249, 0.22)' }}
             />
-            {activeSeries.map((item) => (
-              <Line
-                key={item.key}
-                type="monotone"
-                dataKey={item.dataKey}
-                stroke={item.color}
-                strokeDasharray={item.strokeDasharray}
-                strokeWidth={2}
-                isAnimationActive={false}
-                dot={false}
-                name={item.dataKey}
-              />
-            ))}
-          </LineChart>
+            {activeSeries.map((item) =>
+              renderType === 'bar' ? (
+                <Bar
+                  key={item.key}
+                  dataKey={item.dataKey}
+                  name={item.dataKey}
+                  fill={item.color}
+                  maxBarSize={24}
+                  isAnimationActive={false}
+                />
+              ) : (
+                <Line
+                  key={item.key}
+                  type="monotone"
+                  dataKey={item.dataKey}
+                  stroke={item.color}
+                  strokeDasharray={item.strokeDasharray}
+                  strokeWidth={2}
+                  isAnimationActive={false}
+                  dot={false}
+                  name={item.dataKey}
+                />
+              )
+            )}
+          </ComposedChart>
         </ResponsiveContainer>
       </div>
       <span className="sr-only">{description}</span>
@@ -344,6 +360,7 @@ export function FeesPanel({ chainSelector }: { chainSelector: ReactNode }) {
     defaultFeeTimeRange(Math.floor(Date.now() / 1000))
   )
   const [chartView, setChartView] = useState<ChainFeeHistoryView>('periodic')
+  const [renderType, setRenderType] = useState<StatsChartType>('bar')
   const [controlsExpanded, setControlsExpanded] = useState(true)
   const controlsId = useId()
   const [showLoadingOverlay, setShowLoadingOverlay] = useState(false)
@@ -544,6 +561,7 @@ export function FeesPanel({ chainSelector }: { chainSelector: ReactNode }) {
             </button>
           ))}
         </fieldset>
+        <ChartTypeToggle value={renderType} onValueChange={setRenderType} label="fee and earnings charts" />
         <FeeTimeRangeSlider datasetId={summary?.datasetId} selected={selectedRange} onApply={setSelectedRange} />
       </div>
       <button
@@ -630,6 +648,7 @@ export function FeesPanel({ chainSelector }: { chainSelector: ReactNode }) {
       {/* ---- Full-width fee history charts ---- */}
       <div className="row fee-chart-row">
         <FeeHistoryChart
+          renderType={renderType}
           title={
             chartView === 'cumulative'
               ? 'Cumulative Earnings & Fees'
@@ -660,10 +679,20 @@ export function FeesPanel({ chainSelector }: { chainSelector: ReactNode }) {
               strokeDasharray: '6 3'
             }
           ]}
-          description={`Line chart comparing ${chartView === 'cumulative' ? 'cumulative' : historyInterval} canonical gross gains, net yield, and gross fees over completed periods in the selected time range.`}
+          description={`${renderType === 'bar' ? 'Bar' : 'Line'} chart comparing ${chartView === 'cumulative' ? 'cumulative' : historyInterval} canonical gross gains, net yield, and gross fees over completed periods in the selected time range.`}
+        />
+
+        <FeeYieldChart periods={feeHistorySeries} interval={historyInterval} view={chartView} renderType={renderType} />
+        <FeeYieldChart
+          metric="earnings"
+          periods={feeHistorySeries}
+          interval={historyInterval}
+          view={chartView}
+          renderType={renderType}
         />
 
         <ChainFeeHistoryCharts
+          renderType={renderType}
           query={historyFilters.toString()}
           chainIds={historyChainIds}
           periods={feeHistorySeries}
@@ -672,6 +701,7 @@ export function FeesPanel({ chainSelector }: { chainSelector: ReactNode }) {
         />
 
         <VaultTypeFeeCharts
+          renderType={renderType}
           query={historyFilters.toString()}
           periods={feeHistorySeries}
           interval={historyInterval}

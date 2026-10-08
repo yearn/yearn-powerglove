@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { Area, Bar, CartesianGrid, ComposedChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import type { NameType, Payload, ValueType } from 'recharts/types/component/DefaultTooltipContent'
+import type { StatsChartType } from './ChartTypeToggle'
 import type { FeeHistoryInterval } from './canonical-fees'
 import type { ChainFeeHistoryPoint, ChainFeeMetric } from './chain-fee-history'
 import { formatFeeHistoryTick } from './fee-history'
@@ -57,7 +58,8 @@ export function FeeBreakdownChart({
   series,
   title,
   subtitle,
-  interval
+  interval,
+  renderType = 'bar'
 }: {
   metric: ChainFeeMetric
   data: ChainFeeHistoryPoint[]
@@ -65,6 +67,7 @@ export function FeeBreakdownChart({
   title: string
   subtitle: string
   interval: FeeHistoryInterval
+  renderType?: StatsChartType
 }) {
   const [hiddenSeries, setHiddenSeries] = useState<Set<string>>(() => new Set())
   const activeSeries = series.filter((item) => !hiddenSeries.has(item.key))
@@ -112,7 +115,7 @@ export function FeeBreakdownChart({
       ) : (
         <div className="chart-container fee-history-chart">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={data} stackOffset="none" margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
+            <ComposedChart data={data} stackOffset="none" margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
               <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
               <XAxis
                 dataKey="period"
@@ -130,20 +133,32 @@ export function FeeBreakdownChart({
                 width={68}
               />
               <Tooltip content={<ChainFeeTooltip />} />
-              {activeSeries.map((item) => (
-                <Area
-                  key={item.key}
-                  type="linear"
-                  dataKey={(point: ChainFeeHistoryPoint) => point[metric][item.key]}
-                  name={item.label}
-                  stackId="chains"
-                  stroke={item.color}
-                  fill={item.color}
-                  fillOpacity={0.35}
-                  isAnimationActive={false}
-                />
-              ))}
-            </AreaChart>
+              {activeSeries.map((item) =>
+                renderType === 'bar' ? (
+                  <Bar
+                    key={item.key}
+                    dataKey={(point: ChainFeeHistoryPoint) => point[metric][item.key]}
+                    name={item.label}
+                    stackId="chains"
+                    fill={item.color}
+                    maxBarSize={32}
+                    isAnimationActive={false}
+                  />
+                ) : (
+                  <Area
+                    key={item.key}
+                    type="linear"
+                    dataKey={(point: ChainFeeHistoryPoint) => point[metric][item.key]}
+                    name={item.label}
+                    stackId="chains"
+                    stroke={item.color}
+                    fill={item.color}
+                    fillOpacity={0.35}
+                    isAnimationActive={false}
+                  />
+                )
+              )}
+            </ComposedChart>
           </ResponsiveContainer>
         </div>
       )}

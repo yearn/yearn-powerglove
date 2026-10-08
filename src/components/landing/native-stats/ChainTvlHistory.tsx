@@ -1,4 +1,4 @@
-import { BarChart3, Info, LineChart } from 'lucide-react'
+import { Info } from 'lucide-react'
 import { useId, useMemo, useState } from 'react'
 import { Area, Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import type { NameType, Payload, ValueType } from 'recharts/types/component/DefaultTooltipContent'
@@ -6,6 +6,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useRootDarkMode } from '@/hooks/useRootDarkMode'
 import { buildBlueShadePalette } from '@/lib/theme-blue-palette'
+import { ChartTypeToggle, type StatsChartType } from './ChartTypeToggle'
 import { CAT_COLORS, fmt, useFetch } from './hooks'
 import {
   ACTUAL_TOTAL_SERIES,
@@ -113,7 +114,7 @@ export function ChainTvlHistory({
   const isDark = useRootDarkMode()
   const [breakdown, setBreakdown] = useState<ChainTvlHistoryBreakdown>('vault')
   const [range, setRange] = useState<TvlHistoryRange>('all')
-  const [view, setView] = useState<'line' | 'bar'>('line')
+  const [view, setView] = useState<StatsChartType>('bar')
   const [showPriceNeutral, setShowPriceNeutral] = useState(true)
   const bounds = getTvlHistoryRangeBounds(range, allTimeRange.to, allTimeRange.from)
   const url = buildChainTvlHistoryUrl({ breakdown, chainId, ...bounds }) + (datasetId ? `&datasetId=${datasetId}` : '')
@@ -127,7 +128,9 @@ export function ChainTvlHistory({
     const remainingSeries = breakdown === 'vault' ? REMAINING_VAULTS : REMAINING_VERSIONS
     const actual =
       breakdown === 'vault'
-        ? buildTopSeriesChart(data.actualChart, actualSeries, remainingSeries)
+        ? data.meta.topSeries
+          ? { rows: data.actualChart, series: data.meta.topSeries }
+          : buildTopSeriesChart(data.actualChart, actualSeries, remainingSeries)
         : labelVersionHistoryChart(data.actualChart, actualSeries)
     const actualRows = addChartTotal(actual.rows, actual.series, ACTUAL_TOTAL_SERIES)
     const priceNeutralSeries = getAvailableChartSeries(data.constantPriceChart)
@@ -236,26 +239,7 @@ export function ChainTvlHistory({
             </button>
           ))}
         </div>
-        <div className="tvl-history-control-group icon-group" aria-label={`${chainLabel} history chart type`}>
-          <button
-            type="button"
-            className={view === 'line' ? 'active' : undefined}
-            aria-label={`Show ${chainLabel} TVL as lines`}
-            aria-pressed={view === 'line'}
-            onClick={() => setView('line')}
-          >
-            <LineChart size={15} strokeWidth={1.8} />
-          </button>
-          <button
-            type="button"
-            className={view === 'bar' ? 'active' : undefined}
-            aria-label={`Show ${chainLabel} TVL as bars`}
-            aria-pressed={view === 'bar'}
-            onClick={() => setView('bar')}
-          >
-            <BarChart3 size={15} strokeWidth={1.8} />
-          </button>
-        </div>
+        <ChartTypeToggle value={view} onValueChange={setView} label={`${chainLabel} TVL`} />
       </div>
 
       {loading && <div className="chain-history-state">Loading {chainLabel} history...</div>}

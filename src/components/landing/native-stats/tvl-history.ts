@@ -7,13 +7,11 @@ export const ACTUAL_TOTAL_SERIES = 'Actual TVL'
 export type TvlHistoryBreakdown = 'vault' | 'chain' | 'category'
 export type ChainTvlHistoryBreakdown = Extract<TvlHistoryBreakdown, 'vault' | 'category'>
 export type OverallTvlHistoryBreakdown = Extract<TvlHistoryBreakdown, 'chain' | 'category'>
-export type TvlHistoryRange = '30d' | '90d' | '365d' | 'all'
+export type TvlHistoryRange = '365d' | 'all'
 export type TvlHistoryMetric = 'actual' | 'constant-price'
 
 export const TVL_HISTORY_RANGE_OPTIONS: Array<{ value: TvlHistoryRange; label: string; days?: number }> = [
-  { value: '30d', label: '30D', days: 30 },
-  { value: '90d', label: '90D', days: 90 },
-  { value: '365d', label: '365D', days: 365 },
+  { value: '365d', label: '1 Year', days: 365 },
   { value: 'all', label: 'All Time' }
 ]
 
@@ -56,7 +54,7 @@ export function buildChainTvlHistoryUrl({
   from: number
   to: number
 }): string {
-  return `/api/tvl/history/runs/latest/constant-price?mode=external&groupBy=${breakdown}&interval=weekly&chainId=${chainId}&from=${from}&to=${to}&includeCurrent=true`
+  return `/api/tvl/history/runs/latest/constant-price?mode=external&groupBy=${breakdown}&interval=weekly&chainId=${chainId}&from=${from}&to=${to}&includeCurrent=true&format=chart${breakdown === 'vault' ? '&top=10' : ''}`
 }
 
 export function selectConstantPriceChart(

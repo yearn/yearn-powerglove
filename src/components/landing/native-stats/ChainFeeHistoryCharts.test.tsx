@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { cloneElement, type ReactElement } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ChainFeeHistoryCharts } from './ChainFeeHistoryCharts'
@@ -54,6 +54,33 @@ const histories = [
 afterEach(cleanup)
 
 describe('chain fee chart stacking', () => {
+  it('defaults to signed stacked bars and preserves hidden series when switching to lines', () => {
+    const props = {
+      query: 'interval=monthly',
+      chainIds: [1, 137, 42161],
+      periods,
+      view: 'periodic' as const,
+      interval: 'monthly' as const
+    }
+    const rendered = render(<ChainFeeHistoryCharts {...props} />)
+    const chart = screen.getByRole('heading', { name: 'Earnings by Chain' }).closest('.fee-chart-card') as HTMLElement
+    const groups = chart.querySelectorAll('.recharts-bar')
+    expect(groups).toHaveLength(3)
+    const positive = groups[0].querySelector('.recharts-bar-rectangle path')
+    const loss = groups[2].querySelector('.recharts-bar-rectangle path')
+    if (!positive || !loss) throw new Error('Signed bars not rendered')
+    // The -20 contribution starts at the preceding 100 boundary and ends at 80.
+    const lossHeight = Number(loss.getAttribute('height'))
+    expect(Number(loss.getAttribute('y')) + lossHeight).toBeCloseTo(Number(positive.getAttribute('y')), 2)
+    expect(lossHeight).toBeLessThan(0)
+    expect(Math.abs(lossHeight)).toBeLessThan(Number(positive.getAttribute('height')))
+    fireEvent.click(within(chart).getByRole('button', { name: 'Polygon' }))
+    expect(chart.querySelectorAll('.recharts-bar')).toHaveLength(2)
+    rendered.rerender(<ChainFeeHistoryCharts {...props} renderType="line" />)
+    expect(chart.querySelectorAll('.recharts-area-curve')).toHaveLength(2)
+    expect(within(chart).getByRole('button', { name: 'Polygon' }).getAttribute('aria-pressed')).toBe('false')
+  })
+
   it('subtracts losses within the stack and keeps tiny negatives beside the preceding boundary', () => {
     render(
       <ChainFeeHistoryCharts
@@ -62,6 +89,7 @@ describe('chain fee chart stacking', () => {
         periods={periods}
         view="periodic"
         interval="monthly"
+        renderType="line"
       />
     )
     const chart = screen.getByRole('heading', { name: 'Earnings by Chain' }).closest('.fee-chart-card')

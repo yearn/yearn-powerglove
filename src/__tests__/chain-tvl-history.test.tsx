@@ -1,7 +1,17 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cloneElement, type ReactElement } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ChainTvlHistory } from '@/components/landing/native-stats/ChainTvlHistory'
 import type { ConstantPriceTvlHistory } from '@/components/landing/native-stats/types'
+
+vi.mock('recharts', async (importOriginal) => {
+  const original = await importOriginal<typeof import('recharts')>()
+  return {
+    ...original,
+    ResponsiveContainer: ({ children }: { children: ReactElement<{ width: number; height: number }> }) =>
+      cloneElement(children, { width: 900, height: 300 })
+  }
+})
 
 const history: ConstantPriceTvlHistory = {
   runId: 42,
@@ -65,7 +75,7 @@ describe('chain TVL history drilldown', () => {
     )
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
     expect(String(fetchMock.mock.calls[0][0])).toContain('datasetId=native-dataset')
-    fireEvent.click(screen.getByRole('button', { name: '90D' }))
+    fireEvent.click(screen.getByRole('button', { name: '1 Year' }))
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
     expect(String(fetchMock.mock.calls[1][0])).toContain('datasetId=native-dataset')
   })
@@ -84,16 +94,48 @@ describe('chain TVL history drilldown', () => {
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
     expect(String(fetchMock.mock.calls[0][0])).toBe(
-      '/api/tvl/history/runs/latest/constant-price?mode=external&groupBy=vault&interval=weekly&chainId=1&from=1900000000&to=2000000000&includeCurrent=true'
+      '/api/tvl/history/runs/latest/constant-price?mode=external&groupBy=vault&interval=weekly&chainId=1&from=1900000000&to=2000000000&includeCurrent=true&format=chart&top=10'
     )
     expect(screen.getByText('Ethereum TVL History')).not.toBeNull()
     expect(screen.getByRole('tab', { name: 'Vaults' }).getAttribute('data-state')).toBe('active')
     expect(screen.getByRole('tab', { name: 'Version' })).not.toBeNull()
-    expect(screen.getByRole('button', { name: 'Price-neutral TVL' })).not.toBeNull()
+    expect(screen.queryByRole('button', { name: 'Price-neutral TVL' })).toBeNull()
 
-    fireEvent.click(screen.getByRole('button', { name: '90D' }))
+    fireEvent.click(screen.getByRole('button', { name: '1 Year' }))
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
-    expect(String(fetchMock.mock.calls[1][0])).toContain(`from=${2_000_000_000 - 90 * 86_400}`)
+    expect(String(fetchMock.mock.calls[1][0])).toContain(`from=${2_000_000_000 - 365 * 86_400}`)
+  })
+
+  it('keeps all server-selected vaults when the remainder is larger than individual vaults', async () => {
+    const topSeries = [...Array.from({ length: 10 }, (_, i) => `Selected vault ${i + 1}`), 'All other vaults']
+    const compactHistory: ConstantPriceTvlHistory = {
+      ...history,
+      points: [],
+      actualChart: [
+        {
+          timestamp: 1_900_000_000,
+          ...Object.fromEntries(topSeries.map((name, i) => [name, i === 10 ? 1000 : 10 - i]))
+        }
+      ],
+      constantPriceChart: [{ timestamp: 1_900_000_000, 'Price-neutral TVL': 1055 }],
+      meta: { ...history.meta, topSeries }
+    }
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => compactHistory
+    } as Response)
+
+    render(
+      <ChainTvlHistory
+        chainId={1}
+        chainLabel="Ethereum"
+        datasetId="compact-history"
+        allTimeRange={{ from: 1_900_000_000, to: 2_000_000_000 }}
+      />
+    )
+
+    await waitFor(() => expect(document.querySelectorAll('.recharts-bar')).toHaveLength(11))
   })
 
   it('switches a chain history from vaults to versions', async () => {
@@ -137,6 +179,10 @@ describe('chain TVL history drilldown', () => {
     )
 
     await waitFor(() => expect(document.querySelector('[data-chain-history="Ethereum"]')).not.toBeNull())
+    expect(screen.getByRole('button', { name: 'Show Ethereum TVL as bars' }).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.queryByRole('button', { name: '30D' })).toBeNull()
+    expect(screen.queryByRole('button', { name: '90D' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Show Ethereum TVL as lines' }))
     expect(document.querySelector('[data-price-neutral-overlay="true"]')).not.toBeNull()
 
     fireEvent.click(screen.getByRole('button', { name: 'Show Ethereum TVL as bars' }))

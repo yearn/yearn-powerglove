@@ -10,12 +10,25 @@ vi.mock('recharts', async (importOriginal) => ({
 }))
 
 vi.mock('./ChainFeeHistoryCharts', () => ({
-  ChainFeeHistoryCharts: ({ view }: { view: string }) => <div data-testid="chain-view" data-view={view} />
+  ChainFeeHistoryCharts: ({ view, renderType }: { view: string; renderType: string }) => (
+    <div data-testid="chain-view" data-view={view} data-render-type={renderType} />
+  )
 }))
 vi.mock('./VaultTypeFeeCharts', () => ({
-  VaultTypeFeeCharts: ({ view }: { view: string }) => <div data-testid="vault-view" data-view={view} />
+  VaultTypeFeeCharts: ({ view, renderType }: { view: string; renderType: string }) => (
+    <div data-testid="vault-view" data-view={view} data-render-type={renderType} />
+  )
 }))
 vi.mock('./FeeTimeRangeSlider', () => ({ FeeTimeRangeSlider: () => null }))
+vi.mock('./FeeYieldChart', () => ({
+  FeeYieldChart: ({ view, renderType, metric = 'fees' }: { view: string; renderType: string; metric?: string }) => (
+    <div
+      data-testid={metric === 'earnings' ? 'earnings-yield-view' : 'fee-yield-view'}
+      data-view={view}
+      data-render-type={renderType}
+    />
+  )
+}))
 vi.mock('./hooks', async (importOriginal) => ({
   ...(await importOriginal<typeof import('./hooks')>()),
   useFetch: (url: string) => ({
@@ -100,11 +113,23 @@ describe('shared fee chart view', () => {
     expect(screen.getByTestId('chain-view').getAttribute('data-view')).toBe('periodic')
     expect(screen.getByTestId('vault-view').getAttribute('data-view')).toBe('periodic')
 
+    expect(chart.querySelectorAll('.recharts-bar')).toHaveLength(3)
+    expect(screen.getByTestId('chain-view').getAttribute('data-render-type')).toBe('bar')
+    expect(screen.getByTestId('vault-view').getAttribute('data-render-type')).toBe('bar')
+    expect(screen.getByTestId('fee-yield-view').getAttribute('data-render-type')).toBe('bar')
+    expect(screen.getByTestId('earnings-yield-view').getAttribute('data-render-type')).toBe('bar')
+    fireEvent.click(screen.getByRole('button', { name: 'Show fee and earnings charts as lines' }))
+    expect(screen.getByTestId('chain-view').getAttribute('data-render-type')).toBe('line')
+    expect(screen.getByTestId('vault-view').getAttribute('data-render-type')).toBe('line')
+    expect(screen.getByTestId('fee-yield-view').getAttribute('data-render-type')).toBe('line')
+    expect(screen.getByTestId('earnings-yield-view').getAttribute('data-render-type')).toBe('line')
+
     fireEvent.click(within(chart as HTMLElement).getByRole('button', { name: 'Net Yield' }))
     expect(chart.querySelectorAll('.recharts-line-curve')).toHaveLength(2)
     fireEvent.click(within(controls).getByRole('button', { name: 'Cumulative' }))
     expect(screen.getByTestId('chain-view').getAttribute('data-view')).toBe('cumulative')
     expect(screen.getByTestId('vault-view').getAttribute('data-view')).toBe('cumulative')
+    expect(screen.getByTestId('fee-yield-view').getAttribute('data-view')).toBe('cumulative')
     expect(screen.getAllByRole('heading', { name: /Earnings & Fees/ })).toHaveLength(1)
     expect(
       within(chart as HTMLElement)
@@ -119,5 +144,9 @@ describe('shared fee chart view', () => {
     expect(screen.getByTestId('chain-view').getAttribute('data-view')).toBe('periodic')
     expect(screen.getByTestId('vault-view').getAttribute('data-view')).toBe('periodic')
     expect(chart.querySelectorAll('.recharts-line-curve')).toHaveLength(2)
+    fireEvent.click(screen.getByRole('button', { name: 'Show fee and earnings charts as bars' }))
+    expect(chart.querySelectorAll('.recharts-bar')).toHaveLength(2)
+    expect(screen.getByTestId('chain-view').getAttribute('data-render-type')).toBe('bar')
+    expect(screen.getByTestId('vault-view').getAttribute('data-render-type')).toBe('bar')
   })
 })

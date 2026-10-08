@@ -1,4 +1,4 @@
-import { BarChart3, ChevronDown, Info, LineChart } from 'lucide-react'
+import { ChevronDown, Info } from 'lucide-react'
 import { Fragment, type ReactNode, useContext, useEffect, useId, useMemo, useState } from 'react'
 import { Area, Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import type { NameType, Payload, ValueType } from 'recharts/types/component/DefaultTooltipContent'
@@ -7,6 +7,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useRootDarkMode } from '@/hooks/useRootDarkMode'
 import { buildBlueShadePalette } from '@/lib/theme-blue-palette'
 import { ChainTvlHistory } from './ChainTvlHistory'
+import { ChartTypeToggle, type StatsChartType } from './ChartTypeToggle'
 import { CAT_COLORS, CHAIN_NAMES, CHAIN_SHORT, CHART_COLORS, fmt, SkeletonCards, useFetch } from './hooks'
 import { StatsContext } from './StatsContext'
 import {
@@ -40,10 +41,6 @@ const TVL_HISTORY_REMAINING_CHAIN_SERIES = 'All other chains'
 const TVL_HISTORY_REMAINING_VERSION_SERIES = 'All other versions'
 const TVL_HISTORY_TOTAL_SERIES = 'Total TVL'
 const TVL_HISTORY_MIN_COMPLETE_SERIES_RATIO = 0.5
-
-type TvlHistoryView = 'line' | 'bar'
-type TvlHistoryMode = 'raw' | 'external'
-type TvlHistoryInterval = 'daily' | '3day' | 'weekly'
 
 function formatDate(timestamp: number | string): string {
   return new Date(Number(timestamp) * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
@@ -100,16 +97,6 @@ function filterRowsByRange(rows: TvlHistoryRun['chart'], range: TvlHistoryRange)
   const latestTimestamp = rows.reduce((latest, row) => Math.max(latest, row.timestamp), 0)
   const minTimestamp = latestTimestamp - option.days * DAY_SECONDS
   return rows.filter((row) => row.timestamp >= minTimestamp)
-}
-
-function getHistoryInterval(range: TvlHistoryRange): TvlHistoryInterval {
-  if (range === '30d') return 'daily'
-  if (range === '90d') return '3day'
-  return 'weekly'
-}
-
-function getHistoryMode(range: TvlHistoryRange): TvlHistoryMode {
-  return range === '30d' || range === '90d' ? 'raw' : 'external'
 }
 
 function getLatestRowTotal(rows: TvlHistoryRun['chart'], seriesKeys: string[]): number {
@@ -329,12 +316,11 @@ export function TvlOverview({ chainSelector }: { chainSelector: ReactNode }) {
   const [tvlHistoryBreakdown, setTvlHistoryBreakdown] = useState<OverallTvlHistoryBreakdown>('chain')
   const [tvlHistoryRange, setTvlHistoryRange] = useState<TvlHistoryRange>('all')
   const [showPriceNeutral, setShowPriceNeutral] = useState(true)
-  const [tvlHistoryView, setTvlHistoryView] = useState<TvlHistoryView>('line')
+  const [tvlHistoryView, setTvlHistoryView] = useState<StatsChartType>('bar')
   const [selectedHistoryChain, setSelectedHistoryChain] = useState<string | null>(null)
   const [historyEndAnchor] = useState(() => Math.floor(Date.now() / 1000))
-  const tvlHistoryMode =
-    rawData?.datasetId || tvlHistoryBreakdown === 'category' ? 'external' : getHistoryMode(tvlHistoryRange)
-  const tvlHistoryInterval = tvlHistoryBreakdown === 'category' ? 'weekly' : getHistoryInterval(tvlHistoryRange)
+  const tvlHistoryMode = 'external'
+  const tvlHistoryInterval = 'weekly'
   const baseTvlHistoryUrl = buildTvlHistoryUrl({
     breakdown: tvlHistoryBreakdown,
     mode: tvlHistoryMode,
@@ -343,7 +329,7 @@ export function TvlOverview({ chainSelector }: { chainSelector: ReactNode }) {
   const tvlHistoryFilters = new URLSearchParams(baseTvlHistoryUrl.split('?')[1])
   if (rawData?.datasetId) {
     tvlHistoryFilters.set('datasetId', rawData.datasetId)
-    if (tvlHistoryRange === '30d' || tvlHistoryRange === '90d') {
+    if (tvlHistoryRange === '365d') {
       const bounds = getTvlHistoryRangeBounds(tvlHistoryRange, rawData.asOfTimestamp ?? historyEndAnchor, 0)
       tvlHistoryFilters.set('from', String(bounds.from))
       tvlHistoryFilters.set('to', String(bounds.to))
@@ -643,26 +629,11 @@ export function TvlOverview({ chainSelector }: { chainSelector: ReactNode }) {
             ))}
           </div>
 
-          <div className="tvl-history-control-group icon-group" aria-label="TVL history chart type">
-            <button
-              type="button"
-              className={tvlHistoryView === 'line' ? 'active' : undefined}
-              aria-label={`Show ${tvlHistoryBreakdownLabel} TVL as lines`}
-              aria-pressed={tvlHistoryView === 'line'}
-              onClick={() => setTvlHistoryView('line')}
-            >
-              <LineChart size={15} strokeWidth={1.8} />
-            </button>
-            <button
-              type="button"
-              className={tvlHistoryView === 'bar' ? 'active' : undefined}
-              aria-label={`Show ${tvlHistoryBreakdownLabel} TVL as bars`}
-              aria-pressed={tvlHistoryView === 'bar'}
-              onClick={() => setTvlHistoryView('bar')}
-            >
-              <BarChart3 size={15} strokeWidth={1.8} />
-            </button>
-          </div>
+          <ChartTypeToggle
+            value={tvlHistoryView}
+            onValueChange={setTvlHistoryView}
+            label={`${tvlHistoryBreakdownLabel} TVL`}
+          />
         </div>
 
         {tvlHistoryBreakdown === 'category' && tvlHistorySeries.length > 0 && (

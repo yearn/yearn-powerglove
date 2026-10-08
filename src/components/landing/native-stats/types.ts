@@ -90,6 +90,7 @@ export interface ConstantPriceTvlHistory {
   constantPriceChart: TvlHistoryChartRow[]
   references: ConstantPriceReference[]
   meta: {
+    topSeries?: string[]
     rawPointCount?: number
     valuedVaults?: number
     skippedVaults?: number

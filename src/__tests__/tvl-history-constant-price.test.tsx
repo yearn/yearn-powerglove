@@ -94,13 +94,13 @@ describe('constant-price TVL history integration', () => {
       json: async () => constantPriceHistory
     } as Response)
 
-    const { rerender } = render(<ConstantPriceFetchHarness range="30d" />)
+    const { rerender } = render(<ConstantPriceFetchHarness range="365d" />)
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
-    expect(String(fetchMock.mock.calls[0][0])).toContain(`from=${END_TIMESTAMP - 30 * 86_400}`)
+    expect(String(fetchMock.mock.calls[0][0])).toContain(`from=${END_TIMESTAMP - 365 * 86_400}`)
 
-    rerender(<ConstantPriceFetchHarness range="90d" />)
+    rerender(<ConstantPriceFetchHarness range="all" />)
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
-    expect(String(fetchMock.mock.calls[1][0])).toContain(`from=${END_TIMESTAMP - 90 * 86_400}`)
+    expect(String(fetchMock.mock.calls[1][0])).toContain(`from=${ALL_TIME_START}`)
   })
 
   it('selects actual and price-neutral response data without recalculating it', () => {

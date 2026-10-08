@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import type { ChainFeeHistoryView } from './ChainFeeHistoryCharts'
+import type { StatsChartType } from './ChartTypeToggle'
 import type { FeeHistoryInterval } from './canonical-fees'
 import { FeeBreakdownChart } from './FeeBreakdownChart'
 import type { FeeHistoryPeriod } from './fee-history'
@@ -11,12 +12,14 @@ export function VaultTypeFeeCharts({
   query,
   periods,
   interval,
-  view
+  view,
+  renderType = 'bar'
 }: {
   query: string
   periods: FeeHistoryPeriod[]
   interval: FeeHistoryInterval
   view: ChainFeeHistoryView
+  renderType?: StatsChartType
 }) {
   const { catalog, histories, loading, error, retry } = useVaultTypeFeeHistories(query, periods)
   const data = useMemo(() => buildVaultTypeFeeSeries(histories, periods, catalog), [histories, periods, catalog])
@@ -35,6 +38,7 @@ export function VaultTypeFeeCharts({
       ) : (
         <>
           <FeeBreakdownChart
+            renderType={renderType}
             title="Earnings by Vault Type"
             subtitle="Gross gains less losses"
             metric="earnings"
@@ -43,6 +47,7 @@ export function VaultTypeFeeCharts({
             interval={interval}
           />
           <FeeBreakdownChart
+            renderType={renderType}
             title="Fees by Vault Type"
             subtitle="Gross fees charged"
             metric="fees"
