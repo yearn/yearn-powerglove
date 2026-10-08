@@ -120,6 +120,66 @@ describe('Katana APY parity with yearn.fi', () => {
     expect(getThirtyDayDisplayApy(refreshed)).toBe(0.03)
   })
 
+  it.each<KongVaultPerformance>([
+    { historical: { monthlyNet: 0.01 } },
+    { historical: { net: 0.08, monthlyNet: 0.01 } },
+    { oracle: { netAPY: 0.05 } },
+    { estimated: { apy: null }, oracle: { netAPY: 0.05 } }
+  ])('retains the list estimate when snapshot performance lacks an estimated rate: %j', (snapshotPerformance) => {
+    const base = mapKongListItemToVault(item(performance))
+    const details = mapKongSnapshotToVaultExtended(item(snapshotPerformance), base)
+    expect(details.forwardApyNet).toBeCloseTo(0.12)
+    expect(buildKatanaApyDisplay(details, details.forwardApyNet).tooltipItems).toEqual([
+      { label: 'Native APY', value: '3.00%' },
+      { label: 'Rewards APR', value: '9.00%' }
+    ])
+  })
+
+  it('uses the list native estimate with refreshed snapshot rewards exactly once', () => {
+    const base = mapKongListItemToVault(item(performance))
+    const details = mapKongSnapshotToVaultExtended(
+      item({
+        estimated: { components: { katanaAppRewardsAPR: 0.12 } },
+        oracle: { netAPY: 0.05 }
+      }),
+      base
+    )
+    expect(details.forwardApyNet).toBeCloseTo(0.15)
+    expect(buildKatanaApyDisplay(details, details.forwardApyNet).tooltipItems).toEqual([
+      { label: 'Native APY', value: '3.00%' },
+      { label: 'Rewards APR', value: '12.00%' }
+    ])
+  })
+
+  it('keeps a genuine zero list estimate ahead of snapshot oracle fallbacks', () => {
+    const base = mapKongListItemToVault(
+      item({
+        ...performance,
+        estimated: {
+          apy: 0,
+          components: { katanaAppRewardsAPR: 0.09 }
+        }
+      })
+    )
+    const details = mapKongSnapshotToVaultExtended(item({ oracle: { netAPY: 0.05 } }), base)
+    expect(details.forwardApyNet).toBe(0.09)
+  })
+
+  it.each([{ apy: 0.04 }, { apr: 0.04 }, { apy: 0 }])(
+    'prefers a valid snapshot estimate over the list estimate: %j',
+    (estimated) => {
+      const base = mapKongListItemToVault(item(performance))
+      const details = mapKongSnapshotToVaultExtended(item({ estimated }), base)
+      expect(details.forwardApyNet).toBeCloseTo((estimated.apy ?? estimated.apr ?? 0) + 0.09)
+    }
+  )
+
+  it('uses a fresh snapshot oracle when the list has no estimated base rate', () => {
+    const base = mapKongListItemToVault(item({ oracle: { netAPY: 0.05 } }))
+    const details = mapKongSnapshotToVaultExtended(item({ oracle: { netAPY: 0.07 } }), base)
+    expect(details.forwardApyNet).toBe(0.07)
+  })
+
   it('leaves other chains unchanged even when Katana fields are present', () => {
     const vault = mapKongListItemToVault(item(performance, 1))
     expect(vault.forwardApyNet).toBe(0.03)
