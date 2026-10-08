@@ -57,6 +57,8 @@ export type VaultSimple = {
   }
   managementFee: number
   performanceFee: number
+  katanaEstimatedBaseApy?: number | null
+  katanaAppRewardsApr?: number | null
   forwardApyNet?: number | null
   oracleNetApy?: number | null
   estimatedApySource?: EstimatedApySource | null
