@@ -71,13 +71,13 @@ export function NativeStatsDashboard({ tab, onTabChange }: { tab: StatsTab; onTa
             </TabsList>
 
             <div className={`stats-tab-panel${tab === 'fees' ? ' stats-fees-tab-panel' : ''}`}>
-              {tab !== 'fees' && <div className="stats-chain-filter">{chainSelector}</div>}
+              {tab !== 'fees' && tab !== 'overview' && <div className="stats-chain-filter">{chainSelector}</div>}
               <TabsContent value="overview" className="mt-0">
                 {!HAS_TVL_API ? (
                   <MissingApiNotice lane="TVL" />
                 ) : (
                   <ErrorBoundary>
-                    <TvlOverview />
+                    <TvlOverview chainSelector={chainSelector} />
                   </ErrorBoundary>
                 )}
               </TabsContent>

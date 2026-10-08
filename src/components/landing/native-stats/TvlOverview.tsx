@@ -1,25 +1,13 @@
-import { Link } from '@tanstack/react-router'
 import { BarChart3, ChevronDown, Info, LineChart } from 'lucide-react'
-import { Fragment, useContext, useEffect, useId, useMemo, useState } from 'react'
+import { Fragment, type ReactNode, useContext, useEffect, useId, useMemo, useState } from 'react'
 import { Area, Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import type { NameType, Payload, ValueType } from 'recharts/types/component/DefaultTooltipContent'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useRootDarkMode } from '@/hooks/useRootDarkMode'
 import { buildBlueShadePalette } from '@/lib/theme-blue-palette'
 import { ChainTvlHistory } from './ChainTvlHistory'
-import {
-  CAT_COLORS,
-  CHAIN_NAMES,
-  CHAIN_SHORT,
-  CHART_COLORS,
-  exportCSV,
-  fmt,
-  powergloveVaultPath,
-  SkeletonCards,
-  useFetch
-} from './hooks'
+import { CAT_COLORS, CHAIN_NAMES, CHAIN_SHORT, CHART_COLORS, fmt, SkeletonCards, useFetch } from './hooks'
 import { StatsContext } from './StatsContext'
 import {
   buildConstantPriceTvlUrl,
@@ -40,7 +28,6 @@ import {
 } from './tvl-history'
 import {
   buildAdjustedChainTvl,
-  buildChainTvlCsvRows,
   type LegacyTvlSummary,
   normalizeTvlSummary,
   resolveChainId,
@@ -335,7 +322,7 @@ export function TvlHistoryTooltip({
   )
 }
 
-export function TvlOverview() {
+export function TvlOverview({ chainSelector }: { chainSelector: ReactNode }) {
   const { chainFilter, setLastFetchedAt } = useContext(StatsContext)
   const isDark = useRootDarkMode()
   const { data: rawData, loading, error, fetchedAt, retry } = useFetch<LegacyTvlSummary>('/api/tvl')
@@ -389,8 +376,6 @@ export function TvlOverview() {
   } = useFetch<ConstantPriceTvlHistory>(constantPriceUrl, {
     enabled: Boolean(rawTvlHistory) && showPriceNeutral && tvlHistoryView === 'line'
   })
-  const [isRetiredVaultsOpen, setIsRetiredVaultsOpen] = useState(false)
-  const [isTvlBreakdownOpen, setIsTvlBreakdownOpen] = useState(false)
   const [isTvlHistoryInspecting, setIsTvlHistoryInspecting] = useState(false)
   const tvlHistoryTotalFillId = `tvl-history-total-fill-${useId().replace(/:/g, '')}`
   const data = useMemo(() => (rawData ? normalizeTvlSummary(rawData) : null), [rawData])
@@ -413,8 +398,6 @@ export function TvlOverview() {
     [data, chainFilter]
   )
 
-  const retiredVaults = useMemo(() => data?.retiredVaults ?? [], [data])
-  const retiredVaultCountIncluded = retiredVaults.length
   const tvlHistoryRemainingSeries = {
     chain: TVL_HISTORY_REMAINING_CHAIN_SERIES,
     category: TVL_HISTORY_REMAINING_VERSION_SERIES
@@ -524,17 +507,14 @@ export function TvlOverview() {
 
   return (
     <>
-      <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <div className="label">TVL</div>
-          <div className="value">{fmt(data.totalTvl)}</div>
+      <div className="tvl-summary mb-5 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-3 gap-y-1">
+          <div className="value shrink-0">{fmt(data.totalTvl)}</div>
           <div className="sub">
             {data.vaultCount.active} active vaults across {Object.keys(data.tvlByChain).length} chains
           </div>
         </div>
-        <button type="button" className="page-btn" onClick={() => setIsTvlBreakdownOpen(true)}>
-          See breakdown
-        </button>
+        {chainSelector}
       </div>
 
       <div className="card">
@@ -545,7 +525,7 @@ export function TvlOverview() {
               Saved run grouped by {formatHistoryGroup(rawTvlHistory?.groupBy)};{' '}
               {tvlHistoryBreakdown === 'category'
                 ? `${tvlHistorySeries.length} versions`
-                : `top ${Math.min(TVL_HISTORY_TOP_SERIES_COUNT, tvlHistorySeries.length)} by current TVL`}
+                : `top ${Math.min(TVL_HISTORY_TOP_SERIES_COUNT, tvlHistorySeries.length)} chains by latest TVL`}
             </div>
           </div>
           <div className="tvl-history-header-actions">
@@ -862,15 +842,7 @@ export function TvlOverview() {
 
       {/* ── TVL by Chain ── */}
       <div className="card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2>TVL by Chain</h2>
-          <button
-            className="btn-export"
-            onClick={() => exportCSV('tvl-by-chain.csv', ['Chain', 'TVL (USD)'], buildChainTvlCsvRows(chainData))}
-          >
-            Export CSV
-          </button>
-        </div>
+        <h2>TVL by Chain</h2>
         <div style={{ marginTop: '0.25rem' }}>
           {chainData.map((c, i) => {
             const isExpanded = selectedHistoryChain === c.chain
@@ -925,106 +897,6 @@ export function TvlOverview() {
           )}
         </div>
       </div>
-
-      <Dialog open={isTvlBreakdownOpen} onOpenChange={setIsTvlBreakdownOpen}>
-        <DialogContent className="sm:max-w-xl">
-          <DialogHeader>
-            <DialogTitle>TVL Breakdown</DialogTitle>
-            <DialogDescription>Included and excluded TVL used to calculate the headline number.</DialogDescription>
-          </DialogHeader>
-
-          <div className="flex flex-col gap-5">
-            <div>
-              <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                Included TVL
-              </h3>
-              <div className="rounded-md border border-border">
-                <div className="flex items-center justify-between px-3 py-2.5 text-sm">
-                  <span>TVL in Active Vaults</span>
-                  <span className="font-medium tabular-nums">{fmt(data.activeVaultTvl)}</span>
-                </div>
-                <button
-                  type="button"
-                  className="flex w-full items-center justify-between border-t border-border px-3 py-2.5 text-left text-sm hover:bg-muted/40"
-                  onClick={() => {
-                    setIsTvlBreakdownOpen(false)
-                    setIsRetiredVaultsOpen(true)
-                  }}
-                >
-                  <span>TVL in Retired Vaults</span>
-                  <span className="font-medium tabular-nums">{fmt(data.retiredVaultTvl)}</span>
-                </button>
-                <div className="flex items-center justify-between border-t border-border px-3 py-2.5 text-sm">
-                  <span>Allocator Vault Overlap</span>
-                  <span className="font-medium tabular-nums">-{fmt(data.overlapExcluded)}</span>
-                </div>
-                <div className="mx-3 border-t border-border" />
-                <div className="flex items-center justify-between px-3 py-2.5 text-sm font-semibold">
-                  <span>Adjusted TVL</span>
-                  <span className="tabular-nums">{fmt(data.totalTvl)}</span>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                Excluded TVL
-              </h3>
-              <div className="divide-y divide-border rounded-md border border-border">
-                <div className="flex items-center justify-between px-3 py-2.5 text-sm">
-                  <span>Vault Bridge TVL</span>
-                  <span className="font-medium tabular-nums">{fmt(data.vaultBridgeExcluded)}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isRetiredVaultsOpen} onOpenChange={setIsRetiredVaultsOpen}>
-        <DialogContent className="sm:max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>Retired vaults included in Retired Vault TVL</DialogTitle>
-            <DialogDescription>
-              {fmt(data.retiredVaultTvl)} across {retiredVaultCountIncluded} retired vaults after excluding cross-chain
-              migrated vaults.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="flex max-h-[70vh] flex-col overflow-hidden">
-            <div className="grid grid-cols-[minmax(0,1.6fr)_auto_auto] gap-3 border-b border-border px-0 py-2 text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
-              <span>Vault</span>
-              <span>Type</span>
-              <span className="text-right">TVL</span>
-            </div>
-            <div className="overflow-y-auto">
-              {retiredVaults.map((vault) => (
-                <div
-                  key={`${vault.chainId}:${vault.address}`}
-                  className="grid grid-cols-[minmax(0,1.6fr)_auto_auto] items-center gap-3 border-b border-border/70 px-0 py-3 text-sm"
-                >
-                  <div className="min-w-0">
-                    <Link
-                      to={powergloveVaultPath(vault.chainId, vault.address)}
-                      className="block truncate font-medium text-foreground hover:text-[#0657f9]"
-                    >
-                      {vault.name ?? vault.address}
-                    </Link>
-                    <div className="truncate text-xs text-muted-foreground">
-                      {CHAIN_NAMES[vault.chainId] ?? `Chain ${vault.chainId}`} · {vault.address}
-                    </div>
-                  </div>
-                  <div className="text-xs uppercase tracking-[0.12em] text-muted-foreground">{vault.category}</div>
-                  <div className="text-right font-medium tabular-nums">{fmt(vault.tvlUsd)}</div>
-                </div>
-              ))}
-              {retiredVaults.length === 0 && (
-                <div className="py-6 text-sm text-muted-foreground">No retired vaults found.</div>
-              )}
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </>
   )
 }

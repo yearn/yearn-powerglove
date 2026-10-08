@@ -462,6 +462,11 @@
   font-size: 0.82rem;
 }
 
+.pg-stats .tvl-summary .value,
+.pg-stats .tvl-summary .sub {
+  margin-top: 0;
+}
+
 .pg-stats .text-right {
   text-align: right;
 }

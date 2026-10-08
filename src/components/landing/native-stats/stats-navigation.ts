@@ -1,5 +1,5 @@
 export const STATS_TABS = [
-  { key: 'overview', label: 'Overview' },
+  { key: 'overview', label: 'TVL' },
   { key: 'curation', label: 'Curation Products' },
   { key: 'fees', label: 'Fees' },
   { key: 'vaults', label: 'Vaults & Curation' },
