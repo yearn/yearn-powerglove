@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildTvlFlowGraphUrl,
+  edgeDeductionNote,
   enrichTvlFlowStrategyNodes,
   findTvlFlowAllocatorVaults,
   findTvlFlowVaultNodeId,
   fitTvlFlowBounds,
   graphEdgeGeometry,
+  mapGraphResponse,
   type SpotFlowEdge,
   type SpotFlowNode,
   staggerChildRowPositions
@@ -229,5 +231,20 @@ describe('TVL flow graph helpers', () => {
 
     expect(geometry.routedAroundSiblingRow).toBe(false)
     expect(geometry.path).not.toContain(' L ')
+  })
+})
+
+describe('Yearn Data flow deductions', () => {
+  it.each([
+    ['registry', 0, ''],
+    ['registry', 250, ' · $250 deducted'],
+    ['strategy', 0, '']
+  ])('uses explicit %s deductions of %s independently of flow', (kind, deductedTvlUsd, expected) => {
+    const mapped = mapGraphResponse({
+      nodes: [{ ...vaultNode }, { ...vaultNode, id: 'child', address: '0xchild' }],
+      edges: [{ sourceNodeId: vaultNode.id, targetNodeId: 'child', kind, tvlUsd: 1000, deductedTvlUsd }]
+    })
+    expect(edgeDeductionNote(mapped.edges[0])).toBe(expected)
+    expect(mapped.edges[0].tvlUsd).toBe(1000)
   })
 })

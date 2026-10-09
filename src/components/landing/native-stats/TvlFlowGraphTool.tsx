@@ -269,6 +269,7 @@ export interface SpotFlowEdge {
   kind: string
   tvlUsd: number
   valueSource?: string
+  deductedTvlUsd?: number
 }
 
 interface BridgeExclusion {
@@ -624,8 +625,11 @@ function edgeColor(kind: SpotFlowEdge['kind']): string {
   return '#0f172a'
 }
 
-function isDeductibleEdge(edge: SpotFlowEdge): boolean {
-  return edge.kind === 'auto' || edge.kind === 'registry'
+export function edgeDeductionNote(edge: SpotFlowEdge): string {
+  if (edge.deductedTvlUsd !== undefined) {
+    return edge.deductedTvlUsd > 0 ? ` · ${fmtFlowUsd(edge.deductedTvlUsd)} deducted` : ''
+  }
+  return edge.kind === 'auto' || edge.kind === 'registry' ? ' · deducted' : ''
 }
 
 function edgeValueNote(edge: SpotFlowEdge): string {
@@ -658,7 +662,7 @@ function booleanValue(record: Record<string, unknown>, keys: string[], fallback 
   return fallback
 }
 
-function mapGraphResponse(data: TvlGraphResponse | null): {
+export function mapGraphResponse(data: TvlGraphResponse | null): {
   nodes: SpotFlowNode[]
   edges: SpotFlowEdge[]
   bridgeExclusions: BridgeExclusion[]
@@ -743,7 +747,11 @@ function mapGraphResponse(data: TvlGraphResponse | null): {
         holderAddress: stringValue(edge, ['holderAddress', 'holder', 'strategyAddress'], ''),
         kind: stringValue(edge, ['kind', 'type', 'edgeType'], 'auto'),
         tvlUsd: numberValue(edge, ['tvlUsd', 'amountUsd', 'upstreamOwnedTvlUsd', 'value']),
-        valueSource: stringValue(edge, ['valueSource'], '') || undefined
+        valueSource: stringValue(edge, ['valueSource'], '') || undefined,
+        deductedTvlUsd:
+          typeof edge.deductedTvlUsd === 'number' && Number.isFinite(edge.deductedTvlUsd)
+            ? edge.deductedTvlUsd
+            : undefined
       }
     ]
   })
@@ -1203,7 +1211,7 @@ function GraphCanvas({
           const stroke = edgeColor(edge.kind)
           const isFocused = selectedNodeId === edge.sourceNodeId || selectedNodeId === edge.targetNodeId
           const strokeDasharray = edge.kind === 'strategy' ? '5 5' : undefined
-          const edgeTitle = `${source.name} -> ${target.name} · ${fmtFlowUsd(edge.tvlUsd)} · ${edge.kind}${isDeductibleEdge(edge) ? ' deducted' : ' allocation'}${edgeValueNote(edge)}${edge.holderAddress ? ` · holder ${shortAddr(edge.holderAddress)}` : ''}`
+          const edgeTitle = `${source.name} -> ${target.name} · ${fmtFlowUsd(edge.tvlUsd)} · ${edge.kind}${edgeDeductionNote(edge)}${edgeValueNote(edge)}${edge.holderAddress ? ` · holder ${shortAddr(edge.holderAddress)}` : ''}`
 
           return (
             <g key={`${edge.id}-${edge.sourceNodeId}-${edge.targetNodeId}`} className="spot-flow-edge">
@@ -1454,7 +1462,7 @@ function DetailPanel({
                   <span className="text-muted-foreground">
                     {fmtFlowUsd(edge.tvlUsd)} · {edge.kind}
                     {edgeValueNote(edge)}
-                    {isDeductibleEdge(edge) ? ' · deducted' : ''}
+                    {edgeDeductionNote(edge)}
                   </span>
                 </button>
               )
@@ -1480,7 +1488,7 @@ function DetailPanel({
                   <span className="text-muted-foreground">
                     {fmtFlowUsd(edge.tvlUsd)} · {edge.kind}
                     {edgeValueNote(edge)}
-                    {isDeductibleEdge(edge) ? ' · deducted' : ''}
+                    {edgeDeductionNote(edge)}
                   </span>
                 </button>
               )

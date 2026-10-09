@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react'
 import path from 'path'
 import { defineConfig, loadEnv } from 'vite'
 
-const DEFAULT_YEARN_DATA_API = 'https://yearn-data-api-preview-aqh9st2lq-rossgalloways-projects.vercel.app'
+const DEFAULT_YEARN_DATA_API = 'https://yearn-data-api-preview-5v92arw2b-rossgalloways-projects.vercel.app'
 
 const DEFAULT_ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
