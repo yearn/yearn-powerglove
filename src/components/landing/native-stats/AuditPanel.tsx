@@ -33,6 +33,7 @@ interface AuditVault {
   category: string
   vaultType: number | null
   tvlUsd: number
+  countedTvlUsd?: number | null
   isRetired: boolean
   isHidden: boolean
   strategies: AuditStrategy[]
@@ -68,6 +69,7 @@ interface DefillamaMissingVault {
 }
 
 interface DefillamaComparableComparison {
+  includedVaults?: DefillamaMissingVault[]
   diff: {
     missingFromDefillama: DefillamaMissingVault[]
   }
@@ -118,7 +120,8 @@ function typeBadge(vaultType: number | null) {
 }
 
 /** Compute the "counted TVL" for a vault: raw TVL minus overlap from its strategies */
-function computeCountedTvl(vault: AuditVault): number {
+export function computeCountedTvl(vault: AuditVault): number | null {
+  if (vault.countedTvlUsd !== undefined) return vault.countedTvlUsd
   const overlapDeduction = vault.strategies
     .filter((s) => s.detectionMethod != null)
     .reduce((sum, s) => sum + s.debtUsd, 0)
@@ -312,12 +315,14 @@ function VaultNode({
   vault,
   vaultMap,
   topLevelAddresses,
-  missingFromDefillama
+  missingFromDefillama,
+  includedInDefillama
 }: {
   vault: AuditVault
   vaultMap: Map<string, AuditVault>
   topLevelAddresses: Set<string>
   missingFromDefillama: DefillamaMissingVault | undefined
+  includedInDefillama: boolean
 }) {
   const [expanded, setExpanded] = useState(false)
   const vaultVisibleStrategies = visibleStrategies(vault.strategies)
@@ -331,7 +336,9 @@ function VaultNode({
   const countedTvl = computeCountedTvl(vault)
   const defillamaTitle = missingFromDefillama
     ? `Counted locally but missing from DefiLlama comparable TVL (${fmt(missingFromDefillama.countedTvlUsd ?? countedTvl)})`
-    : 'Included in the DefiLlama comparable vault set'
+    : includedInDefillama
+      ? 'Included in the DefiLlama comparable vault set'
+      : undefined
 
   return (
     <div className={`audit-vault-node${hasOverlap ? ' has-overlap' : ''}`}>
@@ -415,8 +422,10 @@ function VaultNode({
           <span className="audit-col-defillama" title={defillamaTitle}>
             {missingFromDefillama ? (
               <span className="audit-dl-missing-tag">local only</span>
-            ) : (
+            ) : includedInDefillama ? (
               <span className="audit-dl-counted-tag">DL</span>
+            ) : (
+              <span className="audit-col-empty">—</span>
             )}
           </span>
           <span className="audit-col-counted" title="TVL after deducting overlap from this vault's strategies">
@@ -519,6 +528,12 @@ export function AuditPanel() {
     )
   }, [defillamaComparison])
 
+  const includedInDefillamaByVault = useMemo(
+    () =>
+      new Set((defillamaComparison?.includedVaults ?? []).map((vault) => vaultKey(vault.chainId, vault.vaultAddress))),
+    [defillamaComparison]
+  )
+
   const filteredVaults = useMemo(() => {
     if (!data) return []
     const typeFilterFn = (v: AuditVault) =>
@@ -561,7 +576,7 @@ export function AuditPanel() {
     () =>
       sortVaults(filteredVaults, {
         debt: (vault) => vault.tvlUsd,
-        counted: (vault) => computeCountedTvl(vault),
+        counted: (vault) => computeCountedTvl(vault) ?? -1,
         defillama: (vault) => (missingFromDefillamaByVault.has(vaultKey(vault.chainId, vault.address)) ? 1 : 0)
       }),
     [filteredVaults, missingFromDefillamaByVault, sortVaults]
@@ -672,6 +687,7 @@ export function AuditPanel() {
             vaultMap={vaultMap}
             topLevelAddresses={topLevelAddresses}
             missingFromDefillama={missingFromDefillamaByVault.get(vaultKey(vault.chainId, vault.address))}
+            includedInDefillama={includedInDefillamaByVault.has(vaultKey(vault.chainId, vault.address))}
           />
         ))}
 

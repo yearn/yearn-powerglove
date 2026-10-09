@@ -48,7 +48,8 @@ describe('fee yield chart', () => {
       periods: [{ ...period, netYieldUsd: -70 }],
       interval: 'weekly' as const,
       view: 'periodic' as const,
-      renderType: 'bar' as const
+      renderType: 'bar' as const,
+      onRenderTypeChange: vi.fn()
     }
     render(
       <QueryClientProvider client={client}>
@@ -86,7 +87,13 @@ describe('fee yield chart', () => {
         <StatsContext.Provider
           value={{ chainFilter: chain, density: 'comfortable', lastFetchedAt: null, setLastFetchedAt: vi.fn() }}
         >
-          <FeeYieldChart periods={[selected]} interval="weekly" view="periodic" renderType={renderType} />
+          <FeeYieldChart
+            periods={[selected]}
+            interval="weekly"
+            view="periodic"
+            renderType={renderType}
+            onRenderTypeChange={vi.fn()}
+          />
         </StatsContext.Provider>
       </QueryClientProvider>
     )

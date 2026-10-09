@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { cloneElement, type ReactElement } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import type { FeeChartTypeControls } from './ChartTypeToggle'
 import { FeesPanel } from './FeesPanel'
 
 vi.mock('recharts', async (importOriginal) => ({
@@ -10,31 +11,42 @@ vi.mock('recharts', async (importOriginal) => ({
 }))
 
 vi.mock('./ChainFeeHistoryCharts', () => ({
-  ChainFeeHistoryCharts: ({ view, renderType }: { view: string; renderType: string }) => (
-    <div data-testid="chain-view" data-view={view} data-render-type={renderType} />
+  ChainFeeHistoryCharts: ({ view, chartTypes }: { view: string; chartTypes: FeeChartTypeControls }) => (
+    <div
+      data-testid="chain-view"
+      data-view={view}
+      data-render-type={chartTypes.earnings.renderType}
+      data-fees-type={chartTypes.fees.renderType}
+    />
   )
 }))
 vi.mock('./VaultTypeFeeCharts', () => ({
-  VaultTypeFeeCharts: ({ view, renderType }: { view: string; renderType: string }) => (
-    <div data-testid="vault-view" data-view={view} data-render-type={renderType} />
+  VaultTypeFeeCharts: ({ view, chartTypes }: { view: string; chartTypes: FeeChartTypeControls }) => (
+    <div
+      data-testid="vault-view"
+      data-view={view}
+      data-render-type={chartTypes.earnings.renderType}
+      data-fees-type={chartTypes.fees.renderType}
+    />
   )
 }))
 vi.mock('./VaultComparisonCharts', () => ({
   VaultComparisonCharts: ({
     view,
-    renderType,
+    chartTypes,
     selectedKeys,
     onSelectedKeysChange
   }: {
     view: string
-    renderType: string
+    chartTypes: FeeChartTypeControls
     selectedKeys: string[] | null
     onSelectedKeysChange: (keys: string[]) => void
   }) => (
     <div
       data-testid="allocator-view"
       data-view={view}
-      data-render-type={renderType}
+      data-render-type={chartTypes.earnings.renderType}
+      data-fees-type={chartTypes.fees.renderType}
       data-selected={JSON.stringify(selectedKeys)}
     >
       <button type="button" onClick={() => onSelectedKeysChange(['1:custom'])}>
@@ -108,6 +120,7 @@ afterEach(() => {
 describe('shared fee chart view', () => {
   it('retains custom allocator selections while fee data reloads for a different range', () => {
     const rendered = render(<FeesPanel chainSelector={<select aria-label="Chain" />} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Show earnings and fees as bars' }))
     fireEvent.click(screen.getByRole('button', { name: 'Choose custom allocator' }))
     expect(screen.getByTestId('allocator-view').getAttribute('data-selected')).toBe('["1:custom"]')
     feeDataLoading = true
@@ -116,6 +129,9 @@ describe('shared fee chart view', () => {
     feeDataLoading = false
     rendered.rerender(<FeesPanel chainSelector={<select aria-label="Chain" />} />)
     expect(screen.getByTestId('allocator-view').getAttribute('data-selected')).toBe('["1:custom"]')
+    expect(screen.getByRole('button', { name: 'Show earnings and fees as bars' }).getAttribute('aria-pressed')).toBe(
+      'true'
+    )
   })
 
   it('preserves the chart view and mounted controls when collapsing and reopening the toolbar', () => {
@@ -144,7 +160,7 @@ describe('shared fee chart view', () => {
     expect(screen.getByRole('button', { name: 'Collapse chart controls' }).getAttribute('aria-expanded')).toBe('true')
   })
 
-  it('switches all chart groups together and preserves hidden main-chart series across modes', () => {
+  it('uses per-chart defaults and preserves hidden series across independent render modes and shared views', () => {
     vi.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-10-06T18:00:00Z'))
     render(<FeesPanel chainSelector={<select aria-label="Chain" />} />)
     const controls = screen.getByRole('group', { name: 'Chart view' })
@@ -154,19 +170,12 @@ describe('shared fee chart view', () => {
     expect(screen.getByTestId('chain-view').getAttribute('data-view')).toBe('periodic')
     expect(screen.getByTestId('vault-view').getAttribute('data-view')).toBe('periodic')
 
-    expect(chart.querySelectorAll('.recharts-bar')).toHaveLength(3)
+    expect(chart.querySelectorAll('.recharts-line-curve')).toHaveLength(3)
     expect(screen.getByTestId('chain-view').getAttribute('data-render-type')).toBe('bar')
     expect(screen.getByTestId('vault-view').getAttribute('data-render-type')).toBe('bar')
-    expect(screen.getByTestId('allocator-view').getAttribute('data-render-type')).toBe('bar')
+    expect(screen.getByTestId('allocator-view').getAttribute('data-render-type')).toBe('line')
     expect(screen.getByTestId('fee-yield-view').getAttribute('data-render-type')).toBe('bar')
     expect(screen.getByTestId('earnings-yield-view').getAttribute('data-render-type')).toBe('bar')
-    fireEvent.click(screen.getByRole('button', { name: 'Show fee and earnings charts as lines' }))
-    expect(screen.getByTestId('chain-view').getAttribute('data-render-type')).toBe('line')
-    expect(screen.getByTestId('vault-view').getAttribute('data-render-type')).toBe('line')
-    expect(screen.getByTestId('allocator-view').getAttribute('data-render-type')).toBe('line')
-    expect(screen.getByTestId('fee-yield-view').getAttribute('data-render-type')).toBe('line')
-    expect(screen.getByTestId('earnings-yield-view').getAttribute('data-render-type')).toBe('line')
-
     fireEvent.click(within(chart as HTMLElement).getByRole('button', { name: 'Net Yield' }))
     expect(chart.querySelectorAll('.recharts-line-curve')).toHaveLength(2)
     fireEvent.click(within(controls).getByRole('button', { name: 'Cumulative' }))
@@ -187,8 +196,11 @@ describe('shared fee chart view', () => {
     expect(screen.getByTestId('chain-view').getAttribute('data-view')).toBe('periodic')
     expect(screen.getByTestId('vault-view').getAttribute('data-view')).toBe('periodic')
     expect(chart.querySelectorAll('.recharts-line-curve')).toHaveLength(2)
-    fireEvent.click(screen.getByRole('button', { name: 'Show fee and earnings charts as bars' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Show earnings and fees as bars' }))
     expect(chart.querySelectorAll('.recharts-bar')).toHaveLength(2)
+    expect(screen.getByTestId('allocator-view').getAttribute('data-render-type')).toBe('line')
+    for (const name of ['chain-view', 'vault-view'])
+      expect(screen.getByTestId(name).getAttribute('data-fees-type')).toBe('bar')
     expect(screen.getByTestId('chain-view').getAttribute('data-render-type')).toBe('bar')
     expect(screen.getByTestId('vault-view').getAttribute('data-render-type')).toBe('bar')
   })

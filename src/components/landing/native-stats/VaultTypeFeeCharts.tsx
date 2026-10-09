@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import type { ChainFeeHistoryView } from './ChainFeeHistoryCharts'
-import type { StatsChartType } from './ChartTypeToggle'
+import type { FeeChartTypeControls } from './ChartTypeToggle'
 import type { FeeHistoryInterval } from './canonical-fees'
 import { FeeBreakdownChart } from './FeeBreakdownChart'
 import type { FeeHistoryPeriod } from './fee-history'
@@ -13,19 +13,23 @@ export function VaultTypeFeeCharts({
   periods,
   interval,
   view,
-  renderType = 'bar'
+  chartTypes
 }: {
   query: string
   periods: FeeHistoryPeriod[]
   interval: FeeHistoryInterval
   view: ChainFeeHistoryView
-  renderType?: StatsChartType
+  chartTypes: FeeChartTypeControls
 }) {
   const { catalog, histories, loading, error, retry } = useVaultTypeFeeHistories(query, periods)
   const data = useMemo(() => buildVaultTypeFeeSeries(histories, periods, catalog), [histories, periods, catalog])
 
   return (
-    <section className="chain-fee-charts" aria-label="Earnings and fees by vault type" aria-busy={loading}>
+    <section
+      className="chain-fee-charts fee-chart-group"
+      aria-label="Earnings and fees by vault type"
+      aria-busy={loading}
+    >
       {error ? (
         <div className="card">
           <p>Vault type breakdown could not be loaded.</p>
@@ -38,7 +42,7 @@ export function VaultTypeFeeCharts({
       ) : (
         <>
           <FeeBreakdownChart
-            renderType={renderType}
+            {...chartTypes.earnings}
             title="Earnings by Vault Type"
             subtitle="Gross gains less losses"
             metric="earnings"
@@ -47,7 +51,7 @@ export function VaultTypeFeeCharts({
             interval={interval}
           />
           <FeeBreakdownChart
-            renderType={renderType}
+            {...chartTypes.fees}
             title="Fees by Vault Type"
             subtitle="Gross fees charged"
             metric="fees"

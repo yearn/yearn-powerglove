@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Area, Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import type { NameType, Payload, ValueType } from 'recharts/types/component/DefaultTooltipContent'
-import type { StatsChartType } from './ChartTypeToggle'
+import { type ChartTypeControl, ChartTypeToggle } from './ChartTypeToggle'
 import type { FeeHistoryInterval } from './canonical-fees'
 import type { ChainFeeMetric } from './chain-fee-history'
 import { formatFeeHistoryTick } from './fee-history'
@@ -60,16 +60,16 @@ export function FeeBreakdownChart({
   title,
   subtitle,
   interval,
-  renderType = 'bar',
+  renderType,
+  onRenderTypeChange,
   stacked = true
-}: {
+}: ChartTypeControl & {
   metric: ChainFeeMetric
   data: VaultComparisonPoint[]
   series: FeeBreakdownSeries[]
   title: string
   subtitle: string
   interval: FeeHistoryInterval
-  renderType?: StatsChartType
   stacked?: boolean
 }) {
   const [hiddenSeries, setHiddenSeries] = useState<Set<string>>(() => new Set())
@@ -79,7 +79,10 @@ export function FeeBreakdownChart({
     <div className="card fee-chart-card">
       <div className="fee-chart-header">
         <div>
-          <h2>{title}</h2>
+          <div className="fee-chart-title-row">
+            <h2>{title}</h2>
+            <ChartTypeToggle value={renderType} onValueChange={onRenderTypeChange} label={title.toLowerCase()} />
+          </div>
           <span className="text-dim">{subtitle}</span>
         </div>
         <fieldset className="fee-series-toggles">

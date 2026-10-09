@@ -17,7 +17,7 @@ import {
 import type { ChartDateRange } from '@/components/charts/chart-utils'
 import { Tooltip as HelpTooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { ChainFeeHistoryCharts, type ChainFeeHistoryView } from './ChainFeeHistoryCharts'
-import { ChartTypeToggle, type StatsChartType } from './ChartTypeToggle'
+import { type ChartTypeControl, ChartTypeToggle, type StatsChartType } from './ChartTypeToggle'
 import {
   type CanonicalFeeHistory,
   type CanonicalFeeSummary,
@@ -62,36 +62,43 @@ interface VaultProfitability {
   chainId: number
   name: string | null
   category: string
-  tvlUsd: number
-  annualizedFeeRevenue: number
-  feeYield: number
-  feeCapture: number
-  gainYield: number
+  tvlUsd: number | null
+  annualizedFeeRevenue: number | null
+  feeYield: number | null
+  feeCapture: number | null
+  gainYield: number | null
   trend: Trend
-  trendDelta: number
+  trendDelta: number | null
   pricingConfidence: PricingConfidence
   reportCount: number
-  avgHarvestFrequencyDays: number
-  performanceFee: number
-  managementFee: number
-  totalGainUsd: number
-  totalFeeRevenue: number
-  quadrant: Quadrant
-  currentPeriodFeeYield: number
-  previousPeriodFeeYield: number
+  avgHarvestFrequencyDays: number | null
+  performanceFee: number | null
+  managementFee: number | null
+  totalGainUsd: number | null
+  totalFeeRevenue: number | null
+  quadrant: Quadrant | null
+  currentPeriodFeeYield: number | null
+  previousPeriodFeeYield: number | null
 }
 
 interface ProfitabilitySummary {
-  protocolFeeYield: number
-  feeCaptureRate: number
-  medianVaultFeeYield: number
-  totalAnnualizedFees: number
-  totalTvl: number
+  protocolFeeYield: number | null
+  feeCaptureRate: number | null
+  medianVaultFeeYield: number | null
+  totalAnnualizedFees: number | null
+  totalTvl: number | null
   vaultCount: number
   lastUpdated: string
   vaults: VaultProfitability[]
-  byChain: Array<{ chain: string; chainId: number; tvl: number; fees: number; feeYield: number; vaultCount: number }>
-  byCategory: Array<{ category: string; tvl: number; fees: number; feeYield: number; vaultCount: number }>
+  byChain: Array<{
+    chain: string
+    chainId: number
+    tvl: number
+    fees: number
+    feeYield: number | null
+    vaultCount: number
+  }>
+  byCategory: Array<{ category: string; tvl: number; fees: number; feeYield: number | null; vaultCount: number }>
   quadrants: Record<Quadrant, VaultProfitability[]>
   dataQuality: {
     highConfidenceCount: number
@@ -236,14 +243,14 @@ function FeeHistoryChart({
   series,
   description,
   interval,
-  renderType
-}: {
+  renderType,
+  onRenderTypeChange
+}: ChartTypeControl & {
   title: string
   data: FeeHistoryPoint[]
   series: FeeHistoryChartSeries[]
   description: string
   interval: FeeHistoryInterval
-  renderType: StatsChartType
 }) {
   const [visibleSeries, setVisibleSeries] = useState<Set<FeeHistoryChartSeries['key']>>(
     () => new Set(series.map((item) => item.key))
@@ -263,7 +270,10 @@ function FeeHistoryChart({
   if (data.length === 0) {
     return (
       <div className="card fee-chart-card">
-        <h2>{title}</h2>
+        <div className="fee-chart-title-row">
+          <h2>{title}</h2>
+          <ChartTypeToggle value={renderType} onValueChange={onRenderTypeChange} label="earnings and fees" />
+        </div>
         <p className="text-dim">No completed history in this range.</p>
       </div>
     )
@@ -272,7 +282,10 @@ function FeeHistoryChart({
   return (
     <div className="card fee-chart-card">
       <div className="fee-chart-header">
-        <h2>{title}</h2>
+        <div className="fee-chart-title-row">
+          <h2>{title}</h2>
+          <ChartTypeToggle value={renderType} onValueChange={onRenderTypeChange} label="earnings and fees" />
+        </div>
         <fieldset className="fee-series-toggles">
           <legend className="sr-only">{title} data series</legend>
           {series.map((item) => {
@@ -355,13 +368,30 @@ function FeeHistoryChart({
   )
 }
 
+const DEFAULT_FEE_CHART_TYPES = {
+  overall: 'line',
+  feeYield: 'bar',
+  earningsYield: 'bar',
+  allocatorEarnings: 'line',
+  allocatorFees: 'line',
+  chainEarnings: 'bar',
+  chainFees: 'bar',
+  vaultTypeEarnings: 'bar',
+  vaultTypeFees: 'bar'
+} as const
+
 export function FeesPanel({ chainSelector }: { chainSelector: ReactNode }) {
   const { chainFilter, density, setLastFetchedAt } = useContext(StatsContext)
   const [selectedRange, setSelectedRange] = useState<ChartDateRange>(() =>
     defaultFeeTimeRange(Math.floor(Date.now() / 1000))
   )
   const [chartView, setChartView] = useState<ChainFeeHistoryView>('periodic')
-  const [renderType, setRenderType] = useState<StatsChartType>('bar')
+  const [chartTypes, setChartTypes] =
+    useState<Record<keyof typeof DEFAULT_FEE_CHART_TYPES, StatsChartType>>(DEFAULT_FEE_CHART_TYPES)
+  const chartType = (key: keyof typeof DEFAULT_FEE_CHART_TYPES): ChartTypeControl => ({
+    renderType: chartTypes[key],
+    onRenderTypeChange: (value) => setChartTypes((types) => ({ ...types, [key]: value }))
+  })
   const [selectedAllocatorKeys, setSelectedAllocatorKeys] = useState<string[] | null>(null)
   const [controlsExpanded, setControlsExpanded] = useState(true)
   const controlsId = useId()
@@ -471,9 +501,9 @@ export function FeesPanel({ chainSelector }: { chainSelector: ReactNode }) {
       })
     return sortStacks(withFees, {
       name: (c) => c.root.vault.name || '',
-      perfFee: (c) => c.root.perfFee,
+      perfFee: (c) => c.root.perfFee ?? -1,
       feeCaptured: (c) => canonicalDecimalToNumber(c.actualFeesUsd) ?? -1,
-      effective: (c) => c.effectivePerfFee
+      effective: (c) => c.effectivePerfFee ?? -1
     })
   }, [feeStack, vaultFeeMap, profTrendMap, sortStacks, chainFilter])
 
@@ -483,7 +513,15 @@ export function FeesPanel({ chainSelector }: { chainSelector: ReactNode }) {
   const scatterData = useMemo(() => {
     if (!profData) return []
     const base = profData.vaults
-      .filter((v) => v.feeYield > 0 && v.tvlUsd >= 1e4 && v.tvlUsd <= 1e8)
+      .filter(
+        (v): v is VaultProfitability & { feeYield: number; tvlUsd: number; quadrant: Quadrant } =>
+          v.feeYield != null &&
+          v.tvlUsd != null &&
+          v.quadrant != null &&
+          v.feeYield >= 0 &&
+          v.tvlUsd >= 1e4 &&
+          v.tvlUsd <= 1e8
+      )
       .filter((v) => chainFilter === 'all' || String(v.chainId) === chainFilter)
     const eligible = quadrantFilter !== 'all' ? base.filter((v) => v.quadrant === quadrantFilter) : base
     if (eligible.length < 4) return eligible.map((v) => ({ ...v, logTvl: Math.log10(v.tvlUsd) }))
@@ -563,7 +601,6 @@ export function FeesPanel({ chainSelector }: { chainSelector: ReactNode }) {
             </button>
           ))}
         </fieldset>
-        <ChartTypeToggle value={renderType} onValueChange={setRenderType} label="fee and earnings charts" />
         <FeeTimeRangeSlider datasetId={summary?.datasetId} selected={selectedRange} onApply={setSelectedRange} />
       </div>
       <button
@@ -650,7 +687,7 @@ export function FeesPanel({ chainSelector }: { chainSelector: ReactNode }) {
       {/* ---- Full-width fee history charts ---- */}
       <div className="row fee-chart-row">
         <FeeHistoryChart
-          renderType={renderType}
+          {...chartType('overall')}
           title={
             chartView === 'cumulative'
               ? 'Cumulative Earnings & Fees'
@@ -681,17 +718,24 @@ export function FeesPanel({ chainSelector }: { chainSelector: ReactNode }) {
               strokeDasharray: '6 3'
             }
           ]}
-          description={`${renderType === 'bar' ? 'Bar' : 'Line'} chart comparing ${chartView === 'cumulative' ? 'cumulative' : historyInterval} canonical gross gains, net yield, and gross fees over completed periods in the selected time range.`}
+          description={`${chartTypes.overall === 'bar' ? 'Bar' : 'Line'} chart comparing ${chartView === 'cumulative' ? 'cumulative' : historyInterval} canonical gross gains, net yield, and gross fees over completed periods in the selected time range.`}
         />
 
-        <FeeYieldChart periods={feeHistorySeries} interval={historyInterval} view={chartView} renderType={renderType} />
-        <FeeYieldChart
-          metric="earnings"
-          periods={feeHistorySeries}
-          interval={historyInterval}
-          view={chartView}
-          renderType={renderType}
-        />
+        <section className="chain-fee-charts fee-chart-group" aria-label="Fees and earnings per dollar of TVL">
+          <FeeYieldChart
+            periods={feeHistorySeries}
+            interval={historyInterval}
+            view={chartView}
+            {...chartType('feeYield')}
+          />
+          <FeeYieldChart
+            metric="earnings"
+            periods={feeHistorySeries}
+            interval={historyInterval}
+            view={chartView}
+            {...chartType('earningsYield')}
+          />
+        </section>
 
         <VaultComparisonCharts
           selectedKeys={selectedAllocatorKeys}
@@ -701,11 +745,11 @@ export function FeesPanel({ chainSelector }: { chainSelector: ReactNode }) {
           periods={feeHistorySeries}
           view={chartView}
           interval={historyInterval}
-          renderType={renderType}
+          chartTypes={{ earnings: chartType('allocatorEarnings'), fees: chartType('allocatorFees') }}
         />
 
         <ChainFeeHistoryCharts
-          renderType={renderType}
+          chartTypes={{ earnings: chartType('chainEarnings'), fees: chartType('chainFees') }}
           query={historyFilters.toString()}
           chainIds={historyChainIds}
           periods={feeHistorySeries}
@@ -714,7 +758,7 @@ export function FeesPanel({ chainSelector }: { chainSelector: ReactNode }) {
         />
 
         <VaultTypeFeeCharts
-          renderType={renderType}
+          chartTypes={{ earnings: chartType('vaultTypeEarnings'), fees: chartType('vaultTypeFees') }}
           query={historyFilters.toString()}
           periods={feeHistorySeries}
           interval={historyInterval}
@@ -973,7 +1017,7 @@ export function FeesPanel({ chainSelector }: { chainSelector: ReactNode }) {
                                   </td>
                                   <td
                                     className="text-right"
-                                    style={{ color: node.perfFee > 0 ? 'var(--text)' : 'var(--text-3)' }}
+                                    style={{ color: (node.perfFee ?? 0) > 0 ? 'var(--text)' : 'var(--text-3)' }}
                                   >
                                     {bpsPct(node.perfFee)}
                                   </td>

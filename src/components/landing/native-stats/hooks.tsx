@@ -22,11 +22,14 @@ export function getStatsApiLane(url: string): StatsApiLane {
       '/api/tvl/history/runs/latest/constant-price',
       '/api/tvl/curation-products',
       '/api/audit/tree',
+      '/api/analytics/publication',
+      '/api/comparison/defillama-comparable',
       '/api/comparison'
     ].includes(path)
   )
     return 'tvl'
-  if (['/api/fees', '/api/fees/history', '/api/fees/vaults'].includes(path)) return 'fees'
+  if (['/api/fees', '/api/fees/history', '/api/fees/vaults', '/api/fees/stack', '/api/profitability'].includes(path))
+    return 'fees'
   return path.startsWith('/api/fees') || path.startsWith('/api/profitability') ? 'fee-analytics' : 'tvl-analytics'
 }
 
@@ -58,6 +61,35 @@ export const HAS_FEES_API = resolveStatsApiBase('fees') !== null
 const fetchCache = new Map<string, { data: unknown; timestamp: number }>()
 const inFlightFetches = new Map<string, Promise<{ payload: unknown; timestamp: number; status: number }>>()
 const CACHE_TTL = 5 * 60 * 1000
+
+const preparedAnalyticsPaths = new Set([
+  '/api/fees/stack',
+  '/api/profitability',
+  '/api/comparison',
+  '/api/comparison/defillama-comparable'
+])
+const analyticsSelections = new Map<string, Promise<string | null>>()
+async function selectedAnalyticsUrl(key: string, url: string, apiBase: string): Promise<string> {
+  if (!preparedAnalyticsPaths.has(url.split('?')[0])) return key
+  let selection = analyticsSelections.get(apiBase)
+  if (!selection) {
+    selection = fetch(`${apiBase}/api/analytics/publication`)
+      .then(async (response) => {
+        if (response.status === 404) return null // Existing legacy origins have no publication route.
+        if (!response.ok) throw new Error('Analytics publication could not be loaded')
+        const data = await response.json()
+        if (!/^[a-f0-9]{64}$/.test(data.publicationId)) throw new Error('Invalid analytics publication')
+        return data.publicationId as string
+      })
+      .catch((error) => {
+        analyticsSelections.delete(apiBase)
+        throw error
+      })
+    analyticsSelections.set(apiBase, selection)
+  }
+  const id = await selection
+  return id ? `${key}${url.includes('?') ? '&' : '?'}publicationId=${id}` : key
+}
 
 interface UseFetchOptions {
   enabled?: boolean
@@ -114,7 +146,8 @@ export function useFetch<T>(url: string, options: UseFetchOptions = {}) {
       }))
       let request = !bypassCache ? inFlightFetches.get(key) : undefined
       if (!request) {
-        const pending = fetch(key)
+        const pending = selectedAnalyticsUrl(key, url, apiBase)
+          .then(fetch)
           .then(async (response) => {
             if (!response.ok) {
               const payload = (await response.json().catch(() => null)) as { error?: string } | null
@@ -152,7 +185,7 @@ export function useFetch<T>(url: string, options: UseFetchOptions = {}) {
             })
         })
     },
-    [enabled, key]
+    [enabled, key, url, apiBase]
   )
 
   useEffect(() => {
@@ -192,7 +225,8 @@ export function pct(n: number): string {
   return `${n >= 0 ? '+' : ''}${n.toFixed(1)}%`
 }
 
-export function bpsPct(bps: number): string {
+export function bpsPct(bps: number | null | undefined): string {
+  if (bps == null || !Number.isFinite(bps)) return '—'
   return `${(bps / 100).toFixed(1)}%`
 }
 
@@ -204,7 +238,8 @@ export function powergloveVaultPath(chainId: number, address: string): string {
   return `/vaults/${chainId}/${address}`
 }
 
-export function pctFmt(n: number): string {
+export function pctFmt(n: number | null | undefined): string {
+  if (n == null || !Number.isFinite(n)) return '—'
   return `${(n * 100).toFixed(2)}%`
 }
 

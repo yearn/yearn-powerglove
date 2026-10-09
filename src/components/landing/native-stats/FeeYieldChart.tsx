@@ -4,7 +4,7 @@ import { useContext, useMemo } from 'react'
 import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { Tooltip as HelpTooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import type { ChainFeeHistoryView } from './ChainFeeHistoryCharts'
-import type { StatsChartType } from './ChartTypeToggle'
+import { type ChartTypeControl, ChartTypeToggle } from './ChartTypeToggle'
 import type { FeeHistoryInterval } from './canonical-fees'
 import { type FeeHistoryPoint, feeHistoryBoundary, formatFeeHistoryTick } from './fee-history'
 import { buildTvlYieldSeries, type DailyFeeTvlHistory, type TvlYieldMetric, type TvlYieldPoint } from './fee-yield'
@@ -86,12 +86,12 @@ export function FeeYieldChart({
   interval,
   view,
   renderType,
+  onRenderTypeChange,
   metric = 'fees'
-}: {
+}: ChartTypeControl & {
   periods: FeeHistoryPoint[]
   interval: FeeHistoryInterval
   view: ChainFeeHistoryView
-  renderType: StatsChartType
   metric?: TvlYieldMetric
 }) {
   const { chainFilter } = useContext(StatsContext)
@@ -162,9 +162,17 @@ export function FeeYieldChart({
   return (
     <section className="card fee-chart-card" aria-label={`${title} per dollar of TVL`} aria-busy={loading}>
       <div className="fee-chart-header">
-        <h2>
-          {cumulative ? 'Cumulative' : interval === 'weekly' ? 'Weekly' : 'Monthly'} {title} per $1 of TVL (Annualized)
-        </h2>
+        <div className="fee-chart-title-row">
+          <h2>
+            {cumulative ? 'Cumulative' : interval === 'weekly' ? 'Weekly' : 'Monthly'} {title} per $1 of TVL
+            (Annualized)
+          </h2>
+          <ChartTypeToggle
+            value={renderType}
+            onValueChange={onRenderTypeChange}
+            label={`${title.toLowerCase()} per dollar of TVL`}
+          />
+        </div>
         <TooltipProvider delayDuration={200}>
           <HelpTooltip>
             <TooltipTrigger asChild>

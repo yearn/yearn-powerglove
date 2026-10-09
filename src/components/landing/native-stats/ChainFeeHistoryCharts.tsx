@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import type { StatsChartType } from './ChartTypeToggle'
+import type { FeeChartTypeControls } from './ChartTypeToggle'
 import type { FeeHistoryInterval } from './canonical-fees'
 import { buildChainFeeHistorySeries } from './chain-fee-history'
 import { FeeBreakdownChart } from './FeeBreakdownChart'
@@ -15,14 +15,14 @@ export function ChainFeeHistoryCharts({
   periods,
   view,
   interval,
-  renderType = 'bar'
+  chartTypes
 }: {
   query: string
   chainIds: number[]
   periods: FeeHistoryPeriod[]
   view: ChainFeeHistoryView
   interval: FeeHistoryInterval
-  renderType?: StatsChartType
+  chartTypes: FeeChartTypeControls
 }) {
   const { data, loading, error, retry } = useChainFeeHistories(query, chainIds)
   const chartSeries = chainIds.map((chainId) => ({
@@ -33,7 +33,7 @@ export function ChainFeeHistoryCharts({
   const series = useMemo(() => buildChainFeeHistorySeries(data ?? [], periods), [data, periods])
 
   return (
-    <section className="chain-fee-charts" aria-label="Earnings and fees by chain" aria-busy={loading}>
+    <section className="chain-fee-charts fee-chart-group" aria-label="Earnings and fees by chain" aria-busy={loading}>
       {loading ? (
         <SkeletonChart />
       ) : error ? (
@@ -46,7 +46,7 @@ export function ChainFeeHistoryCharts({
       ) : (
         <>
           <FeeBreakdownChart
-            renderType={renderType}
+            {...chartTypes.earnings}
             title="Earnings by Chain"
             subtitle="Gross gains less losses"
             metric="earnings"
@@ -55,7 +55,7 @@ export function ChainFeeHistoryCharts({
             interval={interval}
           />
           <FeeBreakdownChart
-            renderType={renderType}
+            {...chartTypes.fees}
             title="Fees by Chain"
             subtitle="Gross fees charged"
             metric="fees"

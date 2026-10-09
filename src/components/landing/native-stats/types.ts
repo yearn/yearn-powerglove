@@ -141,8 +141,8 @@ export interface DefillamaComparison {
 
 export interface FeeStackNode {
   vault: { address: string; chainId: number; name: string | null }
-  perfFee: number
-  mgmtFee: number
+  perfFee: number | null
+  mgmtFee: number | null
   capitalUsd: number
   children: FeeStackNode[]
 }
@@ -150,16 +150,16 @@ export interface FeeStackNode {
 export interface FeeStackChain {
   root: FeeStackNode
   maxDepth: number
-  effectivePerfFee: number
-  effectiveMgmtFee: number
+  effectivePerfFee: number | null
+  effectiveMgmtFee: number | null
 }
 
 export interface FeeStackSummary {
   chains: FeeStackChain[]
   maxDepth: number
-  maxEffectivePerfFee: number
-  avgEffectivePerfFee: number
-  totalStackedCapital: number
+  maxEffectivePerfFee: number | null
+  avgEffectivePerfFee: number | null
+  totalStackedCapital: number | null
 }
 
 export type CurationProductFamily = 'v3_allocator' | 'morpho_curated'

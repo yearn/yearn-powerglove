@@ -1401,6 +1401,13 @@
   margin: 0;
 }
 
+.pg-stats .fee-chart-title-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+}
+
 .pg-stats .fee-series-toggles {
   display: flex;
   align-items: center;
@@ -1458,37 +1465,29 @@
   gap: 1rem;
 }
 
-.pg-stats .allocator-comparison-actions,
-.pg-stats .allocator-comparison-selection {
+.pg-stats .fee-chart-group {
+  gap: 0;
+}
+
+.pg-stats .fee-chart-group > .card:has(+ .card) {
+  margin-bottom: 0;
+}
+
+.pg-stats .fee-chart-group > .card + .card {
+  border-top: 0;
+}
+
+.pg-stats .allocator-comparison-actions {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 0.5rem;
 }
 
-.pg-stats .allocator-comparison-selection {
-  margin-top: 0.75rem;
-}
-
-.pg-stats .allocator-picker-trigger,
-.pg-stats .allocator-selected-vault {
+.pg-stats .allocator-picker-trigger {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-}
-
-.pg-stats .allocator-selected-vault {
-  max-width: 100%;
-  text-align: left;
-}
-
-.pg-stats .allocator-selected-vault > span:nth-child(2) {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.pg-stats .allocator-selected-vault > svg {
-  flex-shrink: 0;
 }
 
 .pg-stats .chain-fee-tooltip {

@@ -41,15 +41,16 @@ export default defineConfig(({ mode }) => {
   const statsApiProxy = {
     '/api/audit/tree': proxyTo(migratedTvlApiTarget),
     '/api/audit': proxyTo(yearnTvlApiTarget),
-    '/api/comparison/defillama-comparable': proxyTo(yearnTvlApiTarget),
+    '/api/analytics': proxyTo(migratedTvlApiTarget),
+    '/api/comparison/defillama-comparable': proxyTo(migratedTvlApiTarget),
     '/api/comparison': proxyTo(migratedTvlApiTarget),
     '/api/tvl/graph': proxyTo(yearnTvlApiTarget),
     '/api/tvl/overlap': proxyTo(yearnTvlApiTarget),
     '/api/tvl/vaults': proxyTo(yearnTvlApiTarget),
     '/api/tvl': proxyTo(migratedTvlApiTarget),
-    '/api/fees/stack': proxyTo(yearnFeesApiTarget),
+    '/api/fees/stack': proxyTo(yearnDataApiTarget),
     '/api/fees': proxyTo(yearnDataApiTarget),
-    '/api/profitability': proxyTo(yearnFeesApiTarget)
+    '/api/profitability': proxyTo(yearnDataApiTarget)
   }
   const appApiProxy = { ...yvUsdAprProxy, ...statsApiProxy }
 

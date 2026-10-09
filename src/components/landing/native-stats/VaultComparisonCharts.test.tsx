@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { type ComponentProps, cloneElement, type ReactElement, useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { StatsChartType } from './ChartTypeToggle'
 import type { CanonicalFeeHistoryBucket, CanonicalVaultFee } from './canonical-fees'
 import { fetchAllocatorHistory, VaultComparisonCharts } from './VaultComparisonCharts'
 
@@ -41,18 +42,32 @@ const catalog = [
   vault(1, 'Tokenized strategy', 'yearn-v3-tokenized-strategy'),
   vault(1, 'V2 vault', 'yearn-v2-vault')
 ]
-type ComparisonProps = Omit<ComponentProps<typeof VaultComparisonCharts>, 'selectedKeys' | 'onSelectedKeysChange'>
-function SelectionHarness(props: ComparisonProps) {
+type ComparisonProps = Omit<
+  ComponentProps<typeof VaultComparisonCharts>,
+  'selectedKeys' | 'onSelectedKeysChange' | 'chartTypes'
+>
+function SelectionHarness({ initialType = 'bar', ...props }: ComparisonProps & { initialType?: StatsChartType }) {
   const [keys, setKeys] = useState<string[] | null>(null)
-  return <VaultComparisonCharts {...props} selectedKeys={keys} onSelectedKeysChange={setKeys} />
+  const [earnings, setEarnings] = useState<StatsChartType>(initialType)
+  const [fees, setFees] = useState<StatsChartType>(initialType)
+  return (
+    <VaultComparisonCharts
+      {...props}
+      selectedKeys={keys}
+      onSelectedKeysChange={setKeys}
+      chartTypes={{
+        earnings: { renderType: earnings, onRenderTypeChange: setEarnings },
+        fees: { renderType: fees, onRenderTypeChange: setFees }
+      }}
+    />
+  )
 }
 const props: ComparisonProps = {
   query: 'datasetId=selected&interval=monthly&since=1767225600&until=1772323200',
   rankedVaults: catalog,
   periods: [{ period: '2026-01' }, { period: '2026-02' }],
   interval: 'monthly' as const,
-  view: 'periodic' as const,
-  renderType: 'bar' as const
+  view: 'periodic' as const
 }
 
 beforeEach(() => {
@@ -104,12 +119,12 @@ describe('custom allocator comparisons', () => {
       } as Response
     })
     const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } })
-    const chart = (renderType: 'bar' | 'line') => (
+    const chart = () => (
       <QueryClientProvider client={client}>
-        <SelectionHarness {...props} renderType={renderType} />
+        <SelectionHarness {...props} initialType="line" />
       </QueryClientProvider>
     )
-    const rendered = render(chart('line'))
+    render(chart())
     const section = screen.getByRole('region', { name: 'V3 allocator vault comparison' })
     await waitFor(() => expect(section.querySelectorAll('.recharts-line-curve')).toHaveLength(4))
     expect(screen.getByText('4-week moving average · Average weekly net earnings (USD)')).toBeTruthy()
@@ -124,11 +139,14 @@ describe('custom allocator comparisons', () => {
     }
     const first = section.querySelector('.recharts-line-curve')?.getAttribute('d') ?? ''
     expect(first.match(/[ML]/g)).toHaveLength(7)
-    rendered.rerender(chart('bar'))
-    await waitFor(() => expect(section.querySelectorAll('.recharts-bar')).toHaveLength(4))
-    expect(screen.queryByText(/4-week moving average/)).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Show earnings by allocator vault as bars' }))
+    await waitFor(() => expect(section.querySelectorAll('.recharts-bar')).toHaveLength(2))
+    expect(section.querySelectorAll('.recharts-line-curve')).toHaveLength(2)
+    expect(screen.getByText('4-week moving average · Average weekly fees (USD)')).toBeTruthy()
+    expect(screen.queryByText('4-week moving average · Average weekly net earnings (USD)')).toBeNull()
+    expect(requests()).toHaveLength(4)
     const loaded = requests().length
-    rendered.rerender(chart('line'))
+    fireEvent.click(screen.getByRole('button', { name: 'Show earnings by allocator vault as lines' }))
     await waitFor(() => expect(section.querySelectorAll('.recharts-line-curve')).toHaveLength(4))
     expect(requests()).toHaveLength(loaded)
     client.clear()
@@ -165,6 +183,8 @@ describe('custom allocator comparisons', () => {
     await waitFor(() => expect(section.querySelectorAll('.recharts-bar')).toHaveLength(4))
     const requests = () => fetch.mock.calls.filter(([url]) => String(url).includes('vaultAddress='))
     expect(requests()).toHaveLength(2)
+    expect(screen.queryByLabelText('Selected allocator vaults')).toBeNull()
+    expect(screen.queryByText(/Choose allocators to compare/)).toBeNull()
     expect(
       requests()
         .map(([url]) => new URL(String(url), 'http://localhost').searchParams.get('chainId'))
@@ -186,13 +206,17 @@ describe('custom allocator comparisons', () => {
     fireEvent.keyDown(screen.getByRole('textbox'), { key: 'Escape' })
     await waitFor(() => expect(section.querySelectorAll('.recharts-bar')).toHaveLength(2))
     expect(requests()).toHaveLength(2)
-    rendered.rerender(chart({ view: 'cumulative', renderType: 'line' }))
+    rendered.rerender(chart({ view: 'cumulative' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Show earnings by allocator vault as lines' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Show fees by allocator vault as lines' }))
     await waitFor(() => expect(section.querySelectorAll('.recharts-line-curve')).toHaveLength(2))
     expect(requests()).toHaveLength(2)
     rendered.rerender(chart({ query: `${props.query}&chainId=1` }))
     expect(section.querySelectorAll('.recharts-line-curve')).toHaveLength(0)
     expect(screen.getByText('Choose V3 allocator vaults to build your comparison.')).toBeTruthy()
-    rendered.rerender(chart())
+    rendered.rerender(chart({ view: 'cumulative' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Show earnings by allocator vault as bars' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Show fees by allocator vault as bars' }))
     await waitFor(() => expect(section.querySelectorAll('.recharts-bar')).toHaveLength(2))
     const earnings = screen
       .getByRole('heading', { name: 'Earnings by Allocator Vault' })

@@ -1,7 +1,8 @@
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
-import { cloneElement, type ReactElement } from 'react'
+import { cloneElement, type ReactElement, useState } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ChainFeeHistoryCharts } from './ChainFeeHistoryCharts'
+import type { StatsChartType } from './ChartTypeToggle'
 import type { CanonicalFeeHistoryBucket } from './canonical-fees'
 
 vi.mock('recharts', async (importOriginal) => ({
@@ -51,18 +52,29 @@ const histories = [
   }
 ]
 
+function Charts({ initialType = 'bar' }: { initialType?: StatsChartType }) {
+  const [earnings, setEarnings] = useState<StatsChartType>(initialType)
+  const [fees, setFees] = useState<StatsChartType>(initialType)
+  return (
+    <ChainFeeHistoryCharts
+      query="interval=monthly"
+      chainIds={[1, 137, 42161]}
+      periods={periods}
+      view="periodic"
+      interval="monthly"
+      chartTypes={{
+        earnings: { renderType: earnings, onRenderTypeChange: setEarnings },
+        fees: { renderType: fees, onRenderTypeChange: setFees }
+      }}
+    />
+  )
+}
+
 afterEach(cleanup)
 
 describe('chain fee chart stacking', () => {
   it('defaults to signed stacked bars and preserves hidden series when switching to lines', () => {
-    const props = {
-      query: 'interval=monthly',
-      chainIds: [1, 137, 42161],
-      periods,
-      view: 'periodic' as const,
-      interval: 'monthly' as const
-    }
-    const rendered = render(<ChainFeeHistoryCharts {...props} />)
+    render(<Charts />)
     const chart = screen.getByRole('heading', { name: 'Earnings by Chain' }).closest('.fee-chart-card') as HTMLElement
     const groups = chart.querySelectorAll('.recharts-bar')
     expect(groups).toHaveLength(3)
@@ -76,22 +88,15 @@ describe('chain fee chart stacking', () => {
     expect(Math.abs(lossHeight)).toBeLessThan(Number(positive.getAttribute('height')))
     fireEvent.click(within(chart).getByRole('button', { name: 'Polygon' }))
     expect(chart.querySelectorAll('.recharts-bar')).toHaveLength(2)
-    rendered.rerender(<ChainFeeHistoryCharts {...props} renderType="line" />)
+    fireEvent.click(screen.getByRole('button', { name: 'Show earnings by chain as lines' }))
+    const fees = screen.getByRole('heading', { name: 'Fees by Chain' }).closest('.fee-chart-card')
+    expect(fees?.querySelectorAll('.recharts-bar')).toHaveLength(3)
     expect(chart.querySelectorAll('.recharts-area-curve')).toHaveLength(2)
     expect(within(chart).getByRole('button', { name: 'Polygon' }).getAttribute('aria-pressed')).toBe('false')
   })
 
   it('subtracts losses within the stack and keeps tiny negatives beside the preceding boundary', () => {
-    render(
-      <ChainFeeHistoryCharts
-        query="interval=monthly"
-        chainIds={[1, 137, 42161]}
-        periods={periods}
-        view="periodic"
-        interval="monthly"
-        renderType="line"
-      />
-    )
+    render(<Charts initialType="line" />)
     const chart = screen.getByRole('heading', { name: 'Earnings by Chain' }).closest('.fee-chart-card')
     if (!chart) throw new Error('Earnings chart not rendered')
     const paths = [...chart.querySelectorAll('.recharts-area-curve')]

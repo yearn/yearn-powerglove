@@ -2,6 +2,13 @@ import { BarChart3, LineChart } from 'lucide-react'
 
 export type StatsChartType = 'bar' | 'line'
 
+export interface ChartTypeControl {
+  renderType: StatsChartType
+  onRenderTypeChange: (value: StatsChartType) => void
+}
+
+export type FeeChartTypeControls = Record<'earnings' | 'fees', ChartTypeControl>
+
 export function ChartTypeToggle({
   value,
   onValueChange,

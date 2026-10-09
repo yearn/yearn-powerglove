@@ -1,9 +1,9 @@
 import { useQueries, useQuery } from '@tanstack/react-query'
-import { ChevronDown, X } from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
 import { useId, useState } from 'react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import type { ChainFeeHistoryView } from './ChainFeeHistoryCharts'
-import type { StatsChartType } from './ChartTypeToggle'
+import type { FeeChartTypeControls } from './ChartTypeToggle'
 import type { CanonicalFeeHistory, CanonicalVaultFee, FeeHistoryInterval } from './canonical-fees'
 import { FeeBreakdownChart } from './FeeBreakdownChart'
 import type { FeeHistoryPeriod } from './fee-history'
@@ -48,7 +48,7 @@ export function VaultComparisonCharts({
   periods,
   view,
   interval,
-  renderType,
+  chartTypes,
   selectedKeys,
   onSelectedKeysChange
 }: {
@@ -57,7 +57,7 @@ export function VaultComparisonCharts({
   periods: FeeHistoryPeriod[]
   view: ChainFeeHistoryView
   interval: FeeHistoryInterval
-  renderType: StatsChartType
+  chartTypes: FeeChartTypeControls
   selectedKeys: string[] | null
   onSelectedKeysChange: (keys: string[]) => void
 }) {
@@ -91,35 +91,53 @@ export function VaultComparisonCharts({
     const vault = allocators.find((vault) => allocatorKey(vault) === key)
     return vault ? [vault] : []
   })
-  const smoothed = renderType === 'line' && view === 'periodic'
+  const earningsSmoothed = chartTypes.earnings.renderType === 'line' && view === 'periodic'
+  const feesSmoothed = chartTypes.fees.renderType === 'line' && view === 'periodic'
   const weeklyWindow = allocatorMovingAverageWindow(query, Math.floor(Date.now() / 1000))
-  const historyQuery = smoothed ? weeklyWindow.query : query
-  const historyPeriods = smoothed ? weeklyWindow.periods : periods
+  const scopes = [earningsSmoothed, feesSmoothed].map((smoothed) => ({
+    query: smoothed ? weeklyWindow.query : query,
+    periods: smoothed ? weeklyWindow.periods : periods
+  }))
+  const requests = [...new Map(scopes.map((scope) => [scope.query, scope])).values()]
+    .filter((scope) => scope.periods.length > 0)
+    .flatMap((scope) => selected.map((vault) => ({ query: scope.query, vault })))
   const histories = useQueries({
-    queries: selected.map((vault) => ({
-      queryKey: ['allocator-comparison-history', base, historyQuery, allocatorKey(vault)],
-      enabled: !!datasetId && historyPeriods.length > 0,
+    queries: requests.map((request) => ({
+      queryKey: ['allocator-comparison-history', base, request.query, allocatorKey(request.vault)],
+      enabled: !!datasetId,
       staleTime: Infinity,
       retry: false,
-      queryFn: ({ signal }: { signal: AbortSignal }) => fetchAllocatorHistory(base, historyQuery, vault, signal)
+      queryFn: ({ signal }: { signal: AbortSignal }) =>
+        fetchAllocatorHistory(base, request.query, request.vault, signal)
     }))
   })
+  const historyByRequest = new Map(
+    requests.map((request, index) => [`${request.query}:${allocatorKey(request.vault)}`, histories[index].data])
+  )
   const series = selected.map((vault, index) => ({
     key: allocatorKey(vault),
     label: vaultLabel(vault),
     color: COLORS[index % COLORS.length]
   }))
-  const data = buildVaultFeeHistorySeries(
-    selected.map((vault, index) => ({ key: allocatorKey(vault), history: histories[index].data })),
-    historyPeriods
-  )
-  const chartData = smoothed
-    ? fourWeekVaultMovingAverage(data.periodic).filter(
-        (point) => Date.parse(`${point.period}T00:00:00Z`) / 1000 >= weeklyWindow.first
-      )
-    : data[view]
-  const failed = histories.flatMap((history, index) => (history.isError ? [vaultLabel(selected[index])] : []))
-  const loading = historyPeriods.length > 0 && histories.some((history) => history.isPending)
+  const chartData = (smoothed: boolean) => {
+    const historyQuery = smoothed ? weeklyWindow.query : query
+    const data = buildVaultFeeHistorySeries(
+      selected.map((vault) => ({
+        key: allocatorKey(vault),
+        history: historyByRequest.get(`${historyQuery}:${allocatorKey(vault)}`)
+      })),
+      smoothed ? weeklyWindow.periods : periods
+    )
+    return smoothed
+      ? fourWeekVaultMovingAverage(data.periodic).filter(
+          (point) => Date.parse(`${point.period}T00:00:00Z`) / 1000 >= weeklyWindow.first
+        )
+      : data[view]
+  }
+  const failed = [
+    ...new Set(histories.flatMap((history, index) => (history.isError ? [vaultLabel(requests[index].vault)] : [])))
+  ]
+  const loading = histories.some((history) => history.isPending)
   const results = allocators.filter((vault) =>
     `${vault.name ?? ''} ${vault.address} ${CHAIN_NAMES[vault.chainId] ?? vault.chainId}`
       .toLowerCase()
@@ -129,7 +147,11 @@ export function VaultComparisonCharts({
     onSelectedKeysChange(keys.includes(key) ? keys.filter((item) => item !== key) : [...keys, key])
 
   return (
-    <section className="chain-fee-charts" aria-label="V3 allocator vault comparison" aria-busy={loading}>
+    <section
+      className="chain-fee-charts fee-chart-group"
+      aria-label="V3 allocator vault comparison"
+      aria-busy={loading}
+    >
       <div className="card fee-chart-card">
         <div className="fee-chart-header">
           <h2>Compare V3 Allocators</h2>
@@ -213,29 +235,6 @@ export function VaultComparisonCharts({
             </button>
           </div>
         </div>
-        <p className="text-dim">
-          Choose allocators to compare over the selected timeframe. Top-five selections use earnings or fees in that
-          range.
-        </p>
-        <div className="allocator-comparison-selection" aria-label="Selected allocator vaults">
-          {selected.map((vault, index) => (
-            <button
-              type="button"
-              key={allocatorKey(vault)}
-              className="page-btn allocator-selected-vault"
-              aria-label={`Remove ${vaultLabel(vault)}`}
-              onClick={() => toggle(allocatorKey(vault))}
-            >
-              <span
-                className="fee-series-swatch"
-                aria-hidden="true"
-                style={{ backgroundColor: series[index].color, borderColor: series[index].color }}
-              />
-              <span>{vaultLabel(vault)}</span>
-              <X size={13} aria-hidden="true" />
-            </button>
-          ))}
-        </div>
         {catalog.isError && (
           <div className="error-retry">
             <p>The vault picker could not be loaded.</p>
@@ -272,25 +271,25 @@ export function VaultComparisonCharts({
               stacked={false}
               title="Earnings by Allocator Vault"
               subtitle={
-                smoothed
+                earningsSmoothed
                   ? '4-week moving average · Average weekly net earnings (USD)'
                   : 'Reported gross gains less losses'
               }
               metric="earnings"
-              data={chartData}
+              data={chartData(earningsSmoothed)}
               series={series}
-              interval={smoothed ? 'weekly' : interval}
-              renderType={renderType}
+              interval={earningsSmoothed ? 'weekly' : interval}
+              {...chartTypes.earnings}
             />
             <FeeBreakdownChart
               stacked={false}
               title="Fees by Allocator Vault"
-              subtitle={smoothed ? '4-week moving average · Average weekly fees (USD)' : 'Gross fees charged'}
+              subtitle={feesSmoothed ? '4-week moving average · Average weekly fees (USD)' : 'Gross fees charged'}
               metric="fees"
-              data={chartData}
+              data={chartData(feesSmoothed)}
               series={series}
-              interval={smoothed ? 'weekly' : interval}
-              renderType={renderType}
+              interval={feesSmoothed ? 'weekly' : interval}
+              {...chartTypes.fees}
             />
           </>
         ))}
