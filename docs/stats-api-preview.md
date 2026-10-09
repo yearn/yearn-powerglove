@@ -1,30 +1,49 @@
 # Stats API preview
 
-The `codex/stats-page` Vite dev/preview proxy defaults to the personal Vercel API:
+Core TVL, earnings, fees, analytics, comparison, curation, audit and TVL graph
+requests use the same Powerglove origin. Hosted builds serve these read-only
+routes through `api/[...path].ts`; local Vite builds use the equivalent proxy.
+An explicit `VITE_PUBLIC_YEARN_DATA_API_URL` can select a public Yearn Data origin.
+Supplementary legacy endpoints retain their separate API configuration.
 
-`https://yearn-data-api-preview-aqh9st2lq-rossgalloways-projects.vercel.app`
+The current upstream is:
 
-Active stats routes (TVL, fees, analytics, comparison, curation and audit tree)
-use this target. `VITE_YEARN_DATA_API_TARGET` can override it for backend work.
-The historical unused legacy graph/overlap/list routes retain their existing targets.
+`https://yearn-data-api-preview-5v92arw2b-rossgalloways-projects.vercel.app`
 
-The Vercel API preview requires authentication. Supply
-`YEARN_DATA_API_PROTECTION_BYPASS` in ignored `.env.local` on the preview server.
-It deliberately has **no VITE_ prefix**: the proxy sends it upstream, and browser
-requests remain same-origin. Never put this credential into client environment
-variables or browser request headers. The proxy sends the credential only to
-Vercel application hosts.
+This API uses the read-only Neon role and the selected hosted publication. The
+preview frontend has no database credentials. Verify `/api/publication` alongside
+`/api/tvl/graph`: both must reference the same TVL dataset. The October 9 overlap
+release selected dataset
+`c09c5663cb62c7178b5d34764e764bcbb537e0ea98ecbf5b3adafece4e0e472c`.
 
-The existing stats preview service now targets Vercel rather than VM port 3493.
-Its systemd drop-in sets the non-secret target; the secret is read from `.env.local`.
-Restart the preview process after changing either value.
+## Hosted preview configuration
 
-This configures local Vite dev/preview serving. A separately hosted Powerglove
-build still needs its existing public API URL configuration and an accessible API,
-or an equivalent server-side proxy for a protected preview. No Powerglove hosting
-deployment or production environment was changed by this update.
+Configure `YEARN_DATA_API_URL` and `YEARN_DATA_API_PROTECTION_BYPASS` in the
+Powerglove Vercel project's **Preview** environment. Neither name has a `VITE_`
+prefix. Requests receive JSON only; the proxy never returns the credential or
+follows upstream authentication redirects. Unsupported routes and write methods
+are rejected. Dataset retirement responses retain their HTTP 410 status.
 
-Validation: production build and six API-routing tests passed. Browser checks of
-TVL, expanded Vault breakdown, Fees, Curation Products and Comparison observed
-84 successful API responses, all carrying Vercel response IDs, with no JavaScript
-errors. The server-only access token was confirmed absent from built assets.
+The Yearn project deploys PRs through `.github/workflows/vercel-deploy.yml` and
+has no Vercel Git integration. Consequently its preview environment variables
+are project-scoped, rather than branch-scoped. The new variables configure only
+branches that implement this server proxy. Production environment variables are
+separate and must be configured before merging this branch for production use.
+
+The SPA rewrite excludes `/api/`, allowing Vercel functions to handle those
+requests. `git.deploymentEnabled=false` prevents duplicate native Git builds;
+the existing GitHub Actions workflow still creates the PR preview.
+
+Deployment protection remains enabled. Use a deployment-specific Vercel share
+link for reviewers outside the team; never share the upstream automation token.
+
+## Local previews
+
+`VITE_YEARN_DATA_API_TARGET` overrides the Vite proxy target. Keep
+`YEARN_DATA_API_PROTECTION_BYPASS` in ignored `.env.local` on the local server.
+The token is forwarded only to Vercel application hosts. Restart the preview
+process after changing either value.
+
+Validate the production build, API-routing/proxy tests, and browser requests to
+Stats and Strategies → TVL Flow. Inspect emitted browser assets to confirm the
+server-only access token is absent.

@@ -13,13 +13,13 @@ afterEach(() => {
 })
 
 describe('published fee requests', () => {
-  it('retains the existing TVL origin when the new data origin is absent', () => {
+  it('uses the hosted proxy for core stats when the public data origin is absent', () => {
     vi.stubGlobal('window', undefined)
     vi.stubEnv('VITE_PUBLIC_YEARN_DATA_API_URL', '')
     vi.stubEnv('VITE_PUBLIC_YEARN_TVL_API_URL', 'https://tvl.example/')
     vi.stubEnv('VITE_PUBLIC_YEARN_FEES_API_URL', 'https://fees.example/')
-    expect(resolveStatsApiBase('tvl')).toBe('https://tvl.example')
-    expect(resolveStatsApiBase('fees')).toBe('https://fees.example')
+    expect(resolveStatsApiBase('tvl')).toBe('')
+    expect(resolveStatsApiBase('fees')).toBe('')
   })
 
   it('keeps production core, analytics and TVL origins independent', () => {

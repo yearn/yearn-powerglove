@@ -1,12 +1,17 @@
 {
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/((?!api/).*)",
       "destination": "/"
     }
   ],
   "installCommand": "bun install --frozen-lockfile",
   "git": {
     "deploymentEnabled": false
+  },
+  "functions": {
+    "api/[...path].ts": {
+      "maxDuration": 60
+    }
   }
 }

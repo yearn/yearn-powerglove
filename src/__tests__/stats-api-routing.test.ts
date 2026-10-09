@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
-import { getStatsApiLane } from '@/components/landing/native-stats/hooks'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { getStatsApiLane, resolveStatsApiBase } from '@/components/landing/native-stats/hooks'
 
 describe('stats API routing', () => {
   it('routes core fees and prepared financial analytics to yearn-data', () => {
@@ -19,5 +19,27 @@ describe('stats API routing', () => {
     expect(getStatsApiLane('/api/comparison/defillama-comparable')).toBe('tvl')
     expect(getStatsApiLane('/api/analytics/publication')).toBe('tvl')
     expect(getStatsApiLane('/api/tvl/graph')).toBe('tvl')
+  })
+})
+
+describe('hosted stats origin', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.unstubAllGlobals()
+  })
+
+  it('uses the same-origin data proxy for core views on shareable hosts', () => {
+    vi.stubGlobal('window', { location: { hostname: 'powerglove-preview.vercel.app' } })
+    vi.stubEnv('VITE_PUBLIC_YEARN_DATA_API_URL', '')
+    vi.stubEnv('VITE_PUBLIC_YEARN_TVL_API_URL', 'https://old-tvl.example')
+    expect(resolveStatsApiBase('tvl')).toBe('')
+    expect(resolveStatsApiBase('fees')).toBe('')
+    expect(resolveStatsApiBase('tvl-analytics')).toBe('https://old-tvl.example')
+  })
+
+  it('supports an explicitly configured public data API', () => {
+    vi.stubGlobal('window', { location: { hostname: 'powerglove-preview.vercel.app' } })
+    vi.stubEnv('VITE_PUBLIC_YEARN_DATA_API_URL', 'https://data.example/')
+    expect(resolveStatsApiBase('tvl')).toBe('https://data.example')
   })
 })

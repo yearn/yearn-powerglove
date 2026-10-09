@@ -37,14 +37,14 @@ export function getStatsApiLane(url: string): StatsApiLane {
 export function resolveStatsApiBase(lane: StatsApiLane): string | null {
   if (isLocalStatsHost()) return ''
 
+  // Core stats use the hosted server proxy unless an explicit public Yearn Data origin is supplied.
+  if (lane === 'tvl' || lane === 'fees') {
+    return import.meta.env.VITE_PUBLIC_YEARN_DATA_API_URL?.trim().replace(/\/$/, '') || ''
+  }
   const configuredUrl = (
-    lane === 'tvl'
-      ? import.meta.env.VITE_PUBLIC_YEARN_DATA_API_URL || import.meta.env.VITE_PUBLIC_YEARN_TVL_API_URL
-      : lane === 'tvl-analytics'
-        ? import.meta.env.VITE_PUBLIC_YEARN_TVL_API_URL
-        : lane === 'fees'
-          ? import.meta.env.VITE_PUBLIC_YEARN_DATA_API_URL || import.meta.env.VITE_PUBLIC_YEARN_FEES_API_URL
-          : import.meta.env.VITE_PUBLIC_YEARN_FEES_API_URL
+    lane === 'tvl-analytics'
+      ? import.meta.env.VITE_PUBLIC_YEARN_TVL_API_URL
+      : import.meta.env.VITE_PUBLIC_YEARN_FEES_API_URL
   )?.trim()
   const legacyUrl = import.meta.env.VITE_PUBLIC_YEARN_METRICS_API_URL?.trim()
   const apiUrl = configuredUrl || legacyUrl
