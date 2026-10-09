@@ -1,0 +1,701 @@
+{
+  "schemaVersion": 3,
+  "runId": "7",
+  "generatedAt": 1790189178,
+  "direction": "desc",
+  "dataQuality": {
+    "coverage": {
+      "source": "fixture",
+      "status": "unverified",
+      "fromBlock": 19419991,
+      "limitations": [
+        "Preview reprojects existing prepared entries; it does not rerun ingestion, RPC, or execution classification."
+      ],
+      "throughBlock": 25949082,
+      "fromBlockHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "evidenceDigest": "preview-reprojection",
+      "sourceRevision": null,
+      "throughBlockHash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "snapshot": {
+      "blockNumber": 25949082,
+      "blockTimestamp": 1789068503
+    },
+    "accounting": {
+      "source": "archive_rpc",
+      "status": "reconciled",
+      "granularity": "block_end"
+    },
+    "limitations": [
+      "Preview reprojects existing prepared entries; it does not rerun ingestion, RPC, or execution classification."
+    ],
+    "certification": "provisional",
+    "processingVersion": "allocation-history-v3-checkpoints"
+  },
+  "vault": {
+    "name": "USDC-1 yVault",
+    "symbol": "yvUSDC-1",
+    "address": "0xbe53a109b494e5c9f97b9cd39fe969be68bf6204",
+    "chainId": 1,
+    "assetSymbol": "USDC",
+    "assetAddress": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+    "assetDecimals": 6
+  },
+  "strategies": {
+    "0x00c8a649c9837523ebb406ceb17a6378ab5c74cf": "USDC Fluid Lender",
+    "0x074134a2784f4f66b6ced6f68849382990ff3215": "Morpho Steakhouse USDC Compounder",
+    "0x25f893276544d86a82b1ce407182836f45cb6673": "Spark USDC Lender",
+    "0x39c0aec5738ed939876245224afc7e09c8480a52": "USDC to USDS Depositor",
+    "0x459f99d7c83bc3653b1913b62d2978b1deda01b5": "sUSDC",
+    "0x522478b54046ab7197880f2626b74a96d45b9b02": "Aave V3 Lido USDC Lender",
+    "0x602da189f5ada033e9ac7096fc39c7f44a77e942": "USDC to yvUSDS Farmer",
+    "0x654a7c4ae5ac3c853a99f8dbead2bc85090f753a": "Spark USDC Lender",
+    "0x68aea7b82df6ccdf76235d46445ed83f85f845a3": "Yearn USDC",
+    "0x694cdd19ebee7a974ba8fe3af8b383bb256f2858": "Aave V3 USDC Lender",
+    "0x694e47afd14a64661a04eee674fb331bcdef3737": "Morpho Gauntlet USDC Prime Compounder",
+    "0x7130570bcefcedbe9d15b5b11a33006156460f8f": "USDC to sUSDS Lender",
+    "0x7ee351aa702c8fc735d77fb229b7676ac15d7c79": "Compound V3 USD Lender",
+    "0x888239ffa9a0613f9142c808aa9f7d1948a14f75": "Morpho OEV-boosted USDC Compounder",
+    "0xbdb97ec319c41c6fa383e94ece6bdf383dfc7be4": "Aave V3 USDC Lender",
+    "0xe63a2abc24cd9538398d825a4bfe5778d25687df": "stcUSD/USDC Pawn Broker Market",
+    "0xf1784a1bf0cbde0f868838dd093e65215343c4c0": "Morpho Yearn USDC Compounder",
+    "0xf766c7293f4e0265ddfa8369f78a808df8ac70c1": "Aave V3 USDC Lender",
+    "0xfb7c06ddd70c74ac2f68d0f947be3b4c503e3d6c": "sUSDC"
+  },
+  "boundaryStates": {},
+  "currentSnapshot": {
+    "id": "allocation-entry:1:0xbe53a109b494e5c9f97b9cd39fe969be68bf6204:25949082-25949082",
+    "kind": "current_snapshot",
+    "interval": {
+      "changes": {
+        "totalIdle": "2068",
+        "allocations": [
+          {
+            "currentDebt": "0",
+            "strategyAddress": "0x00c8a649c9837523ebb406ceb17a6378ab5c74cf"
+          },
+          {
+            "currentDebt": "0",
+            "strategyAddress": "0x074134a2784f4f66b6ced6f68849382990ff3215"
+          },
+          {
+            "currentDebt": "0",
+            "strategyAddress": "0x25f893276544d86a82b1ce407182836f45cb6673"
+          },
+          {
+            "currentDebt": "-19422885980",
+            "strategyAddress": "0x39c0aec5738ed939876245224afc7e09c8480a52"
+          },
+          {
+            "currentDebt": "0",
+            "strategyAddress": "0x459f99d7c83bc3653b1913b62d2978b1deda01b5"
+          },
+          {
+            "currentDebt": "0",
+            "strategyAddress": "0x522478b54046ab7197880f2626b74a96d45b9b02"
+          },
+          {
+            "currentDebt": "0",
+            "strategyAddress": "0x602da189f5ada033e9ac7096fc39c7f44a77e942"
+          },
+          {
+            "currentDebt": "0",
+            "strategyAddress": "0x654a7c4ae5ac3c853a99f8dbead2bc85090f753a"
+          },
+          {
+            "currentDebt": "0",
+            "strategyAddress": "0x68aea7b82df6ccdf76235d46445ed83f85f845a3"
+          },
+          {
+            "currentDebt": "0",
+            "strategyAddress": "0x694cdd19ebee7a974ba8fe3af8b383bb256f2858"
+          },
+          {
+            "currentDebt": "0",
+            "strategyAddress": "0x694e47afd14a64661a04eee674fb331bcdef3737"
+          },
+          {
+            "currentDebt": "2984966190",
+            "strategyAddress": "0x7130570bcefcedbe9d15b5b11a33006156460f8f"
+          },
+          {
+            "currentDebt": "0",
+            "strategyAddress": "0x7ee351aa702c8fc735d77fb229b7676ac15d7c79"
+          },
+          {
+            "currentDebt": "0",
+            "strategyAddress": "0x888239ffa9a0613f9142c808aa9f7d1948a14f75"
+          },
+          {
+            "currentDebt": "0",
+            "strategyAddress": "0xbdb97ec319c41c6fa383e94ece6bdf383dfc7be4"
+          },
+          {
+            "currentDebt": "0",
+            "strategyAddress": "0xe63a2abc24cd9538398d825a4bfe5778d25687df"
+          },
+          {
+            "currentDebt": "0",
+            "strategyAddress": "0xf1784a1bf0cbde0f868838dd093e65215343c4c0"
+          },
+          {
+            "currentDebt": "0",
+            "strategyAddress": "0xf766c7293f4e0265ddfa8369f78a808df8ac70c1"
+          },
+          {
+            "currentDebt": "0",
+            "strategyAddress": "0xfb7c06ddd70c74ac2f68d0f947be3b4c503e3d6c"
+          }
+        ],
+        "totalAssets": "-16437917722"
+      },
+      "endKind": "safe_head",
+      "endState": {
+        "totalIdle": "2068",
+        "allocations": [
+          {
+            "currentDebt": "0",
+            "strategyAddress": "0x00c8a649c9837523ebb406ceb17a6378ab5c74cf"
+          },
+          {
+            "currentDebt": "0",
+            "strategyAddress": "0x074134a2784f4f66b6ced6f68849382990ff3215"
+          },
+          {
+            "currentDebt": "0",
+            "strategyAddress": "0x25f893276544d86a82b1ce407182836f45cb6673"
+          },
+          {
+            "currentDebt": "2374156368362",
+            "strategyAddress": "0x39c0aec5738ed939876245224afc7e09c8480a52"
+          },
+          {
+            "currentDebt": "0",
+            "strategyAddress": "0x459f99d7c83bc3653b1913b62d2978b1deda01b5"
+          },
+          {
+            "currentDebt": "0",
+            "strategyAddress": "0x522478b54046ab7197880f2626b74a96d45b9b02"
+          },
+          {
+            "currentDebt": "0",
+            "strategyAddress": "0x602da189f5ada033e9ac7096fc39c7f44a77e942"
+          },
+          {
+            "currentDebt": "0",
+            "strategyAddress": "0x654a7c4ae5ac3c853a99f8dbead2bc85090f753a"
+          },
+          {
+            "currentDebt": "7050174784296",
+            "strategyAddress": "0x68aea7b82df6ccdf76235d46445ed83f85f845a3"
+          },
+          {
+            "currentDebt": "0",
+            "strategyAddress": "0x694cdd19ebee7a974ba8fe3af8b383bb256f2858"
+          },
+          {
+            "currentDebt": "0",
+            "strategyAddress": "0x694e47afd14a64661a04eee674fb331bcdef3737"
+          },
+          {
+            "currentDebt": "4406968070987",
+            "strategyAddress": "0x7130570bcefcedbe9d15b5b11a33006156460f8f"
+          },
+          {
+            "currentDebt": "0",
+            "strategyAddress": "0x7ee351aa702c8fc735d77fb229b7676ac15d7c79"
+          },
+          {
+            "currentDebt": "0",
+            "strategyAddress": "0x888239ffa9a0613f9142c808aa9f7d1948a14f75"
+          },
+          {
+            "currentDebt": "0",
+            "strategyAddress": "0xbdb97ec319c41c6fa383e94ece6bdf383dfc7be4"
+          },
+          {
+            "currentDebt": "6015991112834",
+            "strategyAddress": "0xe63a2abc24cd9538398d825a4bfe5778d25687df"
+          },
+          {
+            "currentDebt": "0",
+            "strategyAddress": "0xf1784a1bf0cbde0f868838dd093e65215343c4c0"
+          },
+          {
+            "currentDebt": "0",
+            "strategyAddress": "0xf766c7293f4e0265ddfa8369f78a808df8ac70c1"
+          },
+          {
+            "currentDebt": "0",
+            "strategyAddress": "0xfb7c06ddd70c74ac2f68d0f947be3b4c503e3d6c"
+          }
+        ],
+        "blockNumber": 25949082,
+        "totalAssets": "19847290338547",
+        "blockTimestamp": 1789068503
+      },
+      "toEntryId": null,
+      "startState": {
+        "totalIdle": "0",
+        "allocations": [
+          {
+            "currentDebt": "0",
+            "strategyAddress": "0x00c8a649c9837523ebb406ceb17a6378ab5c74cf"
+          },
+          {
+            "currentDebt": "0",
+            "strategyAddress": "0x074134a2784f4f66b6ced6f68849382990ff3215"
+          },
+          {
+            "currentDebt": "0",
+            "strategyAddress": "0x25f893276544d86a82b1ce407182836f45cb6673"
+          },
+          {
+            "currentDebt": "2393579254342",
+            "strategyAddress": "0x39c0aec5738ed939876245224afc7e09c8480a52"
+          },
+          {
+            "currentDebt": "0",
+            "strategyAddress": "0x459f99d7c83bc3653b1913b62d2978b1deda01b5"
+          },
+          {
+            "currentDebt": "0",
+            "strategyAddress": "0x522478b54046ab7197880f2626b74a96d45b9b02"
+          },
+          {
+            "currentDebt": "0",
+            "strategyAddress": "0x602da189f5ada033e9ac7096fc39c7f44a77e942"
+          },
+          {
+            "currentDebt": "0",
+            "strategyAddress": "0x654a7c4ae5ac3c853a99f8dbead2bc85090f753a"
+          },
+          {
+            "currentDebt": "7050174784296",
+            "strategyAddress": "0x68aea7b82df6ccdf76235d46445ed83f85f845a3"
+          },
+          {
+            "currentDebt": "0",
+            "strategyAddress": "0x694cdd19ebee7a974ba8fe3af8b383bb256f2858"
+          },
+          {
+            "currentDebt": "0",
+            "strategyAddress": "0x694e47afd14a64661a04eee674fb331bcdef3737"
+          },
+          {
+            "currentDebt": "4403983104797",
+            "strategyAddress": "0x7130570bcefcedbe9d15b5b11a33006156460f8f"
+          },
+          {
+            "currentDebt": "0",
+            "strategyAddress": "0x7ee351aa702c8fc735d77fb229b7676ac15d7c79"
+          },
+          {
+            "currentDebt": "0",
+            "strategyAddress": "0x888239ffa9a0613f9142c808aa9f7d1948a14f75"
+          },
+          {
+            "currentDebt": "0",
+            "strategyAddress": "0xbdb97ec319c41c6fa383e94ece6bdf383dfc7be4"
+          },
+          {
+            "currentDebt": "6015991112834",
+            "strategyAddress": "0xe63a2abc24cd9538398d825a4bfe5778d25687df"
+          },
+          {
+            "currentDebt": "0",
+            "strategyAddress": "0xf1784a1bf0cbde0f868838dd093e65215343c4c0"
+          },
+          {
+            "currentDebt": "0",
+            "strategyAddress": "0xf766c7293f4e0265ddfa8369f78a808df8ac70c1"
+          },
+          {
+            "currentDebt": "0",
+            "strategyAddress": "0xfb7c06ddd70c74ac2f68d0f947be3b4c503e3d6c"
+          }
+        ],
+        "blockNumber": 25936249,
+        "totalAssets": "19863728256269",
+        "blockTimestamp": 1788913931
+      },
+      "fromEntryId": "allocation-entry:1:0xbe53a109b494e5c9f97b9cd39fe969be68bf6204:25936196-25936249"
+    },
+    "totalIdle": "2068",
+    "allocations": [
+      {
+        "currentDebt": "2374156368362",
+        "strategyAddress": "0x39c0aec5738ed939876245224afc7e09c8480a52"
+      },
+      {
+        "currentDebt": "7050174784296",
+        "strategyAddress": "0x68aea7b82df6ccdf76235d46445ed83f85f845a3"
+      },
+      {
+        "currentDebt": "4406968070987",
+        "strategyAddress": "0x7130570bcefcedbe9d15b5b11a33006156460f8f"
+      },
+      {
+        "currentDebt": "6015991112834",
+        "strategyAddress": "0xe63a2abc24cd9538398d825a4bfe5778d25687df"
+      }
+    ],
+    "blockNumber": 25949082,
+    "totalAssets": "19847290338547",
+    "blockTimestamp": 1789068503
+  },
+  "entries": [
+    {
+      "id": "allocation-entry:1:0xbe53a109b494e5c9f97b9cd39fe969be68bf6204:25936196-25936249",
+      "kind": "strategy_reallocation",
+      "after": {
+        "totalIdle": "0",
+        "allocations": [
+          {
+            "currentDebt": "2393579254342",
+            "strategyAddress": "0x39c0aec5738ed939876245224afc7e09c8480a52"
+          },
+          {
+            "currentDebt": "7050174784296",
+            "strategyAddress": "0x68aea7b82df6ccdf76235d46445ed83f85f845a3"
+          },
+          {
+            "currentDebt": "4403983104797",
+            "strategyAddress": "0x7130570bcefcedbe9d15b5b11a33006156460f8f"
+          },
+          {
+            "currentDebt": "6015991112834",
+            "strategyAddress": "0xe63a2abc24cd9538398d825a4bfe5778d25687df"
+          }
+        ],
+        "blockNumber": 25936249,
+        "totalAssets": "19863728256269",
+        "blockTimestamp": 1788913931
+      },
+      "endBlock": 25936249,
+      "interval": {
+        "changes": {
+          "totalIdle": "0",
+          "allocations": [
+            {
+              "currentDebt": "0",
+              "strategyAddress": "0x00c8a649c9837523ebb406ceb17a6378ab5c74cf"
+            },
+            {
+              "currentDebt": "0",
+              "strategyAddress": "0x074134a2784f4f66b6ced6f68849382990ff3215"
+            },
+            {
+              "currentDebt": "0",
+              "strategyAddress": "0x25f893276544d86a82b1ce407182836f45cb6673"
+            },
+            {
+              "currentDebt": "-2669086365504",
+              "strategyAddress": "0x39c0aec5738ed939876245224afc7e09c8480a52"
+            },
+            {
+              "currentDebt": "0",
+              "strategyAddress": "0x459f99d7c83bc3653b1913b62d2978b1deda01b5"
+            },
+            {
+              "currentDebt": "0",
+              "strategyAddress": "0x522478b54046ab7197880f2626b74a96d45b9b02"
+            },
+            {
+              "currentDebt": "0",
+              "strategyAddress": "0x602da189f5ada033e9ac7096fc39c7f44a77e942"
+            },
+            {
+              "currentDebt": "0",
+              "strategyAddress": "0x654a7c4ae5ac3c853a99f8dbead2bc85090f753a"
+            },
+            {
+              "currentDebt": "7662434102",
+              "strategyAddress": "0x68aea7b82df6ccdf76235d46445ed83f85f845a3"
+            },
+            {
+              "currentDebt": "0",
+              "strategyAddress": "0x694cdd19ebee7a974ba8fe3af8b383bb256f2858"
+            },
+            {
+              "currentDebt": "0",
+              "strategyAddress": "0x694e47afd14a64661a04eee674fb331bcdef3737"
+            },
+            {
+              "currentDebt": "2391253879480",
+              "strategyAddress": "0x7130570bcefcedbe9d15b5b11a33006156460f8f"
+            },
+            {
+              "currentDebt": "0",
+              "strategyAddress": "0x7ee351aa702c8fc735d77fb229b7676ac15d7c79"
+            },
+            {
+              "currentDebt": "0",
+              "strategyAddress": "0x888239ffa9a0613f9142c808aa9f7d1948a14f75"
+            },
+            {
+              "currentDebt": "0",
+              "strategyAddress": "0xbdb97ec319c41c6fa383e94ece6bdf383dfc7be4"
+            },
+            {
+              "currentDebt": "6683817782",
+              "strategyAddress": "0xe63a2abc24cd9538398d825a4bfe5778d25687df"
+            },
+            {
+              "currentDebt": "0",
+              "strategyAddress": "0xf1784a1bf0cbde0f868838dd093e65215343c4c0"
+            },
+            {
+              "currentDebt": "0",
+              "strategyAddress": "0xf766c7293f4e0265ddfa8369f78a808df8ac70c1"
+            },
+            {
+              "currentDebt": "0",
+              "strategyAddress": "0xfb7c06ddd70c74ac2f68d0f947be3b4c503e3d6c"
+            }
+          ],
+          "totalAssets": "-263486234140"
+        },
+        "endKind": "allocation_entry",
+        "endState": {
+          "totalIdle": "0",
+          "allocations": [
+            {
+              "currentDebt": "0",
+              "strategyAddress": "0x00c8a649c9837523ebb406ceb17a6378ab5c74cf"
+            },
+            {
+              "currentDebt": "0",
+              "strategyAddress": "0x074134a2784f4f66b6ced6f68849382990ff3215"
+            },
+            {
+              "currentDebt": "0",
+              "strategyAddress": "0x25f893276544d86a82b1ce407182836f45cb6673"
+            },
+            {
+              "currentDebt": "2393579254342",
+              "strategyAddress": "0x39c0aec5738ed939876245224afc7e09c8480a52"
+            },
+            {
+              "currentDebt": "0",
+              "strategyAddress": "0x459f99d7c83bc3653b1913b62d2978b1deda01b5"
+            },
+            {
+              "currentDebt": "0",
+              "strategyAddress": "0x522478b54046ab7197880f2626b74a96d45b9b02"
+            },
+            {
+              "currentDebt": "0",
+              "strategyAddress": "0x602da189f5ada033e9ac7096fc39c7f44a77e942"
+            },
+            {
+              "currentDebt": "0",
+              "strategyAddress": "0x654a7c4ae5ac3c853a99f8dbead2bc85090f753a"
+            },
+            {
+              "currentDebt": "7050174784296",
+              "strategyAddress": "0x68aea7b82df6ccdf76235d46445ed83f85f845a3"
+            },
+            {
+              "currentDebt": "0",
+              "strategyAddress": "0x694cdd19ebee7a974ba8fe3af8b383bb256f2858"
+            },
+            {
+              "currentDebt": "0",
+              "strategyAddress": "0x694e47afd14a64661a04eee674fb331bcdef3737"
+            },
+            {
+              "currentDebt": "4403983104797",
+              "strategyAddress": "0x7130570bcefcedbe9d15b5b11a33006156460f8f"
+            },
+            {
+              "currentDebt": "0",
+              "strategyAddress": "0x7ee351aa702c8fc735d77fb229b7676ac15d7c79"
+            },
+            {
+              "currentDebt": "0",
+              "strategyAddress": "0x888239ffa9a0613f9142c808aa9f7d1948a14f75"
+            },
+            {
+              "currentDebt": "0",
+              "strategyAddress": "0xbdb97ec319c41c6fa383e94ece6bdf383dfc7be4"
+            },
+            {
+              "currentDebt": "6015991112834",
+              "strategyAddress": "0xe63a2abc24cd9538398d825a4bfe5778d25687df"
+            },
+            {
+              "currentDebt": "0",
+              "strategyAddress": "0xf1784a1bf0cbde0f868838dd093e65215343c4c0"
+            },
+            {
+              "currentDebt": "0",
+              "strategyAddress": "0xf766c7293f4e0265ddfa8369f78a808df8ac70c1"
+            },
+            {
+              "currentDebt": "0",
+              "strategyAddress": "0xfb7c06ddd70c74ac2f68d0f947be3b4c503e3d6c"
+            }
+          ],
+          "blockNumber": 25936249,
+          "totalAssets": "19863728256269",
+          "blockTimestamp": 1788913931
+        },
+        "toEntryId": "allocation-entry:1:0xbe53a109b494e5c9f97b9cd39fe969be68bf6204:25936196-25936249",
+        "startState": {
+          "totalIdle": "0",
+          "allocations": [
+            {
+              "currentDebt": "0",
+              "strategyAddress": "0x00c8a649c9837523ebb406ceb17a6378ab5c74cf"
+            },
+            {
+              "currentDebt": "0",
+              "strategyAddress": "0x074134a2784f4f66b6ced6f68849382990ff3215"
+            },
+            {
+              "currentDebt": "0",
+              "strategyAddress": "0x25f893276544d86a82b1ce407182836f45cb6673"
+            },
+            {
+              "currentDebt": "5062665619846",
+              "strategyAddress": "0x39c0aec5738ed939876245224afc7e09c8480a52"
+            },
+            {
+              "currentDebt": "0",
+              "strategyAddress": "0x459f99d7c83bc3653b1913b62d2978b1deda01b5"
+            },
+            {
+              "currentDebt": "0",
+              "strategyAddress": "0x522478b54046ab7197880f2626b74a96d45b9b02"
+            },
+            {
+              "currentDebt": "0",
+              "strategyAddress": "0x602da189f5ada033e9ac7096fc39c7f44a77e942"
+            },
+            {
+              "currentDebt": "0",
+              "strategyAddress": "0x654a7c4ae5ac3c853a99f8dbead2bc85090f753a"
+            },
+            {
+              "currentDebt": "7042512350194",
+              "strategyAddress": "0x68aea7b82df6ccdf76235d46445ed83f85f845a3"
+            },
+            {
+              "currentDebt": "0",
+              "strategyAddress": "0x694cdd19ebee7a974ba8fe3af8b383bb256f2858"
+            },
+            {
+              "currentDebt": "0",
+              "strategyAddress": "0x694e47afd14a64661a04eee674fb331bcdef3737"
+            },
+            {
+              "currentDebt": "2012729225317",
+              "strategyAddress": "0x7130570bcefcedbe9d15b5b11a33006156460f8f"
+            },
+            {
+              "currentDebt": "0",
+              "strategyAddress": "0x7ee351aa702c8fc735d77fb229b7676ac15d7c79"
+            },
+            {
+              "currentDebt": "0",
+              "strategyAddress": "0x888239ffa9a0613f9142c808aa9f7d1948a14f75"
+            },
+            {
+              "currentDebt": "0",
+              "strategyAddress": "0xbdb97ec319c41c6fa383e94ece6bdf383dfc7be4"
+            },
+            {
+              "currentDebt": "6009307295052",
+              "strategyAddress": "0xe63a2abc24cd9538398d825a4bfe5778d25687df"
+            },
+            {
+              "currentDebt": "0",
+              "strategyAddress": "0xf1784a1bf0cbde0f868838dd093e65215343c4c0"
+            },
+            {
+              "currentDebt": "0",
+              "strategyAddress": "0xf766c7293f4e0265ddfa8369f78a808df8ac70c1"
+            },
+            {
+              "currentDebt": "0",
+              "strategyAddress": "0xfb7c06ddd70c74ac2f68d0f947be3b4c503e3d6c"
+            }
+          ],
+          "blockNumber": 25894554,
+          "totalAssets": "20127214490409",
+          "blockTimestamp": 1788411671
+        },
+        "fromEntryId": "allocation-entry:1:0xbe53a109b494e5c9f97b9cd39fe969be68bf6204:25894503-25894554"
+      },
+      "execution": {
+        "mechanism": "allocator_keeper",
+        "automation": "automatic",
+        "targetStatus": "matched"
+      },
+      "detailsHref": "/api/rest/views/allocation-history/1/0xbe53a109b494e5c9f97b9cd39fe969be68bf6204/entries/allocation-entry%3A1%3A0xbe53a109b494e5c9f97b9cd39fe969be68bf6204%3A25936196-25936249?runId=7",
+      "endTimestamp": 1788913931,
+      "expectedAprImpact": {
+        "scope": "proposal",
+        "source": "doa",
+        "status": "available",
+        "policyId": "allocation-policy:doa:optimizations:1:1788912854",
+        "deltaAprBps": 3,
+        "publishedAt": 1788912854,
+        "relationship": "governing_policy",
+        "baselineAprBps": 296,
+        "proposedAprBps": 299,
+        "applicationStatus": "confirmed"
+      }
+    },
+    {
+      "id": "allocation-entry:1:0xbe53a109b494e5c9f97b9cd39fe969be68bf6204:25894503-25894554",
+      "kind": "strategy_reallocation",
+      "after": {
+        "totalIdle": "0",
+        "allocations": [
+          {
+            "currentDebt": "5062665619846",
+            "strategyAddress": "0x39c0aec5738ed939876245224afc7e09c8480a52"
+          },
+          {
+            "currentDebt": "7042512350194",
+            "strategyAddress": "0x68aea7b82df6ccdf76235d46445ed83f85f845a3"
+          },
+          {
+            "currentDebt": "2012729225317",
+            "strategyAddress": "0x7130570bcefcedbe9d15b5b11a33006156460f8f"
+          },
+          {
+            "currentDebt": "6009307295052",
+            "strategyAddress": "0xe63a2abc24cd9538398d825a4bfe5778d25687df"
+          }
+        ],
+        "blockNumber": 25894554,
+        "totalAssets": "20127214490409",
+        "blockTimestamp": 1788411671
+      },
+      "endBlock": 25894554,
+      "interval": null,
+      "execution": {
+        "mechanism": "allocator_keeper",
+        "automation": "automatic",
+        "targetStatus": "matched"
+      },
+      "detailsHref": "/api/rest/views/allocation-history/1/0xbe53a109b494e5c9f97b9cd39fe969be68bf6204/entries/allocation-entry%3A1%3A0xbe53a109b494e5c9f97b9cd39fe969be68bf6204%3A25894503-25894554?runId=7",
+      "endTimestamp": 1788411671,
+      "expectedAprImpact": {
+        "scope": "proposal",
+        "source": "doa",
+        "status": "available",
+        "policyId": "allocation-policy:doa:optimizations:1:1788394420",
+        "deltaAprBps": 3,
+        "publishedAt": 1788394420,
+        "relationship": "governing_policy",
+        "baselineAprBps": 281,
+        "proposedAprBps": 284,
+        "applicationStatus": "confirmed"
+      }
+    }
+  ]
+}

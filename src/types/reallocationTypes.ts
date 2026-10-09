@@ -144,6 +144,11 @@ export interface ReallocationPanel {
   expectedAprImpact?: ReallocationExpectedAprImpact
   detailsHref?: string
   idleBridge?: ReallocationIdleBridge
+  checkpointChanges?: {
+    totalAssets: string
+    totalIdle: string
+    allocations: Array<{ strategyAddress: string; currentDebt: string }>
+  }
   flowLedger?: ReallocationFlowLedger
 }
 

@@ -1042,3 +1042,78 @@ export function buildStateTransitionSankeyGraph(
 export function clampPanelIndex(index: number, panels: readonly ReallocationPanel[]): number {
   return clamp(index, 0, Math.max(panels.length - 1, 0))
 }
+
+/** Use one asset scale for both checkpoints; unmatched assets remain unattributed. */
+export function buildCheckpointSankeyGraph(panel: ReallocationPanel): SankeyGraph {
+  const sum = (items: readonly ReallocationStateStrategy[]) =>
+    items.reduce((total, item) => total + BigInt(item.allocationAmount ?? '0'), 0n)
+  const beforeTotal = sum(panel.beforeState.strategies)
+  const afterTotal = sum(panel.afterState.strategies)
+  const scale = beforeTotal > afterTotal ? beforeTotal : afterTotal
+  const percent = (amount: bigint) => (scale === 0n ? 0 : Number((amount * 100_000_000_000n) / scale) / 1_000_000_000)
+  const scaled = (items: readonly ReallocationStateStrategy[]) =>
+    items.map((item) => ({
+      ...item,
+      allocationPct: percent(BigInt(item.allocationAmount ?? '0'))
+    }))
+  const before = scaled(panel.beforeState.strategies)
+  const after = scaled(panel.afterState.strategies)
+  const difference = afterTotal - beforeTotal
+  if (difference !== 0n) {
+    const target = difference > 0n ? before : after
+    target.push({
+      strategyKey: 'net-change',
+      strategyAddress: null,
+      isUnallocated: false,
+      name: difference > 0n ? 'Net asset increase' : 'Net asset decrease',
+      allocationPct: percent(difference > 0n ? difference : -difference),
+      aprPct: null
+    })
+  }
+  const graph = buildStateTransitionSankeyGraph(before, after)
+  const centerId = 'center:net-change'
+  const links = graph.links.map((link) => ({
+    ...link,
+    source: link.source === 'before:net-change' ? centerId : link.source,
+    target: link.target === 'after:net-change' ? centerId : link.target
+  }))
+  // Strategy columns show each checkpoint's own allocation proportions. Link
+  // values retain the common asset scale and stretch to fit those columns.
+  const strategyNodes = (items: readonly ReallocationStateStrategy[], side: 'before' | 'after') =>
+    buildOrderedNodes(
+      items.filter((item) => isPositive(item.allocationPct)),
+      side
+    ).map((node) => ({
+      ...node,
+      ...(side === 'before'
+        ? { outboundValue: links.filter((link) => link.source === node.id).reduce((sum, link) => sum + link.value, 0) }
+        : { inboundValue: links.filter((link) => link.target === node.id).reduce((sum, link) => sum + link.value, 0) })
+    }))
+  const value = links
+    .filter((link) => link.source === centerId || link.target === centerId)
+    .reduce((sum, link) => sum + link.value, 0)
+  const centerNodes: SankeyNode[] = isPositive(value)
+    ? [
+        {
+          id: centerId,
+          displayName: difference > 0n ? 'Net asset increase' : 'Net asset decrease',
+          labelText: difference > 0n ? 'Net asset increase' : 'Net asset decrease',
+          value,
+          side: 'center',
+          centerRole: difference > 0n ? 'source' : 'sink',
+          localY: Math.max(0, 1 - value / 100),
+          heightRatio: value / 100,
+          inboundValue: difference < 0n ? value : 0,
+          outboundValue: difference > 0n ? value : 0
+        }
+      ]
+    : []
+  return {
+    nodes: [
+      ...strategyNodes(panel.beforeState.strategies, 'before'),
+      ...strategyNodes(panel.afterState.strategies, 'after'),
+      ...centerNodes
+    ],
+    links
+  }
+}

@@ -64,9 +64,6 @@ type SingleVaultPageContentProps = {
   reallocationData: ReturnType<typeof useReallocationData>['data']
   reallocationError?: ReturnType<typeof useReallocationData>['error']
   reallocationIssues?: ReturnType<typeof useReallocationData>['issues']
-  hasOlderReallocations?: ReturnType<typeof useReallocationData>['hasOlderEntries']
-  isLoadingOlderReallocations?: ReturnType<typeof useReallocationData>['isLoadingOlderEntries']
-  onLoadOlderReallocations?: ReturnType<typeof useReallocationData>['loadOlderEntries']
 }
 
 export function SingleVaultPageContent({
@@ -88,10 +85,7 @@ export function SingleVaultPageContent({
   mainInfoPanelProps,
   reallocationData,
   reallocationError,
-  reallocationIssues,
-  hasOlderReallocations = false,
-  isLoadingOlderReallocations = false,
-  onLoadOlderReallocations
+  reallocationIssues
 }: SingleVaultPageContentProps) {
   const overrideItems = React.useMemo(() => getVaultOverrideDisplayItems(overrideConfig), [overrideConfig])
 
@@ -172,9 +166,6 @@ export function SingleVaultPageContent({
           reallocationData={reallocationData}
           reallocationError={reallocationError}
           reallocationIssues={reallocationIssues}
-          hasOlderReallocations={hasOlderReallocations}
-          isLoadingOlderReallocations={isLoadingOlderReallocations}
-          onLoadOlderReallocations={onLoadOlderReallocations}
         />
       </div>
     </VaultPageLayout>
@@ -268,10 +259,7 @@ function ValidVaultPage({ chainId, vaultAddress }: { chainId: string; vaultAddre
   const {
     data: reallocationData,
     error: reallocationError,
-    issues: reallocationIssues,
-    hasOlderEntries,
-    isLoadingOlderEntries,
-    loadOlderEntries
+    issues: reallocationIssues
   } = useReallocationData(vaultAddress, vaultChainId, vaultDetails, vaultSnapshotTimestampUtc)
 
   return (
@@ -297,9 +285,6 @@ function ValidVaultPage({ chainId, vaultAddress }: { chainId: string; vaultAddre
       reallocationData={reallocationData}
       reallocationError={reallocationError}
       reallocationIssues={reallocationIssues}
-      hasOlderReallocations={hasOlderEntries}
-      isLoadingOlderReallocations={isLoadingOlderEntries}
-      onLoadOlderReallocations={loadOlderEntries}
     />
   )
 }

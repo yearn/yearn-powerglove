@@ -29,9 +29,6 @@ interface StrategiesPanelProps {
   reallocationData?: ReallocationData | null
   reallocationError?: string | null
   reallocationIssues?: AllocationHistoryIssue[]
-  hasOlderReallocations?: boolean
-  isLoadingOlderReallocations?: boolean
-  onLoadOlderReallocations?: () => void
 }
 
 const ABOUT_TAB_TEXT = `No additional vault description is currently available.`
@@ -44,10 +41,7 @@ export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
     aboutLink,
     reallocationData,
     reallocationError,
-    reallocationIssues,
-    hasOlderReallocations = false,
-    isLoadingOlderReallocations = false,
-    onLoadOlderReallocations
+    reallocationIssues
   }) => {
     // Extract data logic to custom hooks
     const strategiesData = useStrategiesData(vaultChainId, vaultDetails)
@@ -243,9 +237,6 @@ export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
                   setActiveReallocationPanelId(reallocationData.panels[nextIndex]?.id ?? null)
                 }
                 colorByStrategyKey={reallocationColorByStrategyKey}
-                hasOlderPanels={hasOlderReallocations}
-                isLoadingOlderPanels={isLoadingOlderReallocations}
-                onLoadOlderPanels={onLoadOlderReallocations}
               />
 
               <div className="pb-4">

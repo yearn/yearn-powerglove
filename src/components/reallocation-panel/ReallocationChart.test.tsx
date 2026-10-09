@@ -1,5 +1,5 @@
 import { render, screen, within } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { ReallocationChart } from '@/components/reallocation-panel/ReallocationChart'
 import {
   buildComparisonStrategies,
@@ -808,57 +808,5 @@ describe('buildStateTransitionSankeyGraph', () => {
         })
       ])
     )
-  })
-})
-
-describe('older panel pagination', () => {
-  it('prefetches the next API page when the user reaches two panels from the oldest loaded edge', () => {
-    const newer = makeChange({
-      sourceKey: 'newer',
-      timestampUtc: '2026-04-22 10:00:00 UTC',
-      strategies: [
-        {
-          strategyKey: 'alpha',
-          strategyAddress: '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-          name: 'Alpha',
-          isUnallocated: false,
-          currentAllocationPct: 60,
-          targetAllocationPct: 40,
-          currentAprPct: 2,
-          targetAprPct: 2
-        },
-        {
-          strategyKey: 'beta',
-          strategyAddress: '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
-          name: 'Beta',
-          isUnallocated: false,
-          currentAllocationPct: 40,
-          targetAllocationPct: 60,
-          currentAprPct: 2,
-          targetAprPct: 2
-        }
-      ]
-    })
-    const panels = buildReallocationPanels([
-      newer,
-      { ...newer, sourceKey: 'older-1', timestampUtc: '2026-04-21 10:00:00 UTC' },
-      { ...newer, sourceKey: 'older-2', timestampUtc: '2026-04-20 10:00:00 UTC' },
-      { ...newer, sourceKey: 'older-3', timestampUtc: '2026-04-19 10:00:00 UTC' }
-    ])
-    const onActivePanelIndexChange = vi.fn()
-    const onLoadOlderPanels = vi.fn()
-    render(
-      <ReallocationChart
-        panels={panels}
-        activePanelIndex={2}
-        onActivePanelIndexChange={onActivePanelIndexChange}
-        colorByStrategyKey={buildReallocationColorMap(panels, false)}
-        hasOlderPanels
-        onLoadOlderPanels={onLoadOlderPanels}
-      />
-    )
-
-    expect(onLoadOlderPanels).toHaveBeenCalledOnce()
-    expect(onActivePanelIndexChange).not.toHaveBeenCalled()
   })
 })

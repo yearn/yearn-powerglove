@@ -4,6 +4,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { useRootDarkMode } from '@/hooks/useRootDarkMode'
 import { formatPercent } from '@/lib/formatters'
 import {
+  buildCheckpointSankeyGraph,
   buildStateTransitionSankeyGraph,
   clampPanelIndex,
   formatReallocationTimestamp,
@@ -17,9 +18,6 @@ interface ReallocationChartProps {
   activePanelIndex: number
   onActivePanelIndexChange: (nextIndex: number) => void
   colorByStrategyKey: Record<string, string>
-  hasOlderPanels?: boolean
-  isLoadingOlderPanels?: boolean
-  onLoadOlderPanels?: () => void | Promise<void>
 }
 
 type Ribbon = {
@@ -317,12 +315,14 @@ function buildRibbons(
   graph: ReturnType<typeof buildStateTransitionSankeyGraph>
   ribbons: Ribbon[]
 } {
-  const graph = buildStateTransitionSankeyGraph(
-    panel.beforeState.strategies,
-    panel.afterState.strategies,
-    panel.idleBridge,
-    panel.flowLedger
-  )
+  const graph = panel.checkpointChanges
+    ? buildCheckpointSankeyGraph(panel)
+    : buildStateTransitionSankeyGraph(
+        panel.beforeState.strategies,
+        panel.afterState.strategies,
+        panel.idleBridge,
+        panel.flowLedger
+      )
   const nodeById = new Map(graph.nodes.map((node) => [node.id, node]))
   const chartHeight = VIEWBOX_HEIGHT - CHART_TOP - CHART_BOTTOM
 
@@ -646,21 +646,12 @@ const ReallocationFlowScene: React.FC<{
 })
 
 export const ReallocationChart: React.FC<ReallocationChartProps> = React.memo(
-  ({
-    panels,
-    activePanelIndex,
-    onActivePanelIndexChange,
-    colorByStrategyKey,
-    hasOlderPanels = false,
-    isLoadingOlderPanels = false,
-    onLoadOlderPanels
-  }) => {
+  ({ panels, activePanelIndex, onActivePanelIndexChange, colorByStrategyKey }) => {
     const isDark = useRootDarkMode()
     const [hoverTarget, setHoverTarget] = React.useState<HoverTarget>(null)
     const [stablePanelIndex, setStablePanelIndex] = React.useState(() => clampPanelIndex(activePanelIndex, panels))
     const [transitionShift, setTransitionShift] = React.useState(0)
     const [animation, setAnimation] = React.useState<PanelAnimation | null>(null)
-    const olderPrefetchInFlightRef = React.useRef(false)
     const animationFrameRef = React.useRef<number | null>(null)
     const animationTimeoutRef = React.useRef<number | null>(null)
     const resolvedPanelIndex = clampPanelIndex(activePanelIndex, panels)
@@ -746,27 +737,10 @@ export const ReallocationChart: React.FC<ReallocationChartProps> = React.memo(
       }
     }, [activePanelId])
 
-    React.useEffect(() => {
-      if (
-        resolvedPanelIndex > 2 ||
-        !hasOlderPanels ||
-        isLoadingOlderPanels ||
-        !onLoadOlderPanels ||
-        olderPrefetchInFlightRef.current
-      ) {
-        return
-      }
-
-      olderPrefetchInFlightRef.current = true
-      Promise.resolve(onLoadOlderPanels()).finally(() => {
-        olderPrefetchInFlightRef.current = false
-      })
-    }, [hasOlderPanels, isLoadingOlderPanels, onLoadOlderPanels, resolvedPanelIndex])
-
     if (!activePanel) {
       return (
         <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">
-          No reallocation flow data available
+          No allocation checkpoint data available
         </div>
       )
     }
@@ -776,7 +750,7 @@ export const ReallocationChart: React.FC<ReallocationChartProps> = React.memo(
     if (!activeSceneData || activeSceneData.graph.nodes.length === 0 || activeSceneData.ribbons.length === 0) {
       return (
         <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">
-          No allocation flow data available
+          No allocation checkpoint data available
         </div>
       )
     }
@@ -872,26 +846,18 @@ export const ReallocationChart: React.FC<ReallocationChartProps> = React.memo(
               />
             ) : null}
 
-            {(panels.length > 1 || hasOlderPanels) && (
+            {panels.length > 1 && (
               <div className="flex items-center gap-2 sm:col-start-2 sm:row-start-1 sm:justify-self-end lg:col-start-3">
                 <button
                   type="button"
                   onClick={() => {
-                    if (resolvedPanelIndex === 0) {
-                      onLoadOlderPanels?.()
-                      return
-                    }
                     onActivePanelIndexChange(clampPanelIndex(resolvedPanelIndex - 1, panels))
                   }}
-                  disabled={isAnimating || isLoadingOlderPanels || (resolvedPanelIndex === 0 && !hasOlderPanels)}
+                  disabled={isAnimating || resolvedPanelIndex === 0}
                   className="inline-flex items-center gap-1 rounded border border-border px-3 py-2 text-xs font-semibold text-foreground transition hover:bg-secondary/60 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <ChevronLeft className="h-4 w-4" />
-                  {isLoadingOlderPanels
-                    ? 'Loading…'
-                    : resolvedPanelIndex === 0 && hasOlderPanels
-                      ? 'Load older'
-                      : 'Older'}
+                  Older
                 </button>
                 <button
                   type="button"
@@ -907,52 +873,60 @@ export const ReallocationChart: React.FC<ReallocationChartProps> = React.memo(
           </div>
         </div>
 
-        <div
-          className="relative h-[460px] w-full overflow-hidden rounded-lg border border-border bg-card sm:h-[560px] lg:h-[620px]"
-          data-testid="reallocation-chart-viewport"
-        >
-          {visibleSceneIndices.map((sceneIndex) => {
-            const panel = panels[sceneIndex]
-            if (!panel) {
-              return null
-            }
+        {activePanel.checkpointChanges && (
+          <p className="text-sm text-muted-foreground">
+            Derived net allocation changes, not verified transfers. Net asset increases or decreases are unattributed.
+            Strategy percentages use each checkpoint’s total; the net change uses the larger total.
+          </p>
+        )}
+        {
+          <div
+            className="relative h-[460px] w-full overflow-hidden rounded-lg border border-border bg-card sm:h-[560px] lg:h-[620px]"
+            data-testid="reallocation-chart-viewport"
+          >
+            {visibleSceneIndices.map((sceneIndex) => {
+              const panel = panels[sceneIndex]
+              if (!panel) {
+                return null
+              }
 
-            const sceneData = sceneDataByPanelId.get(panel.id)
-            if (!sceneData || sceneData.graph.nodes.length === 0 || sceneData.ribbons.length === 0) {
-              return null
-            }
+              const sceneData = sceneDataByPanelId.get(panel.id)
+              if (!sceneData || sceneData.graph.nodes.length === 0 || sceneData.ribbons.length === 0) {
+                return null
+              }
 
-            const slot = sceneIndex - animationBaseIndex - transitionShift
-            const distance = Math.abs(slot)
+              const slot = sceneIndex - animationBaseIndex - transitionShift
+              const distance = Math.abs(slot)
 
-            return (
-              <div
-                key={panel.id}
-                className={cn(
-                  'absolute inset-y-0 left-1/2 flex items-stretch justify-center',
-                  distance > 0 && 'pointer-events-none select-none'
-                )}
-                style={{
-                  transform: `translateX(-50%) translateX(${getSceneOffset(slot)}) scale(${getSceneScale(slot)})`,
-                  opacity: getSceneOpacity(slot),
-                  zIndex: distance === 0 ? 30 : distance === 1 ? 20 : 10,
-                  filter: distance === 0 ? 'none' : 'saturate(0.9)',
-                  transition: `transform ${SCENE_TRANSITION_MS}ms cubic-bezier(0.22, 1, 0.36, 1), opacity ${SCENE_TRANSITION_MS}ms cubic-bezier(0.22, 1, 0.36, 1), filter ${SCENE_TRANSITION_MS}ms ease`
-                }}
-              >
-                <ReallocationFlowScene
-                  panel={panel}
-                  sceneData={sceneData}
-                  colorByStrategyKey={colorByStrategyKey}
-                  isDark={isDark}
-                  hoverTarget={distance === 0 ? hoverTarget : null}
-                  showLabels={distance === 0}
-                  setHoverTarget={distance === 0 && !isAnimating ? setHoverTarget : undefined}
-                />
-              </div>
-            )
-          })}
-        </div>
+              return (
+                <div
+                  key={panel.id}
+                  className={cn(
+                    'absolute inset-y-0 left-1/2 flex items-stretch justify-center',
+                    distance > 0 && 'pointer-events-none select-none'
+                  )}
+                  style={{
+                    transform: `translateX(-50%) translateX(${getSceneOffset(slot)}) scale(${getSceneScale(slot)})`,
+                    opacity: getSceneOpacity(slot),
+                    zIndex: distance === 0 ? 30 : distance === 1 ? 20 : 10,
+                    filter: distance === 0 ? 'none' : 'saturate(0.9)',
+                    transition: `transform ${SCENE_TRANSITION_MS}ms cubic-bezier(0.22, 1, 0.36, 1), opacity ${SCENE_TRANSITION_MS}ms cubic-bezier(0.22, 1, 0.36, 1), filter ${SCENE_TRANSITION_MS}ms ease`
+                  }}
+                >
+                  <ReallocationFlowScene
+                    panel={panel}
+                    sceneData={sceneData}
+                    colorByStrategyKey={colorByStrategyKey}
+                    isDark={isDark}
+                    hoverTarget={distance === 0 ? hoverTarget : null}
+                    showLabels={distance === 0}
+                    setHoverTarget={distance === 0 && !isAnimating ? setHoverTarget : undefined}
+                  />
+                </div>
+              )
+            })}
+          </div>
+        }
       </div>
     )
   }

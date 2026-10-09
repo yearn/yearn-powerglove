@@ -8,9 +8,9 @@ from `7fb9aae`, `c2c8efc`, and `a73566b`.
 
 ## Scope and dependencies
 
-The chart uses master's existing vault page and strategies panel. Pagination
-state and callbacks are threaded through those components; selection is keyed
-by panel ID so prepending older entries preserves the selected interval.
+The chart uses the existing vault page and strategies panel. Each request loads the full vault history.
+Selection is keyed by panel ID so a refresh preserves the selected checkpoint when it remains available.
+Executed history shows a Sankey derived from checkpoint balances, with net asset increase/decrease nodes for unmatched totals. Ribbons are illustrative net changes, not verified transfer paths. The single net-change source or sink sits in the center, outside the strategy stacks. Strategy columns show each checkpoint’s own allocation percentages; links and the net-change percentage use the larger total as a common asset scale. Optimizer recommendations retain their existing visualization.
 
 No QTOV reporting, fee/TVL dashboards, strategy detail templates, RPC client,
 new routes, dependency changes, or lazy-asset recovery are required. Earlier
@@ -28,13 +28,13 @@ VITE_PUBLIC_ALLOCATION_HISTORY_API_URL=http://localhost:5456/api/rest/views/allo
 For a remote browser, use a browser-reachable API origin with appropriate CORS.
 To test Kong, replace the value with Kong's allocation-history base URL. The
 consumer appends `/{chainId}/{lowercaseVaultAddress}` and requests
-`projection=chart&limit=25&direction=desc`, adding `cursor` for older pages.
+`direction=desc`. There is no projection selector, limit, cursor, or load-more request.
 The former `VITE_PUBLIC_REALLOCATION_API_URL` is no longer used.
 
-The API must provide the compact contract: `vault`, `strategies`,
+The API must provide schema version 3 and `runId`, plus `vault` (including asset decimals and symbol), `strategies`,
 `boundaryStates`, `currentSnapshot`, visible `strategy_reallocation` entries,
-interval flows and reconciliation, execution metadata, `expectedAprImpact`,
-`detailsHref`, and `pagination.nextCursor`. See
+checkpoint intervals with `startState`, `endState`, and signed `changes`, execution metadata, `expectedAprImpact`,
+and `detailsHref`. Older schema versions are rejected. See
 `src/hooks/useReallocationData.ts` for the exact validation and
 `src/hooks/useReallocationData.test.tsx` for executable examples.
 
@@ -42,17 +42,16 @@ interval flows and reconciliation, execution metadata, `expectedAprImpact`,
 
 - Open a supported vault and select **Historical Allocations**.
 - Check observed strategy balances and the current safe-head interval.
-- Navigate **Older** far enough to fetch another page; selection must remain
-  stable when entries are prepended.
+- Navigate **Older** and **Newer** through the already-loaded history; no extra history requests should occur.
 - Follow execution and evidence links; relative `detailsHref` resolves against
   the configured API origin.
 - Keep DOA proposal APR estimates separate from observed allocation balances.
 - A 404 or empty history hides the tab. Malformed responses and request
   failures show an allocation-specific error notice; the vault page remains
   usable. Failed requests are retried once.
-- Missing boundary states and intervals whose flows fail exact balance checks
-  show an incomplete-history notice with affected entry IDs. Verified intervals
-  remain available; the omitted intervals are never presented as valid flows.
+- Missing boundary states, mismatched endpoints, or incorrect signed changes show an incomplete-history notice
+  with affected entry IDs. Valid comparisons remain available. Net balance changes do not imply gross external flows
+  or movement paths between strategies.
 
 Run `bun run test` and `bun run build` when switching the backend contract.
 
@@ -81,3 +80,11 @@ normalization. Query failures appear in an allocation-specific notice without
 replacing the vault page. Interval reconstruction returns diagnostic entry IDs
 for missing boundary states, invalid references, and failed balance checks;
 verified intervals remain visible beside an incomplete-history notice.
+
+## Checkpoint fixture
+
+`src/hooks/allocation-checkpoints.fixture.json` is a test fixture derived from the
+provisional yvUSDC-1 schema-3 preview response (run 7). It retains two recent
+entries and the current snapshot; the oldest retained entry's interval is set to
+null to provide a starting checkpoint. It is not a complete history capture or
+independent validation of the source data.

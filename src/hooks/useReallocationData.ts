@@ -1,4 +1,4 @@
-import { useInfiniteQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { CHAIN_ID_TO_NAME, type ChainId } from '@/constants/chains'
 import type {
@@ -6,16 +6,12 @@ import type {
   ReallocationData,
   ReallocationExecution,
   ReallocationExpectedAprImpact,
-  ReallocationFlowLedger,
-  ReallocationLedgerFlow,
-  ReallocationLedgerNode,
   ReallocationPanel,
   ReallocationState,
   ReallocationStateStrategy
 } from '@/types/reallocationTypes'
 import type { VaultExtended } from '@/types/vaultTypes'
 
-const PAGE_SIZE = 25
 const IDLE_STRATEGY_KEY = 'unallocated'
 
 interface AllocationHistoryChartAllocation {
@@ -35,12 +31,9 @@ interface AllocationHistoryChartInterval {
   fromEntryId: string
   toEntryId: string | null
   endKind: 'allocation_entry' | 'safe_head'
-  flows: ReallocationLedgerFlow[]
-  reconciliation: {
-    balanceStatus: 'reconciled' | 'unreconciled'
-    attributionStatus: 'complete' | 'partial'
-    unattributedAmount: string
-  }
+  startState: AllocationHistoryChartState
+  endState: AllocationHistoryChartState
+  changes: { totalAssets: string; totalIdle: string; allocations: AllocationHistoryChartAllocation[] }
 }
 
 interface AllocationHistoryChartExpectedAprAvailable {
@@ -79,13 +72,15 @@ interface AllocationHistoryChartEntry {
 
 interface AllocationHistoryChartResponse {
   schemaVersion: number
-  projection: 'chart'
+  runId: string
   generatedAt: string | number
   vault: {
     chainId: number
     address: string
     name?: string | null
     label?: string | null
+    assetDecimals: number
+    assetSymbol: string | null
   }
   strategies: Record<string, string | null>
   boundaryStates: Record<string, AllocationHistoryChartState>
@@ -98,13 +93,14 @@ interface AllocationHistoryChartResponse {
         interval: AllocationHistoryChartInterval | null
       })
     | null
-  pagination: {
-    nextCursor: string | null
-  }
 }
 
 function normalizeVaultAddress(value: string): string {
   return value.toLowerCase()
+}
+
+function isObjectRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
 function isUnsignedIntegerString(value: unknown): value is string {
@@ -207,27 +203,6 @@ export function isValidAllocationHistoryEntry(entry: unknown): entry is Allocati
   )
 }
 
-function isValidFlowNode(value: unknown): value is ReallocationLedgerNode {
-  if (!value || typeof value !== 'object' || !('type' in value)) {
-    return false
-  }
-
-  if (value.type === 'idle' || value.type === 'external' || value.type === 'accounting') {
-    return true
-  }
-
-  return (
-    value.type === 'strategy' &&
-    'address' in value &&
-    typeof value.address === 'string' &&
-    /^0x[a-fA-F0-9]{40}$/.test(value.address)
-  )
-}
-
-function isObjectRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
-}
-
 function isValidStrategyDictionary(value: unknown): value is Record<string, string | null> {
   return (
     isObjectRecord(value) &&
@@ -242,69 +217,72 @@ function isValidBoundaryStates(value: unknown): value is Record<string, Allocati
   return isObjectRecord(value) && Object.entries(value).every(([id, state]) => id.length > 0 && isValidState(state))
 }
 
+function isSignedIntegerString(value: unknown): value is string {
+  return typeof value === 'string' && /^-?\d+$/.test(value)
+}
+
 function isValidInterval(interval: unknown): interval is AllocationHistoryChartInterval {
   return (
     isObjectRecord(interval) &&
     typeof interval.fromEntryId === 'string' &&
     (typeof interval.toEntryId === 'string' || interval.toEntryId === null) &&
     (interval.endKind === 'allocation_entry' || interval.endKind === 'safe_head') &&
-    Array.isArray(interval.flows) &&
-    interval.flows.every(
-      (flow) =>
-        isObjectRecord(flow) &&
-        isValidFlowNode(flow.source) &&
-        isValidFlowNode(flow.target) &&
-        isUnsignedIntegerString(flow.amount) &&
-        typeof flow.attribution === 'string' &&
-        ['observed_event', 'derived_from_debt_updates', 'residual_balance'].includes(flow.attribution)
-    ) &&
-    isObjectRecord(interval.reconciliation) &&
-    interval.reconciliation.balanceStatus === 'reconciled' &&
-    typeof interval.reconciliation.attributionStatus === 'string' &&
-    ['complete', 'partial'].includes(interval.reconciliation.attributionStatus) &&
-    isUnsignedIntegerString(interval.reconciliation.unattributedAmount)
+    isValidState(interval.startState) &&
+    isValidState(interval.endState) &&
+    isObjectRecord(interval.changes) &&
+    isSignedIntegerString(interval.changes.totalAssets) &&
+    isSignedIntegerString(interval.changes.totalIdle) &&
+    Array.isArray(interval.changes.allocations) &&
+    interval.changes.allocations.every(
+      (item) =>
+        isObjectRecord(item) &&
+        typeof item.strategyAddress === 'string' &&
+        /^0x[a-fA-F0-9]{40}$/.test(item.strategyAddress) &&
+        isSignedIntegerString(item.currentDebt)
+    )
   )
-}
-
-function balanceNodeKey(node: ReallocationLedgerNode): string | null {
-  if (node.type === 'idle') {
-    return IDLE_STRATEGY_KEY
-  }
-  return node.type === 'strategy' ? normalizeVaultAddress(node.address) : null
 }
 
 function stateBalances(state: AllocationHistoryChartState): Map<string, bigint> {
   return new Map([
     [IDLE_STRATEGY_KEY, BigInt(state.totalIdle)],
-    ...state.allocations.map(
-      (allocation) => [normalizeVaultAddress(allocation.strategyAddress), BigInt(allocation.currentDebt)] as const
-    )
+    ...state.allocations.map((item) => [normalizeVaultAddress(item.strategyAddress), BigInt(item.currentDebt)] as const)
   ])
 }
 
-function ledgerBalances(
-  startState: AllocationHistoryChartState,
-  endState: AllocationHistoryChartState,
-  flows: readonly ReallocationLedgerFlow[]
+function sameState(a: AllocationHistoryChartState, b: AllocationHistoryChartState): boolean {
+  const left = stateBalances(a),
+    right = stateBalances(b)
+  return (
+    a.blockNumber === b.blockNumber &&
+    normalizeTimestamp(a.blockTimestamp) === normalizeTimestamp(b.blockTimestamp) &&
+    BigInt(a.totalAssets) === BigInt(b.totalAssets) &&
+    [...new Set([...left.keys(), ...right.keys()])].every((key) => (left.get(key) ?? 0n) === (right.get(key) ?? 0n))
+  )
+}
+
+function comparisonMatches(
+  interval: AllocationHistoryChartInterval,
+  start: AllocationHistoryChartState,
+  end: AllocationHistoryChartState
 ): boolean {
-  const opening = stateBalances(startState)
-  const closing = stateBalances(endState)
-  const netFlow = new Map<string, bigint>()
-
-  for (const flow of flows) {
-    const amount = BigInt(flow.amount)
-    const sourceKey = balanceNodeKey(flow.source)
-    const targetKey = balanceNodeKey(flow.target)
-    if (sourceKey) {
-      netFlow.set(sourceKey, (netFlow.get(sourceKey) ?? 0n) - amount)
-    }
-    if (targetKey) {
-      netFlow.set(targetKey, (netFlow.get(targetKey) ?? 0n) + amount)
-    }
-  }
-
-  const keys = new Set([...opening.keys(), ...closing.keys(), ...netFlow.keys()])
-  return [...keys].every((key) => (opening.get(key) ?? 0n) + (netFlow.get(key) ?? 0n) === (closing.get(key) ?? 0n))
+  if (!sameState(interval.startState, start) || !sameState(interval.endState, end)) return false
+  if (
+    BigInt(interval.changes.totalAssets) !== BigInt(end.totalAssets) - BigInt(start.totalAssets) ||
+    BigInt(interval.changes.totalIdle) !== BigInt(end.totalIdle) - BigInt(start.totalIdle)
+  )
+    return false
+  const opening = stateBalances(start),
+    closing = stateBalances(end)
+  const changes = new Map(
+    interval.changes.allocations.map((item) => [normalizeVaultAddress(item.strategyAddress), BigInt(item.currentDebt)])
+  )
+  if (changes.size !== interval.changes.allocations.length) return false
+  const keys = new Set([...opening.keys(), ...closing.keys(), ...changes.keys()])
+  keys.delete(IDLE_STRATEGY_KEY)
+  return [...keys].every(
+    (key) => changes.has(key) && changes.get(key) === (closing.get(key) ?? 0n) - (opening.get(key) ?? 0n)
+  )
 }
 
 function rawAmountAsPercent(amount: string, totalAssets: string): number {
@@ -315,50 +293,6 @@ function rawAmountAsPercent(amount: string, totalAssets: string): number {
   }
 
   return Number((rawAmount * 100_000_000n) / rawTotalAssets) / 1_000_000
-}
-
-function composeFlowLedger(
-  startEntryId: string,
-  endEntryId: string | null,
-  startState: AllocationHistoryChartState,
-  endState: AllocationHistoryChartState,
-  intervals: readonly AllocationHistoryChartInterval[]
-): ReallocationFlowLedger | null {
-  const firstInterval = intervals[0]
-  const lastInterval = intervals[intervals.length - 1]
-  if (
-    !firstInterval ||
-    !lastInterval ||
-    firstInterval.fromEntryId !== startEntryId ||
-    lastInterval.toEntryId !== endEntryId
-  ) {
-    return null
-  }
-
-  for (let index = 0; index < intervals.length; index += 1) {
-    const interval = intervals[index]
-    const nextInterval = intervals[index + 1]
-    if (nextInterval && (interval.toEntryId === null || nextInterval.fromEntryId !== interval.toEntryId)) {
-      return null
-    }
-  }
-
-  const flows = intervals.flatMap((interval) => interval.flows)
-  if (!ledgerBalances(startState, endState, flows)) {
-    return null
-  }
-
-  return {
-    intervalCount: intervals.length,
-    flows,
-    balanceStatus: 'reconciled',
-    attributionStatus: intervals.some((interval) => interval.reconciliation.attributionStatus === 'partial')
-      ? 'partial'
-      : 'complete',
-    unattributedAmount: intervals
-      .reduce((sum, interval) => sum + BigInt(interval.reconciliation.unattributedAmount), 0n)
-      .toString()
-  }
 }
 
 function normalizeTimestamp(value: unknown): string | null {
@@ -374,26 +308,11 @@ function getAllocationHistoryApiUrl(): string {
 }
 
 export function buildReallocationQueryKey(vaultAddress: string, vaultChainId: ChainId | undefined) {
-  return ['allocation-history', 'chart', vaultChainId ?? null, normalizeVaultAddress(vaultAddress)] as const
+  return ['allocation-history', 'checkpoints-v3', vaultChainId ?? null, normalizeVaultAddress(vaultAddress)] as const
 }
 
-export function buildReallocationRequestUrl(
-  apiUrl: string,
-  vaultAddress: string,
-  vaultChainId: ChainId,
-  cursor?: string | null
-): string {
-  const normalizedApiUrl = apiUrl.replace(/\/$/, '')
-  const params = new URLSearchParams({
-    projection: 'chart',
-    limit: String(PAGE_SIZE),
-    direction: 'desc'
-  })
-  if (cursor) {
-    params.set('cursor', cursor)
-  }
-
-  return `${normalizedApiUrl}/${vaultChainId}/${normalizeVaultAddress(vaultAddress)}?${params.toString()}`
+export function buildReallocationRequestUrl(apiUrl: string, vaultAddress: string, vaultChainId: ChainId): string {
+  return `${apiUrl.replace(/\/$/, '')}/${vaultChainId}/${normalizeVaultAddress(vaultAddress)}?direction=desc`
 }
 
 function resolveDetailsHref(apiUrl: string, detailsHref: string): string {
@@ -524,9 +443,8 @@ export function buildObservedReallocationPanels(
       return []
     }
 
-    const flowLedger = composeFlowLedger(interval.fromEntryId, entry.id, previousState, entry.after, [interval])
-    if (!flowLedger) {
-      reject(entry.id, 'Interval flows do not reconcile with observed balances')
+    if (!comparisonMatches(interval, previousState, entry.after)) {
+      reject(entry.id, 'Checkpoint changes do not match observed balances')
       return []
     }
 
@@ -549,7 +467,7 @@ export function buildObservedReallocationPanels(
         execution: entry.execution,
         expectedAprImpact: normalizeExpectedAprImpact(entry.expectedAprImpact),
         detailsHref: resolveDetailsHref(apiUrl, entry.detailsHref),
-        flowLedger
+        checkpointChanges: interval.changes
       }
     ]
   })
@@ -565,9 +483,8 @@ export function buildObservedReallocationPanels(
     reject(currentSnapshot.id, `Missing boundary state: ${tailInterval.fromEntryId}`)
     return { panels: historicalPanels, issues }
   }
-  const tailLedger = composeFlowLedger(tailInterval.fromEntryId, null, latestState, currentSnapshot, [tailInterval])
-  if (!tailLedger) {
-    reject(currentSnapshot.id, 'Current interval flows do not reconcile with observed balances')
+  if (!comparisonMatches(tailInterval, latestState, currentSnapshot)) {
+    reject(currentSnapshot.id, 'Current checkpoint changes do not match observed balances')
     return { panels: historicalPanels, issues }
   }
 
@@ -596,7 +513,7 @@ export function buildObservedReallocationPanels(
         beforeTimestampUtc: normalizeTimestamp(latestState.blockTimestamp),
         afterTimestampUtc: normalizeTimestamp(currentSnapshot.blockTimestamp),
         kind: 'current',
-        flowLedger: tailLedger
+        checkpointChanges: tailInterval.changes
       }
     ]
   }
@@ -606,12 +523,12 @@ export function isValidChartResponse(
   response: unknown,
   requestedVaultAddress: string,
   requestedChainId: ChainId,
-  requireCurrentSnapshot: boolean
+  requireCurrentSnapshot = true
 ): response is AllocationHistoryChartResponse {
   const hasValidEnvelope =
     isObjectRecord(response) &&
-    response.projection === 'chart' &&
-    response.schemaVersion === 2 &&
+    typeof response.runId === 'string' &&
+    response.schemaVersion === 3 &&
     isObjectRecord(response.vault) &&
     response.vault.chainId === requestedChainId &&
     typeof response.vault.address === 'string' &&
@@ -621,9 +538,11 @@ export function isValidChartResponse(
     isValidBoundaryStates(response.boundaryStates) &&
     Array.isArray(response.entries) &&
     response.entries.every(isValidAllocationHistoryEntry) &&
-    isObjectRecord(response.pagination) &&
-    (response.pagination.nextCursor === null ||
-      (typeof response.pagination.nextCursor === 'string' && response.pagination.nextCursor.length > 0))
+    new Set(response.entries.map((entry) => entry.id)).size === response.entries.length &&
+    Number.isInteger(response.vault.assetDecimals) &&
+    Number(response.vault.assetDecimals) >= 0 &&
+    Number(response.vault.assetDecimals) <= 255 &&
+    (response.vault.assetSymbol === null || typeof response.vault.assetSymbol === 'string')
   if (!hasValidEnvelope) {
     return false
   }
@@ -651,24 +570,20 @@ export function useReallocationData(
   issues: AllocationHistoryIssue[]
   error: string | null
   isLoading: boolean
-  hasOlderEntries: boolean
-  isLoadingOlderEntries: boolean
-  loadOlderEntries: () => Promise<void>
 } {
   const allocationHistoryApiUrl = getAllocationHistoryApiUrl()
   const enabled = Boolean(allocationHistoryApiUrl && vaultAddress && vaultChainId && currentVaultDetails?.address)
 
-  const query = useInfiniteQuery({
+  const query = useQuery({
     queryKey: buildReallocationQueryKey(vaultAddress, vaultChainId),
-    initialPageParam: null as string | null,
-    queryFn: async ({ pageParam }) => {
+    queryFn: async ({ signal }) => {
       if (!allocationHistoryApiUrl || !vaultChainId) {
         throw new Error('Allocation history API is not configured')
       }
 
-      const response = await fetch(
-        buildReallocationRequestUrl(allocationHistoryApiUrl, vaultAddress, vaultChainId, pageParam)
-      )
+      const response = await fetch(buildReallocationRequestUrl(allocationHistoryApiUrl, vaultAddress, vaultChainId), {
+        signal
+      })
       if (response.status === 404) {
         return null
       }
@@ -677,44 +592,28 @@ export function useReallocationData(
       }
 
       const payload: unknown = await response.json()
-      if (!isValidChartResponse(payload, vaultAddress, vaultChainId, pageParam === null)) {
+      if (!isValidChartResponse(payload, vaultAddress, vaultChainId, true)) {
         throw new Error('Allocation history API returned an invalid chart response')
       }
 
       return payload
     },
-    getNextPageParam: (lastPage) => lastPage?.pagination.nextCursor ?? undefined,
     enabled,
     staleTime: 10 * 60 * 1000,
     retry: 1
   })
 
   const transformed = useMemo<{ data: ReallocationData | null; issues: AllocationHistoryIssue[] }>(() => {
-    const pages = query.data?.pages.filter((page): page is AllocationHistoryChartResponse => page !== null)
-    if (!pages?.length) {
-      return { data: null, issues: [] }
-    }
-
-    const firstPage = pages[0]
-    if (!firstPage?.currentSnapshot) {
-      return { data: null, issues: [] }
-    }
-
-    const uniqueEntries = [...new Map(pages.flatMap((page) => page.entries).map((entry) => [entry.id, entry])).values()]
-
-    if (uniqueEntries.length === 0) {
-      return { data: null, issues: [] }
-    }
-
+    const history = query.data
+    if (!history?.currentSnapshot || !history.entries.length) return { data: null, issues: [] }
+    const entries = history.entries
     const strategyNames = new Map(
-      pages.flatMap((page) =>
-        Object.entries(page.strategies).map(([address, name]) => [normalizeVaultAddress(address), name] as const)
-      )
+      Object.entries(history.strategies).map(([address, name]) => [normalizeVaultAddress(address), name])
     )
-    const boundaryStates = new Map(pages.flatMap((page) => Object.entries(page.boundaryStates)))
+    const boundaryStates = new Map(Object.entries(history.boundaryStates))
     const { panels, issues } = buildObservedReallocationPanels(
-      uniqueEntries,
-      firstPage.currentSnapshot,
+      entries,
+      history.currentSnapshot,
       boundaryStates,
       strategyNames,
       allocationHistoryApiUrl
@@ -726,18 +625,18 @@ export function useReallocationData(
     return {
       issues,
       data: {
-        vault: normalizeVaultAddress(firstPage.vault.address),
+        vault: normalizeVaultAddress(history.vault.address),
         vaultLabel:
-          firstPage.vault.name?.trim() ||
-          firstPage.vault.label?.trim() ||
+          history.vault.name?.trim() ||
+          history.vault.label?.trim() ||
           currentVaultDetails?.name ||
-          firstPage.vault.address,
-        chainId: firstPage.vault.chainId,
-        chainName: CHAIN_ID_TO_NAME[firstPage.vault.chainId as ChainId] ?? null,
+          history.vault.address,
+        chainId: history.vault.chainId,
+        chainName: CHAIN_ID_TO_NAME[history.vault.chainId as ChainId] ?? null,
         panels
       }
     }
-  }, [allocationHistoryApiUrl, currentVaultDetails?.name, query.data?.pages])
+  }, [allocationHistoryApiUrl, currentVaultDetails?.name, query.data])
 
   if (query.error) {
     console.warn(`[allocation-history] query error for vault ${vaultAddress}:`, query.error)
@@ -747,13 +646,6 @@ export function useReallocationData(
     data: transformed.data,
     issues: transformed.issues,
     error: query.error ? query.error.message : null,
-    isLoading: query.isLoading,
-    hasOlderEntries: Boolean(query.hasNextPage),
-    isLoadingOlderEntries: query.isFetchingNextPage,
-    loadOlderEntries: async () => {
-      if (query.hasNextPage && !query.isFetchingNextPage) {
-        await query.fetchNextPage()
-      }
-    }
+    isLoading: query.isLoading
   }
 }
