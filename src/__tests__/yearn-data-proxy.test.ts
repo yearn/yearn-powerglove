@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import handler from '../../api/[...path]'
+import handler from '../../api/yearn-data'
 
 function response() {
   const json = vi.fn()
@@ -28,16 +28,16 @@ describe('hosted Yearn Data proxy', () => {
     expect(JSON.stringify(res.setHeader.mock.calls)).not.toContain('server-secret')
   })
 
-  it('removes Vercel catch-all metadata while retaining API filters', async () => {
+  it('resolves explicit hosted rewrites while retaining API filters', async () => {
     vi.stubEnv('YEARN_DATA_API_URL', 'https://data-preview.vercel.app')
     const fetch = vi.fn().mockImplementation(async () => new Response(JSON.stringify({ releaseId: 'current' })))
     vi.stubGlobal('fetch', fetch)
     const res = response()
-    await handler({ method: 'GET', url: '/api/publication?path=publication' }, res)
+    await handler({ method: 'GET', url: '/api/yearn-data?__statsPath=/api/publication' }, res)
     expect(fetch.mock.calls[0][0].toString()).toBe('https://data-preview.vercel.app/api/publication')
     expect(res.status).toHaveBeenCalledWith(200)
     const graphResponse = response()
-    await handler({ method: 'GET', url: '/api/tvl/graph?path=tvl%2Fgraph&chainId=1' }, graphResponse)
+    await handler({ method: 'GET', url: '/api/yearn-data?__statsPath=/api/tvl/graph&chainId=1' }, graphResponse)
     expect(graphResponse.status).toHaveBeenCalledWith(200)
     expect(fetch.mock.calls[1][0].toString()).toBe('https://data-preview.vercel.app/api/tvl/graph?chainId=1')
   })
@@ -57,6 +57,7 @@ describe('hosted Yearn Data proxy', () => {
   it.each([
     ['POST', '/api/tvl', 405],
     ['GET', '/api/unknown', 404],
+    ['GET', '/api/yearn-data?__statsPath=/api/unknown', 404],
     ['GET', '/api/tvl', 503]
   ])('rejects %s %s without contacting an unconfigured upstream', async (method, url, status) => {
     vi.stubEnv('YEARN_DATA_API_URL', '')

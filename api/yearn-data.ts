@@ -29,7 +29,8 @@ export default async function handler(req: { method?: string; url?: string }, re
     return res.status(405).json({ error: 'Method not allowed' })
   }
   const request = new URL(req.url ?? '/', 'https://powerglove.invalid')
-  const path = request.pathname.replace(/\/$/, '')
+  const path = (request.searchParams.get('__statsPath') ?? request.pathname).replace(/\/$/, '')
+  request.searchParams.delete('__statsPath')
   if (!DATA_ROUTES.has(path)) return res.status(404).json({ error: 'Not found' })
 
   const target = process.env.YEARN_DATA_API_URL
@@ -41,8 +42,6 @@ export default async function handler(req: { method?: string; url?: string }, re
       return res.status(503).json({ error: 'Stats API is not configured' })
     }
     upstream.pathname = path
-    // Vercel adds the catch-all parameter to req.url; it is routing metadata, not an API filter.
-    request.searchParams.delete('path')
     upstream.search = request.search
     upstream.hash = ''
     const headers: Record<string, string> = { Accept: 'application/json' }

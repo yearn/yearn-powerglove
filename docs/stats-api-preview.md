@@ -2,7 +2,7 @@
 
 Core TVL, earnings, fees, analytics, comparison, curation, audit and TVL graph
 requests use the same Powerglove origin. Hosted builds serve these read-only
-routes through `api/[...path].ts`; local Vite builds use the equivalent proxy.
+routes through `api/yearn-data.ts`; local Vite builds use the equivalent proxy.
 An explicit `VITE_PUBLIC_YEARN_DATA_API_URL` can select a public Yearn Data origin.
 Supplementary legacy endpoints retain their separate API configuration.
 
@@ -30,8 +30,9 @@ are project-scoped, rather than branch-scoped. The new variables configure only
 branches that implement this server proxy. Production environment variables are
 separate and must be configured before merging this branch for production use.
 
-The SPA rewrite excludes `/api/`, allowing Vercel functions to handle those
-requests. `git.deploymentEnabled=false` prevents duplicate native Git builds;
+Explicit rewrites map the supported API paths to the proxy and preserve their
+filters. The SPA rewrite excludes `/api/`, allowing Vercel functions to handle
+those requests. `git.deploymentEnabled=false` prevents duplicate native Git builds;
 the existing GitHub Actions workflow still creates the PR preview.
 
 Deployment protection remains enabled. Use a deployment-specific Vercel share
