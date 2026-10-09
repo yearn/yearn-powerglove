@@ -21,6 +21,7 @@ export function getStatsApiLane(url: string): StatsApiLane {
       '/api/tvl/history/runs/latest',
       '/api/tvl/history/runs/latest/constant-price',
       '/api/tvl/curation-products',
+      '/api/tvl/graph',
       '/api/audit/tree',
       '/api/analytics/publication',
       '/api/comparison/defillama-comparable',

@@ -48,7 +48,7 @@ export default defineConfig(({ mode }) => {
     '/api/analytics': hostedDataProxy,
     '/api/comparison/defillama-comparable': hostedDataProxy,
     '/api/comparison': hostedDataProxy,
-    '/api/tvl/graph': proxyTo(yearnTvlApiTarget),
+    '/api/tvl/graph': hostedDataProxy,
     '/api/tvl/overlap': proxyTo(yearnTvlApiTarget),
     '/api/tvl/vaults': proxyTo(yearnTvlApiTarget),
     '/api/tvl': hostedDataProxy,
