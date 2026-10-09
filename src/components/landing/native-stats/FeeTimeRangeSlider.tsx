@@ -18,15 +18,17 @@ function formatSliderDate(date: string, day = true): string {
 export function FeeDateSlider({
   bounds,
   selected,
-  onApply
+  onApply,
+  minDurationDays = 0
 }: {
   bounds: ChartDateRange
   selected: ChartDateRange | null
   onApply: (range: ChartDateRange) => void
+  minDurationDays?: number
 }) {
   const selectionKey = `${bounds.start}:${bounds.end}:${selected?.start}:${selected?.end}`
   const [draft, setDraft] = useState<{ key: string; values: number[] } | null>(null)
-  const values = draft?.key === selectionKey ? draft.values : feeSliderValues(bounds, selected)
+  const values = draft?.key === selectionKey ? draft.values : feeSliderValues(bounds, selected, minDurationDays)
   const min = feeRangeDay(bounds.start)
   const max = feeRangeDay(bounds.end)
 
@@ -46,7 +48,7 @@ export function FeeDateSlider({
         min={min}
         max={max}
         step={1}
-        minStepsBetweenThumbs={0}
+        minStepsBetweenThumbs={Math.min(minDurationDays, max - min)}
         onValueChange={(next) => setDraft({ key: selectionKey, values: next })}
         onValueCommit={(next) => {
           setDraft(null)

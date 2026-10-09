@@ -1,4 +1,6 @@
-import { useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { ChevronDown } from 'lucide-react'
+import { type ReactNode, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AuditPanel } from './AuditPanel'
 import { ComparisonPanel } from './ComparisonPanel'
@@ -23,6 +25,22 @@ function MissingApiNotice({ lane }: { lane: 'TVL' | 'fees' }) {
         <code>http://127.0.0.1:{localPort}</code> by default.
       </p>
     </div>
+  )
+}
+
+function AnalysisSection({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <Collapsible className="stats-analysis-section">
+      <h2>
+        <CollapsibleTrigger className="stats-analysis-trigger">
+          {title}
+          <ChevronDown size={16} aria-hidden="true" />
+        </CollapsibleTrigger>
+      </h2>
+      <CollapsibleContent className="stats-analysis-content">
+        <ErrorBoundary>{children}</ErrorBoundary>
+      </CollapsibleContent>
+    </Collapsible>
   )
 }
 
@@ -70,8 +88,8 @@ export function NativeStatsDashboard({ tab, onTabChange }: { tab: StatsTab; onTa
               ))}
             </TabsList>
 
-            <div className={`stats-tab-panel${tab === 'fees' ? ' stats-fees-tab-panel' : ''}`}>
-              {tab !== 'fees' && tab !== 'overview' && <div className="stats-chain-filter">{chainSelector}</div>}
+            <div className={`stats-tab-panel${tab === 'fees' || tab === 'overview' ? ' stats-fees-tab-panel' : ''}`}>
+              {tab === 'analysis' && <div className="stats-chain-filter">{chainSelector}</div>}
               <TabsContent value="overview" className="mt-0">
                 {!HAS_TVL_API ? (
                   <MissingApiNotice lane="TVL" />
@@ -80,15 +98,9 @@ export function NativeStatsDashboard({ tab, onTabChange }: { tab: StatsTab; onTa
                     <TvlOverview chainSelector={chainSelector} />
                   </ErrorBoundary>
                 )}
-              </TabsContent>
-              <TabsContent value="curation" className="mt-0">
-                {!HAS_TVL_API ? (
-                  <MissingApiNotice lane="TVL" />
-                ) : (
-                  <ErrorBoundary>
-                    <CurationProductsPanel />
-                  </ErrorBoundary>
-                )}
+                <AnalysisSection title="Vault breakdown">
+                  {HAS_TVL_API ? <AuditPanel /> : <MissingApiNotice lane="TVL" />}
+                </AnalysisSection>
               </TabsContent>
               <TabsContent value="fees" className="mt-0">
                 {!HAS_FEES_API ? (
@@ -99,23 +111,13 @@ export function NativeStatsDashboard({ tab, onTabChange }: { tab: StatsTab; onTa
                   </ErrorBoundary>
                 )}
               </TabsContent>
-              <TabsContent value="vaults" className="mt-0">
-                {!HAS_TVL_API ? (
-                  <MissingApiNotice lane="TVL" />
-                ) : (
-                  <ErrorBoundary>
-                    <AuditPanel />
-                  </ErrorBoundary>
-                )}
-              </TabsContent>
-              <TabsContent value="comparison" className="mt-0">
-                {!HAS_TVL_API ? (
-                  <MissingApiNotice lane="TVL" />
-                ) : (
-                  <ErrorBoundary>
-                    <ComparisonPanel />
-                  </ErrorBoundary>
-                )}
+              <TabsContent value="analysis" className="mt-0">
+                <AnalysisSection title="Curation Products">
+                  {HAS_TVL_API ? <CurationProductsPanel /> : <MissingApiNotice lane="TVL" />}
+                </AnalysisSection>
+                <AnalysisSection title="Comparison">
+                  {HAS_TVL_API ? <ComparisonPanel /> : <MissingApiNotice lane="TVL" />}
+                </AnalysisSection>
               </TabsContent>
             </div>
           </Tabs>

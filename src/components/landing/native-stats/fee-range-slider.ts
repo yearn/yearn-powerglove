@@ -23,11 +23,22 @@ export function feeSliderBounds(buckets: CanonicalFeeHistoryBucket[], now: numbe
   }
 }
 
-export function feeSliderValues(bounds: ChartDateRange, selected: ChartDateRange | null): [number, number] {
+export function feeSliderValues(
+  bounds: ChartDateRange,
+  selected: ChartDateRange | null,
+  minDurationDays = 0
+): [number, number] {
   const min = feeRangeDay(bounds.start)
   const max = feeRangeDay(bounds.end)
   const clamp = (day: number) => Math.max(min, Math.min(max, day))
-  return [clamp(feeRangeDay(selected?.start ?? bounds.start)), clamp(feeRangeDay(selected?.end ?? bounds.end))]
+  let start = clamp(feeRangeDay(selected?.start ?? bounds.start))
+  let end = clamp(feeRangeDay(selected?.end ?? bounds.end))
+  const minimumSpan = Math.min(Math.max(0, minDurationDays), max - min)
+  if (end - start < minimumSpan) {
+    start = Math.max(min, end - minimumSpan)
+    end = Math.min(max, start + minimumSpan)
+  }
+  return [start, end]
 }
 
 export function feeSliderTicks(bounds: ChartDateRange) {

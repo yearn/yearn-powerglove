@@ -1,5 +1,5 @@
-import { ChevronDown, ChevronRight, ChevronUp } from 'lucide-react'
-import { Fragment, type ReactNode, useContext, useEffect, useId, useMemo, useState } from 'react'
+import { ChevronDown, ChevronRight } from 'lucide-react'
+import { Fragment, type ReactNode, useContext, useEffect, useMemo, useState } from 'react'
 import {
   Bar,
   CartesianGrid,
@@ -48,6 +48,7 @@ import {
   usePagination,
   useSort
 } from './hooks'
+import { StatsChartControls } from './StatsChartControls'
 import { StatsContext } from './StatsContext'
 import type { FeeStackChain, FeeStackNode, FeeStackSummary } from './types'
 import { VaultComparisonCharts } from './VaultComparisonCharts'
@@ -393,8 +394,6 @@ export function FeesPanel({ chainSelector }: { chainSelector: ReactNode }) {
     onRenderTypeChange: (value) => setChartTypes((types) => ({ ...types, [key]: value }))
   })
   const [selectedAllocatorKeys, setSelectedAllocatorKeys] = useState<string[] | null>(null)
-  const [controlsExpanded, setControlsExpanded] = useState(true)
-  const controlsId = useId()
   const [showLoadingOverlay, setShowLoadingOverlay] = useState(false)
 
   const nowTs = Math.floor(Date.now() / 1000)
@@ -584,36 +583,23 @@ export function FeesPanel({ chainSelector }: { chainSelector: ReactNode }) {
   }, [isRefreshing])
 
   const controls = (
-    <div key="fees-controls" className={`fees-toolbar${controlsExpanded ? '' : ' fees-toolbar-collapsed'}`}>
-      {!controlsExpanded && <span className="fees-controls-label text-dim">Chart controls</span>}
-      <div id={controlsId} className="fees-toolbar-controls" hidden={!controlsExpanded}>
-        {chainSelector}
-        <fieldset className="fees-chart-view flex flex-wrap gap-2" aria-label="Chart view">
-          {(['periodic', 'cumulative'] as const).map((view) => (
-            <button
-              key={view}
-              type="button"
-              className={timeframeButtonClass(chartView === view)}
-              aria-pressed={chartView === view}
-              onClick={() => setChartView(view)}
-            >
-              {view === 'cumulative' ? 'Cumulative' : historyInterval === 'weekly' ? 'Weekly' : 'Monthly'}
-            </button>
-          ))}
-        </fieldset>
-        <FeeTimeRangeSlider datasetId={summary?.datasetId} selected={selectedRange} onApply={setSelectedRange} />
-      </div>
-      <button
-        type="button"
-        className="fees-toolbar-collapse"
-        aria-expanded={controlsExpanded}
-        aria-controls={controlsId}
-        aria-label={controlsExpanded ? 'Collapse chart controls' : 'Expand chart controls'}
-        onClick={() => setControlsExpanded((expanded) => !expanded)}
-      >
-        {controlsExpanded ? <ChevronUp size={18} aria-hidden="true" /> : <ChevronDown size={18} aria-hidden="true" />}
-      </button>
-    </div>
+    <StatsChartControls key="fees-controls">
+      {chainSelector}
+      <fieldset className="fees-chart-view flex flex-wrap gap-2" aria-label="Chart view">
+        {(['periodic', 'cumulative'] as const).map((view) => (
+          <button
+            key={view}
+            type="button"
+            className={timeframeButtonClass(chartView === view)}
+            aria-pressed={chartView === view}
+            onClick={() => setChartView(view)}
+          >
+            {view === 'cumulative' ? 'Cumulative' : historyInterval === 'weekly' ? 'Weekly' : 'Monthly'}
+          </button>
+        ))}
+      </fieldset>
+      <FeeTimeRangeSlider datasetId={summary?.datasetId} selected={selectedRange} onApply={setSelectedRange} />
+    </StatsChartControls>
   )
 
   if (summaryError || historyError || vaultError || (summary && !validSummary))

@@ -41,4 +41,21 @@ describe('fee date slider', () => {
     expect(end.getAttribute('aria-valuemax')).toBe(String(feeRangeDay(bounds.end)))
     expect(onApply).not.toHaveBeenCalled()
   })
+  it('enforces the TVL minimum duration without changing the fee slider default', () => {
+    const onApply = vi.fn()
+    render(
+      <FeeDateSlider
+        bounds={{ start: '2020-01-01', end: '2026-01-01' }}
+        selected={{ start: '2025-01-01', end: '2026-01-01' }}
+        onApply={onApply}
+        minDurationDays={365}
+      />
+    )
+    const start = screen.getByRole('slider', { name: 'Range start' })
+    start.focus()
+    fireEvent.keyDown(start, { key: 'ArrowRight' })
+    expect(onApply).not.toHaveBeenCalled()
+    fireEvent.keyDown(start, { key: 'ArrowLeft' })
+    expect(onApply).toHaveBeenCalledWith({ start: '2024-12-31', end: '2026-01-01' })
+  })
 })

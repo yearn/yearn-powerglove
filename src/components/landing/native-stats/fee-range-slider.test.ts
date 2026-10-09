@@ -56,4 +56,13 @@ describe('fee timeline bounds and selection', () => {
     expect(ticks.length).toBeGreaterThan(0)
     expect(ticks.every(({ position }) => position >= 15 && position <= 85)).toBe(true)
   })
+  it('clamps short TVL selections to one year, or the complete available history when shorter', () => {
+    const selected = { start: '2026-01-01', end: '2026-02-01' }
+    const [start, end] = feeSliderValues(bounds, selected, 365)
+    expect(end - start).toBe(365)
+    expect(feeRangeDate(end)).toBe('2026-02-01')
+    const short = { start: '2026-01-01', end: '2026-03-01' }
+    expect(feeSliderValues(short, selected, 365)).toEqual(feeSliderValues(short, null))
+    expect(feeSliderValues(bounds, selected)).toEqual([feeRangeDay(selected.start), feeRangeDay(selected.end)])
+  })
 })

@@ -2,13 +2,17 @@ import { ChevronDown, Info } from 'lucide-react'
 import { Fragment, type ReactNode, useContext, useEffect, useId, useMemo, useState } from 'react'
 import { Area, Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import type { NameType, Payload, ValueType } from 'recharts/types/component/DefaultTooltipContent'
+import type { ChartDateRange } from '@/components/charts/chart-utils'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useRootDarkMode } from '@/hooks/useRootDarkMode'
 import { buildBlueShadePalette } from '@/lib/theme-blue-palette'
 import { ChainTvlHistory } from './ChainTvlHistory'
 import { ChartTypeToggle, type StatsChartType } from './ChartTypeToggle'
+import { FeeDateSlider } from './FeeTimeRangeSlider'
+import { feeSliderValues } from './fee-range-slider'
 import { CAT_COLORS, CHAIN_NAMES, CHAIN_SHORT, CHART_COLORS, fmt, SkeletonCards, useFetch } from './hooks'
+import { StatsChartControls } from './StatsChartControls'
 import { StatsContext } from './StatsContext'
 import {
   buildConstantPriceTvlUrl,
@@ -17,15 +21,12 @@ import {
   getAvailableChartSeries,
   getPriceNeutralCoverageLabel,
   getTvlHistoryErrorMessage,
-  getTvlHistoryRangeBounds,
   isPriceNeutralOverlayVisible,
   labelVersionHistoryChart,
   mergePriceNeutralTotal,
   type OverallTvlHistoryBreakdown,
   PRICE_NEUTRAL_TOTAL_SERIES,
-  selectConstantPriceChart,
-  TVL_HISTORY_RANGE_OPTIONS,
-  type TvlHistoryRange
+  selectConstantPriceChart
 } from './tvl-history'
 import {
   buildAdjustedChainTvl,
@@ -88,15 +89,6 @@ export function filterPartialHistoryRows(rows: TvlHistoryRun['chart'], seriesCou
   if (firstCompleteRow < 0) return rows
 
   return rows.filter((row, index) => index < firstCompleteRow || countSeriesValues(row) >= minCompleteSeriesCount)
-}
-
-function filterRowsByRange(rows: TvlHistoryRun['chart'], range: TvlHistoryRange): TvlHistoryRun['chart'] {
-  const option = TVL_HISTORY_RANGE_OPTIONS.find((item) => item.value === range)
-  if (!option?.days || rows.length === 0) return rows
-
-  const latestTimestamp = rows.reduce((latest, row) => Math.max(latest, row.timestamp), 0)
-  const minTimestamp = latestTimestamp - option.days * DAY_SECONDS
-  return rows.filter((row) => row.timestamp >= minTimestamp)
 }
 
 function getLatestRowTotal(rows: TvlHistoryRun['chart'], seriesKeys: string[]): number {
@@ -312,29 +304,55 @@ export function TvlHistoryTooltip({
 export function TvlOverview({ chainSelector }: { chainSelector: ReactNode }) {
   const { chainFilter, setLastFetchedAt } = useContext(StatsContext)
   const isDark = useRootDarkMode()
-  const { data: rawData, loading, error, fetchedAt, retry } = useFetch<LegacyTvlSummary>('/api/tvl')
+  const {
+    data: rawData,
+    loading,
+    error,
+    fetchedAt,
+    retry
+  } = useFetch<LegacyTvlSummary>(chainFilter === 'all' ? '/api/tvl' : `/api/tvl?chainId=${chainFilter}`)
   const [tvlHistoryBreakdown, setTvlHistoryBreakdown] = useState<OverallTvlHistoryBreakdown>('chain')
-  const [tvlHistoryRange, setTvlHistoryRange] = useState<TvlHistoryRange>('all')
+  const [selectedRange, setSelectedRange] = useState<ChartDateRange | null>(null)
   const [showPriceNeutral, setShowPriceNeutral] = useState(true)
   const [tvlHistoryView, setTvlHistoryView] = useState<StatsChartType>('bar')
   const [selectedHistoryChain, setSelectedHistoryChain] = useState<string | null>(null)
   const [historyEndAnchor] = useState(() => Math.floor(Date.now() / 1000))
   const tvlHistoryMode = 'external'
   const tvlHistoryInterval = 'weekly'
+  const fullHistoryFilters = new URLSearchParams({
+    groupBy: 'chain',
+    mode: tvlHistoryMode,
+    interval: tvlHistoryInterval
+  })
+  if (rawData?.datasetId) fullHistoryFilters.set('datasetId', rawData.datasetId)
+  const {
+    data: fullHistory,
+    error: timelineError,
+    retry: retryTimeline
+  } = useFetch<TvlHistoryRun>(`/api/tvl/history/runs/latest?${fullHistoryFilters}`, {
+    enabled: Boolean(rawData)
+  })
+  const timelineBounds = fullHistory
+    ? {
+        start: new Date(fullHistory.range.from * 1000).toISOString().slice(0, 10),
+        end: new Date(fullHistory.range.to * 1000).toISOString().slice(0, 10)
+      }
+    : null
+  const sliderValues = timelineBounds ? feeSliderValues(timelineBounds, selectedRange, 365) : null
+  const selectedBounds = sliderValues
+    ? {
+        from: sliderValues[0] * DAY_SECONDS,
+        to: sliderValues[1] * DAY_SECONDS + DAY_SECONDS - 1
+      }
+    : { from: historyEndAnchor - 365 * DAY_SECONDS, to: historyEndAnchor }
   const baseTvlHistoryUrl = buildTvlHistoryUrl({
     breakdown: tvlHistoryBreakdown,
     mode: tvlHistoryMode,
     interval: tvlHistoryInterval
   })
   const tvlHistoryFilters = new URLSearchParams(baseTvlHistoryUrl.split('?')[1])
-  if (rawData?.datasetId) {
-    tvlHistoryFilters.set('datasetId', rawData.datasetId)
-    if (tvlHistoryRange === '365d') {
-      const bounds = getTvlHistoryRangeBounds(tvlHistoryRange, rawData.asOfTimestamp ?? historyEndAnchor, 0)
-      tvlHistoryFilters.set('from', String(bounds.from))
-      tvlHistoryFilters.set('to', String(bounds.to))
-    }
-  }
+  if (rawData?.datasetId) tvlHistoryFilters.set('datasetId', rawData.datasetId)
+  if (chainFilter !== 'all') tvlHistoryFilters.set('chainId', chainFilter)
   const tvlHistoryUrl = `/api/tvl/history/runs/latest?${tvlHistoryFilters}`
   const {
     data: rawTvlHistory,
@@ -342,17 +360,10 @@ export function TvlOverview({ chainSelector }: { chainSelector: ReactNode }) {
     error: tvlHistoryError,
     retry: retryTvlHistory
   } = useFetch<TvlHistoryRun>(tvlHistoryUrl, { enabled: Boolean(rawData) })
-  const constantPriceRange = useMemo(
-    () =>
-      getTvlHistoryRangeBounds(
-        tvlHistoryRange,
-        rawTvlHistory?.range.to ?? historyEndAnchor,
-        rawTvlHistory?.range.from ?? historyEndAnchor - 365 * DAY_SECONDS
-      ),
-    [historyEndAnchor, rawTvlHistory?.range.from, rawTvlHistory?.range.to, tvlHistoryRange]
-  )
-  const constantPriceUrl =
-    buildConstantPriceTvlUrl(constantPriceRange) + (rawData?.datasetId ? `&datasetId=${rawData.datasetId}` : '')
+  const constantPriceFilters = new URLSearchParams(buildConstantPriceTvlUrl(selectedBounds).split('?')[1])
+  if (rawData?.datasetId) constantPriceFilters.set('datasetId', rawData.datasetId)
+  if (chainFilter !== 'all') constantPriceFilters.set('chainId', chainFilter)
+  const constantPriceUrl = `/api/tvl/history/runs/latest/constant-price?${constantPriceFilters}`
   const {
     data: constantPriceHistory,
     loading: constantPriceLoading,
@@ -374,7 +385,10 @@ export function TvlOverview({ chainSelector }: { chainSelector: ReactNode }) {
   const chainData = useMemo(
     () =>
       data
-        ? buildAdjustedChainTvl(data, chainFilter).map(({ chain, tvl }) => ({
+        ? buildAdjustedChainTvl(
+            data,
+            chainFilter === 'all' ? 'all' : (CHAIN_NAMES[Number(chainFilter)] ?? chainFilter)
+          ).map(({ chain, tvl }) => ({
             chain,
             label: CHAIN_NAMES[Number(chain)] || CHAIN_SHORT[Number(chain)] || chain,
             chainId: resolveChainId(chain, CHAIN_NAMES),
@@ -407,7 +421,9 @@ export function TvlOverview({ chainSelector }: { chainSelector: ReactNode }) {
       tvlHistoryBreakdown === 'category'
         ? labelVersionHistoryChart(topTvlHistory.rows, topTvlHistory.series)
         : topTvlHistory
-    const rangedRows = filterRowsByRange(labeledHistory.rows, tvlHistoryRange)
+    const rangedRows = labeledHistory.rows.filter(
+      (row) => row.timestamp >= selectedBounds.from && row.timestamp <= selectedBounds.to
+    )
     return {
       rows:
         rawData?.datasetId || tvlHistoryBreakdown === 'category'
@@ -419,7 +435,8 @@ export function TvlOverview({ chainSelector }: { chainSelector: ReactNode }) {
     rawTvlHistory,
     rawData?.datasetId,
     tvlHistoryBreakdown,
-    tvlHistoryRange,
+    selectedBounds.from,
+    selectedBounds.to,
     tvlHistoryRemainingSeries,
     tvlHistoryScaleFactor
   ])
@@ -472,35 +489,64 @@ export function TvlOverview({ chainSelector }: { chainSelector: ReactNode }) {
     : null
   const warningCount = rawTvlHistory ? getWarningCount(rawTvlHistory.meta) : 0
   const tvlHistoryBarSize = getHistoryBarSize(displayedHistoryRows.length)
-  const tvlHistoryBreakdownLabel = {
-    chain: 'chain',
-    category: 'version'
-  }[tvlHistoryBreakdown]
+  const controls = (
+    <StatsChartControls>
+      {chainSelector}
+      <ChartTypeToggle value={tvlHistoryView} onValueChange={setTvlHistoryView} label="TVL" />
+      {timelineBounds ? (
+        <FeeDateSlider
+          bounds={timelineBounds}
+          selected={selectedRange}
+          onApply={setSelectedRange}
+          minDurationDays={365}
+        />
+      ) : timelineError ? (
+        <div className="fee-range-timeline text-dim">
+          Timeline could not be loaded.{' '}
+          <button type="button" className="page-btn" onClick={retryTimeline}>
+            Retry timeline
+          </button>
+        </div>
+      ) : (
+        <output className="fee-range-timeline text-dim">Loading timeline…</output>
+      )}
+    </StatsChartControls>
+  )
 
-  if (loading) return <SkeletonCards count={1} />
+  if (loading)
+    return (
+      <>
+        {controls}
+        <SkeletonCards count={1} />
+      </>
+    )
   if (error)
     return (
-      <div className="error-retry">
-        <div className="error-message">Error: {error}</div>
-        <button className="page-btn" onClick={retry}>
-          Retry
-        </button>
-      </div>
+      <>
+        {controls}
+        <div className="error-retry">
+          <div className="error-message">Error: {error}</div>
+          <button className="page-btn" onClick={retry}>
+            Retry
+          </button>
+        </div>
+      </>
     )
-  if (!data) return null
+  if (!data) return <>{controls}</>
 
   const maxChainTvl = Math.max(1, ...chainData.map(({ tvl }) => tvl))
 
   return (
     <>
+      {controls}
       <div className="tvl-summary mb-5 flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-3 gap-y-1">
           <div className="value shrink-0">{fmt(data.totalTvl)}</div>
           <div className="sub">
-            {data.vaultCount.active} active vaults across {Object.keys(data.tvlByChain).length} chains
+            {data.vaultCount.active} active vault{data.vaultCount.active === 1 ? '' : 's'} across{' '}
+            {Object.keys(data.tvlByChain).length} chain{Object.keys(data.tvlByChain).length === 1 ? '' : 's'}
           </div>
         </div>
-        {chainSelector}
       </div>
 
       <div className="card">
@@ -511,7 +557,7 @@ export function TvlOverview({ chainSelector }: { chainSelector: ReactNode }) {
               Saved run grouped by {formatHistoryGroup(rawTvlHistory?.groupBy)};{' '}
               {tvlHistoryBreakdown === 'category'
                 ? `${tvlHistorySeries.length} versions`
-                : `top ${Math.min(TVL_HISTORY_TOP_SERIES_COUNT, tvlHistorySeries.length)} chains by latest TVL`}
+                : `top ${Math.min(TVL_HISTORY_TOP_SERIES_COUNT, tvlHistorySeries.length)} ${tvlHistorySeries.length === 1 ? 'chain' : 'chains'} by latest TVL`}
             </div>
           </div>
           <div className="tvl-history-header-actions">
@@ -582,24 +628,6 @@ export function TvlOverview({ chainSelector }: { chainSelector: ReactNode }) {
           </div>
         </div>
 
-        {tvlHistoryView === 'line' && (
-          <div className="tvl-history-series-switch" aria-label="TVL history series">
-            <span className="tvl-history-series-label">
-              <span className="tvl-history-series-swatch actual" aria-hidden="true" />
-              Actual TVL
-            </span>
-            <button
-              type="button"
-              className={showPriceNeutral ? 'active' : undefined}
-              aria-pressed={showPriceNeutral}
-              onClick={() => setShowPriceNeutral((current) => !current)}
-            >
-              <span className="tvl-history-series-swatch price-neutral" aria-hidden="true" />
-              {constantPriceLoading && showPriceNeutral ? 'Loading price-neutral…' : 'Price-neutral TVL'}
-            </button>
-          </div>
-        )}
-
         <div className="tvl-history-controls" aria-label="TVL history controls">
           <Tabs
             value={tvlHistoryBreakdown}
@@ -614,26 +642,23 @@ export function TvlOverview({ chainSelector }: { chainSelector: ReactNode }) {
               </TabsTrigger>
             </TabsList>
           </Tabs>
-
-          <div className="tvl-history-control-group" aria-label="TVL history time range">
-            {TVL_HISTORY_RANGE_OPTIONS.map((option) => (
+          {tvlHistoryView === 'line' && (
+            <div className="tvl-history-series-switch" aria-label="TVL history series">
+              <span className="tvl-history-series-label">
+                <span className="tvl-history-series-swatch actual" aria-hidden="true" />
+                Actual TVL
+              </span>
               <button
-                key={option.value}
                 type="button"
-                className={tvlHistoryRange === option.value ? 'active' : undefined}
-                aria-pressed={tvlHistoryRange === option.value}
-                onClick={() => setTvlHistoryRange(option.value)}
+                className={showPriceNeutral ? 'active' : undefined}
+                aria-pressed={showPriceNeutral}
+                onClick={() => setShowPriceNeutral((current) => !current)}
               >
-                {option.label}
+                <span className="tvl-history-series-swatch price-neutral" aria-hidden="true" />
+                {constantPriceLoading && showPriceNeutral ? 'Loading price-neutral…' : 'Price-neutral TVL'}
               </button>
-            ))}
-          </div>
-
-          <ChartTypeToggle
-            value={tvlHistoryView}
-            onValueChange={setTvlHistoryView}
-            label={`${tvlHistoryBreakdownLabel} TVL`}
-          />
+            </div>
+          )}
         </div>
 
         {tvlHistoryBreakdown === 'category' && tvlHistorySeries.length > 0 && (
@@ -852,10 +877,9 @@ export function TvlOverview({ chainSelector }: { chainSelector: ReactNode }) {
                     chainId={c.chainId}
                     chainLabel={c.label}
                     datasetId={rawData?.datasetId}
-                    allTimeRange={{
-                      from: rawTvlHistory?.range.from ?? historyEndAnchor - 365 * DAY_SECONDS,
-                      to: rawTvlHistory?.range.to ?? historyEndAnchor
-                    }}
+                    allTimeRange={selectedBounds}
+                    selectedRange={selectedBounds}
+                    renderType={tvlHistoryView}
                   />
                 )}
               </Fragment>

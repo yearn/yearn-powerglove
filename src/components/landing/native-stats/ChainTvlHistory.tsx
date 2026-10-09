@@ -104,19 +104,24 @@ export function ChainTvlHistory({
   chainId,
   chainLabel,
   allTimeRange,
-  datasetId
+  datasetId,
+  selectedRange,
+  renderType
 }: {
   chainId: number
   chainLabel: string
   allTimeRange: { from: number; to: number }
   datasetId?: string
+  selectedRange?: { from: number; to: number }
+  renderType?: StatsChartType
 }) {
   const isDark = useRootDarkMode()
   const [breakdown, setBreakdown] = useState<ChainTvlHistoryBreakdown>('vault')
   const [range, setRange] = useState<TvlHistoryRange>('all')
-  const [view, setView] = useState<StatsChartType>('bar')
+  const [localView, setView] = useState<StatsChartType>('bar')
+  const view = renderType ?? localView
   const [showPriceNeutral, setShowPriceNeutral] = useState(true)
-  const bounds = getTvlHistoryRangeBounds(range, allTimeRange.to, allTimeRange.from)
+  const bounds = selectedRange ?? getTvlHistoryRangeBounds(range, allTimeRange.to, allTimeRange.from)
   const url = buildChainTvlHistoryUrl({ breakdown, chainId, ...bounds }) + (datasetId ? `&datasetId=${datasetId}` : '')
   const { data, loading, error, status, retry } = useFetch<ConstantPriceTvlHistory>(url)
   const colors = useMemo(() => buildBlueShadePalette(isDark), [isDark])
@@ -132,7 +137,13 @@ export function ChainTvlHistory({
           ? { rows: data.actualChart, series: data.meta.topSeries }
           : buildTopSeriesChart(data.actualChart, actualSeries, remainingSeries)
         : labelVersionHistoryChart(data.actualChart, actualSeries)
-    const actualRows = addChartTotal(actual.rows, actual.series, ACTUAL_TOTAL_SERIES)
+    const actualRows = addChartTotal(
+      actual.rows.filter(
+        (row) => !selectedRange || (row.timestamp >= selectedRange.from && row.timestamp <= selectedRange.to)
+      ),
+      actual.series,
+      ACTUAL_TOTAL_SERIES
+    )
     const priceNeutralSeries = getAvailableChartSeries(data.constantPriceChart)
     const rows =
       view === 'line' && showPriceNeutral
@@ -152,7 +163,7 @@ export function ChainTvlHistory({
         ])
       )
     }
-  }, [breakdown, colors, data, showPriceNeutral, view])
+  }, [breakdown, colors, data, showPriceNeutral, view, selectedRange])
 
   const priceNeutralVisible = view === 'line' && showPriceNeutral
   const coverage = data ? getPriceNeutralCoverageLabel(data.meta) : null
@@ -226,20 +237,22 @@ export function ChainTvlHistory({
             </TabsTrigger>
           </TabsList>
         </Tabs>
-        <div className="tvl-history-control-group" aria-label={`${chainLabel} history time range`}>
-          {TVL_HISTORY_RANGE_OPTIONS.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              className={range === option.value ? 'active' : undefined}
-              aria-pressed={range === option.value}
-              onClick={() => setRange(option.value)}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-        <ChartTypeToggle value={view} onValueChange={setView} label={`${chainLabel} TVL`} />
+        {!selectedRange && (
+          <div className="tvl-history-control-group" aria-label={`${chainLabel} history time range`}>
+            {TVL_HISTORY_RANGE_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                className={range === option.value ? 'active' : undefined}
+                aria-pressed={range === option.value}
+                onClick={() => setRange(option.value)}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        )}
+        {!renderType && <ChartTypeToggle value={view} onValueChange={setView} label={`${chainLabel} TVL`} />}
       </div>
 
       {loading && <div className="chain-history-state">Loading {chainLabel} history...</div>}
