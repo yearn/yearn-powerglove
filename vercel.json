@@ -1,12 +1,77 @@
 {
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/api/publication",
+      "destination": "/api/yearn-data?__statsPath=/api/publication"
+    },
+    {
+      "source": "/api/tvl",
+      "destination": "/api/yearn-data?__statsPath=/api/tvl"
+    },
+    {
+      "source": "/api/tvl/graph",
+      "destination": "/api/yearn-data?__statsPath=/api/tvl/graph"
+    },
+    {
+      "source": "/api/tvl/history/runs/latest",
+      "destination": "/api/yearn-data?__statsPath=/api/tvl/history/runs/latest"
+    },
+    {
+      "source": "/api/tvl/history/runs/latest/constant-price",
+      "destination": "/api/yearn-data?__statsPath=/api/tvl/history/runs/latest/constant-price"
+    },
+    {
+      "source": "/api/tvl/curation-products",
+      "destination": "/api/yearn-data?__statsPath=/api/tvl/curation-products"
+    },
+    {
+      "source": "/api/audit/tree",
+      "destination": "/api/yearn-data?__statsPath=/api/audit/tree"
+    },
+    {
+      "source": "/api/fees",
+      "destination": "/api/yearn-data?__statsPath=/api/fees"
+    },
+    {
+      "source": "/api/fees/history",
+      "destination": "/api/yearn-data?__statsPath=/api/fees/history"
+    },
+    {
+      "source": "/api/fees/vaults",
+      "destination": "/api/yearn-data?__statsPath=/api/fees/vaults"
+    },
+    {
+      "source": "/api/fees/stack",
+      "destination": "/api/yearn-data?__statsPath=/api/fees/stack"
+    },
+    {
+      "source": "/api/profitability",
+      "destination": "/api/yearn-data?__statsPath=/api/profitability"
+    },
+    {
+      "source": "/api/analytics/publication",
+      "destination": "/api/yearn-data?__statsPath=/api/analytics/publication"
+    },
+    {
+      "source": "/api/comparison",
+      "destination": "/api/yearn-data?__statsPath=/api/comparison"
+    },
+    {
+      "source": "/api/comparison/defillama-comparable",
+      "destination": "/api/yearn-data?__statsPath=/api/comparison/defillama-comparable"
+    },
+    {
+      "source": "/((?!api/).*)",
       "destination": "/"
     }
   ],
   "installCommand": "bun install --frozen-lockfile",
   "git": {
     "deploymentEnabled": false
+  },
+  "functions": {
+    "api/yearn-data.ts": {
+      "maxDuration": 60
+    }
   }
 }
