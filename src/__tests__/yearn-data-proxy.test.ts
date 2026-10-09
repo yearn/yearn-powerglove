@@ -28,6 +28,20 @@ describe('hosted Yearn Data proxy', () => {
     expect(JSON.stringify(res.setHeader.mock.calls)).not.toContain('server-secret')
   })
 
+  it('removes Vercel catch-all metadata while retaining API filters', async () => {
+    vi.stubEnv('YEARN_DATA_API_URL', 'https://data-preview.vercel.app')
+    const fetch = vi.fn().mockImplementation(async () => new Response(JSON.stringify({ releaseId: 'current' })))
+    vi.stubGlobal('fetch', fetch)
+    const res = response()
+    await handler({ method: 'GET', url: '/api/publication?path=publication' }, res)
+    expect(fetch.mock.calls[0][0].toString()).toBe('https://data-preview.vercel.app/api/publication')
+    expect(res.status).toHaveBeenCalledWith(200)
+    const graphResponse = response()
+    await handler({ method: 'GET', url: '/api/tvl/graph?path=tvl%2Fgraph&chainId=1' }, graphResponse)
+    expect(graphResponse.status).toHaveBeenCalledWith(200)
+    expect(fetch.mock.calls[1][0].toString()).toBe('https://data-preview.vercel.app/api/tvl/graph?chainId=1')
+  })
+
   it('preserves retired publication responses instead of turning them into successful data', async () => {
     vi.stubEnv('YEARN_DATA_API_URL', 'https://data-preview.vercel.app')
     vi.stubGlobal(

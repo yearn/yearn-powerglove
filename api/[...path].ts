@@ -41,6 +41,8 @@ export default async function handler(req: { method?: string; url?: string }, re
       return res.status(503).json({ error: 'Stats API is not configured' })
     }
     upstream.pathname = path
+    // Vercel adds the catch-all parameter to req.url; it is routing metadata, not an API filter.
+    request.searchParams.delete('path')
     upstream.search = request.search
     upstream.hash = ''
     const headers: Record<string, string> = { Accept: 'application/json' }
