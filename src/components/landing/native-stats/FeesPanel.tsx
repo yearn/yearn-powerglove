@@ -36,9 +36,11 @@ import {
   formatFeeHistoryTick
 } from './fee-history'
 import { defaultFeeTimeRange, resolveFeeTimeframe } from './fee-timeframe'
+import { buildTvlYieldSeries } from './fee-yield'
 import {
   bpsPct,
   CHAIN_COLORS,
+  CHAIN_NAMES,
   CHAIN_SHORT,
   fmt,
   pctFmt,
@@ -51,6 +53,7 @@ import {
 import { StatsChartControls } from './StatsChartControls'
 import { StatsContext } from './StatsContext'
 import type { FeeStackChain, FeeStackNode, FeeStackSummary } from './types'
+import { useFeeTvlHistory } from './useFeeTvlHistory'
 import { VaultComparisonCharts } from './VaultComparisonCharts'
 import { VaultTypeFeeCharts } from './VaultTypeFeeCharts'
 
@@ -238,9 +241,11 @@ function FeesLoadingStatus({ label }: { label: string }) {
   )
 }
 
-function FeeHistoryChart({
+export function FeeHistoryChart({
   title,
   data,
+  periods,
+  cumulative,
   series,
   description,
   interval,
@@ -249,10 +254,30 @@ function FeeHistoryChart({
 }: ChartTypeControl & {
   title: string
   data: FeeHistoryPoint[]
+  periods: FeeHistoryPoint[]
+  cumulative: boolean
   series: FeeHistoryChartSeries[]
   description: string
   interval: FeeHistoryInterval
 }) {
+  const { chainFilter } = useContext(StatsContext)
+  const tvl = useFeeTvlHistory(periods)
+  const [showTvl, setShowTvl] = useState(true)
+  const chartData = useMemo(() => {
+    const averages = tvl.data
+      ? buildTvlYieldSeries(
+          periods,
+          tvl.data,
+          chainFilter === 'all' ? undefined : (CHAIN_NAMES[Number(chainFilter)] ?? `Chain ${chainFilter}`)
+        )
+      : []
+    return data.map((point, index) => ({
+      ...point,
+      averageTvlUsd: cumulative && index === 0 ? null : (averages[index - (cumulative ? 1 : 0)]?.averageTvlUsd ?? null)
+    }))
+  }, [data, periods, cumulative, chainFilter, tvl.data])
+  const hasTvl = chartData.some((point) => point.averageTvlUsd !== null)
+  const tvlColor = '#94a3b8'
   const [visibleSeries, setVisibleSeries] = useState<Set<FeeHistoryChartSeries['key']>>(
     () => new Set(series.map((item) => item.key))
   )
@@ -308,11 +333,26 @@ function FeeHistoryChart({
               </button>
             )
           })}
+          <button
+            type="button"
+            className="fee-series-toggle"
+            aria-label="TVL"
+            aria-pressed={showTvl}
+            title="Average daily adjusted TVL for each period, on the right axis. TVL remains a balance in cumulative view."
+            onClick={() => setShowTvl((value) => !value)}
+          >
+            <span
+              className="fee-series-swatch"
+              aria-hidden="true"
+              style={{ borderColor: tvlColor, backgroundColor: showTvl ? tvlColor : 'transparent' }}
+            />
+            TVL{tvl.loading && <span className="sr-only"> loading</span>}
+          </button>
         </fieldset>
       </div>
       <div className="chart-container fee-history-chart">
         <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={data} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
+          <ComposedChart data={chartData} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
             <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
             <XAxis
               dataKey="period"
@@ -328,15 +368,56 @@ function FeeHistoryChart({
               tickFormatter={(value: number) => fmt(value, 0)}
               width={68}
             />
+            {showTvl && hasTvl && (
+              <YAxis
+                yAxisId="tvl"
+                orientation="right"
+                width={68}
+                tick={{ fill: 'var(--text-3)', fontSize: 11 }}
+                tickFormatter={(value: number) => fmt(value, 0)}
+                axisLine={false}
+                tickLine={false}
+                label={{ value: 'TVL', angle: 90, position: 'insideRight', fill: 'var(--text-3)', fontSize: 11 }}
+              />
+            )}
             <Tooltip
               contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 4 }}
               labelStyle={{ color: 'var(--text)' }}
               formatter={(value: number, name: string) => [
                 fmt(value, 2),
-                seriesLabels.get(name as FeeHistorySeriesKey) ?? name
+                name === 'averageTvlUsd' ? 'Average TVL' : (seriesLabels.get(name as FeeHistorySeriesKey) ?? name)
               ]}
               cursor={{ stroke: 'rgba(6, 87, 249, 0.22)' }}
             />
+            {showTvl &&
+              hasTvl &&
+              (renderType === 'line' ? (
+                <Bar
+                  className="fee-tvl-overlay"
+                  dataKey="averageTvlUsd"
+                  name="averageTvlUsd"
+                  yAxisId="tvl"
+                  fill={tvlColor}
+                  fillOpacity={0.18}
+                  maxBarSize={32}
+                  isAnimationActive={false}
+                />
+              ) : (
+                <Line
+                  className="fee-tvl-overlay"
+                  dataKey="averageTvlUsd"
+                  name="averageTvlUsd"
+                  yAxisId="tvl"
+                  type="linear"
+                  stroke={tvlColor}
+                  strokeOpacity={0.4}
+                  strokeWidth={2}
+                  dot={false}
+                  activeDot={false}
+                  connectNulls={false}
+                  isAnimationActive={false}
+                />
+              ))}
             {activeSeries.map((item) =>
               renderType === 'bar' ? (
                 <Bar
@@ -364,6 +445,15 @@ function FeeHistoryChart({
           </ComposedChart>
         </ResponsiveContainer>
       </div>
+      {showTvl && tvl.error && (
+        <div className="error-retry">
+          <span>TVL history could not be loaded.</span>
+          <button type="button" className="page-btn" onClick={tvl.retry}>
+            Retry TVL
+          </button>
+        </div>
+      )}
+      {showTvl && tvl.data && !hasTvl && <p className="text-dim">TVL is unavailable for these periods.</p>}
       <span className="sr-only">{description}</span>
     </div>
   )
@@ -674,6 +764,8 @@ export function FeesPanel({ chainSelector }: { chainSelector: ReactNode }) {
       <div className="row fee-chart-row">
         <FeeHistoryChart
           {...chartType('overall')}
+          periods={feeHistorySeries}
+          cumulative={chartView === 'cumulative'}
           title={
             chartView === 'cumulative'
               ? 'Cumulative Earnings & Fees'

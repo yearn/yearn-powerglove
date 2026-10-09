@@ -1,4 +1,3 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Info } from 'lucide-react'
 import { useContext, useMemo } from 'react'
 import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
@@ -6,11 +5,11 @@ import { Tooltip as HelpTooltip, TooltipContent, TooltipProvider, TooltipTrigger
 import type { ChainFeeHistoryView } from './ChainFeeHistoryCharts'
 import { type ChartTypeControl, ChartTypeToggle } from './ChartTypeToggle'
 import type { FeeHistoryInterval } from './canonical-fees'
-import { type FeeHistoryPoint, feeHistoryBoundary, formatFeeHistoryTick } from './fee-history'
-import { buildTvlYieldSeries, type DailyFeeTvlHistory, type TvlYieldMetric, type TvlYieldPoint } from './fee-yield'
-import { CHAIN_NAMES, fmt, resolveStatsApiBase, SkeletonChart, useFetch } from './hooks'
+import { type FeeHistoryPoint, formatFeeHistoryTick } from './fee-history'
+import { buildTvlYieldSeries, type TvlYieldMetric, type TvlYieldPoint } from './fee-yield'
+import { CHAIN_NAMES, fmt, SkeletonChart } from './hooks'
 import { StatsContext } from './StatsContext'
-import type { TvlSummary } from './types'
+import { useFeeTvlHistory } from './useFeeTvlHistory'
 
 const percentage = (value: number) =>
   `${value !== 0 && Math.abs(value) < 0.0001 ? value.toPrecision(3) : new Intl.NumberFormat('en-US', { maximumFractionDigits: 4 }).format(value)}%`
@@ -95,49 +94,7 @@ export function FeeYieldChart({
   metric?: TvlYieldMetric
 }) {
   const { chainFilter } = useContext(StatsContext)
-  const summary = useFetch<TvlSummary>('/api/tvl')
-  const base = resolveStatsApiBase('tvl') ?? ''
-  const datasetId = summary.data?.datasetId
-  const from = periods.length ? Date.parse(feeHistoryBoundary(periods[0], 'start')) / 1000 : 0
-  const to = periods.length ? Date.parse(feeHistoryBoundary(periods[periods.length - 1], 'end')) / 1000 - 1 : 0
-  const client = useQueryClient()
-  // A loaded larger window serves shorter selections and every chain locally.
-  const cached = client
-    .getQueriesData<DailyFeeTvlHistory>({ queryKey: ['fee-yield-daily-tvl', base, datasetId] })
-    .find(
-      ([key, data]) =>
-        data?.datasetId === datasetId &&
-        typeof key[3] === 'number' &&
-        key[3] <= from &&
-        typeof key[4] === 'number' &&
-        key[4] >= to
-    )
-  const scopeFrom = cached ? Number(cached[0][3]) : from
-  const scopeTo = cached ? Number(cached[0][4]) : to
-  const enabled = !!datasetId && periods.length > 0
-  const history = useQuery({
-    queryKey: ['fee-yield-daily-tvl', base, datasetId, scopeFrom, scopeTo],
-    enabled,
-    staleTime: Infinity,
-    retry: false,
-    queryFn: async ({ signal }): Promise<DailyFeeTvlHistory> => {
-      const filters = new URLSearchParams({
-        groupBy: 'chain',
-        mode: 'external',
-        interval: 'daily',
-        format: 'chart',
-        from: String(scopeFrom),
-        to: String(scopeTo),
-        datasetId: datasetId ?? ''
-      })
-      const response = await fetch(`${base}/api/tvl/history/runs/latest?${filters}`, { signal })
-      if (!response.ok) throw new Error('Daily TVL could not be loaded')
-      const data: DailyFeeTvlHistory = await response.json()
-      if (data.datasetId !== datasetId || data.interval !== 'daily' || !Array.isArray(data.chart))
-        throw new Error('Daily TVL does not match the selected publication')
-      return data
-    }
-  })
+  const history = useFeeTvlHistory(periods)
   const data = useMemo(
     () =>
       history.data
@@ -150,7 +107,7 @@ export function FeeYieldChart({
         : [],
     [history.data, periods, chainFilter, metric]
   )
-  const loading = summary.loading || (enabled && history.isPending)
+  const loading = history.loading
   const cumulative = view === 'cumulative'
   const key = cumulative ? 'cumulativeAnnualizedYieldPct' : 'annualizedYieldPct'
   const available = data.filter((point) => point[key] !== null).length
@@ -195,17 +152,10 @@ export function FeeYieldChart({
       </div>
       {loading ? (
         <SkeletonChart />
-      ) : summary.error || history.isError ? (
+      ) : history.error ? (
         <div className="error-retry">
           <p>Historical TVL could not be loaded for this selection.</p>
-          <button
-            type="button"
-            className="page-btn"
-            onClick={() => {
-              summary.retry()
-              void history.refetch()
-            }}
-          >
+          <button type="button" className="page-btn" onClick={history.retry}>
             Retry {yieldLabel.toLowerCase()}
           </button>
         </div>

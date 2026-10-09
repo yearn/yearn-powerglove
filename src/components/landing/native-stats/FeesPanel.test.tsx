@@ -55,6 +55,9 @@ vi.mock('./VaultComparisonCharts', () => ({
     </div>
   )
 }))
+vi.mock('./useFeeTvlHistory', () => ({
+  useFeeTvlHistory: () => ({ data: null, loading: false, error: null, retry: vi.fn() })
+}))
 vi.mock('./FeeTimeRangeSlider', () => ({ FeeTimeRangeSlider: () => null }))
 vi.mock('./FeeYieldChart', () => ({
   FeeYieldChart: ({ view, renderType, metric = 'fees' }: { view: string; renderType: string; metric?: string }) => (
