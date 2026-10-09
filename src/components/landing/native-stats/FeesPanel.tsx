@@ -50,6 +50,7 @@ import {
 } from './hooks'
 import { StatsContext } from './StatsContext'
 import type { FeeStackChain, FeeStackNode, FeeStackSummary } from './types'
+import { VaultComparisonCharts } from './VaultComparisonCharts'
 import { VaultTypeFeeCharts } from './VaultTypeFeeCharts'
 
 type Trend = 'improving' | 'declining' | 'stable' | 'insufficient_data'
@@ -361,6 +362,7 @@ export function FeesPanel({ chainSelector }: { chainSelector: ReactNode }) {
   )
   const [chartView, setChartView] = useState<ChainFeeHistoryView>('periodic')
   const [renderType, setRenderType] = useState<StatsChartType>('bar')
+  const [selectedAllocatorKeys, setSelectedAllocatorKeys] = useState<string[] | null>(null)
   const [controlsExpanded, setControlsExpanded] = useState(true)
   const controlsId = useId()
   const [showLoadingOverlay, setShowLoadingOverlay] = useState(false)
@@ -688,6 +690,17 @@ export function FeesPanel({ chainSelector }: { chainSelector: ReactNode }) {
           periods={feeHistorySeries}
           interval={historyInterval}
           view={chartView}
+          renderType={renderType}
+        />
+
+        <VaultComparisonCharts
+          selectedKeys={selectedAllocatorKeys}
+          onSelectedKeysChange={setSelectedAllocatorKeys}
+          query={historyFilters.toString()}
+          rankedVaults={vaultData?.vaults ?? []}
+          periods={feeHistorySeries}
+          view={chartView}
+          interval={historyInterval}
           renderType={renderType}
         />
 

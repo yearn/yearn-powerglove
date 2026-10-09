@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { Area, Bar, CartesianGrid, ComposedChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { Area, Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import type { NameType, Payload, ValueType } from 'recharts/types/component/DefaultTooltipContent'
 import type { StatsChartType } from './ChartTypeToggle'
 import type { FeeHistoryInterval } from './canonical-fees'
-import type { ChainFeeHistoryPoint, ChainFeeMetric } from './chain-fee-history'
+import type { ChainFeeMetric } from './chain-fee-history'
 import { formatFeeHistoryTick } from './fee-history'
 import { fmt } from './hooks'
+import type { VaultComparisonPoint } from './vault-fee-history'
 
 export interface FeeBreakdownSeries {
   key: string
@@ -59,15 +60,17 @@ export function FeeBreakdownChart({
   title,
   subtitle,
   interval,
-  renderType = 'bar'
+  renderType = 'bar',
+  stacked = true
 }: {
   metric: ChainFeeMetric
-  data: ChainFeeHistoryPoint[]
+  data: VaultComparisonPoint[]
   series: FeeBreakdownSeries[]
   title: string
   subtitle: string
   interval: FeeHistoryInterval
   renderType?: StatsChartType
+  stacked?: boolean
 }) {
   const [hiddenSeries, setHiddenSeries] = useState<Set<string>>(() => new Set())
   const activeSeries = series.filter((item) => !hiddenSeries.has(item.key))
@@ -137,23 +140,35 @@ export function FeeBreakdownChart({
                 renderType === 'bar' ? (
                   <Bar
                     key={item.key}
-                    dataKey={(point: ChainFeeHistoryPoint) => point[metric][item.key]}
+                    dataKey={(point: VaultComparisonPoint) => point[metric][item.key]}
                     name={item.label}
-                    stackId="chains"
+                    stackId={stacked ? 'chains' : undefined}
                     fill={item.color}
                     maxBarSize={32}
                     isAnimationActive={false}
                   />
-                ) : (
+                ) : stacked ? (
                   <Area
                     key={item.key}
                     type="linear"
-                    dataKey={(point: ChainFeeHistoryPoint) => point[metric][item.key]}
+                    dataKey={(point: VaultComparisonPoint) => point[metric][item.key]}
                     name={item.label}
                     stackId="chains"
                     stroke={item.color}
                     fill={item.color}
                     fillOpacity={0.35}
+                    isAnimationActive={false}
+                  />
+                ) : (
+                  <Line
+                    key={item.key}
+                    type="linear"
+                    dataKey={(point: VaultComparisonPoint) => point[metric][item.key]}
+                    name={item.label}
+                    stroke={item.color}
+                    strokeWidth={2}
+                    dot={false}
+                    connectNulls={false}
                     isAnimationActive={false}
                   />
                 )
