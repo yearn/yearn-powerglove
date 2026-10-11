@@ -532,6 +532,15 @@ export function FeesPanel({ chainSelector }: { chainSelector: ReactNode }) {
     enabled: validSummary
   })
   const {
+    data: productData,
+    error: productError,
+    retry: retryProducts
+  } = useFetch<{
+    vaults: CanonicalVaultFee[]
+    datasetId: string
+    aggregationScope: string
+  }>(`/api/fees/vaults?${vaultFilters}&scope=product`, { enabled: validSummary })
+  const {
     data: feeStack,
     loading: l4,
     error: feeStackError,
@@ -815,16 +824,27 @@ export function FeesPanel({ chainSelector }: { chainSelector: ReactNode }) {
           />
         </section>
 
-        <VaultComparisonCharts
-          selectedKeys={selectedAllocatorKeys}
-          onSelectedKeysChange={setSelectedAllocatorKeys}
-          query={historyFilters.toString()}
-          rankedVaults={vaultData?.vaults ?? []}
-          periods={feeHistorySeries}
-          view={chartView}
-          interval={historyInterval}
-          chartTypes={{ earnings: chartType('allocatorEarnings'), fees: chartType('allocatorFees') }}
-        />
+        {productData?.datasetId === summary.datasetId && productData?.aggregationScope === 'product' ? (
+          <VaultComparisonCharts
+            selectedKeys={selectedAllocatorKeys}
+            onSelectedKeysChange={setSelectedAllocatorKeys}
+            query={historyFilters.toString()}
+            rankedVaults={productData.vaults}
+            periods={feeHistorySeries}
+            view={chartView}
+            interval={historyInterval}
+            chartTypes={{ earnings: chartType('allocatorEarnings'), fees: chartType('allocatorFees') }}
+          />
+        ) : productError ? (
+          <div className="error-retry">
+            <p>Product fee data could not be loaded.</p>
+            <button type="button" className="page-btn" onClick={retryProducts}>
+              Retry product fees
+            </button>
+          </div>
+        ) : (
+          <SkeletonChart />
+        )}
 
         <ChainFeeHistoryCharts
           chartTypes={{ earnings: chartType('chainEarnings'), fees: chartType('chainFees') }}

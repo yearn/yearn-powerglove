@@ -30,6 +30,7 @@ export async function fetchAllocatorHistory(
   const params = new URLSearchParams(query)
   params.set('chainId', String(vault.chainId))
   params.set('vaultAddress', vault.address)
+  params.set('scope', 'product')
   const response = await fetch(`${base}/api/fees/history?${params}`, { signal })
   if (!response.ok) throw new Error('Vault history could not be loaded')
   const history: CanonicalFeeHistory = await response.json()
@@ -68,14 +69,17 @@ export function VaultComparisonCharts({
   const pickerId = useId()
   const [search, setSearch] = useState('')
   const catalog = useQuery({
-    queryKey: ['allocator-comparison-catalog', base, datasetId],
+    queryKey: ['allocator-comparison-catalog', base, datasetId, 'product'],
     enabled: !!datasetId,
     staleTime: Infinity,
     retry: false,
     queryFn: async ({ signal }): Promise<CanonicalVaultFee[]> => {
-      const response = await fetch(`${base}/api/fees/vaults?${new URLSearchParams({ datasetId: datasetId ?? '' })}`, {
-        signal
-      })
+      const response = await fetch(
+        `${base}/api/fees/vaults?${new URLSearchParams({ datasetId: datasetId ?? '', scope: 'product' })}`,
+        {
+          signal
+        }
+      )
       if (!response.ok) throw new Error('Allocator catalog could not be loaded')
       const payload: { vaults: CanonicalVaultFee[]; datasetId: string } = await response.json()
       if (!Array.isArray(payload.vaults) || payload.datasetId !== datasetId)
@@ -103,7 +107,7 @@ export function VaultComparisonCharts({
     .flatMap((scope) => selected.map((vault) => ({ query: scope.query, vault })))
   const histories = useQueries({
     queries: requests.map((request) => ({
-      queryKey: ['allocator-comparison-history', base, request.query, allocatorKey(request.vault)],
+      queryKey: ['allocator-comparison-history', base, request.query, allocatorKey(request.vault), 'product'],
       enabled: !!datasetId,
       staleTime: Infinity,
       retry: false,
@@ -147,14 +151,10 @@ export function VaultComparisonCharts({
     onSelectedKeysChange(keys.includes(key) ? keys.filter((item) => item !== key) : [...keys, key])
 
   return (
-    <section
-      className="chain-fee-charts fee-chart-group"
-      aria-label="V3 allocator vault comparison"
-      aria-busy={loading}
-    >
+    <section className="chain-fee-charts fee-chart-group" aria-label="V3 vault product comparison" aria-busy={loading}>
       <div className="card fee-chart-card">
         <div className="fee-chart-header">
-          <h2>Compare V3 Allocators</h2>
+          <h2>Compare V3 Vault Products</h2>
           <div className="allocator-comparison-actions">
             <Popover
               onOpenChange={(open) => {
@@ -175,17 +175,17 @@ export function VaultComparisonCharts({
                 id={pickerId}
                 align="start"
                 className="w-[min(28rem,calc(100vw-2rem))] rounded-none p-3"
-                aria-label="Choose V3 allocator vaults"
+                aria-label="Choose V3 vault products"
               >
                 <input
-                  aria-label="Search V3 allocator vaults"
+                  aria-label="Search V3 vault products"
                   placeholder="Search name, address, or chain…"
                   className="mb-3 h-10 w-full border border-input bg-background px-3 text-sm outline-none focus-visible:ring-1 focus-visible:ring-primary"
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                 />
                 <fieldset className="max-h-72 overflow-y-auto">
-                  <legend className="sr-only">V3 allocator vaults</legend>
+                  <legend className="sr-only">V3 vault products</legend>
                   {results.map((vault) => (
                     <label
                       key={allocatorKey(vault)}
@@ -207,7 +207,7 @@ export function VaultComparisonCharts({
                     </label>
                   ))}
                   {!results.length && (
-                    <p className="py-3 text-sm text-muted-foreground">No matching V3 allocator vaults.</p>
+                    <p className="py-3 text-sm text-muted-foreground">No matching V3 vault products.</p>
                   )}
                 </fieldset>
               </PopoverContent>
@@ -259,7 +259,7 @@ export function VaultComparisonCharts({
         )}
         {loading && <output className="text-dim">Loading selected vault histories…</output>}
         {!selected.length && !catalog.isPending && (
-          <p className="text-dim">Choose V3 allocator vaults to build your comparison.</p>
+          <p className="text-dim">Choose V3 vault products to build your comparison.</p>
         )}
       </div>
       {selected.length > 0 &&
@@ -269,7 +269,7 @@ export function VaultComparisonCharts({
           <>
             <FeeBreakdownChart
               stacked={false}
-              title="Earnings by Allocator Vault"
+              title="Earnings by Vault Product"
               subtitle={
                 earningsSmoothed
                   ? '4-week moving average · Average weekly net earnings (USD)'
@@ -283,7 +283,7 @@ export function VaultComparisonCharts({
             />
             <FeeBreakdownChart
               stacked={false}
-              title="Fees by Allocator Vault"
+              title="Fees by Vault Product"
               subtitle={feesSmoothed ? '4-week moving average · Average weekly fees (USD)' : 'Gross fees charged'}
               metric="fees"
               data={chartData(feesSmoothed)}

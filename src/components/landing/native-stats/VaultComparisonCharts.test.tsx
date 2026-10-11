@@ -125,7 +125,7 @@ describe('custom allocator comparisons', () => {
       </QueryClientProvider>
     )
     render(chart())
-    const section = screen.getByRole('region', { name: 'V3 allocator vault comparison' })
+    const section = screen.getByRole('region', { name: 'V3 vault product comparison' })
     await waitFor(() => expect(section.querySelectorAll('.recharts-line-curve')).toHaveLength(4))
     expect(screen.getByText('4-week moving average · Average weekly net earnings (USD)')).toBeTruthy()
     const requests = () => fetch.mock.calls.filter(([url]) => String(url).includes('vaultAddress='))
@@ -136,17 +136,18 @@ describe('custom allocator comparisons', () => {
       expect(params.get('since')).toBe(String(Date.parse('2025-12-15T00:00:00Z') / 1000))
       expect(params.get('until')).toBe(String(Date.parse('2026-02-23T00:00:00Z') / 1000))
       expect(params.get('datasetId')).toBe('selected')
+      expect(params.get('scope')).toBe('product')
     }
     const first = section.querySelector('.recharts-line-curve')?.getAttribute('d') ?? ''
     expect(first.match(/[ML]/g)).toHaveLength(7)
-    fireEvent.click(screen.getByRole('button', { name: 'Show earnings by allocator vault as bars' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Show earnings by vault product as bars' }))
     await waitFor(() => expect(section.querySelectorAll('.recharts-bar')).toHaveLength(2))
     expect(section.querySelectorAll('.recharts-line-curve')).toHaveLength(2)
     expect(screen.getByText('4-week moving average · Average weekly fees (USD)')).toBeTruthy()
     expect(screen.queryByText('4-week moving average · Average weekly net earnings (USD)')).toBeNull()
     expect(requests()).toHaveLength(4)
     const loaded = requests().length
-    fireEvent.click(screen.getByRole('button', { name: 'Show earnings by allocator vault as lines' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Show earnings by vault product as lines' }))
     await waitFor(() => expect(section.querySelectorAll('.recharts-line-curve')).toHaveLength(4))
     expect(requests()).toHaveLength(loaded)
     client.clear()
@@ -179,7 +180,7 @@ describe('custom allocator comparisons', () => {
       </QueryClientProvider>
     )
     const rendered = render(chart())
-    const section = screen.getByRole('region', { name: 'V3 allocator vault comparison' })
+    const section = screen.getByRole('region', { name: 'V3 vault product comparison' })
     await waitFor(() => expect(section.querySelectorAll('.recharts-bar')).toHaveLength(4))
     const requests = () => fetch.mock.calls.filter(([url]) => String(url).includes('vaultAddress='))
     expect(requests()).toHaveLength(2)
@@ -198,7 +199,7 @@ describe('custom allocator comparisons', () => {
     expect(screen.getAllByRole('checkbox')).toHaveLength(2)
     expect(screen.queryByText('Tokenized strategy')).toBeNull()
     expect(screen.queryByText('V2 vault')).toBeNull()
-    fireEvent.change(screen.getByRole('textbox', { name: 'Search V3 allocator vaults' }), {
+    fireEvent.change(screen.getByRole('textbox', { name: 'Search V3 vault products' }), {
       target: { value: 'Katana' }
     })
     expect(screen.getAllByRole('checkbox')).toHaveLength(1)
@@ -207,19 +208,19 @@ describe('custom allocator comparisons', () => {
     await waitFor(() => expect(section.querySelectorAll('.recharts-bar')).toHaveLength(2))
     expect(requests()).toHaveLength(2)
     rendered.rerender(chart({ view: 'cumulative' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Show earnings by allocator vault as lines' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Show fees by allocator vault as lines' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Show earnings by vault product as lines' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Show fees by vault product as lines' }))
     await waitFor(() => expect(section.querySelectorAll('.recharts-line-curve')).toHaveLength(2))
     expect(requests()).toHaveLength(2)
     rendered.rerender(chart({ query: `${props.query}&chainId=1` }))
     expect(section.querySelectorAll('.recharts-line-curve')).toHaveLength(0)
-    expect(screen.getByText('Choose V3 allocator vaults to build your comparison.')).toBeTruthy()
+    expect(screen.getByText('Choose V3 vault products to build your comparison.')).toBeTruthy()
     rendered.rerender(chart({ view: 'cumulative' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Show earnings by allocator vault as bars' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Show fees by allocator vault as bars' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Show earnings by vault product as bars' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Show fees by vault product as bars' }))
     await waitFor(() => expect(section.querySelectorAll('.recharts-bar')).toHaveLength(2))
     const earnings = screen
-      .getByRole('heading', { name: 'Earnings by Allocator Vault' })
+      .getByRole('heading', { name: 'Earnings by Vault Product' })
       .closest('.fee-chart-card') as HTMLElement
     fireEvent.click(within(earnings).getByRole('button', { name: /Katana allocator/ }))
     expect(earnings.querySelectorAll('.recharts-bar')).toHaveLength(0)

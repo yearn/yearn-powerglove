@@ -41,6 +41,9 @@ export interface CanonicalFeeHistory {
 }
 
 export interface CanonicalVaultFee extends DepositorFeeTotals {
+  productId?: string
+  memberAddresses?: string[]
+  earningsAddress?: string
   address: string
   chainId: number
   name: string | null
