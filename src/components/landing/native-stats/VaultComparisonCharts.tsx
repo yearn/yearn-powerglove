@@ -2,6 +2,7 @@ import { useQueries, useQuery } from '@tanstack/react-query'
 import { ChevronDown } from 'lucide-react'
 import { useId, useState } from 'react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { assertCanonicalFeeResponse } from '@/lib/fee-api-contract'
 import type { ChainFeeHistoryView } from './ChainFeeHistoryCharts'
 import type { FeeChartTypeControls } from './ChartTypeToggle'
 import type { CanonicalFeeHistory, CanonicalVaultFee, FeeHistoryInterval } from './canonical-fees'
@@ -34,6 +35,7 @@ export async function fetchAllocatorHistory(
   const response = await fetch(`${base}/api/fees/history?${params}`, { signal })
   if (!response.ok) throw new Error('Vault history could not be loaded')
   const history: CanonicalFeeHistory = await response.json()
+  assertCanonicalFeeResponse(history, 'product')
   if (
     !Array.isArray(history.buckets) ||
     history.datasetId !== params.get('datasetId') ||
@@ -82,6 +84,7 @@ export function VaultComparisonCharts({
       )
       if (!response.ok) throw new Error('Allocator catalog could not be loaded')
       const payload: { vaults: CanonicalVaultFee[]; datasetId: string } = await response.json()
+      assertCanonicalFeeResponse(payload, 'product')
       if (!Array.isArray(payload.vaults) || payload.datasetId !== datasetId)
         throw new Error('Allocator catalog does not match the selected publication')
       return rankAllocators(payload.vaults, 'fees')

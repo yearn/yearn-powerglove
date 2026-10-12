@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { assertCanonicalFeeResponse } from '@/lib/fee-api-contract'
 import { fetchKongVaultListRaw } from '@/lib/kong-vault-client'
 import type { CanonicalVaultFee } from './canonical-fees'
 import { type FeeHistoryPeriod, feeHistoryBoundary } from './fee-history'
@@ -25,6 +26,7 @@ export async function fetchVaultTypeFeeHistories(
         const response = await fetch(`${base}/api/fees/vaults?${params}`, { signal })
         if (!response.ok) throw new Error('Vault history request failed')
         const payload = await response.json()
+        assertCanonicalFeeResponse(payload, params.get('scope') ?? 'contract')
         if (
           !Array.isArray(payload.vaults) ||
           (datasetId && payload.datasetId !== datasetId) ||

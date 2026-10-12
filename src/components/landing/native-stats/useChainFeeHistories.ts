@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { assertCanonicalFeeResponse } from '@/lib/fee-api-contract'
 import type { CanonicalFeeHistory } from './canonical-fees'
 import type { ChainFeeHistory } from './chain-fee-history'
 import { resolveStatsApiBase } from './hooks'
@@ -28,6 +29,7 @@ export function useChainFeeHistories(query: string, chainIds: number[]) {
         const response = await fetch(`${base}/api/fees/history?${params}`, { signal: controller.signal })
         if (!response.ok) throw new Error('Chain history request failed')
         const history: CanonicalFeeHistory = await response.json()
+        assertCanonicalFeeResponse(history, params.get('scope') ?? 'contract')
         if (
           !Array.isArray(history.buckets) ||
           history.interval !== (params.get('interval') ?? 'monthly') ||

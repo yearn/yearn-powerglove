@@ -5,7 +5,10 @@ afterEach(() => vi.unstubAllGlobals())
 
 describe('vault type history requests', () => {
   it('pins the dataset and chain, using clipped UTC period boundaries', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ datasetId: 'selected', vaults: [] }) })
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ aggregationScope: 'contract', datasetId: 'selected', vaults: [] })
+    })
     vi.stubGlobal('fetch', fetchMock)
     const signal = new AbortController().signal
     const result = await fetchVaultTypeFeeHistories(
@@ -34,7 +37,10 @@ describe('vault type history requests', () => {
   it('rejects partial or mismatched datasets rather than charting an incomplete breakdown', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue({ ok: true, json: async () => ({ datasetId: 'other', vaults: [] }) })
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ aggregationScope: 'contract', datasetId: 'other', vaults: [] })
+      })
     )
     await expect(
       fetchVaultTypeFeeHistories('', 'datasetId=selected', [{ period: '2026-01' }], new AbortController().signal)

@@ -8,7 +8,7 @@ afterEach(() => {
 })
 
 function history(datasetId: string, interval = 'monthly') {
-  return new Response(JSON.stringify({ datasetId, interval, buckets: [] }))
+  return new Response(JSON.stringify({ aggregationScope: 'contract', datasetId, interval, buckets: [] }))
 }
 
 describe('useChainFeeHistories', () => {

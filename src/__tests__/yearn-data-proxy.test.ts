@@ -69,6 +69,25 @@ describe('hosted Yearn Data proxy', () => {
     expect(fetch).not.toHaveBeenCalled()
   })
 
+  it('rejects legacy fee payloads before any chart can consume them', async () => {
+    vi.stubEnv('YEARN_DATA_API_URL', 'https://data-preview.vercel.app')
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            datasetId: 'old',
+            totalFeesPaidUsd: '624567.52'
+          })
+        )
+      )
+    )
+    const res = response()
+    await handler({ method: 'GET', url: '/api/fees' }, res)
+    expect(res.status).toHaveBeenCalledWith(502)
+    expect(res.json).toHaveBeenCalledWith({ error: 'Stats API is unavailable' })
+  })
+
   it('does not follow protected API redirects or expose their body', async () => {
     vi.stubEnv('YEARN_DATA_API_URL', 'https://data-preview.vercel.app')
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('private login details', { status: 302 })))

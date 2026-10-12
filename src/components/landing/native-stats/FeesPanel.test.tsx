@@ -76,7 +76,11 @@ vi.mock('./hooks', async (importOriginal) => ({
       : url.startsWith('/api/fees/history')
         ? history
         : url.startsWith('/api/fees/vaults')
-          ? { vaults: [], datasetId: 'selected' }
+          ? {
+              vaults: [],
+              datasetId: 'selected',
+              aggregationScope: url.includes('scope=product') ? 'product' : 'contract'
+            }
           : url.startsWith('/api/fees?')
             ? summary
             : null,

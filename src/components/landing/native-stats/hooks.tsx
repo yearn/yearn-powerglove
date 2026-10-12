@@ -1,4 +1,5 @@
 import { type KeyboardEvent, useCallback, useEffect, useRef, useState } from 'react'
+import { assertCanonicalFeeResponse } from '@/lib/fee-api-contract'
 
 type StatsApiLane = 'tvl' | 'tvl-analytics' | 'fees' | 'fee-analytics'
 
@@ -156,7 +157,12 @@ export function useFetch<T>(url: string, options: UseFetchOptions = {}) {
               error.status = response.status
               throw error
             }
-            return { payload: await response.json(), timestamp: Date.now(), status: response.status }
+            const payload = await response.json()
+            const request = new URL(url, 'https://stats.invalid')
+            if (/^\/api\/fees(?:\/(?:vaults|history))?$/.test(request.pathname)) {
+              assertCanonicalFeeResponse(payload, request.searchParams.get('scope') ?? 'contract')
+            }
+            return { payload, timestamp: Date.now(), status: response.status }
           })
           .then((result) => {
             if (inFlightFetches.get(key) === pending)

@@ -114,8 +114,8 @@ describe('custom allocator comparisons', () => {
         ok: true,
         json: async () =>
           params.has('vaultAddress')
-            ? { datasetId: 'selected', interval: params.get('interval'), buckets }
-            : { datasetId: 'selected', vaults: catalog }
+            ? { aggregationScope: 'product', datasetId: 'selected', interval: params.get('interval'), buckets }
+            : { aggregationScope: 'product', datasetId: 'selected', vaults: catalog }
       } as Response
     })
     const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } })
@@ -161,6 +161,7 @@ describe('custom allocator comparisons', () => {
         json: async () =>
           params.has('vaultAddress')
             ? {
+                aggregationScope: 'product',
                 datasetId: 'selected',
                 interval: 'monthly',
                 buckets: props.periods.map(({ period }) => ({
@@ -170,7 +171,7 @@ describe('custom allocator comparisons', () => {
                   lifetimeEarnings: { ...pnl, netYieldUsd: params.get('chainId') === '1' ? '100' : '-10' }
                 }))
               }
-            : { datasetId: 'selected', vaults: catalog }
+            : { aggregationScope: 'product', datasetId: 'selected', vaults: catalog }
       } as Response
     })
     const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } })
@@ -230,7 +231,7 @@ describe('custom allocator comparisons', () => {
   it('rejects a response from another publication', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: true,
-      json: async () => ({ datasetId: 'different', interval: 'monthly', buckets: [] })
+      json: async () => ({ aggregationScope: 'product', datasetId: 'different', interval: 'monthly', buckets: [] })
     } as Response)
     await expect(fetchAllocatorHistory('', props.query, catalog[0], new AbortController().signal)).rejects.toThrow(
       'selected publication'

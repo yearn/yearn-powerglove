@@ -3,7 +3,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { resolveStatsApiBase, useFetch } from './hooks'
 
 function response(value: unknown) {
-  return { ok: true, status: 200, json: async () => value } as Response
+  return {
+    ok: true,
+    status: 200,
+    json: async () => ({ datasetId: 'selected', aggregationScope: 'contract', ...(value as object) })
+  } as Response
 }
 
 afterEach(() => {
