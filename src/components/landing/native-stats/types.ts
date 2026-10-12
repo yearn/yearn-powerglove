@@ -140,6 +140,7 @@ export interface DefillamaComparison {
 }
 
 export interface FeeStackNode {
+  availability?: { state: string }
   vault: { address: string; chainId: number; name: string | null }
   perfFee: number | null
   mgmtFee: number | null
@@ -155,6 +156,7 @@ export interface FeeStackChain {
 }
 
 export interface FeeStackSummary {
+  meta?: { tvlDatasetId?: string }
   chains: FeeStackChain[]
   maxDepth: number
   maxEffectivePerfFee: number | null

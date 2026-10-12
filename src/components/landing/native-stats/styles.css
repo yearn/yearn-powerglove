@@ -2093,6 +2093,10 @@
   }
 }
 
+.pg-stats .monthly-vault-fees {
+  min-width: 0;
+}
+
 .pg-stats .monthly-vault-fees + .monthly-vault-fees {
   margin-top: 2rem;
 }
@@ -2235,4 +2239,32 @@
   font-weight: 600;
   background: var(--surface-2);
   border-bottom: 2px solid var(--border);
+}
+
+.pg-stats .fee-stack-vault {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.pg-stats .fee-stack-detail > td {
+  padding: 1rem;
+  background: var(--surface-2);
+  text-align: left;
+}
+.pg-stats .fee-stack-detail p {
+  white-space: normal;
+  margin-bottom: 0.75rem;
+}
+
+.pg-stats .fee-stack-row {
+  cursor: pointer;
+}
+.pg-stats .fee-stack-row:hover > * {
+  background: var(--surface-2);
+}
+.pg-stats .fee-stack-row .chain-stat-chevron {
+  transform: rotate(-90deg);
+}
+.pg-stats .fee-stack-row.is-expanded .chain-stat-chevron {
+  transform: rotate(0deg);
 }

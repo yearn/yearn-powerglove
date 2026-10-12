@@ -1,5 +1,4 @@
-import { ChevronDown, ChevronRight } from 'lucide-react'
-import { Fragment, type ReactNode, useContext, useEffect, useMemo, useState } from 'react'
+import { type ReactNode, useContext, useEffect, useMemo, useState } from 'react'
 import {
   Bar,
   CartesianGrid,
@@ -25,6 +24,7 @@ import {
   type FeeHistoryInterval,
   isCanonicalFeeSummary
 } from './canonical-fees'
+import { EffectiveFeesTable } from './EffectiveFeesTable'
 import { FeeTimeRangeSlider } from './FeeTimeRangeSlider'
 import { FeeYieldChart } from './FeeYieldChart'
 import {
@@ -37,23 +37,11 @@ import {
 } from './fee-history'
 import { defaultFeeTimeRange, resolveFeeTimeframe } from './fee-timeframe'
 import { buildTvlYieldSeries } from './fee-yield'
-import {
-  bpsPct,
-  CHAIN_COLORS,
-  CHAIN_NAMES,
-  CHAIN_SHORT,
-  fmt,
-  pctFmt,
-  SkeletonCards,
-  SkeletonChart,
-  useFetch,
-  usePagination,
-  useSort
-} from './hooks'
+import { CHAIN_NAMES, fmt, pctFmt, SkeletonCards, SkeletonChart, useFetch } from './hooks'
 import { MonthlyVaultTables } from './MonthlyVaultTables'
 import { StatsChartControls } from './StatsChartControls'
 import { StatsContext } from './StatsContext'
-import type { FeeStackChain, FeeStackNode, FeeStackSummary } from './types'
+import type { FeeStackSummary } from './types'
 import { useFeeTvlHistory } from './useFeeTvlHistory'
 import { VaultComparisonCharts } from './VaultComparisonCharts'
 import { VaultTypeFeeCharts } from './VaultTypeFeeCharts'
@@ -121,13 +109,6 @@ const QUADRANT_LABELS: Record<Quadrant, { label: string; color: string; desc: st
   low_tvl_low_yield: { label: 'Review', color: '#808080', desc: 'Consider retirement' }
 }
 
-function trendIcon(t: string | undefined) {
-  if (t === 'improving') return <span style={{ color: 'var(--green)' }}>&#x25B2;</span>
-  if (t === 'declining') return <span style={{ color: 'var(--red)' }}>&#x25BC;</span>
-  if (t === 'stable') return <span style={{ color: 'var(--text-3)' }}>&#x25CF;</span>
-  return <span style={{ color: 'var(--text-3)' }}>-</span>
-}
-
 function ScatterTooltip({ active, payload }: any) {
   if (!active || !payload?.[0]?.payload) return null
   const v = payload[0].payload
@@ -162,46 +143,15 @@ function ScatterTooltip({ active, payload }: any) {
   )
 }
 
-/** Flatten tree to rows, filtering out dust (<$100) children */
-function flattenTree(
-  node: FeeStackNode,
-  depth: number,
-  isLast: boolean
-): Array<{ node: FeeStackNode; depth: number; isLast: boolean }> {
-  const rows: Array<{ node: FeeStackNode; depth: number; isLast: boolean }> = [{ node, depth, isLast }]
-  const visibleChildren = depth === 0 ? node.children : node.children.filter((c) => c.capitalUsd >= 100)
-  visibleChildren.forEach((child, i) => {
-    rows.push(...flattenTree(child, depth + 1, i === visibleChildren.length - 1))
-  })
-  return rows
-}
-
 function timeframeButtonClass(active: boolean) {
   return `min-w-0 rounded-none px-3 py-2 text-center text-xs font-medium transition-colors sm:text-sm ${
     active ? 'bg-[#0657f9] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
   }`
 }
 
-function vaultFeeKey(vault: { address: string; chainId: number }): string {
-  return `${vault.address.toLowerCase()}-${vault.chainId}`
-}
-
-function actualVaultFeesUsd(
-  vault: { address: string; chainId: number },
-  vaultFeeMap: Map<string, CanonicalVaultFee>
-): string | null {
-  const fee = vaultFeeMap.get(vaultFeeKey(vault))
-  return fee?.totalFeesPaidUsd ?? null
-}
-
 function formatCanonicalUsd(value: string | null, decimals = 1): string {
   const parsed = canonicalDecimalToNumber(value)
   return parsed === null ? '—' : fmt(parsed, decimals)
-}
-
-function ActualFeeCell({ value }: { value: string | null }) {
-  if (value === null) return <span className="text-dim">—</span>
-  return <span className="text-green">{formatCanonicalUsd(value)}</span>
 }
 
 type FeeHistorySeriesKey =
@@ -473,7 +423,7 @@ const DEFAULT_FEE_CHART_TYPES = {
 } as const
 
 export function FeesPanel({ chainSelector }: { chainSelector: ReactNode }) {
-  const { chainFilter, density, setLastFetchedAt } = useContext(StatsContext)
+  const { chainFilter, setLastFetchedAt } = useContext(StatsContext)
   const [selectedRange, setSelectedRange] = useState<ChartDateRange>(() =>
     defaultFeeTimeRange(Math.floor(Date.now() / 1000))
   )
@@ -548,9 +498,6 @@ export function FeesPanel({ chainSelector }: { chainSelector: ReactNode }) {
     retry: retryFeeStack
   } = useFetch<FeeStackSummary>('/api/fees/stack')
   const { data: profData, loading: l5 } = useFetch<ProfitabilitySummary>(`/api/profitability?${profitabilityFilters}`)
-  const stackSort = useSort('feeCaptured')
-  const { sorted: sortStacks } = stackSort
-  const [expandedStack, setExpandedStack] = useState<number | null>(null)
   const [quadrantFilter, setQuadrantFilter] = useState<Quadrant | 'all'>('all')
   useEffect(() => {
     if (fetchedAt) setLastFetchedAt(fetchedAt)
@@ -572,42 +519,6 @@ export function FeesPanel({ chainSelector }: { chainSelector: ReactNode }) {
     () => [...new Set(vaultData?.vaults.map((vault) => vault.chainId) ?? [])].sort((a, b) => a - b),
     [vaultData]
   )
-
-  // Build a lookup map for vault fees from the time-filtered vaultData
-  const vaultFeeMap = useMemo(() => {
-    if (!vaultData) return new Map<string, CanonicalVaultFee>()
-    return new Map(vaultData.vaults.map((v) => [`${v.address.toLowerCase()}-${v.chainId}`, v]))
-  }, [vaultData])
-
-  // Build a lookup map for profitability trend data
-  const profTrendMap = useMemo(() => {
-    if (!profData) return new Map<string, string>()
-    return new Map(profData.vaults.map((v) => [`${v.address.toLowerCase()}-${v.chainId}`, v.trend]))
-  }, [profData])
-
-  const sortedStacks = useMemo(() => {
-    if (!feeStack) return []
-    type ChainWithFee = FeeStackChain & { actualFeesUsd: string | null; trend: string | undefined }
-    const withFees: ChainWithFee[] = feeStack.chains
-      .filter((c) => chainFilter === 'all' || String(c.root.vault.chainId) === chainFilter)
-      .map((c) => {
-        const key = vaultFeeKey(c.root.vault)
-        return {
-          ...c,
-          actualFeesUsd: actualVaultFeesUsd(c.root.vault, vaultFeeMap),
-          trend: profTrendMap.get(key)
-        }
-      })
-    return sortStacks(withFees, {
-      name: (c) => c.root.vault.name || '',
-      perfFee: (c) => c.root.perfFee ?? -1,
-      feeCaptured: (c) => canonicalDecimalToNumber(c.actualFeesUsd) ?? -1,
-      effective: (c) => c.effectivePerfFee ?? -1
-    })
-  }, [feeStack, vaultFeeMap, profTrendMap, sortStacks, chainFilter])
-
-  const stackPagination = usePagination(sortedStacks.length, 30)
-  const pagedStacks = sortedStacks.slice(stackPagination.start, stackPagination.end)
 
   const scatterData = useMemo(() => {
     if (!profData) return []
@@ -865,327 +776,125 @@ export function FeesPanel({ chainSelector }: { chainSelector: ReactNode }) {
         />
 
         <MonthlyVaultTables chainSelector={chainSelector} />
-
-        {profData && (
-          <div className="card fee-chart-card">
-            <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              TVL vs Fee Yield
-              {trendLine && (
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-3)', fontWeight: 400 }}>
-                  R² = {trendLine.r2.toFixed(3)}
-                </span>
-              )}
-            </h2>
-            <fieldset className="quadrant-legend" aria-label="Quadrant filter">
-              {Object.entries(QUADRANT_LABELS).map(([key, { label, color, desc }]) => {
-                const count = profData.quadrants[key as Quadrant]?.length || 0
-                const isActive = quadrantFilter === key
-                return (
-                  <button
-                    type="button"
-                    key={key}
-                    className="quadrant-tag"
-                    aria-pressed={isActive}
-                    style={{
-                      borderColor: color,
-                      color,
-                      cursor: 'pointer',
-                      opacity: quadrantFilter === 'all' || isActive ? 1 : 0.4,
-                      background: isActive ? `${color}15` : undefined
-                    }}
-                    onClick={() => setQuadrantFilter(quadrantFilter === key ? 'all' : (key as Quadrant))}
-                  >
-                    {label} ({count}) <span style={{ color: 'var(--text-3)', fontSize: '0.72rem' }}>{desc}</span>
-                  </button>
-                )
-              })}
-            </fieldset>
-            <div className="chart-container fee-history-chart">
-              <ResponsiveContainer width="100%" height="100%">
-                <ScatterChart margin={{ left: 20, right: 20, bottom: 24, top: 10 }}>
-                  <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
-                  <XAxis
-                    type="number"
-                    dataKey="logTvl"
-                    name="TVL"
-                    domain={[4, 8]}
-                    ticks={[4, 5, 6, 7, 8]}
-                    tickFormatter={(v: number) => fmt(10 ** v, 0)}
-                    tick={{ fill: 'var(--text-3)', fontSize: 11 }}
-                    label={{
-                      value: 'TVL (log scale)',
-                      position: 'bottom',
-                      fill: 'var(--text-3)',
-                      fontSize: 11,
-                      offset: 6
-                    }}
-                    stroke="var(--border)"
-                    allowDataOverflow
-                  />
-                  <YAxis
-                    type="number"
-                    dataKey="feeYield"
-                    name="Fee Yield"
-                    tickFormatter={(v) => pctFmt(v)}
-                    tick={{ fill: 'var(--text-3)', fontSize: 11 }}
-                    label={{
-                      value: 'Fee Yield (ann.)',
-                      angle: -90,
-                      position: 'insideLeft',
-                      fill: 'var(--text-3)',
-                      fontSize: 11
-                    }}
-                    stroke="var(--border)"
-                  />
-                  <ZAxis type="number" dataKey="annualizedFeeRevenue" range={[30, 500]} name="Fees" />
-                  <Tooltip content={<ScatterTooltip />} cursor={false} />
-                  <Scatter data={scatterData}>
-                    {scatterData.map((v) => {
-                      const qColor = QUADRANT_LABELS[v.quadrant]?.color || '#808080'
-                      return (
-                        <Cell
-                          key={`${v.address}-${v.chainId}`}
-                          fill={qColor}
-                          fillOpacity={0.65}
-                          stroke={qColor}
-                          strokeWidth={1}
-                        />
-                      )
-                    })}
-                  </Scatter>
-                  {trendLine && (
-                    <Scatter
-                      data={trendLine.points}
-                      line={{ stroke: '#a16207', strokeWidth: 2, strokeDasharray: '6 3' }}
-                      shape={() => <></>}
-                      isAnimationActive={false}
-                      legendType="none"
-                    />
-                  )}
-                </ScatterChart>
-              </ResponsiveContainer>
-            </div>
-            <span className="sr-only">Scatter plot showing TVL vs fee yield for {scatterData.length} vaults.</span>
-          </div>
-        )}
       </div>
 
-      {/* ---- Fee Analysis ---- */}
+      {/* ---- Effective Fees ---- */}
       {feeStackError && (
         <div className="card">
-          <h2>Fee Analysis</h2>
+          <h2>Effective Fees</h2>
           <div className="error-retry">
-            <div className="error-message">Fee analysis unavailable: {feeStackError}</div>
+            <div className="error-message">Effective fees unavailable: {feeStackError}</div>
             <button className="page-btn" onClick={retryFeeStack}>
-              Retry fee analysis
+              Retry effective fees
             </button>
           </div>
         </div>
       )}
-      {!feeStackError &&
-        feeStack &&
-        feeStack.chains.length > 0 &&
-        (() => {
-          return (
-            <div className="card">
-              <h2>Fee Analysis</h2>
-              <div className="metric-grid" style={{ marginBottom: '1rem' }}>
-                <div className="metric">
-                  <div className="label">Max Depth</div>
-                  <div className="value">{feeStack.maxDepth}</div>
-                </div>
-                <div className="metric">
-                  <div className="label">Max Effective Perf Fee</div>
-                  <div className="value text-yellow">{bpsPct(feeStack.maxEffectivePerfFee)}</div>
-                </div>
-                <div className="metric">
-                  <div className="label">Avg Effective Perf Fee</div>
-                  <div className="value">{bpsPct(feeStack.avgEffectivePerfFee)}</div>
-                </div>
-                <div className="metric">
-                  <div className="label">Vaults with Stacking</div>
-                  <div className="value">{sortedStacks.length}</div>
-                </div>
-              </div>
-              <div className="table-scroll" style={{ maxHeight: 600, overflowY: 'auto' }}>
-                <table className={density === 'compact' ? 'density-compact' : ''}>
-                  <thead>
-                    <tr>
-                      <th {...stackSort.th('name', 'Vault')} />
-                      <th {...stackSort.th('perfFee', 'Perf Fee', 'text-right')} />
-                      <th {...stackSort.th('feeCaptured', 'Gross Fees', 'text-right')} />
-                      <th {...stackSort.th('effective', 'Effective Perf Fee', 'text-right')} />
-                      <th style={{ textAlign: 'center', width: 60 }}>Trend</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {pagedStacks.map((chain, idx) => {
-                      const realIdx = stackPagination.start + idx
-                      const isOpen = expandedStack === realIdx
-                      const rows = flattenTree(chain.root, 0, true)
-                      return (
-                        <Fragment key={`stack-${realIdx}`}>
-                          <tr onClick={() => setExpandedStack(isOpen ? null : realIdx)} style={{ cursor: 'pointer' }}>
-                            <td>
-                              <span className="audit-toggle" style={{ marginRight: 6 }}>
-                                {isOpen ? (
-                                  <ChevronDown className="h-4 w-4 text-[#4f4f4f]" />
-                                ) : (
-                                  <ChevronRight className="h-4 w-4 text-[#4f4f4f]" />
-                                )}
-                              </span>
-                              <span style={{ fontWeight: 600 }}>
-                                {chain.root.vault.name?.slice(0, 30) || chain.root.vault.address.slice(0, 10)}
-                              </span>
-                              <span
-                                style={{
-                                  marginLeft: 6,
-                                  fontSize: '0.6rem',
-                                  fontWeight: 600,
-                                  padding: '1px 5px',
-                                  borderRadius: 3,
-                                  background: `${CHAIN_COLORS[chain.root.vault.chainId] || '#5e6673'}20`,
-                                  color: CHAIN_COLORS[chain.root.vault.chainId] || '#5e6673',
-                                  letterSpacing: '0.03em'
-                                }}
-                              >
-                                {CHAIN_SHORT[chain.root.vault.chainId] || chain.root.vault.chainId}
-                              </span>
-                            </td>
-                            <td className="text-right">{bpsPct(chain.root.perfFee)}</td>
-                            <td className="text-right">
-                              <ActualFeeCell value={chain.actualFeesUsd} />
-                            </td>
-                            <td className="text-right">
-                              <span className="text-yellow" style={{ fontWeight: 600 }}>
-                                {bpsPct(chain.effectivePerfFee)}
-                              </span>
-                              <span className="text-dim" style={{ fontSize: '0.7rem', marginLeft: 4 }}>
-                                depth {chain.maxDepth}
-                              </span>
-                            </td>
-                            <td style={{ textAlign: 'center' }}>{trendIcon(chain.trend)}</td>
-                          </tr>
-                          {isOpen &&
-                            rows.map(({ node, depth, isLast }) => {
-                              const paddingLeft = 1.0 + depth * 1.6
-                              const isRoot = depth === 0
-                              const isLeafStrategy = node.children.length === 0 && node.perfFee === 0 && !isRoot
-                              const rowOpacity = isLeafStrategy ? 0.55 : 1
-                              const nodeActualFees = actualVaultFeesUsd(node.vault, vaultFeeMap)
-                              return (
-                                <tr
-                                  key={`${node.vault.chainId}-${node.vault.address}-${depth}`}
-                                  style={{
-                                    background: depth > 0 ? 'var(--surface-2)' : 'var(--surface)',
-                                    opacity: rowOpacity
-                                  }}
-                                >
-                                  <td style={{ paddingLeft: `${paddingLeft}rem` }}>
-                                    <span className="text-dim" style={{ marginRight: 6, fontSize: '0.75rem' }}>
-                                      {isRoot ? '\u25CB' : isLast ? '\u2514\u2500' : '\u251C\u2500'}
-                                    </span>
-                                    {!isRoot && (
-                                      <span
-                                        style={{
-                                          color: 'var(--accent)',
-                                          fontSize: '0.65rem',
-                                          marginRight: 4,
-                                          opacity: 0.6
-                                        }}
-                                      >
-                                        {'\u2192'}
-                                      </span>
-                                    )}
-                                    <span style={{ color: isRoot ? 'var(--text)' : 'var(--text-2)' }}>
-                                      {node.vault.name?.slice(0, 28) || node.vault.address.slice(0, 10)}
-                                    </span>
-                                    {!isRoot && node.vault.chainId !== chain.root.vault.chainId && (
-                                      <span
-                                        style={{
-                                          marginLeft: 4,
-                                          fontSize: '0.55rem',
-                                          fontWeight: 600,
-                                          padding: '1px 4px',
-                                          borderRadius: 3,
-                                          background: `${CHAIN_COLORS[node.vault.chainId] || '#5e6673'}20`,
-                                          color: CHAIN_COLORS[node.vault.chainId] || '#5e6673'
-                                        }}
-                                      >
-                                        {CHAIN_SHORT[node.vault.chainId] || node.vault.chainId}
-                                      </span>
-                                    )}
-                                  </td>
-                                  <td
-                                    className="text-right"
-                                    style={{ color: (node.perfFee ?? 0) > 0 ? 'var(--text)' : 'var(--text-3)' }}
-                                  >
-                                    {bpsPct(node.perfFee)}
-                                  </td>
-                                  <td className="text-right">
-                                    <ActualFeeCell value={nodeActualFees} />
-                                  </td>
-                                  <td className="text-right">
-                                    {isRoot ? (
-                                      <span className="text-dim" style={{ fontSize: '0.7rem' }}>
-                                        root
-                                      </span>
-                                    ) : isLeafStrategy ? (
-                                      <span className="text-dim" style={{ fontSize: '0.65rem' }}>
-                                        strategy
-                                      </span>
-                                    ) : (
-                                      <span className="text-dim" style={{ fontSize: '0.7rem' }}>
-                                        +{bpsPct(node.perfFee)}
-                                      </span>
-                                    )}
-                                  </td>
-                                  <td />
-                                </tr>
-                              )
-                            })}
-                          {isOpen && (
-                            <tr style={{ background: 'var(--surface-2)', borderTop: '1px solid var(--border)' }}>
-                              <td style={{ paddingLeft: '1rem' }}>
-                                <span
-                                  style={{
-                                    fontSize: '0.72rem',
-                                    fontWeight: 600,
-                                    color: 'var(--text-3)',
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '0.04em'
-                                  }}
-                                >
-                                  Effective total
-                                </span>
-                              </td>
-                              <td className="text-right">
-                                <span className="text-dim">—</span>
-                              </td>
-                              <td className="text-right">
-                                <span className="text-dim">—</span>
-                              </td>
-                              <td className="text-right">
-                                <span className="text-yellow" style={{ fontWeight: 600 }}>
-                                  {bpsPct(chain.effectivePerfFee)}
-                                </span>
-                                <span className="text-dim" style={{ fontSize: '0.7rem' }}>
-                                  weighted
-                                </span>
-                              </td>
-                              <td />
-                            </tr>
-                          )}
-                        </Fragment>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
-              {stackPagination.Pagination && <stackPagination.Pagination />}
-            </div>
-          )
-        })()}
+      {!feeStackError && feeStack && (
+        <EffectiveFeesTable feeStack={feeStack} vaults={vaultData?.vaults ?? []} chainSelector={chainSelector} />
+      )}
+      {profData && (
+        <div className="card fee-chart-card">
+          <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            TVL vs Fee Yield
+            {trendLine && (
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-3)', fontWeight: 400 }}>
+                R² = {trendLine.r2.toFixed(3)}
+              </span>
+            )}
+          </h2>
+          <fieldset className="quadrant-legend" aria-label="Quadrant filter">
+            {Object.entries(QUADRANT_LABELS).map(([key, { label, color, desc }]) => {
+              const count = profData.quadrants[key as Quadrant]?.length || 0
+              const isActive = quadrantFilter === key
+              return (
+                <button
+                  type="button"
+                  key={key}
+                  className="quadrant-tag"
+                  aria-pressed={isActive}
+                  style={{
+                    borderColor: color,
+                    color,
+                    cursor: 'pointer',
+                    opacity: quadrantFilter === 'all' || isActive ? 1 : 0.4,
+                    background: isActive ? `${color}15` : undefined
+                  }}
+                  onClick={() => setQuadrantFilter(quadrantFilter === key ? 'all' : (key as Quadrant))}
+                >
+                  {label} ({count}) <span style={{ color: 'var(--text-3)', fontSize: '0.72rem' }}>{desc}</span>
+                </button>
+              )
+            })}
+          </fieldset>
+          <div className="chart-container fee-history-chart">
+            <ResponsiveContainer width="100%" height="100%">
+              <ScatterChart margin={{ left: 20, right: 20, bottom: 24, top: 10 }}>
+                <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
+                <XAxis
+                  type="number"
+                  dataKey="logTvl"
+                  name="TVL"
+                  domain={[4, 8]}
+                  ticks={[4, 5, 6, 7, 8]}
+                  tickFormatter={(v: number) => fmt(10 ** v, 0)}
+                  tick={{ fill: 'var(--text-3)', fontSize: 11 }}
+                  label={{
+                    value: 'TVL (log scale)',
+                    position: 'bottom',
+                    fill: 'var(--text-3)',
+                    fontSize: 11,
+                    offset: 6
+                  }}
+                  stroke="var(--border)"
+                  allowDataOverflow
+                />
+                <YAxis
+                  type="number"
+                  dataKey="feeYield"
+                  name="Fee Yield"
+                  tickFormatter={(v) => pctFmt(v)}
+                  tick={{ fill: 'var(--text-3)', fontSize: 11 }}
+                  label={{
+                    value: 'Fee Yield (ann.)',
+                    angle: -90,
+                    position: 'insideLeft',
+                    fill: 'var(--text-3)',
+                    fontSize: 11
+                  }}
+                  stroke="var(--border)"
+                />
+                <ZAxis type="number" dataKey="annualizedFeeRevenue" range={[30, 500]} name="Fees" />
+                <Tooltip content={<ScatterTooltip />} cursor={false} />
+                <Scatter data={scatterData}>
+                  {scatterData.map((v) => {
+                    const qColor = QUADRANT_LABELS[v.quadrant]?.color || '#808080'
+                    return (
+                      <Cell
+                        key={`${v.address}-${v.chainId}`}
+                        fill={qColor}
+                        fillOpacity={0.65}
+                        stroke={qColor}
+                        strokeWidth={1}
+                      />
+                    )
+                  })}
+                </Scatter>
+                {trendLine && (
+                  <Scatter
+                    data={trendLine.points}
+                    line={{ stroke: '#a16207', strokeWidth: 2, strokeDasharray: '6 3' }}
+                    shape={() => <></>}
+                    isAnimationActive={false}
+                    legendType="none"
+                  />
+                )}
+              </ScatterChart>
+            </ResponsiveContainer>
+          </div>
+          <span className="sr-only">Scatter plot showing TVL vs fee yield for {scatterData.length} vaults.</span>
+        </div>
+      )}
     </div>
   )
 }

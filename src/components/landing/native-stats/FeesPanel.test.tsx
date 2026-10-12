@@ -4,6 +4,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { FeeChartTypeControls } from './ChartTypeToggle'
 import { FeesPanel } from './FeesPanel'
 
+vi.mock('./EffectiveFeesTable', () => ({ EffectiveFeesTable: () => <div>Effective fees table</div> }))
+
 vi.mock('./MonthlyVaultTables', () => ({ MonthlyVaultTables: () => <div>Monthly tables</div> }))
 
 vi.mock('recharts', async (importOriginal) => ({

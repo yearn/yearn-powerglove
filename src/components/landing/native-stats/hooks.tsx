@@ -232,9 +232,9 @@ export function pct(n: number): string {
   return `${n >= 0 ? '+' : ''}${n.toFixed(1)}%`
 }
 
-export function bpsPct(bps: number | null | undefined): string {
+export function bpsPct(bps: number | null | undefined, decimals = 1): string {
   if (bps == null || !Number.isFinite(bps)) return '—'
-  return `${(bps / 100).toFixed(1)}%`
+  return `${(bps / 100).toFixed(decimals)}%`
 }
 
 export function shortAddr(addr: string): string {
