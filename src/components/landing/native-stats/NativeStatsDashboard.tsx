@@ -4,7 +4,6 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AuditPanel } from './AuditPanel'
 import { ComparisonPanel } from './ComparisonPanel'
-import { CurationProductsPanel } from './CurationProductsPanel'
 import { ErrorBoundary } from './ErrorBoundary'
 import { FeesPanel } from './FeesPanel'
 import { HAS_FEES_API, HAS_TVL_API } from './hooks'
@@ -28,9 +27,17 @@ function MissingApiNotice({ lane }: { lane: 'TVL' | 'fees' }) {
   )
 }
 
-function AnalysisSection({ title, children }: { title: string; children: ReactNode }) {
+function AnalysisSection({
+  title,
+  children,
+  defaultOpen = false
+}: {
+  title: string
+  children: ReactNode
+  defaultOpen?: boolean
+}) {
   return (
-    <Collapsible className="stats-analysis-section">
+    <Collapsible className="stats-analysis-section" defaultOpen={defaultOpen}>
       <h2>
         <CollapsibleTrigger className="stats-analysis-trigger">
           {title}
@@ -112,10 +119,7 @@ export function NativeStatsDashboard({ tab, onTabChange }: { tab: StatsTab; onTa
                 )}
               </TabsContent>
               <TabsContent value="analysis" className="mt-0">
-                <AnalysisSection title="Curation Products">
-                  {HAS_TVL_API ? <CurationProductsPanel /> : <MissingApiNotice lane="TVL" />}
-                </AnalysisSection>
-                <AnalysisSection title="Comparison">
+                <AnalysisSection title="Compare TVL to DefiLlama" defaultOpen>
                   {HAS_TVL_API ? <ComparisonPanel /> : <MissingApiNotice lane="TVL" />}
                 </AnalysisSection>
               </TabsContent>

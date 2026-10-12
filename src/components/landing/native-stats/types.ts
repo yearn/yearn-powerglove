@@ -113,6 +113,7 @@ export interface GapComponent {
 }
 
 export interface DefillamaComparison {
+  publicationId?: string
   ourTotal: number
   defillamaTotal: number
   difference: number

@@ -1,5 +1,7 @@
-import { useContext, useEffect, useMemo } from 'react'
+import { ChevronDown, ChevronRight } from 'lucide-react'
+import { Fragment, useContext, useEffect, useMemo, useState } from 'react'
 import { Bar, BarChart, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { CategoryDiscrepancies } from './CategoryDiscrepancies'
 import { CHAIN_NAMES, fmt, pct, SkeletonCards, SkeletonChart, useFetch, useSort } from './hooks'
 import { StatsContext } from './StatsContext'
 import type { DefillamaComparison as Comparison } from './types'
@@ -26,6 +28,7 @@ function diffPct(ours: number, dl: number): number {
 export function ComparisonPanel() {
   const { chainFilter, setLastFetchedAt } = useContext(StatsContext)
   const { data, loading, error, fetchedAt, retry } = useFetch<Comparison>('/api/comparison')
+  const [expandedCategories, setExpandedCategories] = useState<string[]>([])
   const catSort = useSort('ours')
   const { sorted: sortCategories } = catSort
 
@@ -254,37 +257,77 @@ export function ComparisonPanel() {
                 const oursPct = (c.ours / catMax) * 100
                 const dlPct = (c.defillama / catMax) * 100
                 return (
-                  <tr key={c.category}>
-                    <td>
-                      <span className={`badge badge-${c.category}`} style={{ textTransform: 'uppercase' }}>
-                        {c.category}
-                      </span>
-                    </td>
-                    <td className="text-dim">{c.defillamaProtocol}</td>
-                    <td className="text-right">{fmt(c.ours)}</td>
-                    <td className="text-right">{fmt(c.defillama)}</td>
-                    <td className={`text-right ${c.difference >= 0 ? 'text-green' : 'text-red'}`}>
-                      {fmt(c.difference)}
-                    </td>
-                    <td className={`text-right ${dp >= 0 ? 'text-green' : 'text-red'}`}>{pct(dp)}</td>
-                    <td>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                        <div className="inline-bar">
-                          <div className="inline-bar-track">
-                            <div
-                              className="inline-bar-fill"
-                              style={{ width: `${oursPct}%`, background: 'var(--accent)' }}
-                            />
+                  <Fragment key={c.category}>
+                    <tr>
+                      <td>
+                        <button
+                          type="button"
+                          aria-expanded={expandedCategories.includes(c.category)}
+                          aria-controls={`category-details-${c.defillamaProtocol}`}
+                          onClick={() =>
+                            setExpandedCategories((previous) =>
+                              previous.includes(c.category)
+                                ? previous.filter((category) => category !== c.category)
+                                : [...previous, c.category]
+                            )
+                          }
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 8,
+                            cursor: 'pointer',
+                            color: 'inherit',
+                            font: 'inherit',
+                            background: 'none',
+                            border: 0,
+                            padding: '0.5rem 0'
+                          }}
+                        >
+                          {expandedCategories.includes(c.category) ? (
+                            <ChevronDown size={16} aria-hidden="true" />
+                          ) : (
+                            <ChevronRight size={16} aria-hidden="true" />
+                          )}
+                          <span style={{ textTransform: 'uppercase' }}>{c.category}</span>
+                        </button>
+                      </td>
+                      <td className="text-dim">{c.defillamaProtocol}</td>
+                      <td className="text-right">{fmt(c.ours)}</td>
+                      <td className="text-right">{fmt(c.defillama)}</td>
+                      <td className={`text-right ${c.difference >= 0 ? 'text-green' : 'text-red'}`}>
+                        {fmt(c.difference)}
+                      </td>
+                      <td className={`text-right ${dp >= 0 ? 'text-green' : 'text-red'}`}>{pct(dp)}</td>
+                      <td>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                          <div className="inline-bar">
+                            <div className="inline-bar-track">
+                              <div
+                                className="inline-bar-fill"
+                                style={{ width: `${oursPct}%`, background: 'var(--accent)' }}
+                              />
+                            </div>
+                          </div>
+                          <div className="inline-bar">
+                            <div className="inline-bar-track">
+                              <div className="inline-bar-fill fill-blue" style={{ width: `${dlPct}%` }} />
+                            </div>
                           </div>
                         </div>
-                        <div className="inline-bar">
-                          <div className="inline-bar-track">
-                            <div className="inline-bar-fill fill-blue" style={{ width: `${dlPct}%` }} />
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                  </tr>
+                      </td>
+                    </tr>
+                    {expandedCategories.includes(c.category) && (
+                      <tr id={`category-details-${c.defillamaProtocol}`}>
+                        <td colSpan={7} style={{ background: 'var(--surface-2)' }}>
+                          <CategoryDiscrepancies
+                            category={c.category}
+                            protocol={c.defillamaProtocol}
+                            publicationId={data.publicationId}
+                          />
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
                 )
               })}
             </tbody>

@@ -23,9 +23,6 @@ vi.mock('./FeesPanel', () => ({
 vi.mock('./AuditPanel', () => ({
   AuditPanel: () => <div>Vault breakdown data · {useContext(StatsContext).chainFilter}</div>
 }))
-vi.mock('./CurationProductsPanel', () => ({
-  CurationProductsPanel: () => <div>Curation product data · {useContext(StatsContext).chainFilter}</div>
-}))
 vi.mock('./ComparisonPanel', () => ({
   ComparisonPanel: () => <div>Comparison data · {useContext(StatsContext).chainFilter}</div>
 }))
@@ -53,31 +50,22 @@ describe('consolidated stats tabs', () => {
     expect(screen.queryByText(/Vault breakdown data/)).toBeNull()
   })
 
-  it('keeps each Other Analysis section collapsed and lets them open independently', () => {
+  it('opens the TVL comparison by default without a Curation Products section', () => {
     render(<Dashboard initialTab="analysis" />)
-    const curation = screen.getByRole('button', { name: 'Curation Products' })
-    const comparison = screen.getByRole('button', { name: 'Comparison' })
-    expect(curation.getAttribute('aria-expanded')).toBe('false')
-    expect(comparison.getAttribute('aria-expanded')).toBe('false')
-    expect(screen.queryByText(/Curation product data/)).toBeNull()
-    expect(screen.queryByText(/Comparison data/)).toBeNull()
-    fireEvent.click(curation)
-    expect(screen.getByText('Curation product data · all')).toBeTruthy()
+    const comparison = screen.getByRole('button', { name: 'Compare TVL to DefiLlama' })
+    expect(comparison.getAttribute('aria-expanded')).toBe('true')
+    expect(screen.queryByRole('button', { name: 'Curation Products' })).toBeNull()
+    expect(screen.getByText('Comparison data · all')).toBeTruthy()
+    fireEvent.click(comparison)
     expect(screen.queryByText(/Comparison data/)).toBeNull()
     fireEvent.click(comparison)
-    fireEvent.change(screen.getByRole('combobox', { name: 'Chain' }), { target: { value: '1' } })
-    expect(screen.getByText('Curation product data · 1')).toBeTruthy()
-    expect(screen.getByText('Comparison data · 1')).toBeTruthy()
-    fireEvent.click(curation)
-    expect(screen.queryByText(/Curation product data/)).toBeNull()
-    expect(screen.getByText('Comparison data · 1')).toBeTruthy()
+    expect(screen.getByText('Comparison data · all')).toBeTruthy()
   })
 
   it('retains the shared chain selection across the three tabs', () => {
     render(<Dashboard />)
     fireEvent.change(screen.getByRole('combobox', { name: 'Chain' }), { target: { value: '1' } })
     fireEvent.mouseDown(screen.getByRole('tab', { name: 'Other Analysis' }), { button: 0, ctrlKey: false })
-    fireEvent.click(screen.getByRole('button', { name: 'Comparison' }))
     expect(screen.getByText('Comparison data · 1')).toBeTruthy()
     fireEvent.mouseDown(screen.getByRole('tab', { name: 'Fees' }), { button: 0, ctrlKey: false })
     expect(screen.getByText('Fee chart data')).toBeTruthy()

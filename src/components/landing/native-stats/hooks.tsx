@@ -73,6 +73,7 @@ const preparedAnalyticsPaths = new Set([
 const analyticsSelections = new Map<string, Promise<string | null>>()
 async function selectedAnalyticsUrl(key: string, url: string, apiBase: string): Promise<string> {
   if (!preparedAnalyticsPaths.has(url.split('?')[0])) return key
+  if (new URLSearchParams(url.split('?')[1]).has('publicationId')) return key
   let selection = analyticsSelections.get(apiBase)
   if (!selection) {
     selection = fetch(`${apiBase}/api/analytics/publication`)
