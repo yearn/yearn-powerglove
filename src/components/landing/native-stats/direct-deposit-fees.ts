@@ -1,13 +1,27 @@
-import type { FeeStackChain, FeeStackNode } from './types'
+import type { FeeStackChain, FeeStackEntry, FeeStackNode } from './types'
 
-export function directDepositFeeRows(chains: FeeStackChain[]) {
+export interface DirectDepositFeeRow {
+  vault: FeeStackNode['vault']
+  root: FeeStackNode
+  roots: FeeStackNode[]
+  performanceFee: number | null
+  managementFee: number | null
+  feeRateBasis: 'stack' | 'vault' | 'product'
+  adjustedTvlUsd?: number | null
+}
+
+export function directDepositFeeRows(chains: FeeStackChain[], entries?: FeeStackEntry[]): DirectDepositFeeRow[] {
+  if (entries)
+    return entries.filter((entry) => entry.roots.length > 0).map((entry) => ({ ...entry, root: entry.roots[0] }))
   const key = (node: FeeStackNode) => `${node.vault.chainId}:${node.vault.address.toLowerCase()}`
-  const rows = new Map(
+  const rows = new Map<string, DirectDepositFeeRow>(
     chains.map((chain) => [
       key(chain.root),
       {
         vault: chain.root.vault,
         root: chain.root,
+        roots: [chain.root],
+        feeRateBasis: 'stack',
         performanceFee: chain.effectivePerfFee,
         managementFee: chain.effectiveMgmtFee
       }
@@ -19,6 +33,8 @@ export function directDepositFeeRows(chains: FeeStackChain[]) {
       rows.set(key(node), {
         vault: node.vault,
         root: node,
+        roots: [node],
+        feeRateBasis: 'stack',
         performanceFee: supported ? node.perfFee : null,
         managementFee: supported ? node.mgmtFee : null
       })
@@ -49,4 +65,10 @@ export function externalTvlByVault(graph: FeeAnalysisTvlGraph | null | undefined
 
 export function feeStackLayers(root: FeeStackNode, depth = 0): Array<{ node: FeeStackNode; depth: number }> {
   return [{ node: root, depth }, ...root.children.flatMap((child) => feeStackLayers(child, depth + 1))]
+}
+
+export function directDepositTvl(row: DirectDepositFeeRow, externalTvl: Map<string, number>): number | null {
+  return row.adjustedTvlUsd !== undefined
+    ? row.adjustedTvlUsd
+    : (externalTvl.get(`${row.vault.chainId}:${row.vault.address.toLowerCase()}`) ?? null)
 }

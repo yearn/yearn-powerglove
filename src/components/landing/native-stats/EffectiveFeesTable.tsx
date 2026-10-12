@@ -6,6 +6,7 @@ import { fetchKongVaultListRaw } from '@/lib/kong-vault-client'
 import type { CanonicalVaultFee } from './canonical-fees'
 import {
   directDepositFeeRows,
+  directDepositTvl,
   externalTvlByVault,
   type FeeAnalysisTvlGraph,
   feeStackLayers
@@ -32,7 +33,7 @@ export function EffectiveFeesTable({
     retry: retryFeeGraph
   } = useFetch<FeeAnalysisTvlGraph>(
     `/api/tvl/graph?includeRetired=true&datasetId=${encodeURIComponent(tvlDatasetId ?? '')}`,
-    { enabled: !!tvlDatasetId }
+    { enabled: !!tvlDatasetId && !feeStack.entries }
   )
   const adjustedTvl = useMemo(() => externalTvlByVault(feeGraph, tvlDatasetId), [feeGraph, tvlDatasetId])
   const [expandedFees, setExpandedFees] = useState<Set<string>>(() => new Set())
@@ -53,7 +54,7 @@ export function EffectiveFeesTable({
   const sortedStacks = useMemo(
     () =>
       sortStacks(
-        directDepositFeeRows(feeStack?.chains ?? [])
+        directDepositFeeRows(feeStack.chains, feeStack.entries)
           .map((row) => ({
             ...row,
             vaultType: monthlyVaultType({
@@ -75,7 +76,7 @@ export function EffectiveFeesTable({
           name: (row) => row.vault.name || '',
           effective: (row) => row.performanceFee ?? -1,
           management: (row) => row.managementFee ?? -1,
-          tvl: (row) => adjustedTvl.get(`${row.vault.chainId}:${row.vault.address.toLowerCase()}`) ?? -1
+          tvl: (row) => directDepositTvl(row, adjustedTvl) ?? -1
         }
       ),
     [feeStack, chainFilter, stackSearch, stackTypeFilter, sortStacks, adjustedTvl, metadataByVault, vaults]
@@ -183,8 +184,16 @@ export function EffectiveFeesTable({
                         {row.vaultType}
                       </span>
                     </th>
-                    <td>{monthlyUsd(adjustedTvl.get(key) ?? null)}</td>
-                    <td>{bpsPct(row.performanceFee)}</td>
+                    <td>{monthlyUsd(directDepositTvl(row, adjustedTvl))}</td>
+                    <td
+                      title={
+                        row.feeRateBasis === 'stack'
+                          ? 'Effective rate including underlying allocations'
+                          : 'Own vault/product fee. Underlying fee rates are shown in the expanded breakdown.'
+                      }
+                    >
+                      {bpsPct(row.performanceFee)}
+                    </td>
                     <td>{bpsPct(row.managementFee, 2)}</td>
                   </tr>
                   {isOpen && (
@@ -205,23 +214,25 @@ export function EffectiveFeesTable({
                             </tr>
                           </thead>
                           <tbody>
-                            {feeStackLayers(row.root).map(({ node, depth }, index) => (
-                              <tr key={`${node.vault.chainId}:${node.vault.address}:${index}`}>
-                                <th scope="row" style={{ paddingLeft: `${0.75 + depth * 1.25}rem` }}>
-                                  <Link to={powergloveVaultPath(node.vault.chainId, node.vault.address)}>
-                                    {depth ? '↳ ' : ''}
-                                    {node.vault.name || shortAddr(node.vault.address)}
-                                  </Link>
-                                  <span className="monthly-fee-address">
-                                    {shortAddr(node.vault.address)} ·{' '}
-                                    {CHAIN_NAMES[node.vault.chainId] ?? node.vault.chainId}
-                                  </span>
-                                </th>
-                                <td>{monthlyUsd(node.capitalUsd)}</td>
-                                <td>{bpsPct(node.perfFee)}</td>
-                                <td>{bpsPct(node.mgmtFee, 2)}</td>
-                              </tr>
-                            ))}
+                            {row.roots
+                              .flatMap((root) => feeStackLayers(root))
+                              .map(({ node, depth }, index) => (
+                                <tr key={`${node.vault.chainId}:${node.vault.address}:${index}`}>
+                                  <th scope="row" style={{ paddingLeft: `${0.75 + depth * 1.25}rem` }}>
+                                    <Link to={powergloveVaultPath(node.vault.chainId, node.vault.address)}>
+                                      {depth ? '↳ ' : ''}
+                                      {node.vault.name || shortAddr(node.vault.address)}
+                                    </Link>
+                                    <span className="monthly-fee-address">
+                                      {shortAddr(node.vault.address)} ·{' '}
+                                      {CHAIN_NAMES[node.vault.chainId] ?? node.vault.chainId}
+                                    </span>
+                                  </th>
+                                  <td>{monthlyUsd(node.capitalUsd)}</td>
+                                  <td>{bpsPct(node.perfFee)}</td>
+                                  <td>{bpsPct(node.mgmtFee, 2)}</td>
+                                </tr>
+                              ))}
                           </tbody>
                         </table>
                       </td>

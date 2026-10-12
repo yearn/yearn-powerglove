@@ -155,7 +155,18 @@ export interface FeeStackChain {
   effectiveMgmtFee: number | null
 }
 
+export interface FeeStackEntry {
+  vault: FeeStackNode['vault']
+  roots: FeeStackNode[]
+  memberAddresses: string[]
+  performanceFee: number | null
+  managementFee: number | null
+  feeRateBasis: 'stack' | 'vault' | 'product'
+  adjustedTvlUsd: number | null
+}
+
 export interface FeeStackSummary {
+  entries?: FeeStackEntry[]
   meta?: { tvlDatasetId?: string }
   chains: FeeStackChain[]
   maxDepth: number
