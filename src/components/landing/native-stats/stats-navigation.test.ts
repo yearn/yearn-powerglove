@@ -7,6 +7,7 @@ describe('stats navigation', () => {
   })
 
   it.each([
+    ['monthly-fees', 'fees'],
     ['vaults', 'overview'],
     ['curation', 'analysis'],
     ['comparison', 'analysis']

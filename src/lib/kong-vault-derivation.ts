@@ -143,7 +143,7 @@ const isV3Vault = (apiVersion?: string | null, explicitV3?: boolean): boolean =>
   return version.startsWith('3') || version.startsWith('~3')
 }
 
-const deriveVaultType = ({
+export const deriveVaultType = ({
   vaultType,
   kind,
   type,

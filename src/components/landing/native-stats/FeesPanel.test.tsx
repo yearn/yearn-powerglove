@@ -4,6 +4,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { FeeChartTypeControls } from './ChartTypeToggle'
 import { FeesPanel } from './FeesPanel'
 
+vi.mock('./MonthlyVaultTables', () => ({ MonthlyVaultTables: () => <div>Monthly tables</div> }))
+
 vi.mock('recharts', async (importOriginal) => ({
   ...(await importOriginal<typeof import('recharts')>()),
   ResponsiveContainer: ({ children }: { children: ReactElement<{ width: number; height: number }> }) =>

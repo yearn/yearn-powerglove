@@ -12,6 +12,7 @@ export interface StatsSearch {
 }
 
 const LEGACY_STATS_TABS = new Map<string, StatsTab>([
+  ['monthly-fees', 'fees'],
   ['vaults', 'overview'],
   ['curation', 'analysis'],
   ['comparison', 'analysis']

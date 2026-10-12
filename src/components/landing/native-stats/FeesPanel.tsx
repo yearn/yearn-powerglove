@@ -50,6 +50,7 @@ import {
   usePagination,
   useSort
 } from './hooks'
+import { MonthlyVaultTables } from './MonthlyVaultTables'
 import { StatsChartControls } from './StatsChartControls'
 import { StatsContext } from './StatsContext'
 import type { FeeStackChain, FeeStackNode, FeeStackSummary } from './types'
@@ -862,6 +863,8 @@ export function FeesPanel({ chainSelector }: { chainSelector: ReactNode }) {
           interval={historyInterval}
           view={chartView}
         />
+
+        <MonthlyVaultTables chainSelector={chainSelector} />
 
         {profData && (
           <div className="card fee-chart-card">

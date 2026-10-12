@@ -2092,3 +2092,147 @@
     min-width: 0;
   }
 }
+
+.pg-stats .monthly-vault-fees + .monthly-vault-fees {
+  margin-top: 2rem;
+}
+
+.pg-stats .monthly-fee-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.pg-stats .monthly-fee-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.pg-stats .monthly-fee-table-scroll {
+  overflow: auto;
+  max-height: 65vh;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.pg-stats .monthly-fee-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.75rem;
+}
+
+.pg-stats .monthly-fee-table th,
+.pg-stats .monthly-fee-table td {
+  padding: 0.75rem;
+  white-space: nowrap;
+  text-align: right;
+  border-bottom: 1px solid var(--border);
+}
+
+.pg-stats .monthly-fee-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--surface-2);
+  font-weight: 500;
+}
+
+.pg-stats .monthly-fee-table th:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  min-width: 210px;
+  max-width: 280px;
+  background: var(--surface);
+  box-shadow: 1px 0 var(--border);
+  text-align: left;
+}
+
+.pg-stats .monthly-fee-table thead th:first-child {
+  z-index: 3;
+  background: var(--surface-2);
+}
+
+.pg-stats .monthly-fee-table tbody th {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.pg-stats .monthly-fee-table a {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 250px;
+  color: var(--text);
+}
+
+.pg-stats .monthly-fee-table a:hover {
+  color: var(--accent);
+}
+
+.pg-stats .monthly-fee-address {
+  display: block;
+  color: var(--text-3);
+  font-size: 0.7rem;
+}
+
+.pg-stats .monthly-fee-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  cursor: pointer;
+}
+
+.pg-stats .monthly-fee-sort:focus-visible,
+.pg-stats .monthly-fee-table-scroll:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.pg-stats .monthly-fee-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding-top: 0.75rem;
+  font-size: 0.75rem;
+}
+
+.pg-stats .monthly-fee-empty {
+  padding: 1rem;
+}
+
+@media (max-width: 600px) {
+  .pg-stats .monthly-fee-table th:first-child {
+    min-width: 160px;
+    max-width: 160px;
+    width: 160px;
+  }
+
+  .pg-stats .monthly-fee-table a {
+    max-width: 136px;
+  }
+}
+
+.pg-stats .monthly-fee-skeleton td .skeleton {
+  width: 4.5rem;
+  margin-left: auto;
+}
+
+.pg-stats .monthly-fee-table .monthly-fee-total > * {
+  font-weight: 600;
+  background: var(--surface-2);
+  border-bottom: 2px solid var(--border);
+}
