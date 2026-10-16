@@ -37,3 +37,10 @@
 - Duplicate `.env.example` to `.env` and supply values such as `VITE_PUBLIC_GRAPHQL_URL`; never commit populated files.
 - Network clients live in `src/lib/apollo-client.ts` and `src/wagmi.ts`; update both when pointing to new services.
 - Ensure new environment variables use the `VITE_` prefix so Vite can expose them to the browser.
+
+## Financial stats data contract
+
+- Fee charts must use the canonical Yearn Data API and `totalFeesPaidUsd`; reported deductions, earnings, locker bonuses, and staker/recovery distributions are not interchangeable with fees.
+- Validate fee summary, vault-list, and history responses with `assertCanonicalFeeResponse` before rendering or caching them. Never silently accept a legacy response missing `aggregationScope`.
+- Product-level vault comparisons and monthly product tables must request `scope=product` for both catalog and history. Product membership and names belong in Yearn Data; do not duplicate address-specific accounting rules in the UI.
+- Local preview defaults use `https://yearn-data-api-preview.vercel.app`. Verify a running preview's actual API response after changing proxy settings; systemd environment overrides can supersede `.env.local` and Vite defaults.

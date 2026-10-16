@@ -17,7 +17,7 @@ export default function Header() {
   const desktopSearchRef = useRef<HTMLDivElement>(null)
   const mobileSearchRef = useRef<HTMLDivElement>(null)
   const mobileMenuId = useId()
-  const hideMobileSearch = pathname === '/'
+  const hideMobileSearch = pathname === '/' || pathname === '/stats'
 
   // Filter vaults based on the search term
   const filteredVaults = vaults.filter(
@@ -101,6 +101,13 @@ export default function Header() {
                 >
                   Vault List
                 </Link>
+                <Link
+                  to="/stats"
+                  className={headerNavLinkClassName}
+                  activeProps={{ className: `${headerNavLinkClassName} border-[#0657f9] text-foreground` }}
+                >
+                  Stats
+                </Link>
               </nav>
 
               <nav className="hidden items-center gap-1 min-[500px]:flex md:hidden" aria-label="Primary">
@@ -111,6 +118,13 @@ export default function Header() {
                   activeOptions={{ exact: true }}
                 >
                   Vault List
+                </Link>
+                <Link
+                  to="/stats"
+                  className={headerNavLinkClassName}
+                  activeProps={{ className: `${headerNavLinkClassName} border-[#0657f9] text-foreground` }}
+                >
+                  Stats
                 </Link>
               </nav>
             </div>
@@ -195,6 +209,17 @@ export default function Header() {
                               activeOptions={{ exact: true }}
                             >
                               Vault List
+                            </Link>
+                          </DialogPrimitive.Close>
+                          <DialogPrimitive.Close asChild>
+                            <Link
+                              to="/stats"
+                              className="py-3 text-sm font-medium text-foreground hover:text-[#0657f9]"
+                              activeProps={{
+                                className: 'py-3 text-sm font-medium text-[#0657f9]'
+                              }}
+                            >
+                              Stats
                             </Link>
                           </DialogPrimitive.Close>
                         </nav>
