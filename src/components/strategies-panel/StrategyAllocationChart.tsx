@@ -14,7 +14,7 @@ function AllocationTooltip({
   payload
 }: {
   active: boolean
-  payload: Payload<ValueType, NameType>[] | undefined
+  payload: ReadonlyArray<Payload<ValueType, NameType>> | undefined
 }): React.ReactNode {
   if (!active || !payload?.length) {
     return null

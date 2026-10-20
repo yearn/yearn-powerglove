@@ -19,7 +19,8 @@ interface TVLChartProps {
   yAxisWidth?: number
 }
 
-const formatTooltipValue = (value: number) => {
+const formatTooltipValue = (value: unknown) => {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return '—'
   return `$${value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
 }
 

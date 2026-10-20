@@ -26,8 +26,9 @@ const formatAxisValue = (value: number, valueType: YvUsdChartValue): string => {
 }
 
 const formatTooltipValue = (valueType: YvUsdChartValue) => {
-  return (value: number, name: string) => {
+  return (value: unknown, name: unknown) => {
     const label = name === 'locked' ? 'Locked yvUSD' : 'Unlocked yvUSD'
+    if (typeof value !== 'number' || !Number.isFinite(value)) return ['—', label]
 
     if (valueType === 'apy') {
       return [`${value.toFixed(2)}%`, label]

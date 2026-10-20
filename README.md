@@ -4,7 +4,9 @@ Yearn vault explorer built with React, TypeScript, Vite, TanStack Router, Apollo
 
 ## Prerequisites
 
-- Node 18+ (Bun recommended for scripts)
+- Node `^22.22.2 || ^24.15.0 || >=26.0.0` (required by jsdom 30); Bun is recommended for scripts.
+- `bun run test` and `bun run test:watch` check the Node version before loading jsdom.
+- Bun installs disable lifecycle scripts via `ignoreScripts = true`; verify the required Node version before installing.
 - Copy `.env.example` to `.env` and set values such as `VITE_PUBLIC_GRAPHQL_URL`.
 
 ## Install
