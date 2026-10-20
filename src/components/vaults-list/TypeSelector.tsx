@@ -153,7 +153,7 @@ export const TypeSelector: React.FC<TypeSelectorProps> = ({
       }
       setFilterButtonText(hasSelectedTypes ? 'Selected Types' : 'Filter Types')
     }
-  }, [isExpanded, hasSelectedTypes, onSetSelectedTypes, selectedTypes.length, types.length])
+  }, [isExpanded, hasSelectedTypes, onSetSelectedTypes, selectedTypes.length])
 
   // --- Event handlers ---
   const handleClearSelection = () => {

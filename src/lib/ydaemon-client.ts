@@ -40,7 +40,7 @@ const safeNumber = (value: unknown): number | null => {
 }
 
 const normalizeVault = (raw: RawVault): YDaemonVault | null => {
-  if (!raw || !raw.address || !raw.chainID) {
+  if (!raw?.address || !raw.chainID) {
     return null
   }
 

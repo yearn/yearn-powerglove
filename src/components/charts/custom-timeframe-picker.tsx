@@ -43,7 +43,10 @@ export function CustomTimeframePicker({
   const valid = Boolean(start && end && getChartDate(start) && getChartDate(end) && start <= end && end <= today)
   const reversed = Boolean(start && end && start > end)
   const days = eachDayOfInterval({ start: startOfMonth(month), end: endOfMonth(month) })
-  const weekdays = Array.from({ length: 7 }, (_, index) => format(addDays(startOfWeek(month), index), 'EEEEE'))
+  const weekdays = Array.from({ length: 7 }, (_, index) => {
+    const day = addDays(startOfWeek(month), index)
+    return { date: format(day, 'yyyy-MM-dd'), label: format(day, 'EEEEE') }
+  })
 
   const selectDay = (date: string) => {
     if (!selectingEnd || date < start) {
@@ -149,9 +152,9 @@ export function CustomTimeframePicker({
               </Button>
             </div>
             <div className="grid grid-cols-7 text-center">
-              {weekdays.map((day, index) => (
-                <span key={`${index}-${day}`} className="py-2 text-xs text-gray-500">
-                  {day}
+              {weekdays.map((day) => (
+                <span key={day.date} className="py-2 text-xs text-gray-500">
+                  {day.label}
                 </span>
               ))}
               {days.map((day, index) => {

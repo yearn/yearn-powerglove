@@ -2,7 +2,7 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true,
+      "preset": "recommended",
       "complexity": {
         "noExcessiveCognitiveComplexity": "off",
         "noVoid": "off",
@@ -21,7 +21,6 @@
         "noSvgWithoutTitle": "off",
         "noLabelWithoutControl": "off",
         "useKeyWithClickEvents": "off",
-
         "useButtonType": "off",
         "useAriaPropsSupportedByRole": "off",
         "noStaticElementInteractions": "off"
@@ -30,7 +29,6 @@
         "noNonNullAssertion": "off",
         "useTemplate": "off",
         "useEnumInitializers": "off",
-
         "noDescendingSpecificity": "off",
         "useNodejsImportProtocol": "off"
       },
@@ -42,7 +40,8 @@
   "css": {
     "parser": {
       "cssModules": false,
-      "allowWrongLineComments": false
+      "allowWrongLineComments": false,
+      "tailwindDirectives": true
     }
   },
   "javascript": {
@@ -80,5 +79,18 @@
       "!**/yearn.fi-worktree-*",
       "!**/apps/lib/style.css"
     ]
-  }
+  },
+  // The static design reference intentionally contains placeholder navigation links.
+  "overrides": [
+    {
+      "includes": ["public/design-guide.html"],
+      "linter": {
+        "rules": {
+          "a11y": {
+            "useValidAnchor": "off"
+          }
+        }
+      }
+    }
+  ]
 }
