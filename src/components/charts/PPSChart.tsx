@@ -113,11 +113,14 @@ export const PPSChart: React.FC<PPSChartProps> = React.memo(
             />
             {!hideTooltip && (
               <ChartTooltip
-                formatter={(value: number) =>
-                  isPercentSeries && activePercentMeta
-                    ? [`${value.toFixed(2)}%`, activePercentMeta.label]
-                    : [value.toFixed(3), 'PPS']
-                }
+                formatter={(value) => [
+                  typeof value === 'number' && Number.isFinite(value)
+                    ? isPercentSeries
+                      ? `${value.toFixed(2)}%`
+                      : value.toFixed(3)
+                    : '—',
+                  isPercentSeries && activePercentMeta ? activePercentMeta.label : 'PPS'
+                ]}
               />
             )}
 

@@ -453,17 +453,11 @@ describe('YvUsdTVLChart', () => {
       { date: '2026-01-02', unlocked: 800_000, locked: 300_000 }
     ]
 
-    Element.prototype.getBoundingClientRect = vi.fn(() => ({
-      width: 400,
-      height: 300,
-      top: 0,
-      left: 0,
-      bottom: 300,
-      right: 400,
-      x: 0,
-      y: 0,
-      toJSON: () => {}
-    }))
+    Element.prototype.getBoundingClientRect = vi.fn(function (this: Element) {
+      // The legend occupies one row, rather than the chart's entire mocked height.
+      const height = this.classList.contains('recharts-legend-wrapper') ? 28 : 300
+      return { width: 400, height, top: 0, left: 0, bottom: height, right: 400, x: 0, y: 0, toJSON: () => {} }
+    })
 
     const { container } = render(
       <div style={{ width: '400px', height: '300px' }}>
@@ -482,8 +476,8 @@ describe('YvUsdTVLChart', () => {
         active
         label="2026-01-01"
         payload={[
-          { dataKey: 'unlocked', name: 'unlocked', value: 750_000 },
-          { dataKey: 'locked', name: 'locked', value: 250_000 }
+          { graphicalItemId: 'unlocked', dataKey: 'unlocked', name: 'unlocked', value: 750_000 },
+          { graphicalItemId: 'locked', dataKey: 'locked', name: 'locked', value: 250_000 }
         ]}
       />
     )
