@@ -15,7 +15,7 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
-    "@apollo/client": "3.13.5",
+    "@apollo/client": "4.3.3",
     "@radix-ui/react-accordion": "1.2.3",
     "@radix-ui/react-alert-dialog": "1.1.6",
     "@radix-ui/react-aspect-ratio": "1.1.2",
@@ -51,7 +51,7 @@
     "cmdk": "1.0.4",
     "date-fns": "4.1.0",
     "embla-carousel-react": "8.5.1",
-    "graphql": "16.10.0",
+    "graphql": "17.0.2",
     "input-otp": "1.4.1",
     "lucide-react": "0.483.0",
     "postcss": "8.5.26",
@@ -60,6 +60,7 @@
     "react-hook-form": "7.54.2",
     "react-resizable-panels": "2.1.7",
     "recharts": "2.15.1",
+    "rxjs": "7.8.2",
     "sonner": "1.7.4",
     "tailwind-merge": "3.0.2",
     "tailwindcss": "3.4.17",
@@ -83,5 +84,8 @@
     "typescript": "5.7.3",
     "vite": "6.4.3",
     "vitest": "3.2.6"
+  },
+  "overrides": {
+    "graphql-tag": "2.12.7"
   }
 }
