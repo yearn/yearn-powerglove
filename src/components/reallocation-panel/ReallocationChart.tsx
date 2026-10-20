@@ -60,7 +60,7 @@ const CHART_BOTTOM = 48
 const NODE_LABEL_PADDING = 20
 const SCENE_TRANSITION_MS = 380
 const SIDE_SCENE_SHIFT_PX = 980
-const FAR_SCENE_SHIFT_PX =1960
+const FAR_SCENE_SHIFT_PX = 1960
 const SIDE_SCENE_OPACITY = 0.4
 
 function toSvgSafeId(value: string): string {
