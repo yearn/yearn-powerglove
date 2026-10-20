@@ -1,9 +1,12 @@
 import { ApolloProvider, useQuery } from '@apollo/client/react'
 import { renderHook, waitFor } from '@testing-library/react'
 import type { PropsWithChildren } from 'react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { GET_VAULT_TIMESERIES } from '@/graphql/queries/timeseries'
-import { apolloClient } from '@/lib/apollo-client'
+
+// Use a deliberate non-default URL before constructing the real HTTP link.
+vi.stubEnv('VITE_PUBLIC_GRAPHQL_URL', 'https://graphql.example.test/api/gql')
+const { apolloClient } = await import('@/lib/apollo-client')
 
 const variables = {
   chainId: 1,
@@ -33,6 +36,10 @@ describe('Apollo GraphQL transport and React integration', () => {
     await apolloClient.clearStore()
   })
 
+  afterAll(() => {
+    vi.unstubAllEnvs()
+  })
+
   afterEach(() => {
     vi.restoreAllMocks()
   })
@@ -46,7 +53,8 @@ describe('Apollo GraphQL transport and React integration', () => {
     expect(result.current.loading).toBe(false)
     expect(result.current.error).toBeUndefined()
     expect(fetch).toHaveBeenCalledTimes(1)
-    const [, request] = fetch.mock.calls[0]
+    const [url, request] = fetch.mock.calls[0]
+    expect(url).toBe('https://graphql.example.test/api/gql')
     expect(JSON.parse(String(request?.body))).toMatchObject({ operationName: 'VaultTimeseries', variables })
 
     const cached = await apolloClient.query({ query: GET_VAULT_TIMESERIES, variables })

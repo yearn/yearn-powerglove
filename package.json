@@ -12,7 +12,10 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "preinstall": "node scripts/check-node-version.mjs",
+    "pretest": "node scripts/check-node-version.mjs",
+    "pretest:watch": "node scripts/check-node-version.mjs"
   },
   "dependencies": {
     "@apollo/client": "4.3.3",
@@ -89,5 +92,8 @@
   "overrides": {
     "graphql-tag": "2.12.7",
     "react-is": "19.3.0"
+  },
+  "engines": {
+    "node": "^22.22.2 || ^24.15.0 || >=26.0.0"
   }
 }
