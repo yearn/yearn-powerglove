@@ -1,0 +1,102 @@
+{
+  "baseline": {
+    "head": "956689c7915c10557f55892006e7736680100da6",
+    "install": 0,
+    "test": 0,
+    "build": 0,
+    "lint": 1,
+    "passedTests": 212
+  },
+  "individual": [
+    {
+      "pr": 52,
+      "head": "7c3bab66deaaeb00c1c42e950f7af85985f4fe5c",
+      "base": "956689c7915c10557f55892006e7736680100da6",
+      "install": 0,
+      "test": 0,
+      "build": 0,
+      "lint": 1,
+      "react-runtime": 0
+    },
+    {
+      "pr": 53,
+      "head": "115fcb8f8d89c00de2dfb7431951c877d90bc172",
+      "base": "956689c7915c10557f55892006e7736680100da6",
+      "install": 0,
+      "test": 1,
+      "build": 0,
+      "lint": 1,
+      "react-runtime": 1
+    },
+    {
+      "pr": 54,
+      "head": "be497c290705589b5e076344163415b38b60f2b3",
+      "base": "956689c7915c10557f55892006e7736680100da6",
+      "install": 0,
+      "test": 0,
+      "build": 0,
+      "lint": 1,
+      "react-runtime": 0
+    },
+    {
+      "pr": 55,
+      "head": "315a5831e1332987e111d950886807c2dbc32af9",
+      "base": "956689c7915c10557f55892006e7736680100da6",
+      "install": 0,
+      "test": 1,
+      "build": 1,
+      "lint": 1,
+      "react-runtime": 0
+    },
+    {
+      "pr": 56,
+      "head": "19ee0f425d711cb36abdb105c4226dcad8c88d99",
+      "base": "956689c7915c10557f55892006e7736680100da6",
+      "install": 0,
+      "test": 0,
+      "build": 1,
+      "lint": 1,
+      "react-runtime": 0
+    }
+  ],
+  "acceptedPrs": [54],
+  "blockedPrs": [52, 53, 55, 56],
+  "combined": {
+    "test": 0,
+    "build": 0,
+    "lint": 1,
+    "runtime": 0
+  },
+  "browser": [
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "search": "pass",
+      "mobileFilterDialog": "not applicable",
+      "vaultLinks": 18,
+      "pageErrors": 0,
+      "failedRequests": 0,
+      "httpErrors": 0
+    },
+    {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "search": "pass",
+      "mobileFilterDialog": "pass",
+      "vaultLinks": 12,
+      "pageErrors": 0,
+      "failedRequests": 0,
+      "httpErrors": 0
+    }
+  ],
+  "previewHttpChecks": {
+    "local": 200,
+    "hostHeader": 200,
+    "privateHttps": 200,
+    "sameOriginAprApi": 200
+  }
+}

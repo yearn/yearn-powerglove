@@ -7,7 +7,10 @@ const getUpstreamUrl = (): URL => {
 
 export default async function handler(
   req: { method?: string; query?: Record<string, unknown> },
-  res: { status: (code: number) => { json: (body: unknown) => unknown }; setHeader: (name: string, value: string) => void }
+  res: {
+    status: (code: number) => { json: (body: unknown) => unknown }
+    setHeader: (name: string, value: string) => void
+  }
 ) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' })

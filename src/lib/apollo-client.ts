@@ -1,8 +1,8 @@
 // src/lib/apollo-client.ts
-import { ApolloClient, InMemoryCache } from '@apollo/client'
+import { ApolloClient, HttpLink, InMemoryCache } from '@apollo/client'
 
 export const apolloClient = new ApolloClient({
-  uri: import.meta.env.VITE_PUBLIC_GRAPHQL_URL,
+  link: new HttpLink({ uri: import.meta.env.VITE_PUBLIC_GRAPHQL_URL }),
   cache: new InMemoryCache(),
   defaultOptions: {
     watchQuery: {
