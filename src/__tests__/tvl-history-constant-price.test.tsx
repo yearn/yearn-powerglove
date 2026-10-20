@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { useFetch } from '@/components/landing/native-stats/hooks'
-import { filterPartialHistoryRows, TvlHistoryTooltip } from '@/components/landing/native-stats/TvlOverview'
+import { TvlHistoryTooltip } from '@/components/landing/native-stats/TvlOverview'
 import {
   buildChainTvlHistoryUrl,
   buildConstantPriceTvlUrl,
@@ -148,25 +148,6 @@ describe('constant-price TVL history integration', () => {
     expect(rows[0]).not.toHaveProperty('Base')
     expect(getAvailableRowTotal(rows[0], ['Ethereum', 'Base'])).toBe(90)
     expect(getAvailableRowTotal({ timestamp: 300 }, ['Ethereum', 'Base'])).toBeNull()
-  })
-
-  it('removes incomplete snapshots after full history coverage begins', () => {
-    expect(
-      filterPartialHistoryRows(
-        [
-          { timestamp: 100, Alpha: 10 },
-          { timestamp: 200, Alpha: 10, Beta: 20, Gamma: 30 },
-          { timestamp: 201, Beta: 20 },
-          { timestamp: 202, Gamma: 30 },
-          { timestamp: 300, Alpha: 15, Beta: 25, Gamma: 35 }
-        ],
-        4
-      )
-    ).toEqual([
-      { timestamp: 100, Alpha: 10 },
-      { timestamp: 200, Alpha: 10, Beta: 20, Gamma: 30 },
-      { timestamp: 300, Alpha: 15, Beta: 25, Gamma: 35 }
-    ])
   })
 
   it('shows an explicit stacked tooltip total', () => {

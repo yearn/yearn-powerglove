@@ -41,7 +41,6 @@ const TVL_HISTORY_TOP_SERIES_COUNT = 10
 const TVL_HISTORY_REMAINING_CHAIN_SERIES = 'All other chains'
 const TVL_HISTORY_REMAINING_VERSION_SERIES = 'All other versions'
 const TVL_HISTORY_TOTAL_SERIES = 'Total TVL'
-const TVL_HISTORY_MIN_COMPLETE_SERIES_RATIO = 0.5
 
 function formatDate(timestamp: number | string): string {
   return new Date(Number(timestamp) * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
@@ -73,61 +72,6 @@ function formatHistoryGroup(groupBy: string | undefined): string {
 function hasSeriesValue(row: Record<string, unknown>, series: string): boolean {
   const value = row[series]
   return typeof value === 'number' && Number.isFinite(value)
-}
-
-function countSeriesValues(row: TvlHistoryRun['chart'][number]): number {
-  return Object.entries(row).filter(
-    ([key, value]) => key !== 'timestamp' && typeof value === 'number' && Number.isFinite(value)
-  ).length
-}
-
-export function filterPartialHistoryRows(rows: TvlHistoryRun['chart'], seriesCount: number): TvlHistoryRun['chart'] {
-  if (rows.length < 2 || seriesCount <= 0) return rows
-
-  const minCompleteSeriesCount = Math.max(1, Math.floor(seriesCount * TVL_HISTORY_MIN_COMPLETE_SERIES_RATIO))
-  const firstCompleteRow = rows.findIndex((row) => countSeriesValues(row) >= minCompleteSeriesCount)
-  if (firstCompleteRow < 0) return rows
-
-  return rows.filter((row, index) => index < firstCompleteRow || countSeriesValues(row) >= minCompleteSeriesCount)
-}
-
-function getLatestRowTotal(rows: TvlHistoryRun['chart'], seriesKeys: string[]): number {
-  for (let index = rows.length - 1; index >= 0; index -= 1) {
-    const total = seriesKeys.reduce((sum, series) => {
-      const value = rows[index]?.[series]
-      return typeof value === 'number' && Number.isFinite(value) ? sum + value : sum
-    }, 0)
-
-    if (total > 0) return total
-  }
-
-  return 0
-}
-
-function scaleRows(rows: TvlHistoryRun['chart'], seriesKeys: string[], scaleFactor: number): TvlHistoryRun['chart'] {
-  if (!Number.isFinite(scaleFactor) || Math.abs(scaleFactor - 1) < 0.000001) return rows
-
-  return rows.map((row) => {
-    const nextRow = { ...row }
-    for (const series of seriesKeys) {
-      const value = nextRow[series]
-      if (typeof value === 'number' && Number.isFinite(value)) nextRow[series] = value * scaleFactor
-    }
-    return nextRow
-  })
-}
-
-function addZeroStartPoints(rows: TvlHistoryRun['chart'], seriesKeys: string[]): TvlHistoryRun['chart'] {
-  const chartRows = rows.map((row) => ({ ...row }))
-
-  for (const series of seriesKeys) {
-    const firstValueIndex = chartRows.findIndex((row) => hasSeriesValue(row, series))
-    if (firstValueIndex > 0 && !hasSeriesValue(chartRows[firstValueIndex - 1], series)) {
-      chartRows[firstValueIndex - 1][series] = 0
-    }
-  }
-
-  return chartRows
 }
 
 function getLatestSeriesValue(rows: TvlHistoryRun['chart'], series: string): number {
@@ -202,7 +146,7 @@ function getNumberRecordValue(record: Record<string, unknown>, key: string): num
   return typeof value === 'number' && Number.isFinite(value) ? value : null
 }
 
-function getCanonicalTotalByTimestamp(run: TvlHistoryRun | null, scaleFactor = 1): Record<number, number> {
+function getCanonicalTotalByTimestamp(run: TvlHistoryRun | null): Record<number, number> {
   if (!run) return {}
 
   const currentSnapshot = run.meta.currentSnapshot
@@ -213,7 +157,7 @@ function getCanonicalTotalByTimestamp(run: TvlHistoryRun | null, scaleFactor = 1
   const adjustedTotal =
     getNumberRecordValue(snapshotRecord, 'adjustedTotalTvlUsd') ?? getNumberRecordValue(run.meta, 'adjustedTotalTvlUsd')
 
-  return timestamp && adjustedTotal !== null ? { [timestamp]: adjustedTotal * scaleFactor } : {}
+  return timestamp && adjustedTotal !== null ? { [timestamp]: adjustedTotal } : {}
 }
 
 export function TvlHistoryTooltip({
@@ -402,21 +346,9 @@ export function TvlOverview({ chainSelector }: { chainSelector: ReactNode }) {
     chain: TVL_HISTORY_REMAINING_CHAIN_SERIES,
     category: TVL_HISTORY_REMAINING_VERSION_SERIES
   }[tvlHistoryBreakdown]
-  const tvlHistoryScaleFactor = useMemo(() => {
-    if (!rawTvlHistory || rawTvlHistory.mode !== 'raw' || !data?.totalTvl) return 1
-    const completeRows = rawData?.datasetId
-      ? rawTvlHistory.chart
-      : filterPartialHistoryRows(rawTvlHistory.chart, rawTvlHistory.series.length)
-    const latestTotal = getLatestRowTotal(completeRows, rawTvlHistory.series)
-    return latestTotal > 0 ? data.totalTvl / latestTotal : 1
-  }, [data?.totalTvl, rawTvlHistory, rawData?.datasetId])
   const tvlHistoryChart = useMemo(() => {
     if (!rawTvlHistory) return { rows: [], series: [] }
-    const completeRows = rawData?.datasetId
-      ? rawTvlHistory.chart
-      : filterPartialHistoryRows(rawTvlHistory.chart, rawTvlHistory.series.length)
-    const scaledRows = scaleRows(completeRows, rawTvlHistory.series, tvlHistoryScaleFactor)
-    const topTvlHistory = buildTopTvlHistoryChart(scaledRows, rawTvlHistory.series, tvlHistoryRemainingSeries)
+    const topTvlHistory = buildTopTvlHistoryChart(rawTvlHistory.chart, rawTvlHistory.series, tvlHistoryRemainingSeries)
     const labeledHistory =
       tvlHistoryBreakdown === 'category'
         ? labelVersionHistoryChart(topTvlHistory.rows, topTvlHistory.series)
@@ -425,21 +357,10 @@ export function TvlOverview({ chainSelector }: { chainSelector: ReactNode }) {
       (row) => row.timestamp >= selectedBounds.from && row.timestamp <= selectedBounds.to
     )
     return {
-      rows:
-        rawData?.datasetId || tvlHistoryBreakdown === 'category'
-          ? rangedRows
-          : addZeroStartPoints(rangedRows, labeledHistory.series),
+      rows: rangedRows,
       series: labeledHistory.series
     }
-  }, [
-    rawTvlHistory,
-    rawData?.datasetId,
-    tvlHistoryBreakdown,
-    selectedBounds.from,
-    selectedBounds.to,
-    tvlHistoryRemainingSeries,
-    tvlHistoryScaleFactor
-  ])
+  }, [rawTvlHistory, tvlHistoryBreakdown, selectedBounds.from, selectedBounds.to, tvlHistoryRemainingSeries])
   const tvlHistoryRows = useMemo(
     () => addTotalTvlSeries(tvlHistoryChart.rows, tvlHistoryChart.series),
     [tvlHistoryChart.rows, tvlHistoryChart.series]
@@ -450,8 +371,8 @@ export function TvlOverview({ chainSelector }: { chainSelector: ReactNode }) {
     [tvlHistoryRemainingSeries, tvlHistorySeries]
   )
   const tvlHistoryCanonicalTotalByTimestamp = useMemo(
-    () => getCanonicalTotalByTimestamp(rawTvlHistory, tvlHistoryScaleFactor),
-    [rawTvlHistory, tvlHistoryScaleFactor]
+    () => getCanonicalTotalByTimestamp(rawTvlHistory),
+    [rawTvlHistory]
   )
   const tvlHistoryColorBySeries = useMemo(
     () =>
@@ -469,9 +390,8 @@ export function TvlOverview({ chainSelector }: { chainSelector: ReactNode }) {
     if (!constantPriceHistory) return { rows: [], series: [] }
     const sourceRows = selectConstantPriceChart(constantPriceHistory, 'constant-price')
     const series = getAvailableChartSeries(sourceRows)
-    const completeRows = rawData?.datasetId ? sourceRows : filterPartialHistoryRows(sourceRows, series.length)
-    return buildTopTvlHistoryChart(completeRows, series, TVL_HISTORY_REMAINING_CHAIN_SERIES)
-  }, [constantPriceHistory, rawData?.datasetId])
+    return buildTopTvlHistoryChart(sourceRows, series, TVL_HISTORY_REMAINING_CHAIN_SERIES)
+  }, [constantPriceHistory])
   const isPriceNeutralVisible = isPriceNeutralOverlayVisible(tvlHistoryView, showPriceNeutral)
   const displayedHistoryRows = useMemo(
     () =>

@@ -27,12 +27,6 @@ const yvUsdAprProxy = {
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   const allowedHosts = [...DEFAULT_ALLOWED_HOSTS, ...parseAllowedHosts(env.LOCAL_VITE_ALLOWED_HOSTS)]
-  const legacyMetricsApiTarget = env.VITE_YEARN_METRICS_API_TARGET || env.VITE_PUBLIC_YEARN_METRICS_API_URL
-  const yearnTvlApiTarget =
-    env.VITE_YEARN_TVL_API_TARGET ||
-    env.VITE_PUBLIC_YEARN_TVL_API_URL ||
-    legacyMetricsApiTarget ||
-    'http://127.0.0.1:3460'
   const yearnDataApiTarget =
     env.VITE_YEARN_DATA_API_TARGET || env.VITE_PUBLIC_YEARN_DATA_API_URL || DEFAULT_YEARN_DATA_API
   // This token is server-only. Never give it a VITE_ prefix or include it in browser fetches.
@@ -44,13 +38,10 @@ export default defineConfig(({ mode }) => {
   }
   const statsApiProxy = {
     '/api/audit/tree': hostedDataProxy,
-    '/api/audit': proxyTo(yearnTvlApiTarget),
     '/api/analytics': hostedDataProxy,
     '/api/comparison/defillama-comparable': hostedDataProxy,
     '/api/comparison': hostedDataProxy,
     '/api/tvl/graph': hostedDataProxy,
-    '/api/tvl/overlap': proxyTo(yearnTvlApiTarget),
-    '/api/tvl/vaults': proxyTo(yearnTvlApiTarget),
     '/api/tvl': hostedDataProxy,
     '/api/fees/stack': hostedDataProxy,
     '/api/fees': hostedDataProxy,

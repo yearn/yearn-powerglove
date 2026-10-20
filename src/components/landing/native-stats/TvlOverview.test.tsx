@@ -1,14 +1,21 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { cloneElement, type ReactElement, useState } from 'react'
+import { type ComponentProps, cloneElement, type ReactElement, useState } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { StatsContext } from './StatsContext'
 import { TvlOverview } from './TvlOverview'
 
-vi.mock('recharts', async (original) => ({
-  ...(await original<typeof import('recharts')>()),
-  ResponsiveContainer: ({ children }: { children: ReactElement<{ width: number; height: number }> }) =>
-    cloneElement(children, { width: 640, height: 300 })
-}))
+vi.mock('recharts', async (original) => {
+  const actual = await original<typeof import('recharts')>()
+  return {
+    ...actual,
+    ComposedChart: (props: ComponentProps<typeof actual.ComposedChart>) => {
+      capturedChartRows = props.data
+      return <actual.ComposedChart {...props} />
+    },
+    ResponsiveContainer: ({ children }: { children: ReactElement<{ width: number; height: number }> }) =>
+      cloneElement(children, { width: 640, height: 300 })
+  }
+})
 vi.mock('./ChainTvlHistory', () => ({
   ChainTvlHistory: ({
     selectedRange,
@@ -24,15 +31,23 @@ vi.mock('./hooks', async (original) => ({
     urls.push(url)
     const params = new URLSearchParams(url.split('?')[1])
     const scoped = params.has('chainId')
+    const chartRows = legacyPricingGaps ? gapRows : rows
     const data =
       url.split('?')[0] === '/api/tvl'
-        ? summary
+        ? legacyPricingGaps
+          ? { ...summary, datasetId: undefined, totalTvl: 300 }
+          : summary
         : url.includes('constant-price')
-          ? { actualChart: rows, constantPriceChart: rows, meta: {}, range: history.range }
+          ? { actualChart: chartRows, constantPriceChart: chartRows, meta: {}, range: history.range }
           : {
               ...history,
-              series: scoped ? ['Ethereum'] : history.series,
-              chart: scoped ? rows.map(({ timestamp, Ethereum }) => ({ timestamp, Ethereum })) : rows
+              mode: legacyPricingGaps ? 'raw' : history.mode,
+              series: scoped
+                ? ['Ethereum']
+                : legacyPricingGaps
+                  ? ['Ethereum', 'Base', 'Gamma', 'Delta']
+                  : history.series,
+              chart: scoped ? chartRows.map(({ timestamp, Ethereum }) => ({ timestamp, Ethereum })) : chartRows
             }
     return {
       data,
@@ -68,7 +83,15 @@ const summary = {
   vaultCount: { active: 2 }
 }
 let urls: string[] = []
+const gapRows = [
+  { timestamp: timestamp('2023-01-01'), Ethereum: 100 },
+  { timestamp: timestamp('2024-01-01'), Ethereum: 100, Base: 50, Gamma: 10, Delta: 20 },
+  { timestamp: timestamp('2025-01-01'), Base: 75 },
+  { timestamp: timestamp('2026-01-01'), Ethereum: 90, Base: 50 }
+]
 let failEthereum = false
+let legacyPricingGaps = false
+let capturedChartRows: unknown
 function Overview() {
   const [chainFilter, setChainFilter] = useState('all')
   return (
@@ -90,9 +113,22 @@ afterEach(() => {
   cleanup()
   urls = []
   failEthereum = false
+  legacyPricingGaps = false
+  capturedChartRows = undefined
 })
 
 describe('shared TVL chart controls', () => {
+  it('renders API amounts and sparse dates without headline scaling or invented zero TVL', () => {
+    legacyPricingGaps = true
+    render(<Overview />)
+    expect(capturedChartRows).toEqual([
+      { ...gapRows[0], 'Total TVL': 100 },
+      { ...gapRows[1], 'Total TVL': 180 },
+      { ...gapRows[2], 'Total TVL': 75 },
+      { ...gapRows[3], 'Total TVL': 140 }
+    ])
+  })
+
   it('filters selected dates locally while preserving the full timeline and pinned history', () => {
     const { container } = render(<Overview />)
     const start = screen.getByRole('slider', { name: 'Range start' })

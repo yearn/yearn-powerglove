@@ -14,14 +14,12 @@ import { TvlOverview } from './TvlOverview'
 import './styles.css'
 
 function MissingApiNotice({ lane }: { lane: 'TVL' | 'fees' }) {
-  const environmentVariable = lane === 'TVL' ? 'VITE_PUBLIC_YEARN_TVL_API_URL' : 'VITE_PUBLIC_YEARN_FEES_API_URL'
-  const localPort = lane === 'TVL' ? '3460' : '3482'
   return (
     <div className="card">
       <h2>Yearn {lane} API not configured</h2>
       <p className="text-dim" style={{ marginTop: '0.5rem', lineHeight: 1.6 }}>
-        Set <code>{environmentVariable}</code> to a reachable service base. The local proxy expects{' '}
-        <code>http://127.0.0.1:{localPort}</code> by default.
+        Set <code>VITE_PUBLIC_YEARN_DATA_API_URL</code> to a reachable Yearn Data API, or configure the local server
+        proxy with <code>VITE_YEARN_DATA_API_TARGET</code>.
       </p>
     </div>
   )
