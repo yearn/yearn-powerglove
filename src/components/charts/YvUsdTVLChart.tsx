@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react'
-import type { TooltipProps } from 'recharts'
+import type { TooltipContentProps } from 'recharts'
 import { Bar, CartesianGrid, ComposedChart, Legend, ResponsiveContainer, XAxis, YAxis } from 'recharts'
 import { type ChartTimeframe, filterChartTimeframe } from '@/components/charts/chart-utils'
 import { ChartContainer, ChartLegendContent, ChartTooltip } from '@/components/ui/chart'
@@ -11,14 +11,16 @@ interface YvUsdTVLChartProps {
   timeframe: ChartTimeframe
 }
 
+type TvlTooltipProps = Partial<Pick<TooltipContentProps<number, string>, 'active' | 'label' | 'payload'>>
+
 const formatCurrency = (value: number) => `$${value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
 
-const getTooltipValue = (payload: TooltipProps<number, string>['payload'], dataKey: string): number => {
+const getTooltipValue = (payload: TvlTooltipProps['payload'], dataKey: string): number => {
   const value = Number(payload?.find((item) => item.dataKey === dataKey)?.value)
   return Number.isFinite(value) ? value : 0
 }
 
-export const YvUsdTvlTooltipContent = ({ active, label, payload }: TooltipProps<number, string>) => {
+export const YvUsdTvlTooltipContent = ({ active, label, payload }: TvlTooltipProps) => {
   if (!active || !payload?.length) {
     return null
   }
@@ -113,7 +115,7 @@ export const YvUsdTVLChart: React.FC<YvUsdTVLChartProps> = React.memo(({ chartDa
             tickLine={{ stroke: 'hsl(var(--muted-foreground))' }}
           />
           <ChartTooltip content={<YvUsdTvlTooltipContent />} />
-          <Legend content={<ChartLegendContent />} />
+          <Legend itemSorter={null} content={<ChartLegendContent />} />
           <Bar
             dataKey="unlocked"
             name="unlocked"
