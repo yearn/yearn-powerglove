@@ -1,8 +1,10 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import type { ChainFeeHistoryView } from './ChainFeeHistoryCharts'
-import type { FeeChartTypeControls } from './ChartTypeToggle'
+import type { ChartTypeControl } from './ChartTypeToggle'
 import type { FeeHistoryInterval } from './canonical-fees'
+import type { ChainFeeMetric } from './chain-fee-history'
 import { FeeBreakdownChart } from './FeeBreakdownChart'
+import { FeeMetricToggle } from './FeeMetricToggle'
 import type { FeeHistoryPeriod } from './fee-history'
 import { SkeletonChart } from './hooks'
 import { useVaultTypeFeeHistories } from './useVaultTypeFeeHistories'
@@ -13,14 +15,15 @@ export function VaultTypeFeeCharts({
   periods,
   interval,
   view,
-  chartTypes
-}: {
+  renderType,
+  onRenderTypeChange
+}: ChartTypeControl & {
   query: string
   periods: FeeHistoryPeriod[]
   interval: FeeHistoryInterval
   view: ChainFeeHistoryView
-  chartTypes: FeeChartTypeControls
 }) {
+  const [metric, setMetric] = useState<ChainFeeMetric>('earnings')
   const { catalog, histories, loading, error, retry } = useVaultTypeFeeHistories(query, periods)
   const data = useMemo(() => buildVaultTypeFeeSeries(histories, periods, catalog), [histories, periods, catalog])
 
@@ -42,19 +45,12 @@ export function VaultTypeFeeCharts({
       ) : (
         <>
           <FeeBreakdownChart
-            {...chartTypes.earnings}
-            title="Earnings by Vault Type"
-            subtitle="Gross gains less losses"
-            metric="earnings"
-            data={data[view]}
-            series={data.series}
-            interval={interval}
-          />
-          <FeeBreakdownChart
-            {...chartTypes.fees}
-            title="Fees by Vault Type"
-            subtitle="Gross fees charged"
-            metric="fees"
+            renderType={renderType}
+            onRenderTypeChange={onRenderTypeChange}
+            title={`${metric === 'earnings' ? 'Earnings' : 'Fees'} by Vault Type`}
+            subtitle={metric === 'earnings' ? 'Gross gains less losses' : 'Gross fees charged'}
+            metric={metric}
+            metricControl={<FeeMetricToggle value={metric} onValueChange={setMetric} label="Vault type" />}
             data={data[view]}
             series={data.series}
             interval={interval}

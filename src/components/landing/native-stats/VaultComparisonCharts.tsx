@@ -4,9 +4,11 @@ import { useId, useState } from 'react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { assertCanonicalFeeResponse } from '@/lib/fee-api-contract'
 import type { ChainFeeHistoryView } from './ChainFeeHistoryCharts'
-import type { FeeChartTypeControls } from './ChartTypeToggle'
+import type { ChartTypeControl } from './ChartTypeToggle'
 import type { CanonicalFeeHistory, CanonicalVaultFee, FeeHistoryInterval } from './canonical-fees'
+import type { ChainFeeMetric } from './chain-fee-history'
 import { FeeBreakdownChart } from './FeeBreakdownChart'
+import { FeeMetricToggle } from './FeeMetricToggle'
 import type { FeeHistoryPeriod } from './fee-history'
 import { CHAIN_NAMES, CHAIN_SHORT, resolveStatsApiBase, SkeletonChart } from './hooks'
 import {
@@ -51,16 +53,16 @@ export function VaultComparisonCharts({
   periods,
   view,
   interval,
-  chartTypes,
+  renderType,
+  onRenderTypeChange,
   selectedKeys,
   onSelectedKeysChange
-}: {
+}: ChartTypeControl & {
   query: string
   rankedVaults: CanonicalVaultFee[]
   periods: FeeHistoryPeriod[]
   view: ChainFeeHistoryView
   interval: FeeHistoryInterval
-  chartTypes: FeeChartTypeControls
   selectedKeys: string[] | null
   onSelectedKeysChange: (keys: string[]) => void
 }) {
@@ -70,6 +72,7 @@ export function VaultComparisonCharts({
   const chainId = params.get('chainId')
   const pickerId = useId()
   const [search, setSearch] = useState('')
+  const [metric, setMetric] = useState<ChainFeeMetric>('earnings')
   const catalog = useQuery({
     queryKey: ['allocator-comparison-catalog', base, datasetId, 'product'],
     enabled: !!datasetId,
@@ -98,16 +101,11 @@ export function VaultComparisonCharts({
     const vault = allocators.find((vault) => allocatorKey(vault) === key)
     return vault ? [vault] : []
   })
-  const earningsSmoothed = chartTypes.earnings.renderType === 'line' && view === 'periodic'
-  const feesSmoothed = chartTypes.fees.renderType === 'line' && view === 'periodic'
+  const smoothed = renderType === 'line' && view === 'periodic'
   const weeklyWindow = allocatorMovingAverageWindow(query, Math.floor(Date.now() / 1000))
-  const scopes = [earningsSmoothed, feesSmoothed].map((smoothed) => ({
-    query: smoothed ? weeklyWindow.query : query,
-    periods: smoothed ? weeklyWindow.periods : periods
-  }))
-  const requests = [...new Map(scopes.map((scope) => [scope.query, scope])).values()]
-    .filter((scope) => scope.periods.length > 0)
-    .flatMap((scope) => selected.map((vault) => ({ query: scope.query, vault })))
+  const historyQuery = smoothed ? weeklyWindow.query : query
+  const chartPeriods = smoothed ? weeklyWindow.periods : periods
+  const requests = chartPeriods.length ? selected.map((vault) => ({ query: historyQuery, vault })) : []
   const histories = useQueries({
     queries: requests.map((request) => ({
       queryKey: ['allocator-comparison-history', base, request.query, allocatorKey(request.vault), 'product'],
@@ -126,21 +124,18 @@ export function VaultComparisonCharts({
     label: vaultLabel(vault),
     color: COLORS[index % COLORS.length]
   }))
-  const chartData = (smoothed: boolean) => {
-    const historyQuery = smoothed ? weeklyWindow.query : query
-    const data = buildVaultFeeHistorySeries(
-      selected.map((vault) => ({
-        key: allocatorKey(vault),
-        history: historyByRequest.get(`${historyQuery}:${allocatorKey(vault)}`)
-      })),
-      smoothed ? weeklyWindow.periods : periods
-    )
-    return smoothed
-      ? fourWeekVaultMovingAverage(data.periodic).filter(
-          (point) => Date.parse(`${point.period}T00:00:00Z`) / 1000 >= weeklyWindow.first
-        )
-      : data[view]
-  }
+  const data = buildVaultFeeHistorySeries(
+    selected.map((vault) => ({
+      key: allocatorKey(vault),
+      history: historyByRequest.get(`${historyQuery}:${allocatorKey(vault)}`)
+    })),
+    chartPeriods
+  )
+  const chartData = smoothed
+    ? fourWeekVaultMovingAverage(data.periodic).filter(
+        (point) => Date.parse(`${point.period}T00:00:00Z`) / 1000 >= weeklyWindow.first
+      )
+    : data[view]
   const failed = [
     ...new Set(histories.flatMap((history, index) => (history.isError ? [vaultLabel(requests[index].vault)] : [])))
   ]
@@ -269,32 +264,24 @@ export function VaultComparisonCharts({
         (loading && histories.every((history) => !history.data) ? (
           <SkeletonChart />
         ) : (
-          <>
-            <FeeBreakdownChart
-              stacked={false}
-              title="Earnings by Vault Product"
-              subtitle={
-                earningsSmoothed
-                  ? '4-week moving average · Average weekly net earnings (USD)'
-                  : 'Reported gross gains less losses'
-              }
-              metric="earnings"
-              data={chartData(earningsSmoothed)}
-              series={series}
-              interval={earningsSmoothed ? 'weekly' : interval}
-              {...chartTypes.earnings}
-            />
-            <FeeBreakdownChart
-              stacked={false}
-              title="Fees by Vault Product"
-              subtitle={feesSmoothed ? '4-week moving average · Average weekly fees (USD)' : 'Gross fees charged'}
-              metric="fees"
-              data={chartData(feesSmoothed)}
-              series={series}
-              interval={feesSmoothed ? 'weekly' : interval}
-              {...chartTypes.fees}
-            />
-          </>
+          <FeeBreakdownChart
+            stacked={false}
+            title={`${metric === 'earnings' ? 'Earnings' : 'Fees'} by Vault Product`}
+            subtitle={
+              smoothed
+                ? `4-week moving average · Average weekly ${metric === 'earnings' ? 'net earnings' : 'fees'} (USD)`
+                : metric === 'earnings'
+                  ? 'Reported gross gains less losses'
+                  : 'Gross fees charged'
+            }
+            metric={metric}
+            metricControl={<FeeMetricToggle value={metric} onValueChange={setMetric} label="Vault product" />}
+            data={chartData}
+            series={series}
+            interval={smoothed ? 'weekly' : interval}
+            renderType={renderType}
+            onRenderTypeChange={onRenderTypeChange}
+          />
         ))}
     </section>
   )

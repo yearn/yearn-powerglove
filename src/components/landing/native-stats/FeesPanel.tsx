@@ -413,13 +413,10 @@ export function FeeHistoryChart({
 const DEFAULT_FEE_CHART_TYPES = {
   overall: 'line',
   feeYield: 'bar',
-  earningsYield: 'bar',
-  allocatorEarnings: 'line',
-  allocatorFees: 'line',
+  allocator: 'line',
   chainEarnings: 'bar',
   chainFees: 'bar',
-  vaultTypeEarnings: 'bar',
-  vaultTypeFees: 'bar'
+  vaultType: 'bar'
 } as const
 
 export function FeesPanel({ chainSelector }: { chainSelector: ReactNode }) {
@@ -727,13 +724,6 @@ export function FeesPanel({ chainSelector }: { chainSelector: ReactNode }) {
             view={chartView}
             {...chartType('feeYield')}
           />
-          <FeeYieldChart
-            metric="earnings"
-            periods={feeHistorySeries}
-            interval={historyInterval}
-            view={chartView}
-            {...chartType('earningsYield')}
-          />
         </section>
 
         {productData?.datasetId === summary.datasetId && productData?.aggregationScope === 'product' ? (
@@ -745,7 +735,7 @@ export function FeesPanel({ chainSelector }: { chainSelector: ReactNode }) {
             periods={feeHistorySeries}
             view={chartView}
             interval={historyInterval}
-            chartTypes={{ earnings: chartType('allocatorEarnings'), fees: chartType('allocatorFees') }}
+            {...chartType('allocator')}
           />
         ) : productError ? (
           <div className="error-retry">
@@ -768,7 +758,7 @@ export function FeesPanel({ chainSelector }: { chainSelector: ReactNode }) {
         />
 
         <VaultTypeFeeCharts
-          chartTypes={{ earnings: chartType('vaultTypeEarnings'), fees: chartType('vaultTypeFees') }}
+          {...chartType('vaultType')}
           query={historyFilters.toString()}
           periods={feeHistorySeries}
           interval={historyInterval}

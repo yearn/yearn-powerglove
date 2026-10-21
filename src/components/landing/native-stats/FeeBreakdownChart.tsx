@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { type ReactNode, useState } from 'react'
 import { Area, Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import type { NameType, Payload, ValueType } from 'recharts/types/component/DefaultTooltipContent'
 import { type ChartTypeControl, ChartTypeToggle } from './ChartTypeToggle'
@@ -62,6 +62,7 @@ export function FeeBreakdownChart({
   interval,
   renderType,
   onRenderTypeChange,
+  metricControl,
   stacked = true
 }: ChartTypeControl & {
   metric: ChainFeeMetric
@@ -70,6 +71,7 @@ export function FeeBreakdownChart({
   title: string
   subtitle: string
   interval: FeeHistoryInterval
+  metricControl?: ReactNode
   stacked?: boolean
 }) {
   const [hiddenSeries, setHiddenSeries] = useState<Set<string>>(() => new Set())
@@ -81,6 +83,7 @@ export function FeeBreakdownChart({
         <div>
           <div className="fee-chart-title-row">
             <h2>{title}</h2>
+            {metricControl}
             <ChartTypeToggle value={renderType} onValueChange={onRenderTypeChange} label={title.toLowerCase()} />
           </div>
           <span className="text-dim">{subtitle}</span>

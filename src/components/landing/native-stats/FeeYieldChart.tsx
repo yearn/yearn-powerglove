@@ -1,10 +1,11 @@
 import { Info } from 'lucide-react'
-import { useContext, useMemo } from 'react'
+import { useContext, useMemo, useState } from 'react'
 import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { Tooltip as HelpTooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import type { ChainFeeHistoryView } from './ChainFeeHistoryCharts'
 import { type ChartTypeControl, ChartTypeToggle } from './ChartTypeToggle'
 import type { FeeHistoryInterval } from './canonical-fees'
+import { FeeMetricToggle } from './FeeMetricToggle'
 import { type FeeHistoryPoint, formatFeeHistoryTick } from './fee-history'
 import { buildTvlYieldSeries, type TvlYieldMetric, type TvlYieldPoint } from './fee-yield'
 import { CHAIN_NAMES, fmt, SkeletonChart } from './hooks'
@@ -85,14 +86,13 @@ export function FeeYieldChart({
   interval,
   view,
   renderType,
-  onRenderTypeChange,
-  metric = 'fees'
+  onRenderTypeChange
 }: ChartTypeControl & {
   periods: FeeHistoryPoint[]
   interval: FeeHistoryInterval
   view: ChainFeeHistoryView
-  metric?: TvlYieldMetric
 }) {
+  const [metric, setMetric] = useState<TvlYieldMetric>('fees')
   const { chainFilter } = useContext(StatsContext)
   const history = useFeeTvlHistory(periods)
   const data = useMemo(
@@ -124,6 +124,7 @@ export function FeeYieldChart({
             {cumulative ? 'Cumulative' : interval === 'weekly' ? 'Weekly' : 'Monthly'} {title} per $1 of TVL
             (Annualized)
           </h2>
+          <FeeMetricToggle value={metric} onValueChange={setMetric} label="TVL yield" />
           <ChartTypeToggle
             value={renderType}
             onValueChange={onRenderTypeChange}

@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { cloneElement, type ReactElement } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { FeeYieldChart } from './FeeYieldChart'
@@ -34,7 +34,7 @@ afterEach(() => {
 })
 
 describe('fee yield chart', () => {
-  it('renders fee and negative earnings yields together with one shared daily TVL request', async () => {
+  it('switches one annualized chart between fees and negative earnings without reloading daily TVL', async () => {
     const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -54,16 +54,22 @@ describe('fee yield chart', () => {
     render(
       <QueryClientProvider client={client}>
         <FeeYieldChart {...props} />
-        <FeeYieldChart {...props} metric="earnings" />
       </QueryClientProvider>
     )
-    const fees = screen.getByRole('region', { name: 'Fees per dollar of TVL' })
+    const chart = screen.getByRole('region', { name: 'Fees per dollar of TVL' })
+    await waitFor(() => expect(chart.querySelectorAll('.recharts-bar')).toHaveLength(1))
+    expect(chart.querySelector('[data-tvl-yield-metric]')?.getAttribute('data-tvl-yield-metric')).toBe('fees')
+    const toggle = screen.getByRole('group', { name: 'TVL yield metric' })
+    fireEvent.click(within(toggle).getByRole('button', { name: 'Earnings' }))
     const earnings = screen.getByRole('region', { name: 'Earnings per dollar of TVL' })
-    await waitFor(() => expect(earnings.querySelectorAll('.recharts-bar')).toHaveLength(1))
-    expect(fees.querySelectorAll('.recharts-bar')).toHaveLength(1)
+    expect(screen.queryByRole('region', { name: 'Fees per dollar of TVL' })).toBeNull()
     expect(within(earnings).getByRole('heading', { name: 'Weekly Earnings per $1 of TVL (Annualized)' })).toBeTruthy()
     const loss = earnings.querySelector('.recharts-bar-rectangle path')
     expect(Number(loss?.getAttribute('height'))).toBeLessThan(0)
+    expect(earnings.querySelector('[data-tvl-yield-metric]')?.getAttribute('data-tvl-yield-metric')).toBe('earnings')
+    fireEvent.click(within(toggle).getByRole('button', { name: 'Fees' }))
+    expect(screen.getByRole('heading', { name: 'Weekly Fees per $1 of TVL (Annualized)' })).toBeTruthy()
+    expect(document.querySelectorAll('[data-fee-yield-chart]')).toHaveLength(1)
     expect(fetch).toHaveBeenCalledTimes(1)
     client.clear()
   })

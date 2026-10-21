@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { cloneElement, type ReactElement } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { FeeChartTypeControls } from './ChartTypeToggle'
+import type { ChartTypeControl, FeeChartTypeControls } from './ChartTypeToggle'
 import { FeesPanel } from './FeesPanel'
 
 vi.mock('./EffectiveFeesTable', () => ({ EffectiveFeesTable: () => <div>Effective fees table</div> }))
@@ -25,32 +25,26 @@ vi.mock('./ChainFeeHistoryCharts', () => ({
   )
 }))
 vi.mock('./VaultTypeFeeCharts', () => ({
-  VaultTypeFeeCharts: ({ view, chartTypes }: { view: string; chartTypes: FeeChartTypeControls }) => (
-    <div
-      data-testid="vault-view"
-      data-view={view}
-      data-render-type={chartTypes.earnings.renderType}
-      data-fees-type={chartTypes.fees.renderType}
-    />
+  VaultTypeFeeCharts: ({ view, renderType }: { view: string } & ChartTypeControl) => (
+    <div data-testid="vault-view" data-view={view} data-render-type={renderType} />
   )
 }))
 vi.mock('./VaultComparisonCharts', () => ({
   VaultComparisonCharts: ({
     view,
-    chartTypes,
+    renderType,
     selectedKeys,
     onSelectedKeysChange
   }: {
     view: string
-    chartTypes: FeeChartTypeControls
+    renderType: string
     selectedKeys: string[] | null
     onSelectedKeysChange: (keys: string[]) => void
   }) => (
     <div
       data-testid="allocator-view"
       data-view={view}
-      data-render-type={chartTypes.earnings.renderType}
-      data-fees-type={chartTypes.fees.renderType}
+      data-render-type={renderType}
       data-selected={JSON.stringify(selectedKeys)}
     >
       <button type="button" onClick={() => onSelectedKeysChange(['1:custom'])}>
@@ -186,7 +180,7 @@ describe('shared fee chart view', () => {
     expect(screen.getByTestId('vault-view').getAttribute('data-render-type')).toBe('bar')
     expect(screen.getByTestId('allocator-view').getAttribute('data-render-type')).toBe('line')
     expect(screen.getByTestId('fee-yield-view').getAttribute('data-render-type')).toBe('bar')
-    expect(screen.getByTestId('earnings-yield-view').getAttribute('data-render-type')).toBe('bar')
+    expect(screen.queryByTestId('earnings-yield-view')).toBeNull()
     fireEvent.click(within(chart as HTMLElement).getByRole('button', { name: 'Net Yield' }))
     expect(chart.querySelectorAll('.recharts-line-curve')).toHaveLength(2)
     fireEvent.click(within(controls).getByRole('button', { name: 'Cumulative' }))
@@ -210,8 +204,7 @@ describe('shared fee chart view', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Show earnings and fees as bars' }))
     expect(chart.querySelectorAll('.recharts-bar')).toHaveLength(2)
     expect(screen.getByTestId('allocator-view').getAttribute('data-render-type')).toBe('line')
-    for (const name of ['chain-view', 'vault-view'])
-      expect(screen.getByTestId(name).getAttribute('data-fees-type')).toBe('bar')
+    expect(screen.getByTestId('chain-view').getAttribute('data-fees-type')).toBe('bar')
     expect(screen.getByTestId('chain-view').getAttribute('data-render-type')).toBe('bar')
     expect(screen.getByTestId('vault-view').getAttribute('data-render-type')).toBe('bar')
   })
