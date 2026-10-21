@@ -11,6 +11,7 @@ import { FeeBreakdownChart } from './FeeBreakdownChart'
 import { FeeMetricToggle } from './FeeMetricToggle'
 import type { FeeHistoryPeriod } from './fee-history'
 import { CHAIN_NAMES, CHAIN_SHORT, resolveStatsApiBase, SkeletonChart } from './hooks'
+import { STATS_CHAINS, StatsChainSelector } from './StatsChainSelector'
 import {
   allocatorKey,
   allocatorMovingAverageWindow,
@@ -72,6 +73,7 @@ export function VaultComparisonCharts({
   const chainId = params.get('chainId')
   const pickerId = useId()
   const [search, setSearch] = useState('')
+  const [pickerChain, setPickerChain] = useState('all')
   const [metric, setMetric] = useState<ChainFeeMetric>('earnings')
   const catalog = useQuery({
     queryKey: ['allocator-comparison-catalog', base, datasetId, 'product'],
@@ -140,10 +142,14 @@ export function VaultComparisonCharts({
     ...new Set(histories.flatMap((history, index) => (history.isError ? [vaultLabel(requests[index].vault)] : [])))
   ]
   const loading = histories.some((history) => history.isPending)
-  const results = allocators.filter((vault) =>
-    `${vault.name ?? ''} ${vault.address} ${CHAIN_NAMES[vault.chainId] ?? vault.chainId}`
-      .toLowerCase()
-      .includes(search.trim().toLowerCase())
+  const availableChains = new Set(allocators.map((vault) => String(vault.chainId)))
+  const pickerChains = STATS_CHAINS.filter((chain) => chain.id === 'all' || availableChains.has(chain.id))
+  const results = allocators.filter(
+    (vault) =>
+      (pickerChain === 'all' || String(vault.chainId) === pickerChain) &&
+      `${vault.name ?? ''} ${vault.address} ${CHAIN_NAMES[vault.chainId] ?? vault.chainId}`
+        .toLowerCase()
+        .includes(search.trim().toLowerCase())
   )
   const toggle = (key: string) =>
     onSelectedKeysChange(keys.includes(key) ? keys.filter((item) => item !== key) : [...keys, key])
@@ -156,7 +162,10 @@ export function VaultComparisonCharts({
           <div className="allocator-comparison-actions">
             <Popover
               onOpenChange={(open) => {
-                if (!open) setSearch('')
+                if (!open) {
+                  setSearch('')
+                  setPickerChain('all')
+                }
               }}
             >
               <PopoverTrigger asChild>
@@ -181,6 +190,13 @@ export function VaultComparisonCharts({
                   className="mb-3 h-10 w-full border border-input bg-background px-3 text-sm outline-none focus-visible:ring-1 focus-visible:ring-primary"
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
+                />
+                <StatsChainSelector
+                  value={pickerChain}
+                  onValueChange={setPickerChain}
+                  chains={pickerChains}
+                  label="Filter vaults by chain"
+                  className="mb-3 gap-2 rounded-none pr-4 focus:ring-0 focus:ring-offset-0 focus-visible:ring-2 focus-visible:ring-primary"
                 />
                 <fieldset className="max-h-72 overflow-y-auto">
                   <legend className="sr-only">V3 vault products</legend>

@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { CHAIN_ID_TO_ICON, isSupportedChainId } from '@/constants/chains'
+import { cn } from '@/lib/utils'
 
-const CHAINS = [
+export const STATS_CHAINS = [
   { id: 'all', label: 'All Chains' },
   { id: '1', label: 'Ethereum' },
   { id: '10', label: 'Optimism' },
@@ -27,10 +28,16 @@ function chainIcon(id: string): string {
 
 export function StatsChainSelector({
   value,
-  onValueChange
+  onValueChange,
+  chains = STATS_CHAINS,
+  label = 'Chain',
+  className
 }: {
   value: string
   onValueChange: (value: string) => void
+  chains?: { id: string; label: string }[]
+  label?: string
+  className?: string
 }) {
   const [keyboardFocus, setKeyboardFocus] = useState(true)
 
@@ -48,11 +55,15 @@ export function StatsChainSelector({
 
   return (
     <Select value={value} onValueChange={onValueChange}>
-      <SelectTrigger className="stats-chain-select" aria-label="Chain" data-keyboard-focus={keyboardFocus}>
+      <SelectTrigger
+        className={cn('stats-chain-select', className)}
+        aria-label={label}
+        data-keyboard-focus={keyboardFocus}
+      >
         <SelectValue />
       </SelectTrigger>
       <SelectContent className="stats-chain-options rounded-none">
-        {CHAINS.map((chain) => (
+        {chains.map((chain) => (
           <SelectItem key={chain.id} value={chain.id} textValue={chain.label} className="rounded-none">
             <span className="inline-flex items-center gap-2">
               <img src={chainIcon(chain.id)} alt="" width={20} height={20} className="h-5 w-5 shrink-0 rounded-full" />

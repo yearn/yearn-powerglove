@@ -11,6 +11,28 @@ vi.mock('recharts', async (original) => ({
   ResponsiveContainer: ({ children }: { children: ReactElement<{ width: number; height: number }> }) =>
     cloneElement(children, { width: 640, height: 300 })
 }))
+vi.mock('./StatsChainSelector', async (original) => ({
+  ...(await original<typeof import('./StatsChainSelector')>()),
+  StatsChainSelector: ({
+    value,
+    onValueChange,
+    chains,
+    label
+  }: {
+    value: string
+    onValueChange: (value: string) => void
+    chains: { id: string; label: string }[]
+    label: string
+  }) => (
+    <select aria-label={label} value={value} onChange={(event) => onValueChange(event.target.value)}>
+      {chains.map((chain) => (
+        <option key={chain.id} value={chain.id}>
+          {chain.label}
+        </option>
+      ))}
+    </select>
+  )
+}))
 const amounts = {
   protocolFeesUsd: null,
   managerFeesUsd: null,
@@ -197,6 +219,32 @@ describe('custom allocator comparisons', () => {
     ).toEqual(['1', '747474'])
     for (const [url] of requests()) expect(String(url)).toContain('datasetId=selected')
 
+    fireEvent.click(screen.getByRole('button', { name: 'Choose vaults (2)' }))
+    const chain = screen.getByRole('combobox', { name: 'Filter vaults by chain' })
+    expect(
+      within(chain)
+        .getAllByRole('option')
+        .map((option) => option.textContent)
+    ).toEqual(['All Chains', 'Ethereum', 'Katana'])
+    fireEvent.change(chain, { target: { value: '747474' } })
+    expect(screen.getAllByRole('checkbox')).toHaveLength(1)
+    expect((screen.getByRole('checkbox', { name: /Katana allocator/ }) as HTMLInputElement).checked).toBe(true)
+    expect(screen.getByRole('button', { name: 'Choose vaults (2)' })).toBeTruthy()
+    fireEvent.change(screen.getByRole('textbox', { name: 'Search V3 vault products' }), {
+      target: { value: 'Ethereum' }
+    })
+    expect(screen.queryAllByRole('checkbox')).toHaveLength(0)
+    expect(screen.getByText('No matching V3 vault products.')).toBeTruthy()
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '' } })
+    fireEvent.change(chain, { target: { value: '1' } })
+    expect((screen.getByRole('checkbox', { name: /Ethereum allocator/ }) as HTMLInputElement).checked).toBe(true)
+    fireEvent.keyDown(screen.getByRole('textbox'), { key: 'Escape' })
+    fireEvent.click(screen.getByRole('button', { name: 'Choose vaults (2)' }))
+    expect((screen.getByRole('combobox', { name: 'Filter vaults by chain' }) as HTMLSelectElement).value).toBe('all')
+    expect(screen.getAllByRole('checkbox')).toHaveLength(2)
+    expect(requests()).toHaveLength(2)
+    fireEvent.keyDown(screen.getByRole('textbox'), { key: 'Escape' })
+
     fireEvent.click(screen.getByRole('button', { name: 'Clear selection' }))
     expect(section.querySelectorAll('.recharts-bar')).toHaveLength(0)
     fireEvent.click(screen.getByRole('button', { name: 'Choose vaults (0)' }))
@@ -221,6 +269,13 @@ describe('custom allocator comparisons', () => {
     rendered.rerender(chart({ query: `${props.query}&chainId=1` }))
     expect(section.querySelectorAll('.recharts-line-curve')).toHaveLength(0)
     expect(screen.getByText('Choose V3 vault products to build your comparison.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Choose vaults (0)' }))
+    expect(
+      within(screen.getByRole('combobox', { name: 'Filter vaults by chain' }))
+        .getAllByRole('option')
+        .map((option) => option.textContent)
+    ).toEqual(['All Chains', 'Ethereum'])
+    fireEvent.keyDown(screen.getByRole('textbox'), { key: 'Escape' })
     rendered.rerender(chart({ view: 'cumulative' }))
     fireEvent.click(screen.getByRole('button', { name: 'Show fees by vault product as bars' }))
     await waitFor(() => expect(section.querySelectorAll('.recharts-bar')).toHaveLength(1))
