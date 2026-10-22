@@ -11,6 +11,7 @@ import { StatsChainSelector } from './StatsChainSelector'
 import { StatsContext, type StatsDensity } from './StatsContext'
 import { STATS_TABS, type StatsTab } from './stats-navigation'
 import { TvlOverview } from './TvlOverview'
+import { VaultBreakdown2 } from './VaultBreakdown2'
 import './styles.css'
 
 function MissingApiNotice({ lane }: { lane: 'TVL' | 'fees' }) {
@@ -105,6 +106,9 @@ export function NativeStatsDashboard({ tab, onTabChange }: { tab: StatsTab; onTa
                 )}
                 <AnalysisSection title="Vault breakdown">
                   {HAS_TVL_API ? <AuditPanel /> : <MissingApiNotice lane="TVL" />}
+                </AnalysisSection>
+                <AnalysisSection title="Vault Breakdown 2">
+                  {HAS_TVL_API ? <VaultBreakdown2 /> : <MissingApiNotice lane="TVL" />}
                 </AnalysisSection>
               </TabsContent>
               <TabsContent value="fees" className="mt-0">

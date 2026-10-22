@@ -23,6 +23,9 @@ vi.mock('./FeesPanel', () => ({
 vi.mock('./AuditPanel', () => ({
   AuditPanel: () => <div>Vault breakdown data · {useContext(StatsContext).chainFilter}</div>
 }))
+vi.mock('./VaultBreakdown2', () => ({
+  VaultBreakdown2: () => <div>Vault origins data · {useContext(StatsContext).chainFilter}</div>
+}))
 vi.mock('./ComparisonPanel', () => ({
   ComparisonPanel: () => <div>Comparison data · {useContext(StatsContext).chainFilter}</div>
 }))
@@ -42,10 +45,15 @@ describe('consolidated stats tabs', () => {
     const trigger = screen.getByRole('button', { name: 'Vault breakdown' })
     expect(trigger.getAttribute('aria-expanded')).toBe('false')
     expect(screen.queryByText(/Vault breakdown data/)).toBeNull()
+    const origins = screen.getByRole('button', { name: 'Vault Breakdown 2' })
+    expect(origins.getAttribute('aria-expanded')).toBe('false')
+    expect(screen.queryByText(/Vault origins data/)).toBeNull()
     fireEvent.change(screen.getByRole('combobox', { name: 'Chain' }), { target: { value: '1' } })
     fireEvent.click(trigger)
     expect(trigger.getAttribute('aria-expanded')).toBe('true')
     expect(screen.getByText('Vault breakdown data · 1')).toBeTruthy()
+    fireEvent.click(origins)
+    expect(screen.getByText('Vault origins data · 1')).toBeTruthy()
     fireEvent.click(trigger)
     expect(screen.queryByText(/Vault breakdown data/)).toBeNull()
   })

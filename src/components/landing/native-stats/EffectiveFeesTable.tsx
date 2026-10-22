@@ -4,17 +4,14 @@ import { ChevronDown } from 'lucide-react'
 import { Fragment, type ReactNode, useContext, useMemo, useState } from 'react'
 import { fetchKongVaultListRaw } from '@/lib/kong-vault-client'
 import type { CanonicalVaultFee } from './canonical-fees'
-import {
-  directDepositFeeRows,
-  directDepositTvl,
-  externalTvlByVault,
-  type FeeAnalysisTvlGraph,
-  feeStackLayers
-} from './direct-deposit-fees'
+import { directDepositFeeRows, directDepositTvl, externalTvlByVault, feeStackLayers } from './direct-deposit-fees'
+import { EffectiveFeeCapitalDetails } from './EffectiveFeeCapitalDetails'
+import { feeCapitalVaults, reportedDepositTvl } from './effective-fee-capital'
 import { bpsPct, CHAIN_NAMES, powergloveVaultPath, shortAddr, useFetch, usePagination, useSort } from './hooks'
 import { monthlyUsd, monthlyVaultType } from './monthly-vault-data'
 import { StatsContext } from './StatsContext'
 import type { FeeStackSummary } from './types'
+import { type OriginAudit, type OriginGraph, originVaultId } from './vault-origin'
 
 export function EffectiveFeesTable({
   feeStack,
@@ -31,13 +28,26 @@ export function EffectiveFeesTable({
     data: feeGraph,
     error: feeGraphError,
     retry: retryFeeGraph
-  } = useFetch<FeeAnalysisTvlGraph>(
-    `/api/tvl/graph?includeRetired=true&datasetId=${encodeURIComponent(tvlDatasetId ?? '')}`,
-    { enabled: !!tvlDatasetId && !feeStack.entries }
+  } = useFetch<OriginGraph>(`/api/tvl/graph?includeRetired=true&datasetId=${encodeURIComponent(tvlDatasetId ?? '')}`, {
+    enabled: !!tvlDatasetId
+  })
+  const audit = useFetch<OriginAudit>(`/api/audit/tree?datasetId=${encodeURIComponent(tvlDatasetId ?? '')}`, {
+    enabled: !!tvlDatasetId
+  })
+  const capitalVaults = useMemo(() => feeCapitalVaults(audit.data, tvlDatasetId), [audit.data, tvlDatasetId])
+  const feeNodes = useMemo(
+    () =>
+      new Map(
+        [...feeStack.chains.map((chain) => chain.root), ...(feeStack.entries ?? []).flatMap((entry) => entry.roots)]
+          .flatMap((root) => feeStackLayers(root))
+          .map(({ node }) => [originVaultId(node.vault.chainId, node.vault.address), node])
+      ),
+    [feeStack]
   )
+  const graphMatched = !!tvlDatasetId && feeGraph?.datasetId === tvlDatasetId
   const adjustedTvl = useMemo(() => externalTvlByVault(feeGraph, tvlDatasetId), [feeGraph, tvlDatasetId])
   const [expandedFees, setExpandedFees] = useState<Set<string>>(() => new Set())
-  const stackSort = useSort('effective')
+  const stackSort = useSort('tvl')
   const { sorted: sortStacks } = stackSort
   const [stackSearch, setStackSearch] = useState('')
   const [stackTypeFilter, setStackTypeFilter] = useState('all')
@@ -50,6 +60,10 @@ export function EffectiveFeesTable({
   const metadataByVault = useMemo(
     () => new Map((vaultMetadata ?? []).map((vault) => [`${vault.chainId}:${vault.address.toLowerCase()}`, vault])),
     [vaultMetadata]
+  )
+  const navigableVaults = useMemo(
+    () => new Set([...capitalVaults.keys(), ...feeNodes.keys(), ...metadataByVault.keys()]),
+    [capitalVaults, feeNodes, metadataByVault]
   )
   const sortedStacks = useMemo(
     () =>
@@ -76,10 +90,21 @@ export function EffectiveFeesTable({
           name: (row) => row.vault.name || '',
           effective: (row) => row.performanceFee ?? -1,
           management: (row) => row.managementFee ?? -1,
-          tvl: (row) => directDepositTvl(row, adjustedTvl) ?? -1
+          tvl: (row) => directDepositTvl(row, adjustedTvl) ?? -1,
+          reported: (row) => reportedDepositTvl(row, capitalVaults) ?? -1
         }
       ),
-    [feeStack, chainFilter, stackSearch, stackTypeFilter, sortStacks, adjustedTvl, metadataByVault, vaults]
+    [
+      feeStack,
+      chainFilter,
+      stackSearch,
+      stackTypeFilter,
+      sortStacks,
+      adjustedTvl,
+      capitalVaults,
+      metadataByVault,
+      vaults
+    ]
   )
   const stackPagination = usePagination(sortedStacks.length, 10)
   const pagedStacks = sortedStacks.slice(stackPagination.start, stackPagination.end)
@@ -124,14 +149,25 @@ export function EffectiveFeesTable({
           />
         </div>
       </div>
-      {feeGraphError && (
+      {(feeGraphError ||
+        audit.error ||
+        (feeGraph && !graphMatched) ||
+        (audit.data && audit.data.datasetId !== tvlDatasetId)) && (
         <div className="error-retry">
-          <button type="button" className="page-btn" onClick={retryFeeGraph}>
-            Retry adjusted TVL
+          <p>TVL details could not be loaded for this publication.</p>
+          <button
+            type="button"
+            className="page-btn"
+            onClick={() => {
+              retryFeeGraph()
+              audit.retry()
+            }}
+          >
+            Retry TVL details
           </button>
         </div>
       )}
-      <div className="monthly-fee-table-scroll">
+      <div className="monthly-fee-table-scroll effective-fees-scroll">
         <table className="monthly-fee-table">
           <caption className="sr-only">Current effective fees for direct vault deposits</caption>
           <thead>
@@ -141,8 +177,15 @@ export function EffectiveFeesTable({
                 {...stackSort.th('tvl', 'Adjusted TVL', 'text-right')}
                 title="External TVL after upstream vault ownership is deducted, matching TVL Flow."
               />
-              <th {...stackSort.th('effective', 'Effective performance fee', 'text-right')} />
-              <th {...stackSort.th('management', 'Annual management fee', 'text-right')} />
+              <th
+                {...stackSort.th('reported', 'Reported TVL', 'text-right')}
+                title="Reported total assets, including idle funds. Product rows sum the reported assets of their published member vaults."
+              />
+              <th {...stackSort.th('effective', 'effective perf. fee', 'text-right')} />
+              <th
+                {...stackSort.th('management', 'effective mgmt fee', 'text-right')}
+                title="Effective annual management fee."
+              />
             </tr>
           </thead>
           <tbody>
@@ -185,6 +228,7 @@ export function EffectiveFeesTable({
                       </span>
                     </th>
                     <td>{monthlyUsd(directDepositTvl(row, adjustedTvl))}</td>
+                    <td>{monthlyUsd(reportedDepositTvl(row, capitalVaults))}</td>
                     <td
                       title={
                         row.feeRateBasis === 'stack'
@@ -198,43 +242,15 @@ export function EffectiveFeesTable({
                   </tr>
                   {isOpen && (
                     <tr className="fee-stack-detail">
-                      <td colSpan={4}>
-                        <p className="text-dim">
-                          Fees at each layer below this deposit. Allocation amounts overlap across layers; performance
-                          fees compound and are weighted by allocated capital.
-                        </p>
-                        <table className="monthly-fee-table">
-                          <caption className="sr-only">Fee breakdown for {row.vault.name || row.vault.address}</caption>
-                          <thead>
-                            <tr>
-                              <th>Vault / strategy</th>
-                              <th>Allocated capital</th>
-                              <th>Layer performance fee</th>
-                              <th>Layer annual management fee</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {row.roots
-                              .flatMap((root) => feeStackLayers(root))
-                              .map(({ node, depth }, index) => (
-                                <tr key={`${node.vault.chainId}:${node.vault.address}:${index}`}>
-                                  <th scope="row" style={{ paddingLeft: `${0.75 + depth * 1.25}rem` }}>
-                                    <Link to={powergloveVaultPath(node.vault.chainId, node.vault.address)}>
-                                      {depth ? '↳ ' : ''}
-                                      {node.vault.name || shortAddr(node.vault.address)}
-                                    </Link>
-                                    <span className="monthly-fee-address">
-                                      {shortAddr(node.vault.address)} ·{' '}
-                                      {CHAIN_NAMES[node.vault.chainId] ?? node.vault.chainId}
-                                    </span>
-                                  </th>
-                                  <td>{monthlyUsd(node.capitalUsd)}</td>
-                                  <td>{bpsPct(node.perfFee)}</td>
-                                  <td>{bpsPct(node.mgmtFee, 2)}</td>
-                                </tr>
-                              ))}
-                          </tbody>
-                        </table>
+                      <td colSpan={5}>
+                        <EffectiveFeeCapitalDetails
+                          row={row}
+                          vaults={capitalVaults}
+                          graph={graphMatched ? feeGraph : null}
+                          datasetId={tvlDatasetId}
+                          feeNodes={feeNodes}
+                          navigable={navigableVaults}
+                        />
                       </td>
                     </tr>
                   )}
@@ -249,6 +265,31 @@ export function EffectiveFeesTable({
         <span className="text-dim">{sortedStacks.length.toLocaleString()} vaults</span>
         {stackPagination.Pagination && <stackPagination.Pagination />}
       </div>
+      <details className="effective-fee-methodology">
+        <summary>Methodology</summary>
+        <p>
+          Reported TVL is reported total assets, including idle funds. Product rows sum their published member vaults.
+          Adjusted TVL excludes capital already attributed to upstream vaults and any separately published bridge
+          exclusions. Ownership between product members is shown as upstream capital.
+        </p>
+        <p>
+          Grey upstream nodes show excluded capital and the source vault’s own layer fees for context. These upstream
+          fees are not added to the selected vault’s effective fee. The selected node shows its own layer or product
+          fee; the main table shows the published effective fee.
+        </p>
+        <p>
+          Direct deposits show reported capital not attributed to upstream Yearn vaults, rather than historical deposit
+          transactions. Downstream includes published strategy allocations outside the fee stack and apportions them to
+          adjusted TVL. Idle funds are inferred from reported assets less published strategy debt. Missing or
+          conflicting allocations remain unresolved; published debt caps and debt / asset adjustments are identified.
+          Capital repeats along successive layers and must not be summed across the graph. Rates remain the published
+          rates; this view does not recalculate them.
+        </p>
+        <p>
+          All figures use the same published snapshot. The diagram covers known published allocation paths. A dash means
+          unavailable, including a source fee configuration that has not been published.
+        </p>
+      </details>
     </section>
   )
 }
