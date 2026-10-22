@@ -2,9 +2,7 @@ import { Info } from 'lucide-react'
 import { useContext, useMemo, useState } from 'react'
 import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { Tooltip as HelpTooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import type { ChainFeeHistoryView } from './ChainFeeHistoryCharts'
 import { type ChartTypeControl, ChartTypeToggle } from './ChartTypeToggle'
-import { ChartViewToggle } from './ChartViewToggle'
 import type { FeeHistoryInterval } from './canonical-fees'
 import { FeeMetricToggle } from './FeeMetricToggle'
 import { type FeeHistoryPoint, formatFeeHistoryTick } from './fee-history'
@@ -30,19 +28,17 @@ function amount(value: number, minimumFractionDigits = 2): string {
 function FeeYieldTooltip({
   active,
   payload,
-  cumulative,
   metric
 }: {
   active?: boolean
   payload?: Array<{ payload?: TvlYieldPoint }>
-  cumulative: boolean
   metric: TvlYieldMetric
 }) {
   const point = payload?.[0]?.payload
   if (!active || !point) return null
-  const annualizedYieldPct = cumulative ? point.cumulativeAnnualizedYieldPct : point.annualizedYieldPct
-  const numerator = cumulative ? point.cumulativeAmountUsd : point.amountUsd
-  const tvl = cumulative ? point.cumulativeAverageTvlUsd : point.averageTvlUsd
+  const annualizedYieldPct = point.annualizedYieldPct
+  const numerator = point.amountUsd
+  const tvl = point.averageTvlUsd
   if (annualizedYieldPct === null || numerator === null || tvl === null) return null
   const earnings = metric === 'earnings'
   const perDollar = amount(annualizedYieldPct / 100, 4)
@@ -58,10 +54,7 @@ function FeeYieldTooltip({
         <span>{perDollar}</span>
       </div>
       <div>
-        <span>
-          {earnings ? 'Net yield' : 'Gross fees'}
-          {cumulative ? ' to date' : ''}
-        </span>
+        <span>{earnings ? 'Net yield' : 'Gross fees'}</span>
         <span>{Math.abs(numerator) < 1 ? amount(numerator) : fmt(numerator, 2)}</span>
       </div>
       <div>
@@ -70,7 +63,7 @@ function FeeYieldTooltip({
       </div>
       <div>
         <span>Days annualized</span>
-        <span>{cumulative ? point.cumulativeDays : point.expectedDays}</span>
+        <span>{point.expectedDays}</span>
       </div>
       <div>
         <span>Daily closes in period</span>
@@ -85,15 +78,11 @@ function FeeYieldTooltip({
 export function FeeYieldChart({
   periods,
   interval,
-  view,
-  onViewChange,
   renderType,
   onRenderTypeChange
 }: ChartTypeControl & {
   periods: FeeHistoryPoint[]
   interval: FeeHistoryInterval
-  view: ChainFeeHistoryView
-  onViewChange?: (view: ChainFeeHistoryView) => void
 }) {
   const [metric, setMetric] = useState<TvlYieldMetric>('fees')
   const { chainFilter } = useContext(StatsContext)
@@ -111,8 +100,7 @@ export function FeeYieldChart({
     [history.data, periods, chainFilter, metric]
   )
   const loading = history.loading
-  const cumulative = view === 'cumulative'
-  const key = cumulative ? 'cumulativeAnnualizedYieldPct' : 'annualizedYieldPct'
+  const key = 'annualizedYieldPct'
   const available = data.filter((point) => point[key] !== null).length
   const earnings = metric === 'earnings'
   const title = earnings ? 'Earnings' : 'Fees'
@@ -124,11 +112,9 @@ export function FeeYieldChart({
       <div className="fee-chart-header">
         <div className="fee-chart-title-row">
           <h2>
-            {cumulative ? 'Cumulative' : interval === 'weekly' ? 'Weekly' : 'Monthly'} {title} per $1 of TVL
-            (Annualized)
+            {interval === 'weekly' ? 'Weekly' : 'Monthly'} {title} per $1 of TVL (Annualized)
           </h2>
           <FeeMetricToggle value={metric} onValueChange={setMetric} label="TVL yield" />
-          <ChartViewToggle view={view} onViewChange={onViewChange} interval={interval} label="TVL yield" />
           <ChartTypeToggle
             value={renderType}
             onValueChange={onRenderTypeChange}
@@ -149,8 +135,7 @@ export function FeeYieldChart({
             <TooltipContent className="max-w-xs">
               {earnings ? 'Reported net yield (gross gains less losses)' : 'Gross fees charged'} divided by the average
               published daily, overlap-adjusted TVL for the same UTC period, multiplied by 365 divided by the number of
-              days in that period. Cumulative mode annualizes the total to date using the day-weighted average TVL and
-              total days to date. This uses simple annualization without compounding.
+              days in that period. This uses simple annualization without compounding.
             </TooltipContent>
           </HelpTooltip>
         </TooltipProvider>
@@ -171,7 +156,11 @@ export function FeeYieldChart({
         </p>
       ) : (
         <>
-          <div className="chart-container fee-history-chart" data-fee-yield-chart={view} data-tvl-yield-metric={metric}>
+          <div
+            className="chart-container fee-history-chart"
+            data-fee-yield-chart="periodic"
+            data-tvl-yield-metric={metric}
+          >
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={data} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
                 <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
@@ -190,7 +179,7 @@ export function FeeYieldChart({
                   width={68}
                   domain={[(min: number) => Math.min(0, min), (max: number) => Math.max(0, max)]}
                 />
-                <Tooltip content={<FeeYieldTooltip cumulative={cumulative} metric={metric} />} />
+                <Tooltip content={<FeeYieldTooltip metric={metric} />} />
                 {renderType === 'bar' ? (
                   <Bar dataKey={key} name={yieldLabel} fill={color} maxBarSize={32} isAnimationActive={false} />
                 ) : (

@@ -46,27 +46,20 @@ export function VaultTypeFeeCharts({
       ) : loading ? (
         <SkeletonChart />
       ) : (
-        <>
-          <FeeBreakdownChart
-            renderType={renderType}
-            onRenderTypeChange={onRenderTypeChange}
-            title={`${metric === 'earnings' ? 'Earnings' : 'Fees'} by Vault Type`}
-            subtitle={metric === 'earnings' ? 'Gross gains less losses' : 'Gross fees charged'}
-            metric={metric}
-            metricControl={<FeeMetricToggle value={metric} onValueChange={setMetric} label="Vault type" />}
-            viewControl={
-              <ChartViewToggle view={view} onViewChange={onViewChange} interval={interval} label="Vault type" />
-            }
-            data={data[view]}
-            series={data.series}
-            interval={interval}
-          />
-          <p className="text-dim">
-            V3 combines allocators and tokenized strategies. V2 factory and legacy categories use Kong’s vault
-            classifications.
-            {!data.series.some((item) => item.key === 'v1') && ' No V1 history is available in this selection.'}
-          </p>
-        </>
+        <FeeBreakdownChart
+          renderType={renderType}
+          onRenderTypeChange={onRenderTypeChange}
+          title={`${metric === 'earnings' ? 'Earnings' : 'Fees'} by Vault Type`}
+          subtitle={metric === 'earnings' ? 'Gross gains less losses' : 'Gross fees charged'}
+          metric={metric}
+          metricControl={<FeeMetricToggle value={metric} onValueChange={setMetric} label="Vault type" />}
+          viewControl={
+            <ChartViewToggle view={view} onViewChange={onViewChange} interval={interval} label="Vault type" />
+          }
+          data={data[view]}
+          series={data.series}
+          interval={interval}
+        />
       )}
     </section>
   )

@@ -66,7 +66,7 @@ describe('stats pages', () => {
     render(<NativeStatsDashboard analysis />)
     expect(screen.queryByText('TVL overview data')).toBeNull()
     expect(screen.queryByText('Fee chart data')).toBeNull()
-    expect(screen.getByRole('link', { name: 'Back to Stats' }).getAttribute('href')).toBe('/stats')
+    expect(screen.getByRole('link', { name: 'Back to Stats' }).getAttribute('href')).toBe('/')
     expect(screen.getByText('Fee yield analysis · all')).toBeTruthy()
     const sections = ['Vault Breakdown', 'Vault Breakdown 2', 'Compare TVL to DefiLlama']
     for (const name of sections)

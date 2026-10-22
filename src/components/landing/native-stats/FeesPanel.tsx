@@ -1,4 +1,4 @@
-import { type ReactNode, useContext, useEffect, useId, useMemo, useState } from 'react'
+import { type ReactNode, useContext, useEffect, useMemo, useState } from 'react'
 import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { Tooltip as HelpTooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { ChainFeeHistoryCharts, type ChainFeeHistoryView } from './ChainFeeHistoryCharts'
@@ -308,14 +308,15 @@ export function FeesPanel() {
   const { chainFilter, setLastFetchedAt } = useContext(StatsContext)
   const { range } = useContext(StatsTimeRangeContext)
   const selectedRange = range ?? defaultFeeTimeRange(Math.floor(Date.now() / 1000))
-  const [chartViews, setChartViews] = useState<Record<keyof typeof DEFAULT_FEE_CHART_TYPES, ChainFeeHistoryView>>({
+  const [chartViews, setChartViews] = useState<
+    Record<Exclude<keyof typeof DEFAULT_FEE_CHART_TYPES, 'feeYield'>, ChainFeeHistoryView>
+  >({
     overall: 'periodic',
-    feeYield: 'periodic',
     allocator: 'periodic',
     chain: 'periodic',
     vaultType: 'periodic'
   })
-  const chartView = (key: keyof typeof DEFAULT_FEE_CHART_TYPES) => ({
+  const chartView = (key: keyof typeof chartViews) => ({
     view: chartViews[key],
     onViewChange: (view: ChainFeeHistoryView) => setChartViews((views) => ({ ...views, [key]: view }))
   })
@@ -362,7 +363,6 @@ export function FeesPanel() {
     allTime.data && isCanonicalFeeSummary(allTime.data) && allTime.data.datasetId === summary?.datasetId
       ? allTime.data
       : null
-  const earningsTitleId = useId()
   const rangeLabel = (date: string) =>
     new Date(`${date}T00:00:00Z`).toLocaleDateString('en-US', {
       month: 'short',
@@ -501,11 +501,7 @@ export function FeesPanel() {
         <EffectiveFeesTable feeStack={feeStack} vaults={vaultData?.vaults ?? []} chainSelector={null} />
       )}
 
-      <section className="earnings-fees-section" aria-labelledby={earningsTitleId}>
-        <h2 id={earningsTitleId}>Earnings and Fees</h2>
-        <p className="earnings-fees-range text-dim">
-          Selected range: {rangeLabel(selectedRange.start)} – {rangeLabel(selectedRange.end)} (UTC)
-        </p>
+      <section className="earnings-fees-section" aria-label="Earnings and Fees">
         <TooltipProvider delayDuration={200}>
           <div className="fee-summary-grid">
             {(
@@ -603,12 +599,7 @@ export function FeesPanel() {
           />
 
           <section className="chain-fee-charts fee-chart-group" aria-label="Fees and earnings per dollar of TVL">
-            <FeeYieldChart
-              periods={feeHistorySeries}
-              interval={historyInterval}
-              {...chartView('feeYield')}
-              {...chartType('feeYield')}
-            />
+            <FeeYieldChart periods={feeHistorySeries} interval={historyInterval} {...chartType('feeYield')} />
           </section>
 
           <ChainFeeHistoryCharts

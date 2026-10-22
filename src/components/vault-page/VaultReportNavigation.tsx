@@ -95,7 +95,8 @@ export function VaultReportNavigation({ ariaLabel, prefix, sections }: VaultRepo
     <nav
       ref={navigationRef}
       aria-label={ariaLabel}
-      className="sticky top-[131px] z-[18] overflow-x-auto bg-white min-[500px]:top-[187px] md:top-[136px]"
+      className="sticky z-[18] overflow-x-auto bg-white"
+      style={{ top: 'calc(var(--vault-header-height, 60px) + 3.5rem)' }}
       data-testid="vault-report-navigation"
     >
       <div className="flex min-w-max items-end border-b border-[#d8d8d8]">

@@ -67,12 +67,8 @@ vi.mock('./useFeeTvlHistory', () => ({
   useFeeTvlHistory: () => ({ data: null, loading: false, error: null, retry: vi.fn() })
 }))
 vi.mock('./FeeYieldChart', () => ({
-  FeeYieldChart: ({ view, renderType, metric = 'fees' }: { view: string; renderType: string; metric?: string }) => (
-    <div
-      data-testid={metric === 'earnings' ? 'earnings-yield-view' : 'fee-yield-view'}
-      data-view={view}
-      data-render-type={renderType}
-    />
+  FeeYieldChart: ({ renderType, metric = 'fees' }: { renderType: string; metric?: string }) => (
+    <div data-testid={metric === 'earnings' ? 'earnings-yield-view' : 'fee-yield-view'} data-render-type={renderType} />
   )
 }))
 vi.mock('./hooks', async (importOriginal) => ({
@@ -171,7 +167,6 @@ describe('shared fee chart view', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Set chain cumulative' }))
     expect(screen.getByTestId('chain-view').getAttribute('data-view')).toBe('cumulative')
     expect(screen.getByRole('heading', { name: 'Monthly Earnings & Fees' })).toBeTruthy()
-    expect(screen.getByTestId('fee-yield-view').getAttribute('data-view')).toBe('periodic')
     expect(screen.getByTestId('vault-view').getAttribute('data-view')).toBe('periodic')
     expect(screen.getByTestId('allocator-view').getAttribute('data-view')).toBe('periodic')
     fireEvent.click(screen.getByRole('button', { name: 'Set allocator cumulative' }))
@@ -200,7 +195,6 @@ describe('shared fee chart view', () => {
     fireEvent.click(within(controls).getByRole('button', { name: 'Cumulative' }))
     expect(screen.getByTestId('chain-view').getAttribute('data-view')).toBe('periodic')
     expect(screen.getByTestId('vault-view').getAttribute('data-view')).toBe('periodic')
-    expect(screen.getByTestId('fee-yield-view').getAttribute('data-view')).toBe('periodic')
     expect(screen.getAllByRole('heading', { name: /Earnings & Fees/ })).toHaveLength(1)
     expect(
       within(chart as HTMLElement)
@@ -278,7 +272,6 @@ it('shows all-time and selected-range amounts side by side, pinned to the same d
   const net = screen.getByRole('region', { name: 'Net Yield' })
   expect(within(net).getByText('$1.8K')).toBeTruthy()
   expect(within(net).getByText('$90')).toBeTruthy()
-  expect(screen.getByText('Selected range: Jan 1, 2024 – Oct 1, 2026 (UTC)')).toBeTruthy()
   const request = requestedUrls.find(
     (url) => url.startsWith('/api/fees?') && !new URL(url, 'http://localhost').searchParams.has('since')
   )!

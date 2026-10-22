@@ -62,15 +62,7 @@ function Chart({
           }
         ]}
       />
-      {withYield && (
-        <FeeYieldChart
-          periods={periods}
-          interval="weekly"
-          view="periodic"
-          renderType="bar"
-          onRenderTypeChange={vi.fn()}
-        />
-      )}
+      {withYield && <FeeYieldChart periods={periods} interval="weekly" renderType="bar" onRenderTypeChange={vi.fn()} />}
     </StatsContext.Provider>
   )
 }

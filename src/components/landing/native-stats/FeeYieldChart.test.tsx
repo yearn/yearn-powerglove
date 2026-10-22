@@ -47,7 +47,6 @@ describe('fee yield chart', () => {
     const props = {
       periods: [{ ...period, netYieldUsd: -70 }],
       interval: 'weekly' as const,
-      view: 'periodic' as const,
       renderType: 'bar' as const,
       onRenderTypeChange: vi.fn()
     }
@@ -59,6 +58,7 @@ describe('fee yield chart', () => {
     const chart = screen.getByRole('region', { name: 'Fees per dollar of TVL' })
     await waitFor(() => expect(chart.querySelectorAll('.recharts-bar')).toHaveLength(1))
     expect(chart.querySelector('[data-tvl-yield-metric]')?.getAttribute('data-tvl-yield-metric')).toBe('fees')
+    expect(within(chart).queryByRole('button', { name: 'Cumulative' })).toBeNull()
     const toggle = screen.getByRole('group', { name: 'TVL yield metric' })
     fireEvent.click(within(toggle).getByRole('button', { name: 'Earnings' }))
     const earnings = screen.getByRole('region', { name: 'Earnings per dollar of TVL' })
@@ -93,13 +93,7 @@ describe('fee yield chart', () => {
         <StatsContext.Provider
           value={{ chainFilter: chain, density: 'comfortable', lastFetchedAt: null, setLastFetchedAt: vi.fn() }}
         >
-          <FeeYieldChart
-            periods={[selected]}
-            interval="weekly"
-            view="periodic"
-            renderType={renderType}
-            onRenderTypeChange={vi.fn()}
-          />
+          <FeeYieldChart periods={[selected]} interval="weekly" renderType={renderType} onRenderTypeChange={vi.fn()} />
         </StatsContext.Provider>
       </QueryClientProvider>
     )

@@ -5,7 +5,7 @@ export const Route = createFileRoute('/stats_/analysis')({
   validateSearch: (search: Record<string, unknown>): { preview?: string } =>
     typeof search.preview === 'string' ? { preview: search.preview } : {},
   component: () => (
-    <main className="flex-1 container pt-0 pb-0">
+    <main className="w-full min-w-0 flex-1">
       <NativeStatsDashboard analysis />
     </main>
   )

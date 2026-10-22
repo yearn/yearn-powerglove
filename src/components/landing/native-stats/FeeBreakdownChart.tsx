@@ -64,16 +64,22 @@ export function FeeBreakdownChart({
   onRenderTypeChange,
   metricControl,
   viewControl,
+  controls,
+  notice,
+  placeholder,
   stacked = true
 }: ChartTypeControl & {
   metric: ChainFeeMetric
   data: VaultComparisonPoint[]
   series: FeeBreakdownSeries[]
   title: string
-  subtitle: string
+  subtitle?: string
   interval: FeeHistoryInterval
   metricControl?: ReactNode
   viewControl?: ReactNode
+  controls?: ReactNode
+  notice?: ReactNode
+  placeholder?: ReactNode
   stacked?: boolean
 }) {
   const [hiddenSeries, setHiddenSeries] = useState<Set<string>>(() => new Set())
@@ -82,14 +88,15 @@ export function FeeBreakdownChart({
   return (
     <div className="card fee-chart-card">
       <div className="fee-chart-header">
-        <div>
+        <div className={controls ? 'fee-chart-controls-row' : undefined}>
           <div className="fee-chart-title-row">
             <h2>{title}</h2>
             {metricControl}
             {viewControl}
             <ChartTypeToggle value={renderType} onValueChange={onRenderTypeChange} label={title.toLowerCase()} />
           </div>
-          <span className="text-dim">{subtitle}</span>
+          {subtitle && <span className="text-dim">{subtitle}</span>}
+          {controls}
         </div>
         <fieldset className="fee-series-toggles">
           <legend className="sr-only">{title} data series</legend>
@@ -122,70 +129,72 @@ export function FeeBreakdownChart({
           })}
         </fieldset>
       </div>
-      {data.length === 0 ? (
-        <p className="text-dim">No completed history in this range.</p>
-      ) : (
-        <div className="chart-container fee-history-chart">
-          <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={data} stackOffset="none" margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
-              <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
-              <XAxis
-                dataKey="period"
-                tickFormatter={(period: string) => formatFeeHistoryTick(period, interval)}
-                tick={{ fill: 'var(--text-3)', fontSize: 11 }}
-                interval={Math.max(0, Math.floor(data.length / 10) - 1)}
-                angle={-35}
-                textAnchor="end"
-                height={50}
-              />
-              <YAxis
-                domain={[(minimum: number) => Math.min(0, minimum), (maximum: number) => Math.max(0, maximum)]}
-                tick={{ fill: 'var(--text-3)', fontSize: 11 }}
-                tickFormatter={(value: number) => fmt(value, 1)}
-                width={68}
-              />
-              <Tooltip content={<ChainFeeTooltip />} />
-              {activeSeries.map((item) =>
-                renderType === 'bar' ? (
-                  <Bar
-                    key={item.key}
-                    dataKey={(point: VaultComparisonPoint) => point[metric][item.key]}
-                    name={item.label}
-                    stackId={stacked ? 'chains' : undefined}
-                    fill={item.color}
-                    maxBarSize={32}
-                    isAnimationActive={false}
-                  />
-                ) : stacked ? (
-                  <Area
-                    key={item.key}
-                    type="linear"
-                    dataKey={(point: VaultComparisonPoint) => point[metric][item.key]}
-                    name={item.label}
-                    stackId="chains"
-                    stroke={item.color}
-                    fill={item.color}
-                    fillOpacity={0.35}
-                    isAnimationActive={false}
-                  />
-                ) : (
-                  <Line
-                    key={item.key}
-                    type="linear"
-                    dataKey={(point: VaultComparisonPoint) => point[metric][item.key]}
-                    name={item.label}
-                    stroke={item.color}
-                    strokeWidth={2}
-                    dot={false}
-                    connectNulls={false}
-                    isAnimationActive={false}
-                  />
-                )
-              )}
-            </ComposedChart>
-          </ResponsiveContainer>
-        </div>
-      )}
+      {notice}
+      {placeholder ??
+        (data.length === 0 ? (
+          <p className="text-dim">No completed history in this range.</p>
+        ) : (
+          <div className="chart-container fee-history-chart">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={data} stackOffset="none" margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
+                <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
+                <XAxis
+                  dataKey="period"
+                  tickFormatter={(period: string) => formatFeeHistoryTick(period, interval)}
+                  tick={{ fill: 'var(--text-3)', fontSize: 11 }}
+                  interval={Math.max(0, Math.floor(data.length / 10) - 1)}
+                  angle={-35}
+                  textAnchor="end"
+                  height={50}
+                />
+                <YAxis
+                  domain={[(minimum: number) => Math.min(0, minimum), (maximum: number) => Math.max(0, maximum)]}
+                  tick={{ fill: 'var(--text-3)', fontSize: 11 }}
+                  tickFormatter={(value: number) => fmt(value, 1)}
+                  width={68}
+                />
+                <Tooltip content={<ChainFeeTooltip />} />
+                {activeSeries.map((item) =>
+                  renderType === 'bar' ? (
+                    <Bar
+                      key={item.key}
+                      dataKey={(point: VaultComparisonPoint) => point[metric][item.key]}
+                      name={item.label}
+                      stackId={stacked ? 'chains' : undefined}
+                      fill={item.color}
+                      maxBarSize={32}
+                      isAnimationActive={false}
+                    />
+                  ) : stacked ? (
+                    <Area
+                      key={item.key}
+                      type="linear"
+                      dataKey={(point: VaultComparisonPoint) => point[metric][item.key]}
+                      name={item.label}
+                      stackId="chains"
+                      stroke={item.color}
+                      fill={item.color}
+                      fillOpacity={0.35}
+                      isAnimationActive={false}
+                    />
+                  ) : (
+                    <Line
+                      key={item.key}
+                      type="linear"
+                      dataKey={(point: VaultComparisonPoint) => point[metric][item.key]}
+                      name={item.label}
+                      stroke={item.color}
+                      strokeWidth={2}
+                      dot={false}
+                      connectNulls={false}
+                      isAnimationActive={false}
+                    />
+                  )
+                )}
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        ))}
     </div>
   )
 }

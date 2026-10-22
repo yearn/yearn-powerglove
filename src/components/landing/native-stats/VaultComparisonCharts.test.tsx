@@ -146,7 +146,6 @@ describe('custom allocator comparisons', () => {
     render(chart())
     const section = screen.getByRole('region', { name: 'V3 vault comparison' })
     await waitFor(() => expect(section.querySelectorAll('.recharts-line-curve')).toHaveLength(2))
-    expect(screen.getByText('4-week moving average · Average weekly net earnings (USD)')).toBeTruthy()
     const requests = () => fetch.mock.calls.filter(([url]) => String(url).includes('vaultAddress='))
     expect(requests()).toHaveLength(2)
     for (const [url] of requests()) {
@@ -161,7 +160,6 @@ describe('custom allocator comparisons', () => {
     expect(first.match(/[ML]/g)).toHaveLength(7)
     const metric = screen.getByRole('group', { name: 'Vault metric' })
     fireEvent.click(within(metric).getByRole('button', { name: 'Fees' }))
-    expect(screen.getByText('4-week moving average · Average weekly fees (USD)')).toBeTruthy()
     expect(screen.queryByRole('heading', { name: 'Earnings by Vault' })).toBeNull()
     expect(section.querySelectorAll('.recharts-line-curve')).toHaveLength(2)
     expect(requests()).toHaveLength(2)

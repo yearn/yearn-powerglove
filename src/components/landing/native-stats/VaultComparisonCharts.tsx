@@ -159,9 +159,13 @@ export function VaultComparisonCharts({
 
   return (
     <section className="chain-fee-charts fee-chart-group" aria-label="V3 vault comparison" aria-busy={loading}>
-      <div className="card fee-chart-card">
-        <div className="fee-chart-header">
-          <h2>Compare V3 Vaults</h2>
+      <FeeBreakdownChart
+        stacked={false}
+        title={`${metric === 'earnings' ? 'Earnings' : 'Fees'} by Vault`}
+        metric={metric}
+        metricControl={<FeeMetricToggle value={metric} onValueChange={setMetric} label="Vault" />}
+        viewControl={<ChartViewToggle view={view} onViewChange={onViewChange} interval={interval} label="Vault" />}
+        controls={
           <div className="allocator-comparison-actions">
             <Popover
               onOpenChange={(open) => {
@@ -229,80 +233,54 @@ export function VaultComparisonCharts({
                 </fieldset>
               </PopoverContent>
             </Popover>
-            <button
-              type="button"
-              className="page-btn"
-              disabled={!rankedVaults.length}
-              onClick={() => onSelectedKeysChange(rankAllocators(rankedVaults, 'fees').slice(0, 5).map(allocatorKey))}
-            >
-              Top 5 by fees
-            </button>
-            <button
-              type="button"
-              className="page-btn"
-              disabled={!rankedVaults.length}
-              onClick={() =>
-                onSelectedKeysChange(rankAllocators(rankedVaults, 'earnings').slice(0, 5).map(allocatorKey))
-              }
-            >
-              Top 5 by earnings
-            </button>
             <button type="button" className="page-btn" disabled={!keys.length} onClick={() => onSelectedKeysChange([])}>
               Clear selection
             </button>
           </div>
-        </div>
-        {catalog.isError && (
-          <div className="error-retry">
-            <p>The vault picker could not be loaded.</p>
-            <button type="button" className="page-btn" onClick={() => void catalog.refetch()}>
-              Retry vault picker
-            </button>
-          </div>
-        )}
-        {failed.length > 0 && (
-          <div className="error-retry">
-            <p>History could not be loaded for {failed.join(', ')}.</p>
-            <button
-              type="button"
-              className="page-btn"
-              onClick={() => {
-                for (const history of histories) if (history.isError) void history.refetch()
-              }}
-            >
-              Retry vault history
-            </button>
-          </div>
-        )}
-        {loading && <output className="text-dim">Loading selected vault histories…</output>}
-        {!selected.length && !catalog.isPending && (
-          <p className="text-dim">Choose V3 vault products to build your comparison.</p>
-        )}
-      </div>
-      {selected.length > 0 &&
-        (loading && histories.every((history) => !history.data) ? (
-          <SkeletonChart />
-        ) : (
-          <FeeBreakdownChart
-            stacked={false}
-            title={`${metric === 'earnings' ? 'Earnings' : 'Fees'} by Vault`}
-            subtitle={
-              smoothed
-                ? `4-week moving average · Average weekly ${metric === 'earnings' ? 'net earnings' : 'fees'} (USD)`
-                : metric === 'earnings'
-                  ? 'Reported gross gains less losses'
-                  : 'Gross fees charged'
-            }
-            metric={metric}
-            metricControl={<FeeMetricToggle value={metric} onValueChange={setMetric} label="Vault" />}
-            viewControl={<ChartViewToggle view={view} onViewChange={onViewChange} interval={interval} label="Vault" />}
-            data={chartData}
-            series={series}
-            interval={smoothed ? 'weekly' : interval}
-            renderType={renderType}
-            onRenderTypeChange={onRenderTypeChange}
-          />
-        ))}
+        }
+        notice={
+          <>
+            {catalog.isError && (
+              <div className="error-retry">
+                <p>The vault picker could not be loaded.</p>
+                <button type="button" className="page-btn" onClick={() => void catalog.refetch()}>
+                  Retry vault picker
+                </button>
+              </div>
+            )}
+            {failed.length > 0 && (
+              <div className="error-retry">
+                <p>History could not be loaded for {failed.join(', ')}.</p>
+                <button
+                  type="button"
+                  className="page-btn"
+                  onClick={() => {
+                    for (const history of histories) if (history.isError) void history.refetch()
+                  }}
+                >
+                  Retry vault history
+                </button>
+              </div>
+            )}
+          </>
+        }
+        placeholder={
+          !selected.length ? (
+            !catalog.isPending ? (
+              <p className="text-dim">Choose V3 vault products to build your comparison.</p>
+            ) : (
+              <SkeletonChart />
+            )
+          ) : loading && histories.every((history) => !history.data) ? (
+            <SkeletonChart />
+          ) : null
+        }
+        data={chartData}
+        series={series}
+        interval={smoothed ? 'weekly' : interval}
+        renderType={renderType}
+        onRenderTypeChange={onRenderTypeChange}
+      />
     </section>
   )
 }

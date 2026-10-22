@@ -12,7 +12,7 @@ const ChartsPanel = lazy(() =>
 )
 
 import { StrategiesPanel } from '@/components/strategies-panel/index'
-import { VaultPageBreadcrumb, VaultPageLayout } from '@/components/vault-page'
+import { VaultPageLayout } from '@/components/vault-page'
 import { type ChainId, isSupportedChainId } from '@/constants/chains'
 import { isYBoldAddress, isYvUsdAddress } from '@/constants/featuredVaults'
 import { useTokenAssetsContext } from '@/contexts/useTokenAssets'
@@ -61,7 +61,6 @@ type SingleVaultPageContentProps = {
   transformedPpsData: ReturnType<typeof useChartData>['transformedPpsData']
   yvUsdChartData?: ReturnType<typeof useYvUsdChartData>['yvUsdChartData']
   isYBold?: boolean
-  isYvUsd?: boolean
   mainInfoPanelProps: ReturnType<typeof useMainInfoPanelData>
   reallocationData: ReturnType<typeof useReallocationData>['data']
 }
@@ -81,7 +80,6 @@ export function SingleVaultPageContent({
   transformedPpsData,
   yvUsdChartData,
   isYBold = false,
-  isYvUsd = false,
   mainInfoPanelProps,
   reallocationData
 }: SingleVaultPageContentProps) {
@@ -123,7 +121,6 @@ export function SingleVaultPageContent({
 
   return (
     <VaultPageLayout isLoading={isInitialLoading} hasErrors={hasErrors}>
-      <VaultPageBreadcrumb vaultName={isYvUsd ? 'yvUSD' : vaultDetails.name} />
       {overrideItems.length > 0 && (
         <div className="relative z-30 flex items-start gap-3 border border-amber-300 bg-amber-50 px-4 py-3 text-amber-800">
           <span aria-hidden="true" className="text-xl leading-none">
@@ -283,7 +280,6 @@ function ValidVaultPage({ chainId, vaultAddress }: { chainId: string; vaultAddre
       transformedPpsData={transformedPpsData}
       yvUsdChartData={yvUsdChartData}
       isYBold={isYBold}
-      isYvUsd={isYvUsd}
       mainInfoPanelProps={mainInfoPanelProps}
       reallocationData={reallocationData}
     />
