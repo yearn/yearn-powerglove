@@ -1,15 +1,17 @@
+import { Link } from '@tanstack/react-router'
 import { ChevronDown } from 'lucide-react'
 import { type ReactNode, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AuditPanel } from './AuditPanel'
 import { ComparisonPanel } from './ComparisonPanel'
 import { ErrorBoundary } from './ErrorBoundary'
 import { FeesPanel } from './FeesPanel'
+import { FeeYieldAnalysis } from './FeeYieldAnalysis'
+import { defaultFeeTimeRange } from './fee-timeframe'
 import { HAS_FEES_API, HAS_TVL_API } from './hooks'
+import { SharedStatsChartControls } from './SharedStatsChartControls'
 import { StatsChainSelector } from './StatsChainSelector'
-import { StatsContext, type StatsDensity } from './StatsContext'
-import { STATS_TABS, type StatsTab } from './stats-navigation'
+import { StatsContext, type StatsDensity, StatsTimeRangeContext } from './StatsContext'
 import { TvlOverview } from './TvlOverview'
 import { VaultBreakdown2 } from './VaultBreakdown2'
 import './styles.css'
@@ -50,27 +52,25 @@ function AnalysisSection({
   )
 }
 
-export function NativeStatsDashboard({ tab, onTabChange }: { tab: StatsTab; onTabChange: (tab: StatsTab) => void }) {
+export function NativeStatsDashboard({ analysis = false }: { analysis?: boolean }) {
+  const [range, setRange] = useState(() => defaultFeeTimeRange(Math.floor(Date.now() / 1000)))
+  const rangeContext = useMemo(() => ({ range, setRange }), [range])
   const [chainFilter, setChainFilter] = useState('all')
   const density: StatsDensity = 'comfortable'
   const [lastFetchedAt, setLastFetchedAt] = useState<number | null>(null)
   const sectionRef = useRef<HTMLElement>(null)
-  const tabsRef = useRef<HTMLDivElement>(null)
 
   useLayoutEffect(() => {
     const section = sectionRef.current
-    const tabs = tabsRef.current
     const header = document.querySelector('header')
-    if (!section || !tabs || !header) return
+    if (!section || !header) return
 
     const updateOffsets = () => {
       section.style.setProperty('--stats-header-height', `${header.getBoundingClientRect().height}px`)
-      section.style.setProperty('--stats-tabs-height', `${tabs.getBoundingClientRect().height}px`)
     }
     updateOffsets()
     const observer = new ResizeObserver(updateOffsets)
     observer.observe(header)
-    observer.observe(tabs)
     return () => observer.disconnect()
   }, [])
 
@@ -82,53 +82,58 @@ export function NativeStatsDashboard({ tab, onTabChange }: { tab: StatsTab; onTa
   const chainSelector = <StatsChainSelector value={chainFilter} onValueChange={setChainFilter} />
 
   return (
-    <StatsContext.Provider value={contextValue}>
-      <section ref={sectionRef} className="pg-stats">
-        <div className="stats-tabs-shell">
-          <Tabs value={tab} onValueChange={(value) => onTabChange(value as StatsTab)} className="w-full">
-            <TabsList ref={tabsRef} className="stats-tabs-list">
-              {STATS_TABS.map((item) => (
-                <TabsTrigger key={item.key} value={item.key} className="stats-tab">
-                  {item.label}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-
-            <div className={`stats-tab-panel${tab === 'fees' || tab === 'overview' ? ' stats-fees-tab-panel' : ''}`}>
-              {tab === 'analysis' && <div className="stats-chain-filter">{chainSelector}</div>}
-              <TabsContent value="overview" className="mt-0">
-                {!HAS_TVL_API ? (
-                  <MissingApiNotice lane="TVL" />
-                ) : (
-                  <ErrorBoundary>
-                    <TvlOverview chainSelector={chainSelector} />
-                  </ErrorBoundary>
-                )}
-                <AnalysisSection title="Vault breakdown">
+    <StatsTimeRangeContext.Provider value={rangeContext}>
+      <StatsContext.Provider value={contextValue}>
+        <section ref={sectionRef} className="pg-stats">
+          <div className="stats-page-panel">
+            {analysis ? (
+              <>
+                <div className="stats-page-navigation">
+                  <Link to="/stats" className="page-btn">
+                    Back to Stats
+                  </Link>
+                  {chainSelector}
+                </div>
+                <AnalysisSection title="TVL vs Fee Yield" defaultOpen>
+                  {HAS_FEES_API ? <FeeYieldAnalysis /> : <MissingApiNotice lane="fees" />}
+                </AnalysisSection>
+                <AnalysisSection title="Vault Breakdown">
                   {HAS_TVL_API ? <AuditPanel /> : <MissingApiNotice lane="TVL" />}
                 </AnalysisSection>
                 <AnalysisSection title="Vault Breakdown 2">
                   {HAS_TVL_API ? <VaultBreakdown2 /> : <MissingApiNotice lane="TVL" />}
                 </AnalysisSection>
-              </TabsContent>
-              <TabsContent value="fees" className="mt-0">
-                {!HAS_FEES_API ? (
-                  <MissingApiNotice lane="fees" />
-                ) : (
-                  <ErrorBoundary>
-                    <FeesPanel chainSelector={chainSelector} />
-                  </ErrorBoundary>
-                )}
-              </TabsContent>
-              <TabsContent value="analysis" className="mt-0">
-                <AnalysisSection title="Compare TVL to DefiLlama" defaultOpen>
+                <AnalysisSection title="Compare TVL to DefiLlama">
                   {HAS_TVL_API ? <ComparisonPanel /> : <MissingApiNotice lane="TVL" />}
                 </AnalysisSection>
-              </TabsContent>
-            </div>
-          </Tabs>
-        </div>
-      </section>
-    </StatsContext.Provider>
+              </>
+            ) : (
+              <>
+                <SharedStatsChartControls chainSelector={chainSelector} />
+                {HAS_TVL_API ? (
+                  <ErrorBoundary>
+                    <TvlOverview />
+                  </ErrorBoundary>
+                ) : (
+                  <MissingApiNotice lane="TVL" />
+                )}
+                {HAS_FEES_API ? (
+                  <ErrorBoundary>
+                    <FeesPanel />
+                  </ErrorBoundary>
+                ) : (
+                  <MissingApiNotice lane="fees" />
+                )}
+                <div className="stats-page-navigation stats-more-analysis">
+                  <Link to="/stats/analysis" className="page-btn">
+                    Other Analysis
+                  </Link>
+                </div>
+              </>
+            )}
+          </div>
+        </section>
+      </StatsContext.Provider>
+    </StatsTimeRangeContext.Provider>
   )
 }

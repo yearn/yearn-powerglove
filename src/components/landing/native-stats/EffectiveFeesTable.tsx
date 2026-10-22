@@ -118,10 +118,6 @@ export function EffectiveFeesTable({
       <div className="monthly-fee-toolbar">
         <div>
           <h2>Adjusted TVL and Fees by Vault</h2>
-          <p className="text-dim">
-            Effective fees for a direct deposit, including underlying allocations. Latest published configuration and
-            allocation snapshot.
-          </p>
         </div>
         <div className="monthly-fee-filters">
           {chainSelector}
@@ -267,36 +263,9 @@ export function EffectiveFeesTable({
         </table>
         {!sortedStacks.length && <p className="monthly-fee-empty text-dim">No vaults match these filters.</p>}
       </div>
-      <div className="monthly-fee-footer">
-        <span className="text-dim">{sortedStacks.length.toLocaleString()} vaults</span>
+      <div className="monthly-fee-footer effective-fee-pagination">
         {stackPagination.Pagination && <stackPagination.Pagination />}
       </div>
-      <details className="effective-fee-methodology">
-        <summary>Methodology</summary>
-        <p>
-          Reported TVL is reported total assets, including idle funds. Product rows combine their published members and
-          remove ownership between those members so the same assets appear once. Adjusted TVL excludes capital already
-          attributed to upstream vaults and any separately published bridge exclusions. Product inputs show only
-          ownership from outside the product; internal member transfers are hidden.
-        </p>
-        <p>
-          Grey upstream nodes show excluded capital and the source vault’s own layer fees for context. These upstream
-          fees are not added to the selected vault’s effective fee. The selected node shows its own layer or product
-          fee; the main table shows the published effective fee.
-        </p>
-        <p>
-          Direct deposits show reported capital not attributed to upstream Yearn vaults, rather than historical deposit
-          transactions. Downstream includes published strategy allocations outside the fee stack and apportions them to
-          adjusted TVL. Idle funds are inferred from reported assets less published strategy debt. Missing or
-          conflicting allocations remain unresolved; published debt caps and debt / asset adjustments are identified.
-          Capital repeats along successive layers and must not be summed across the graph. Rates remain the published
-          rates; this view does not recalculate them.
-        </p>
-        <p>
-          All figures use the same published snapshot. The diagram covers known published allocation paths. A dash means
-          unavailable, including a source fee configuration that has not been published.
-        </p>
-      </details>
     </section>
   )
 }

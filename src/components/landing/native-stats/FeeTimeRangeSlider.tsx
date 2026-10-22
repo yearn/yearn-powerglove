@@ -1,10 +1,7 @@
 import * as Slider from '@radix-ui/react-slider'
-import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import type { ChartDateRange } from '@/components/charts/chart-utils'
-import type { CanonicalFeeHistory } from './canonical-fees'
-import { feeRangeDate, feeRangeDay, feeSliderBounds, feeSliderTicks, feeSliderValues } from './fee-range-slider'
-import { resolveStatsApiBase } from './hooks'
+import { feeRangeDate, feeRangeDay, feeSliderTicks, feeSliderValues } from './fee-range-slider'
 
 function formatSliderDate(date: string, day = true): string {
   return new Date(`${date}T00:00:00Z`).toLocaleDateString('en-US', {
@@ -78,53 +75,4 @@ export function FeeDateSlider({
       </div>
     </section>
   )
-}
-
-export function FeeTimeRangeSlider({
-  datasetId,
-  selected,
-  onApply
-}: {
-  datasetId?: string
-  selected: ChartDateRange | null
-  onApply: (range: ChartDateRange) => void
-}) {
-  const base = resolveStatsApiBase('fees') ?? ''
-  const history = useQuery({
-    queryKey: ['fee-range-full-history', base, datasetId],
-    enabled: !!datasetId,
-    placeholderData: keepPreviousData,
-    staleTime: Infinity,
-    retry: false,
-    queryFn: async ({ signal }): Promise<CanonicalFeeHistory> => {
-      const params = new URLSearchParams({ interval: 'weekly', datasetId: datasetId ?? '' })
-      const response = await fetch(`${base}/api/fees/history?${params}`, { signal })
-      if (!response.ok) throw new Error('Timeline request failed')
-      const data: CanonicalFeeHistory = await response.json()
-      if (!Array.isArray(data.buckets) || data.interval !== 'weekly' || data.datasetId !== datasetId) {
-        throw new Error('Timeline does not match the selected dataset')
-      }
-      return data
-    }
-  })
-
-  if (!datasetId && !history.data) return null
-  if (history.isError)
-    return (
-      <div className="fee-range-timeline text-dim">
-        Timeline could not be loaded.{' '}
-        <button type="button" className="page-btn" onClick={() => void history.refetch()}>
-          Retry timeline
-        </button>
-      </div>
-    )
-  if (!history.data)
-    return (
-      <output className="fee-range-timeline text-dim" aria-live="polite">
-        Loading timeline…
-      </output>
-    )
-  const bounds = feeSliderBounds(history.data.buckets, Math.floor(Date.now() / 1000))
-  if (!bounds) return null
-  return <FeeDateSlider key={`${bounds.start}:${bounds.end}`} bounds={bounds} selected={selected} onApply={onApply} />
 }

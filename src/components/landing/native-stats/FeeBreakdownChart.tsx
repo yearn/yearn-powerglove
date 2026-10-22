@@ -63,6 +63,7 @@ export function FeeBreakdownChart({
   renderType,
   onRenderTypeChange,
   metricControl,
+  viewControl,
   stacked = true
 }: ChartTypeControl & {
   metric: ChainFeeMetric
@@ -72,6 +73,7 @@ export function FeeBreakdownChart({
   subtitle: string
   interval: FeeHistoryInterval
   metricControl?: ReactNode
+  viewControl?: ReactNode
   stacked?: boolean
 }) {
   const [hiddenSeries, setHiddenSeries] = useState<Set<string>>(() => new Set())
@@ -84,6 +86,7 @@ export function FeeBreakdownChart({
           <div className="fee-chart-title-row">
             <h2>{title}</h2>
             {metricControl}
+            {viewControl}
             <ChartTypeToggle value={renderType} onValueChange={onRenderTypeChange} label={title.toLowerCase()} />
           </div>
           <span className="text-dim">{subtitle}</span>

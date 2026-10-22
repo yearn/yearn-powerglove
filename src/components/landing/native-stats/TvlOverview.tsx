@@ -1,19 +1,15 @@
 import { ChevronDown, Info } from 'lucide-react'
-import { Fragment, type ReactNode, useContext, useEffect, useId, useMemo, useState } from 'react'
+import { Fragment, useContext, useEffect, useId, useMemo, useState } from 'react'
 import { Area, Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import type { NameType, Payload, ValueType } from 'recharts/types/component/DefaultTooltipContent'
-import type { ChartDateRange } from '@/components/charts/chart-utils'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useRootDarkMode } from '@/hooks/useRootDarkMode'
 import { buildBlueShadePalette } from '@/lib/theme-blue-palette'
 import { ChainTvlHistory } from './ChainTvlHistory'
 import { ChartTypeToggle, type StatsChartType } from './ChartTypeToggle'
-import { FeeDateSlider } from './FeeTimeRangeSlider'
-import { feeSliderValues } from './fee-range-slider'
 import { CAT_COLORS, CHAIN_NAMES, CHAIN_SHORT, CHART_COLORS, fmt, SkeletonCards, useFetch } from './hooks'
-import { StatsChartControls } from './StatsChartControls'
-import { StatsContext } from './StatsContext'
+import { StatsContext, StatsTimeRangeContext } from './StatsContext'
 import {
   buildConstantPriceTvlUrl,
   buildTvlHistoryUrl,
@@ -245,7 +241,8 @@ export function TvlHistoryTooltip({
   )
 }
 
-export function TvlOverview({ chainSelector }: { chainSelector: ReactNode }) {
+export function TvlOverview() {
+  const { range: selectedRange } = useContext(StatsTimeRangeContext)
   const { chainFilter, setLastFetchedAt } = useContext(StatsContext)
   const isDark = useRootDarkMode()
   const {
@@ -256,37 +253,16 @@ export function TvlOverview({ chainSelector }: { chainSelector: ReactNode }) {
     retry
   } = useFetch<LegacyTvlSummary>(chainFilter === 'all' ? '/api/tvl' : `/api/tvl?chainId=${chainFilter}`)
   const [tvlHistoryBreakdown, setTvlHistoryBreakdown] = useState<OverallTvlHistoryBreakdown>('chain')
-  const [selectedRange, setSelectedRange] = useState<ChartDateRange | null>(null)
   const [showPriceNeutral, setShowPriceNeutral] = useState(true)
   const [tvlHistoryView, setTvlHistoryView] = useState<StatsChartType>('bar')
   const [selectedHistoryChain, setSelectedHistoryChain] = useState<string | null>(null)
   const [historyEndAnchor] = useState(() => Math.floor(Date.now() / 1000))
   const tvlHistoryMode = 'external'
   const tvlHistoryInterval = 'weekly'
-  const fullHistoryFilters = new URLSearchParams({
-    groupBy: 'chain',
-    mode: tvlHistoryMode,
-    interval: tvlHistoryInterval
-  })
-  if (rawData?.datasetId) fullHistoryFilters.set('datasetId', rawData.datasetId)
-  const {
-    data: fullHistory,
-    error: timelineError,
-    retry: retryTimeline
-  } = useFetch<TvlHistoryRun>(`/api/tvl/history/runs/latest?${fullHistoryFilters}`, {
-    enabled: Boolean(rawData)
-  })
-  const timelineBounds = fullHistory
+  const selectedBounds = selectedRange
     ? {
-        start: new Date(fullHistory.range.from * 1000).toISOString().slice(0, 10),
-        end: new Date(fullHistory.range.to * 1000).toISOString().slice(0, 10)
-      }
-    : null
-  const sliderValues = timelineBounds ? feeSliderValues(timelineBounds, selectedRange, 365) : null
-  const selectedBounds = sliderValues
-    ? {
-        from: sliderValues[0] * DAY_SECONDS,
-        to: sliderValues[1] * DAY_SECONDS + DAY_SECONDS - 1
+        from: Date.parse(`${selectedRange.start}T00:00:00Z`) / 1000,
+        to: Date.parse(`${selectedRange.end}T00:00:00Z`) / 1000 + DAY_SECONDS - 1
       }
     : { from: historyEndAnchor - 365 * DAY_SECONDS, to: historyEndAnchor }
   const baseTvlHistoryUrl = buildTvlHistoryUrl({
@@ -409,70 +385,47 @@ export function TvlOverview({ chainSelector }: { chainSelector: ReactNode }) {
     : null
   const warningCount = rawTvlHistory ? getWarningCount(rawTvlHistory.meta) : 0
   const tvlHistoryBarSize = getHistoryBarSize(displayedHistoryRows.length)
-  const controls = (
-    <StatsChartControls>
-      {chainSelector}
-      <ChartTypeToggle value={tvlHistoryView} onValueChange={setTvlHistoryView} label="TVL" />
-      {timelineBounds ? (
-        <FeeDateSlider
-          bounds={timelineBounds}
-          selected={selectedRange}
-          onApply={setSelectedRange}
-          minDurationDays={365}
-        />
-      ) : timelineError ? (
-        <div className="fee-range-timeline text-dim">
-          Timeline could not be loaded.{' '}
-          <button type="button" className="page-btn" onClick={retryTimeline}>
-            Retry timeline
-          </button>
-        </div>
-      ) : (
-        <output className="fee-range-timeline text-dim">Loading timeline…</output>
-      )}
-    </StatsChartControls>
-  )
 
-  if (loading)
-    return (
-      <>
-        {controls}
-        <SkeletonCards count={1} />
-      </>
-    )
+  if (loading) return <SkeletonCards count={1} />
   if (error)
     return (
-      <>
-        {controls}
-        <div className="error-retry">
-          <div className="error-message">Error: {error}</div>
-          <button className="page-btn" onClick={retry}>
-            Retry
-          </button>
-        </div>
-      </>
+      <div className="error-retry">
+        <div className="error-message">Error: {error}</div>
+        <button className="page-btn" onClick={retry}>
+          Retry
+        </button>
+      </div>
     )
-  if (!data) return <>{controls}</>
+  if (!data) return null
 
   const maxChainTvl = Math.max(1, ...chainData.map(({ tvl }) => tvl))
 
   return (
     <>
-      {controls}
-      <div className="tvl-summary mb-5 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-3 gap-y-1">
-          <div className="value shrink-0">{fmt(data.totalTvl)}</div>
-          <div className="sub">
-            {data.vaultCount.active} active vault{data.vaultCount.active === 1 ? '' : 's'} across{' '}
-            {Object.keys(data.tvlByChain).length} chain{Object.keys(data.tvlByChain).length === 1 ? '' : 's'}
+      <section className="tvl-summary-cards" aria-label="Vault statistics">
+        <article className="metric" aria-label="Total TVL">
+          <div className="label">Total TVL</div>
+          <div className="value">{fmt(data.totalTvl)}</div>
+        </article>
+        <article className="metric" aria-label="Active Vaults">
+          <div className="label">Active Vaults</div>
+          <div className="value">{data.vaultCount.active?.toLocaleString() ?? '—'}</div>
+        </article>
+        <article className="metric" aria-label="Weekly Harvests">
+          <div className="label">Weekly Harvests</div>
+          <div className="value" title="Weekly harvest counts are not available from the current data API.">
+            —
           </div>
-        </div>
-      </div>
+        </article>
+      </section>
 
       <div className="card">
         <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2>TVL History</h2>
+            <div className="fee-chart-title-row">
+              <h2>TVL History</h2>
+              <ChartTypeToggle value={tvlHistoryView} onValueChange={setTvlHistoryView} label="TVL" />
+            </div>
             <div className="sub">
               Saved run grouped by {formatHistoryGroup(rawTvlHistory?.groupBy)};{' '}
               {tvlHistoryBreakdown === 'category'

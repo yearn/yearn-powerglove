@@ -70,8 +70,22 @@
   padding: 0 1.5rem;
 }
 
-.pg-stats [role="tabpanel"] {
-  padding: 0 1.5rem 1.5rem;
+.pg-stats .stats-page-panel {
+  padding: 0 var(--stats-panel-inset) 1.5rem;
+  background: var(--surface);
+}
+
+.pg-stats .stats-page-navigation {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 1rem 0;
+}
+
+.pg-stats .stats-more-analysis {
+  justify-content: flex-end;
 }
 
 .pg-stats .stats-analysis-section {
@@ -192,27 +206,6 @@
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 0.75rem;
   margin-bottom: 1rem;
-}
-
-.pg-stats .fees-panel > .metric-grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: clamp(0.25rem, 1vw, 0.75rem);
-}
-
-.pg-stats .fees-panel > .metric-grid .metric {
-  min-width: 0;
-  padding: clamp(0.5rem, 1.5vw, 1rem) clamp(0.25rem, 1.5vw, 1.25rem);
-}
-
-.pg-stats .fees-panel > .metric-grid .label {
-  font-size: clamp(0.5625rem, 1.5vw, 0.6875rem);
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-}
-
-.pg-stats .fees-panel > .metric-grid .value {
-  font-size: clamp(0.875rem, 3vw, 1.5rem);
-  white-space: nowrap;
 }
 
 .pg-stats .audit-summary-grid {
@@ -844,70 +837,14 @@
   border-radius: 4px;
 }
 
-.pg-stats .stats-tabs-shell {
-  background: var(--surface);
-}
-
-.pg-stats .stats-tabs-list {
-  position: sticky;
-  top: var(--stats-header-height, 60px);
-  z-index: 30;
-  display: flex;
-  height: auto;
-  max-width: 100%;
-  flex-wrap: wrap;
-  justify-content: flex-start;
-  overflow: visible;
-  border-bottom: 1px solid var(--border);
-  border-radius: 0;
-  background: var(--surface);
-  padding: 0 1.5rem;
-}
-
-.pg-stats .stats-tab {
-  height: 44px;
-  border-radius: 0;
-  border-bottom: 2px solid transparent;
-  background: transparent;
-  padding: 0 1rem;
-  color: var(--text-2);
-  font-size: 0.875rem;
-  font-weight: 400;
-  box-shadow: none;
-}
-
-.pg-stats .stats-tab:hover {
-  color: var(--text);
-}
-
-.pg-stats .stats-tab[data-state="active"] {
-  border-bottom-color: var(--accent);
-  background: transparent;
-  color: var(--text);
-  box-shadow: none;
-}
-
-.pg-stats .stats-tab-panel {
-  padding-top: 1rem;
-}
-
-.pg-stats .stats-fees-tab-panel {
-  padding-top: 0;
-}
-
-.pg-stats .stats-chain-filter {
-  display: flex;
-  justify-content: flex-end;
-  padding: 0 1.5rem 1rem;
-}
-
 .pg-stats .fees-toolbar {
   position: sticky;
-  top: calc(var(--stats-header-height, 60px) + var(--stats-tabs-height, 44px));
+  top: var(--stats-header-height, 60px);
   z-index: 20;
   background: var(--surface);
   display: flex;
   align-items: center;
+  gap: 0.75rem;
   margin: 0 calc(-1 * var(--stats-panel-inset)) 1rem;
   padding: 1rem var(--stats-panel-inset);
   border-bottom: 1px solid var(--border);
@@ -916,9 +853,9 @@
 .pg-stats .fees-toolbar-controls {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 0.5rem;
-  width: 100%;
+  flex: 1;
   min-width: 0;
 }
 
@@ -927,17 +864,16 @@
 }
 
 .pg-stats .fees-toolbar-collapse {
-  position: absolute;
-  top: 22px;
-  right: 0.5rem;
+  flex: 0 0 40px;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 28px;
+  width: 40px;
+  height: 40px;
   padding: 0;
-  border: 0;
-  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
   color: var(--text-2);
   cursor: pointer;
 }
@@ -948,15 +884,20 @@
 }
 
 .pg-stats .fees-toolbar-collapsed {
-  min-height: 52px;
+  height: 0;
+  margin-bottom: 0;
+  padding: 0;
+  border-bottom: 0;
+  background: transparent;
+  pointer-events: none;
 }
 
 .pg-stats .fees-toolbar-collapsed .fees-toolbar-collapse {
-  top: 12px;
-}
-
-.pg-stats .fees-controls-label {
-  font-size: 0.75rem;
+  position: absolute;
+  top: 4px;
+  right: var(--stats-panel-inset);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 10%);
+  pointer-events: auto;
 }
 
 .pg-stats .stats-chain-select {
@@ -1011,7 +952,7 @@
 }
 
 .pg-stats .fee-range-timeline {
-  flex-basis: 100%;
+  flex: 1 1 0;
   min-width: 0;
   padding: 0 10px;
 }
@@ -1952,10 +1893,7 @@
   }
 
   .pg-stats .top-bar,
-  .pg-stats .toolbar,
-  .pg-stats .stats-chain-filter,
-  .pg-stats [role="tabpanel"],
-  .pg-stats .stats-tabs-list {
+  .pg-stats .toolbar {
     padding-left: 1rem;
     padding-right: 1rem;
   }
@@ -1963,10 +1901,6 @@
   .pg-stats .toolbar-right {
     width: 100%;
     margin-left: 0;
-  }
-
-  .pg-stats .stats-tab {
-    padding: 0 0.7rem;
   }
 
   .pg-stats .metric-grid,
@@ -2627,21 +2561,156 @@
   font-size: 0.75rem;
 }
 
-.pg-stats .effective-fee-methodology {
-  margin-top: 1rem;
+/* Main statistics sections and summary values. */
+.pg-stats h2 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.pg-stats .stats-page-panel > .fees-panel {
+  margin-top: 2.5rem;
+}
+
+.pg-stats .effective-fee-pagination {
+  justify-content: flex-end;
+}
+
+.pg-stats .earnings-fees-section {
+  margin-top: 3rem;
+  padding-top: 2rem;
   border-top: 1px solid var(--border);
-  padding-top: 0.75rem;
-  text-align: left;
-  font-size: 0.8125rem;
 }
 
-.pg-stats .effective-fee-methodology summary {
-  cursor: pointer;
+.pg-stats .earnings-fees-section > h2 {
+  font-size: 1.5rem;
 }
 
-.pg-stats .effective-fee-methodology p {
-  max-width: 85ch;
-  margin: 0.75rem 0 0;
-  color: var(--text-2);
-  line-height: 1.6;
+.pg-stats .earnings-fees-range {
+  margin-top: 0.4rem;
+  font-size: 0.75rem;
+}
+
+.pg-stats .fee-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1.5rem;
+  padding: 2rem 0 2.5rem;
+}
+
+.pg-stats .fee-summary-stat {
+  min-width: 0;
+  text-align: center;
+}
+
+.pg-stats .fee-summary-stat .label {
+  text-align: center;
+}
+
+.pg-stats .fee-summary-values {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.pg-stats .fee-summary-values dt {
+  min-height: 2.5em;
+  font-size: 0.6875rem;
+  line-height: 1.25;
+  color: var(--text-3);
+}
+
+.pg-stats .fee-summary-values dd {
+  margin: 0.25rem 0 0;
+  font-size: clamp(1rem, 2vw, 1.5rem);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .pg-stats .fee-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 2rem 1rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .pg-stats .fee-summary-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.pg-stats .fees-toolbar-controls > .stats-chain-select {
+  flex-shrink: 0;
+}
+
+.pg-stats .tvl-summary-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.pg-stats .tvl-summary-cards .metric {
+  min-width: 0;
+}
+
+.pg-stats .tvl-summary-cards .value {
+  font-size: clamp(1.125rem, 2.5vw, 1.5rem);
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .pg-stats .fees-toolbar {
+    gap: 0.5rem;
+  }
+
+  .pg-stats .fees-toolbar .stats-chain-select {
+    padding-right: 0.5rem;
+    padding-left: 0.5rem;
+    font-size: 0.75rem;
+  }
+
+  .pg-stats .fees-toolbar .fee-range-timeline {
+    padding: 0 6px;
+  }
+
+  .pg-stats .fees-toolbar .fee-range-dates {
+    gap: 0.25rem;
+    font-size: 0.625rem;
+  }
+
+  .pg-stats .fees-toolbar .fee-range-dates strong {
+    display: block;
+    margin-left: 0;
+    font-size: 0.625rem;
+  }
+
+  .pg-stats .fees-toolbar .fee-range-year {
+    display: none;
+  }
+
+  .pg-stats .fees-toolbar .fee-range-axis {
+    font-size: 0.5625rem;
+  }
+
+  .pg-stats .tvl-summary-cards {
+    gap: 0.5rem;
+  }
+
+  .pg-stats .tvl-summary-cards .metric {
+    padding: 0.75rem 0.5rem;
+  }
+
+  .pg-stats .tvl-summary-cards .label {
+    font-size: 0.5625rem;
+    letter-spacing: 0.01em;
+  }
+}
+
+@media (max-width: 600px) {
+  .pg-stats .tvl-summary-cards .value {
+    font-size: clamp(0.875rem, 4vw, 1.125rem);
+  }
 }

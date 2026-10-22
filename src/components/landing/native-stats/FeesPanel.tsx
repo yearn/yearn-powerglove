@@ -1,22 +1,9 @@
-import { type ReactNode, useContext, useEffect, useMemo, useState } from 'react'
-import {
-  Bar,
-  CartesianGrid,
-  Cell,
-  ComposedChart,
-  Line,
-  ResponsiveContainer,
-  Scatter,
-  ScatterChart,
-  Tooltip,
-  XAxis,
-  YAxis,
-  ZAxis
-} from 'recharts'
-import type { ChartDateRange } from '@/components/charts/chart-utils'
+import { type ReactNode, useContext, useEffect, useId, useMemo, useState } from 'react'
+import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { Tooltip as HelpTooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { ChainFeeHistoryCharts, type ChainFeeHistoryView } from './ChainFeeHistoryCharts'
 import { type ChartTypeControl, ChartTypeToggle, type StatsChartType } from './ChartTypeToggle'
+import { ChartViewToggle } from './ChartViewToggle'
 import {
   type CanonicalFeeHistory,
   type CanonicalFeeSummary,
@@ -25,7 +12,6 @@ import {
   isCanonicalFeeSummary
 } from './canonical-fees'
 import { EffectiveFeesTable } from './EffectiveFeesTable'
-import { FeeTimeRangeSlider } from './FeeTimeRangeSlider'
 import { FeeYieldChart } from './FeeYieldChart'
 import {
   buildCumulativeFeeHistorySeries,
@@ -37,117 +23,13 @@ import {
 } from './fee-history'
 import { defaultFeeTimeRange, resolveFeeTimeframe } from './fee-timeframe'
 import { buildTvlYieldSeries } from './fee-yield'
-import { CHAIN_NAMES, fmt, pctFmt, SkeletonCards, SkeletonChart, useFetch } from './hooks'
+import { CHAIN_NAMES, fmt, SkeletonCards, SkeletonChart, useFetch } from './hooks'
 import { MonthlyVaultTables } from './MonthlyVaultTables'
-import { StatsChartControls } from './StatsChartControls'
-import { StatsContext } from './StatsContext'
+import { StatsContext, StatsTimeRangeContext } from './StatsContext'
 import type { FeeStackSummary } from './types'
 import { useFeeTvlHistory } from './useFeeTvlHistory'
 import { VaultComparisonCharts } from './VaultComparisonCharts'
 import { VaultTypeFeeCharts } from './VaultTypeFeeCharts'
-
-type Trend = 'improving' | 'declining' | 'stable' | 'insufficient_data'
-type PricingConfidence = 'high' | 'medium' | 'low'
-type Quadrant = 'high_tvl_high_yield' | 'high_tvl_low_yield' | 'low_tvl_high_yield' | 'low_tvl_low_yield'
-
-interface VaultProfitability {
-  address: string
-  chainId: number
-  name: string | null
-  category: string
-  tvlUsd: number | null
-  annualizedFeeRevenue: number | null
-  feeYield: number | null
-  feeCapture: number | null
-  gainYield: number | null
-  trend: Trend
-  trendDelta: number | null
-  pricingConfidence: PricingConfidence
-  reportCount: number
-  avgHarvestFrequencyDays: number | null
-  performanceFee: number | null
-  managementFee: number | null
-  totalGainUsd: number | null
-  totalFeeRevenue: number | null
-  quadrant: Quadrant | null
-  currentPeriodFeeYield: number | null
-  previousPeriodFeeYield: number | null
-}
-
-interface ProfitabilitySummary {
-  protocolFeeYield: number | null
-  feeCaptureRate: number | null
-  medianVaultFeeYield: number | null
-  totalAnnualizedFees: number | null
-  totalTvl: number | null
-  vaultCount: number
-  lastUpdated: string
-  vaults: VaultProfitability[]
-  byChain: Array<{
-    chain: string
-    chainId: number
-    tvl: number
-    fees: number
-    feeYield: number | null
-    vaultCount: number
-  }>
-  byCategory: Array<{ category: string; tvl: number; fees: number; feeYield: number | null; vaultCount: number }>
-  quadrants: Record<Quadrant, VaultProfitability[]>
-  dataQuality: {
-    highConfidenceCount: number
-    mediumConfidenceCount: number
-    lowConfidenceCount: number
-    reportsWithPricingSource: number
-    totalReports: number
-  }
-}
-
-const QUADRANT_LABELS: Record<Quadrant, { label: string; color: string; desc: string }> = {
-  high_tvl_high_yield: { label: 'Cash Cows', color: '#16a34a', desc: 'Protect & maintain' },
-  high_tvl_low_yield: { label: 'Optimize', color: '#a16207', desc: 'Improve yield or migrate' },
-  low_tvl_high_yield: { label: 'Scale Up', color: '#0657f9', desc: 'Drive more TVL' },
-  low_tvl_low_yield: { label: 'Review', color: '#808080', desc: 'Consider retirement' }
-}
-
-function ScatterTooltip({ active, payload }: any) {
-  if (!active || !payload?.[0]?.payload) return null
-  const v = payload[0].payload
-  return (
-    <div
-      style={{
-        background: 'var(--surface)',
-        border: '1px solid var(--border)',
-        borderRadius: 4,
-        padding: '0.7rem 0.85rem',
-        fontSize: '0.78rem',
-        lineHeight: 1.6,
-        minWidth: 180
-      }}
-    >
-      <div style={{ fontWeight: 600, marginBottom: 6, color: 'var(--text)', fontSize: '0.82rem' }}>
-        {v.name || v.address?.slice(0, 10)}
-      </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
-        <span style={{ color: 'var(--text-2)' }}>TVL</span>
-        <span style={{ color: 'var(--text)' }}>{fmt(v.tvlUsd)}</span>
-      </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
-        <span style={{ color: 'var(--text-2)' }}>Fee Yield</span>
-        <span style={{ color: 'var(--accent)' }}>{pctFmt(v.feeYield)}</span>
-      </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
-        <span style={{ color: 'var(--text-2)' }}>Fees (ann.)</span>
-        <span style={{ color: 'var(--green)' }}>{fmt(v.annualizedFeeRevenue)}</span>
-      </div>
-    </div>
-  )
-}
-
-function timeframeButtonClass(active: boolean) {
-  return `min-w-0 rounded-none px-3 py-2 text-center text-xs font-medium transition-colors sm:text-sm ${
-    active ? 'bg-[#0657f9] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-  }`
-}
 
 function formatCanonicalUsd(value: string | null, decimals = 1): string {
   const parsed = canonicalDecimalToNumber(value)
@@ -197,6 +79,7 @@ export function FeeHistoryChart({
   data,
   periods,
   cumulative,
+  viewControl,
   series,
   description,
   interval,
@@ -207,6 +90,7 @@ export function FeeHistoryChart({
   data: FeeHistoryPoint[]
   periods: FeeHistoryPoint[]
   cumulative: boolean
+  viewControl?: ReactNode
   series: FeeHistoryChartSeries[]
   description: string
   interval: FeeHistoryInterval
@@ -249,6 +133,7 @@ export function FeeHistoryChart({
       <div className="card fee-chart-card">
         <div className="fee-chart-title-row">
           <h2>{title}</h2>
+          {viewControl}
           <ChartTypeToggle value={renderType} onValueChange={onRenderTypeChange} label="earnings and fees" />
         </div>
         <p className="text-dim">No completed history in this range.</p>
@@ -261,6 +146,7 @@ export function FeeHistoryChart({
       <div className="fee-chart-header">
         <div className="fee-chart-title-row">
           <h2>{title}</h2>
+          {viewControl}
           <ChartTypeToggle value={renderType} onValueChange={onRenderTypeChange} label="earnings and fees" />
         </div>
         <fieldset className="fee-series-toggles">
@@ -418,12 +304,21 @@ const DEFAULT_FEE_CHART_TYPES = {
   vaultType: 'bar'
 } as const
 
-export function FeesPanel({ chainSelector }: { chainSelector: ReactNode }) {
+export function FeesPanel() {
   const { chainFilter, setLastFetchedAt } = useContext(StatsContext)
-  const [selectedRange, setSelectedRange] = useState<ChartDateRange>(() =>
-    defaultFeeTimeRange(Math.floor(Date.now() / 1000))
-  )
-  const [chartView, setChartView] = useState<ChainFeeHistoryView>('periodic')
+  const { range } = useContext(StatsTimeRangeContext)
+  const selectedRange = range ?? defaultFeeTimeRange(Math.floor(Date.now() / 1000))
+  const [chartViews, setChartViews] = useState<Record<keyof typeof DEFAULT_FEE_CHART_TYPES, ChainFeeHistoryView>>({
+    overall: 'periodic',
+    feeYield: 'periodic',
+    allocator: 'periodic',
+    chain: 'periodic',
+    vaultType: 'periodic'
+  })
+  const chartView = (key: keyof typeof DEFAULT_FEE_CHART_TYPES) => ({
+    view: chartViews[key],
+    onViewChange: (view: ChainFeeHistoryView) => setChartViews((views) => ({ ...views, [key]: view }))
+  })
   const [chartTypes, setChartTypes] =
     useState<Record<keyof typeof DEFAULT_FEE_CHART_TYPES, StatsChartType>>(DEFAULT_FEE_CHART_TYPES)
   const chartType = (key: keyof typeof DEFAULT_FEE_CHART_TYPES): ChartTypeControl => ({
@@ -448,8 +343,6 @@ export function FeesPanel({ chainSelector }: { chainSelector: ReactNode }) {
   historyFilters.set('until', String(untilTs))
   if (chainFilter !== 'all') historyFilters.set('chainId', chainFilter)
   historyFilters.set('interval', historyInterval)
-  const profitabilityFilters = new URLSearchParams()
-  if (chainFilter !== 'all') profitabilityFilters.set('chainId', chainFilter)
 
   const {
     data: summary,
@@ -459,6 +352,24 @@ export function FeesPanel({ chainSelector }: { chainSelector: ReactNode }) {
     retry: retrySummary
   } = useFetch<CanonicalFeeSummary>(`/api/fees?${feeFilterQuery}`)
   const validSummary = summary !== null && isCanonicalFeeSummary(summary)
+  const allTimeFilters = new URLSearchParams()
+  if (chainFilter !== 'all') allTimeFilters.set('chainId', chainFilter)
+  if (summary?.datasetId) allTimeFilters.set('datasetId', summary.datasetId)
+  const allTime = useFetch<CanonicalFeeSummary>(`/api/fees?${allTimeFilters}`, {
+    enabled: validSummary && !!summary.datasetId
+  })
+  const allTimeSummary =
+    allTime.data && isCanonicalFeeSummary(allTime.data) && allTime.data.datasetId === summary?.datasetId
+      ? allTime.data
+      : null
+  const earningsTitleId = useId()
+  const rangeLabel = (date: string) =>
+    new Date(`${date}T00:00:00Z`).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      timeZone: 'UTC'
+    })
   const vaultFilters = new URLSearchParams(feeFilters)
   if (validSummary && summary.datasetId) {
     historyFilters.set('datasetId', summary.datasetId)
@@ -493,8 +404,6 @@ export function FeesPanel({ chainSelector }: { chainSelector: ReactNode }) {
     error: feeStackError,
     retry: retryFeeStack
   } = useFetch<FeeStackSummary>('/api/fees/stack')
-  const { data: profData, loading: l5 } = useFetch<ProfitabilitySummary>(`/api/profitability?${profitabilityFilters}`)
-  const [quadrantFilter, setQuadrantFilter] = useState<Quadrant | 'all'>('all')
   useEffect(() => {
     if (fetchedAt) setLastFetchedAt(fetchedAt)
   }, [fetchedAt, setLastFetchedAt])
@@ -516,68 +425,13 @@ export function FeesPanel({ chainSelector }: { chainSelector: ReactNode }) {
     [vaultData]
   )
 
-  const scatterData = useMemo(() => {
-    if (!profData) return []
-    const base = profData.vaults
-      .filter(
-        (v): v is VaultProfitability & { feeYield: number; tvlUsd: number; quadrant: Quadrant } =>
-          v.feeYield != null &&
-          v.tvlUsd != null &&
-          v.quadrant != null &&
-          v.feeYield >= 0 &&
-          v.tvlUsd >= 1e4 &&
-          v.tvlUsd <= 1e8
-      )
-      .filter((v) => chainFilter === 'all' || String(v.chainId) === chainFilter)
-    const eligible = quadrantFilter !== 'all' ? base.filter((v) => v.quadrant === quadrantFilter) : base
-    if (eligible.length < 4) return eligible.map((v) => ({ ...v, logTvl: Math.log10(v.tvlUsd) }))
-    const yields = eligible.map((v) => v.feeYield).sort((a, b) => a - b)
-    const q1 = yields[Math.floor(yields.length * 0.25)]
-    const q3 = yields[Math.floor(yields.length * 0.75)]
-    const iqr = q3 - q1
-    const upper = q3 + 1.5 * iqr
-    return eligible.filter((v) => v.feeYield <= upper).map((v) => ({ ...v, logTvl: Math.log10(v.tvlUsd) }))
-  }, [profData, quadrantFilter, chainFilter])
-
-  const trendLine = useMemo(() => {
-    if (scatterData.length < 5) return null
-    const n = scatterData.length
-    const { sumX, sumY, sumXY, sumX2, sumY2 } = scatterData.reduce(
-      (acc, p) => ({
-        sumX: acc.sumX + p.logTvl,
-        sumY: acc.sumY + p.feeYield,
-        sumXY: acc.sumXY + p.logTvl * p.feeYield,
-        sumX2: acc.sumX2 + p.logTvl * p.logTvl,
-        sumY2: acc.sumY2 + p.feeYield * p.feeYield
-      }),
-      { sumX: 0, sumY: 0, sumXY: 0, sumX2: 0, sumY2: 0 }
-    )
-    const denom = n * sumX2 - sumX * sumX
-    if (denom === 0) return null
-    const slope = (n * sumXY - sumX * sumY) / denom
-    const intercept = (sumY - slope * sumX) / n
-    const denomR = Math.sqrt((n * sumX2 - sumX * sumX) * (n * sumY2 - sumY * sumY))
-    const r2 = denomR === 0 ? 0 : ((n * sumXY - sumX * sumY) / denomR) ** 2
-    if (r2 < 0.01) return null
-    const xs = scatterData.map((p) => p.logTvl)
-    const minX = Math.min(...xs)
-    const maxX = Math.max(...xs)
-    return {
-      points: [
-        { logTvl: minX, feeYield: slope * minX + intercept },
-        { logTvl: maxX, feeYield: slope * maxX + intercept }
-      ],
-      r2
-    }
-  }, [scatterData])
-
   // Only show skeletons on initial load, not when switching time ranges
   const hasData =
     validSummary &&
     history &&
     vaultData &&
     (!summary.datasetId || (history.datasetId === summary.datasetId && vaultData.datasetId === summary.datasetId))
-  const isFetching = l1 || l2 || l3 || l4 || l5
+  const isFetching = l1 || l2 || l3 || l4
   const isRefreshing = Boolean(hasData) && isFetching
   useEffect(() => {
     if (!isRefreshing) {
@@ -589,30 +443,9 @@ export function FeesPanel({ chainSelector }: { chainSelector: ReactNode }) {
     return () => window.clearTimeout(timeout)
   }, [isRefreshing])
 
-  const controls = (
-    <StatsChartControls key="fees-controls">
-      {chainSelector}
-      <fieldset className="fees-chart-view flex flex-wrap gap-2" aria-label="Chart view">
-        {(['periodic', 'cumulative'] as const).map((view) => (
-          <button
-            key={view}
-            type="button"
-            className={timeframeButtonClass(chartView === view)}
-            aria-pressed={chartView === view}
-            onClick={() => setChartView(view)}
-          >
-            {view === 'cumulative' ? 'Cumulative' : historyInterval === 'weekly' ? 'Weekly' : 'Monthly'}
-          </button>
-        ))}
-      </fieldset>
-      <FeeTimeRangeSlider datasetId={summary?.datasetId} selected={selectedRange} onApply={setSelectedRange} />
-    </StatsChartControls>
-  )
-
   if (summaryError || historyError || vaultError || (summary && !validSummary))
     return (
       <div className="fees-panel">
-        {controls}
         <div className="card">
           <h2>Fee data could not be loaded</h2>
           <p className="text-dim">Please try again.</p>
@@ -633,7 +466,6 @@ export function FeesPanel({ chainSelector }: { chainSelector: ReactNode }) {
   if (!hasData && (l1 || l2 || l3))
     return (
       <div className="fees-panel" aria-busy="true">
-        {controls}
         <div className="fees-panel fees-panel-initial" aria-busy="true">
           <div className="fees-loading-overlay fees-loading-overlay-initial">
             <FeesLoadingStatus label="Loading fee data" />
@@ -643,7 +475,7 @@ export function FeesPanel({ chainSelector }: { chainSelector: ReactNode }) {
         </div>
       </div>
     )
-  if (!hasData) return <div className="fees-panel">{controls}</div>
+  if (!hasData) return <div className="fees-panel" />
 
   return (
     <div className="fees-panel" aria-busy={isFetching}>
@@ -652,120 +484,6 @@ export function FeesPanel({ chainSelector }: { chainSelector: ReactNode }) {
           <FeesLoadingStatus label="Updating fee data" />
         </div>
       )}
-
-      {controls}
-
-      {/* ---- Metric Cards ---- */}
-      <TooltipProvider delayDuration={200}>
-        <div className="metric-grid">
-          <div className="metric">
-            <FeeMetricTitle title="Gross Fees" description="Fees charged across the stack" />
-            <div className="value">{formatCanonicalUsd(summary.totalFeesPaidUsd)}</div>
-          </div>
-          <div className="metric metric-green">
-            <FeeMetricTitle title="Net Yield" description="Gross gains less losses" />
-            <div className="value text-green">{formatCanonicalUsd(summary.netLifetimeEarningsUsd)}</div>
-          </div>
-          <div className="metric metric-blue">
-            <FeeMetricTitle title="Gross Gains" description="Reported vault gains" />
-            <div className="value text-blue">{formatCanonicalUsd(summary.grossGainsUsd)}</div>
-          </div>
-          <div className="metric metric-red">
-            <FeeMetricTitle title="Losses" description="Reported vault losses" />
-            <div className="value text-red">{formatCanonicalUsd(summary.lossesUsd)}</div>
-          </div>
-        </div>
-      </TooltipProvider>
-
-      {/* ---- Full-width fee history charts ---- */}
-      <div className="row fee-chart-row">
-        <FeeHistoryChart
-          {...chartType('overall')}
-          periods={feeHistorySeries}
-          cumulative={chartView === 'cumulative'}
-          title={
-            chartView === 'cumulative'
-              ? 'Cumulative Earnings & Fees'
-              : historyInterval === 'weekly'
-                ? 'Weekly Earnings & Fees'
-                : 'Monthly Earnings & Fees'
-          }
-          data={chartView === 'cumulative' ? cumulativeFeeHistorySeries : feeHistorySeries}
-          interval={historyInterval}
-          series={[
-            {
-              key: 'gains',
-              dataKey: chartView === 'cumulative' ? 'cumulativeGrossGainsUsd' : 'grossGainsUsd',
-              label: 'Gross Gains',
-              color: '#46a2ff'
-            },
-            {
-              key: 'yield',
-              dataKey: chartView === 'cumulative' ? 'cumulativeNetYieldUsd' : 'netYieldUsd',
-              label: 'Net Yield',
-              color: '#94adf2'
-            },
-            {
-              key: 'fees',
-              dataKey: chartView === 'cumulative' ? 'cumulativeFeesPaidUsd' : 'totalFeesPaidUsd',
-              label: 'Gross Fees',
-              color: '#16a34a',
-              strokeDasharray: '6 3'
-            }
-          ]}
-          description={`${chartTypes.overall === 'bar' ? 'Bar' : 'Line'} chart comparing ${chartView === 'cumulative' ? 'cumulative' : historyInterval} canonical gross gains, net yield, and gross fees over completed periods in the selected time range.`}
-        />
-
-        <section className="chain-fee-charts fee-chart-group" aria-label="Fees and earnings per dollar of TVL">
-          <FeeYieldChart
-            periods={feeHistorySeries}
-            interval={historyInterval}
-            view={chartView}
-            {...chartType('feeYield')}
-          />
-        </section>
-
-        {productData?.datasetId === summary.datasetId && productData?.aggregationScope === 'product' ? (
-          <VaultComparisonCharts
-            selectedKeys={selectedAllocatorKeys}
-            onSelectedKeysChange={setSelectedAllocatorKeys}
-            query={historyFilters.toString()}
-            rankedVaults={productData.vaults}
-            periods={feeHistorySeries}
-            view={chartView}
-            interval={historyInterval}
-            {...chartType('allocator')}
-          />
-        ) : productError ? (
-          <div className="error-retry">
-            <p>Product fee data could not be loaded.</p>
-            <button type="button" className="page-btn" onClick={retryProducts}>
-              Retry product fees
-            </button>
-          </div>
-        ) : (
-          <SkeletonChart />
-        )}
-
-        <ChainFeeHistoryCharts
-          {...chartType('chain')}
-          query={historyFilters.toString()}
-          chainIds={historyChainIds}
-          periods={feeHistorySeries}
-          view={chartView}
-          interval={historyInterval}
-        />
-
-        <VaultTypeFeeCharts
-          {...chartType('vaultType')}
-          query={historyFilters.toString()}
-          periods={feeHistorySeries}
-          interval={historyInterval}
-          view={chartView}
-        />
-
-        <MonthlyVaultTables chainSelector={chainSelector} />
-      </div>
 
       {/* ---- Effective Fees ---- */}
       {feeStackError && (
@@ -780,110 +498,161 @@ export function FeesPanel({ chainSelector }: { chainSelector: ReactNode }) {
         </div>
       )}
       {!feeStackError && feeStack && (
-        <EffectiveFeesTable feeStack={feeStack} vaults={vaultData?.vaults ?? []} chainSelector={chainSelector} />
+        <EffectiveFeesTable feeStack={feeStack} vaults={vaultData?.vaults ?? []} chainSelector={null} />
       )}
-      {profData && (
-        <div className="card fee-chart-card">
-          <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            TVL vs Fee Yield
-            {trendLine && (
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-3)', fontWeight: 400 }}>
-                R² = {trendLine.r2.toFixed(3)}
-              </span>
-            )}
-          </h2>
-          <fieldset className="quadrant-legend" aria-label="Quadrant filter">
-            {Object.entries(QUADRANT_LABELS).map(([key, { label, color, desc }]) => {
-              const count = profData.quadrants[key as Quadrant]?.length || 0
-              const isActive = quadrantFilter === key
-              return (
-                <button
-                  type="button"
-                  key={key}
-                  className="quadrant-tag"
-                  aria-pressed={isActive}
-                  style={{
-                    borderColor: color,
-                    color,
-                    cursor: 'pointer',
-                    opacity: quadrantFilter === 'all' || isActive ? 1 : 0.4,
-                    background: isActive ? `${color}15` : undefined
-                  }}
-                  onClick={() => setQuadrantFilter(quadrantFilter === key ? 'all' : (key as Quadrant))}
-                >
-                  {label} ({count}) <span style={{ color: 'var(--text-3)', fontSize: '0.72rem' }}>{desc}</span>
-                </button>
-              )
-            })}
-          </fieldset>
-          <div className="chart-container fee-history-chart">
-            <ResponsiveContainer width="100%" height="100%">
-              <ScatterChart margin={{ left: 20, right: 20, bottom: 24, top: 10 }}>
-                <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
-                <XAxis
-                  type="number"
-                  dataKey="logTvl"
-                  name="TVL"
-                  domain={[4, 8]}
-                  ticks={[4, 5, 6, 7, 8]}
-                  tickFormatter={(v: number) => fmt(10 ** v, 0)}
-                  tick={{ fill: 'var(--text-3)', fontSize: 11 }}
-                  label={{
-                    value: 'TVL (log scale)',
-                    position: 'bottom',
-                    fill: 'var(--text-3)',
-                    fontSize: 11,
-                    offset: 6
-                  }}
-                  stroke="var(--border)"
-                  allowDataOverflow
-                />
-                <YAxis
-                  type="number"
-                  dataKey="feeYield"
-                  name="Fee Yield"
-                  tickFormatter={(v) => pctFmt(v)}
-                  tick={{ fill: 'var(--text-3)', fontSize: 11 }}
-                  label={{
-                    value: 'Fee Yield (ann.)',
-                    angle: -90,
-                    position: 'insideLeft',
-                    fill: 'var(--text-3)',
-                    fontSize: 11
-                  }}
-                  stroke="var(--border)"
-                />
-                <ZAxis type="number" dataKey="annualizedFeeRevenue" range={[30, 500]} name="Fees" />
-                <Tooltip content={<ScatterTooltip />} cursor={false} />
-                <Scatter data={scatterData}>
-                  {scatterData.map((v) => {
-                    const qColor = QUADRANT_LABELS[v.quadrant]?.color || '#808080'
-                    return (
-                      <Cell
-                        key={`${v.address}-${v.chainId}`}
-                        fill={qColor}
-                        fillOpacity={0.65}
-                        stroke={qColor}
-                        strokeWidth={1}
-                      />
-                    )
-                  })}
-                </Scatter>
-                {trendLine && (
-                  <Scatter
-                    data={trendLine.points}
-                    line={{ stroke: '#a16207', strokeWidth: 2, strokeDasharray: '6 3' }}
-                    shape={() => <></>}
-                    isAnimationActive={false}
-                    legendType="none"
-                  />
-                )}
-              </ScatterChart>
-            </ResponsiveContainer>
+
+      <section className="earnings-fees-section" aria-labelledby={earningsTitleId}>
+        <h2 id={earningsTitleId}>Earnings and Fees</h2>
+        <p className="earnings-fees-range text-dim">
+          Selected range: {rangeLabel(selectedRange.start)} – {rangeLabel(selectedRange.end)} (UTC)
+        </p>
+        <TooltipProvider delayDuration={200}>
+          <div className="fee-summary-grid">
+            {(
+              [
+                {
+                  title: 'Gross Fees',
+                  field: 'totalFeesPaidUsd',
+                  description: 'Fees charged across the stack',
+                  color: ''
+                },
+                {
+                  title: 'Net Yield',
+                  field: 'netLifetimeEarningsUsd',
+                  description: 'Gross gains less losses',
+                  color: 'text-green'
+                },
+                {
+                  title: 'Gross Gains',
+                  field: 'grossGainsUsd',
+                  description: 'Reported vault gains',
+                  color: 'text-blue'
+                },
+                { title: 'Losses', field: 'lossesUsd', description: 'Reported vault losses', color: 'text-red' }
+              ] as const
+            ).map((metric) => (
+              <section className="fee-summary-stat" key={metric.field} aria-label={metric.title}>
+                <FeeMetricTitle title={metric.title} description={metric.description} />
+                <dl className="fee-summary-values">
+                  <div>
+                    <dt>All time</dt>
+                    <dd className={metric.color}>
+                      {allTime.loading && !allTimeSummary
+                        ? '…'
+                        : formatCanonicalUsd(allTimeSummary?.[metric.field] ?? null)}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Since {rangeLabel(selectedRange.start)}</dt>
+                    <dd className={metric.color}>{formatCanonicalUsd(summary[metric.field])}</dd>
+                  </div>
+                </dl>
+              </section>
+            ))}
           </div>
-          <span className="sr-only">Scatter plot showing TVL vs fee yield for {scatterData.length} vaults.</span>
+        </TooltipProvider>
+        {!allTime.loading && !allTimeSummary && (
+          <div className="error-retry">
+            <span>All-time totals are unavailable.</span>
+            <button type="button" className="page-btn" onClick={allTime.retry}>
+              Retry all-time totals
+            </button>
+          </div>
+        )}
+
+        {/* ---- Full-width fee history charts ---- */}
+        <div className="row fee-chart-row">
+          <FeeHistoryChart
+            {...chartType('overall')}
+            viewControl={
+              <ChartViewToggle {...chartView('overall')} interval={historyInterval} label="Earnings and fees" />
+            }
+            periods={feeHistorySeries}
+            cumulative={chartViews.overall === 'cumulative'}
+            title={
+              chartViews.overall === 'cumulative'
+                ? 'Cumulative Earnings & Fees'
+                : historyInterval === 'weekly'
+                  ? 'Weekly Earnings & Fees'
+                  : 'Monthly Earnings & Fees'
+            }
+            data={chartViews.overall === 'cumulative' ? cumulativeFeeHistorySeries : feeHistorySeries}
+            interval={historyInterval}
+            series={[
+              {
+                key: 'gains',
+                dataKey: chartViews.overall === 'cumulative' ? 'cumulativeGrossGainsUsd' : 'grossGainsUsd',
+                label: 'Gross Gains',
+                color: '#46a2ff'
+              },
+              {
+                key: 'yield',
+                dataKey: chartViews.overall === 'cumulative' ? 'cumulativeNetYieldUsd' : 'netYieldUsd',
+                label: 'Net Yield',
+                color: '#94adf2'
+              },
+              {
+                key: 'fees',
+                dataKey: chartViews.overall === 'cumulative' ? 'cumulativeFeesPaidUsd' : 'totalFeesPaidUsd',
+                label: 'Gross Fees',
+                color: '#16a34a',
+                strokeDasharray: '6 3'
+              }
+            ]}
+            description={`${chartTypes.overall === 'bar' ? 'Bar' : 'Line'} chart comparing ${chartViews.overall === 'cumulative' ? 'cumulative' : historyInterval} canonical gross gains, net yield, and gross fees over completed periods in the selected time range.`}
+          />
+
+          <section className="chain-fee-charts fee-chart-group" aria-label="Fees and earnings per dollar of TVL">
+            <FeeYieldChart
+              periods={feeHistorySeries}
+              interval={historyInterval}
+              {...chartView('feeYield')}
+              {...chartType('feeYield')}
+            />
+          </section>
+
+          <ChainFeeHistoryCharts
+            {...chartType('chain')}
+            query={historyFilters.toString()}
+            chainIds={historyChainIds}
+            periods={feeHistorySeries}
+            {...chartView('chain')}
+            interval={historyInterval}
+          />
+
+          <VaultTypeFeeCharts
+            {...chartType('vaultType')}
+            query={historyFilters.toString()}
+            periods={feeHistorySeries}
+            interval={historyInterval}
+            {...chartView('vaultType')}
+          />
+
+          {productData?.datasetId === summary.datasetId && productData?.aggregationScope === 'product' ? (
+            <VaultComparisonCharts
+              selectedKeys={selectedAllocatorKeys}
+              onSelectedKeysChange={setSelectedAllocatorKeys}
+              query={historyFilters.toString()}
+              rankedVaults={productData.vaults}
+              periods={feeHistorySeries}
+              {...chartView('allocator')}
+              interval={historyInterval}
+              {...chartType('allocator')}
+            />
+          ) : productError ? (
+            <div className="error-retry">
+              <p>Product fee data could not be loaded.</p>
+              <button type="button" className="page-btn" onClick={retryProducts}>
+                Retry product fees
+              </button>
+            </div>
+          ) : (
+            <SkeletonChart />
+          )}
+
+          <MonthlyVaultTables chainSelector={null} />
         </div>
-      )}
+      </section>
     </div>
   )
 }

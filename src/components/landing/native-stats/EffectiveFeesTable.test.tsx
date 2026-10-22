@@ -211,10 +211,8 @@ it('preserves the canonical vault list and rates while showing reported, upstrea
   expect(within(downstream).getByText('Idle funds')).toBeTruthy()
   expect(within(downstream).getByText('$12')).toBeTruthy()
   expect(within(downstream).getByText('$48')).toBeTruthy()
-  const methodology = screen.getByText('Methodology').closest('details')!
-  expect(methodology.hasAttribute('open')).toBe(false)
-  fireEvent.click(screen.getByText('Methodology'))
-  expect(methodology.textContent).toContain('These upstream fees are not added')
+  expect(screen.queryByText('Methodology')).toBeNull()
+  expect(screen.queryByText(/Effective fees for a direct deposit/)).toBeNull()
   expect(screen.getByText('19.0%')).toBeTruthy()
   fireEvent.change(screen.getByRole('textbox', { name: 'Search effective fees' }), {
     target: { value: 'no matching vault' }

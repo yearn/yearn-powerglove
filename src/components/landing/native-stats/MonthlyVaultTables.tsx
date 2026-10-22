@@ -5,6 +5,8 @@ import { type ReactNode, useContext, useId, useMemo, useState } from 'react'
 import { assertCanonicalFeeResponse } from '@/lib/fee-api-contract'
 import { fetchKongVaultListRaw } from '@/lib/kong-vault-client'
 import type { CanonicalFeeSummary, CanonicalVaultFee } from './canonical-fees'
+import type { ChainFeeMetric } from './chain-fee-history'
+import { FeeMetricToggle } from './FeeMetricToggle'
 import { CHAIN_NAMES, powergloveVaultPath, resolveStatsApiBase, shortAddr, useFetch, usePagination } from './hooks'
 import { buildMonthlyVaultRows, completedFeeMonths, monthlyUsd, monthlyVaultKey } from './monthly-vault-data'
 import { StatsContext } from './StatsContext'
@@ -15,31 +17,27 @@ const monthLabel = (period: string) =>
 
 export function MonthlyVaultTables({ chainSelector }: { chainSelector: ReactNode }) {
   const [typeFilter, setTypeFilter] = useState('all')
+  const [metric, setMetric] = useState<ChainFeeMetric>('earnings')
   return (
-    <>
-      <MonthlyVaultTable
-        metric="earnings"
-        chainSelector={chainSelector}
-        typeFilter={typeFilter}
-        onTypeChange={setTypeFilter}
-      />
-      <MonthlyVaultTable
-        metric="fees"
-        chainSelector={chainSelector}
-        typeFilter={typeFilter}
-        onTypeChange={setTypeFilter}
-      />
-    </>
+    <MonthlyVaultTable
+      metric={metric}
+      metricControl={<FeeMetricToggle value={metric} onValueChange={setMetric} label="Monthly vault" />}
+      chainSelector={chainSelector}
+      typeFilter={typeFilter}
+      onTypeChange={setTypeFilter}
+    />
   )
 }
 
 function MonthlyVaultTable({
   metric,
+  metricControl,
   chainSelector,
   typeFilter,
   onTypeChange
 }: {
   metric: 'fees' | 'earnings'
+  metricControl: ReactNode
   chainSelector?: ReactNode
   typeFilter: string
   onTypeChange?: (value: string) => void
@@ -141,7 +139,10 @@ function MonthlyVaultTable({
     <section className="monthly-vault-fees" aria-labelledby={titleId} aria-busy={loading}>
       <div className="monthly-fee-toolbar">
         <div>
-          <h2 id={titleId}>Monthly vault {metric}</h2>
+          <div className="fee-chart-title-row">
+            <h2 id={titleId}>Monthly Vault {metric === 'earnings' ? 'Earnings' : 'Fees'}</h2>
+            {metricControl}
+          </div>
           <p className="text-dim">
             {monthLabel(months[0].period)} – {monthLabel(months[11].period)} ·{' '}
             {metric === 'fees' ? 'Fees charged' : 'Gains minus losses'} (USD) · Completed months only

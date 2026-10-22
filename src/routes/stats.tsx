@@ -1,20 +1,13 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Navigate } from '@tanstack/react-router'
 import { NativeStatsDashboard } from '@/components/landing/native-stats/NativeStatsDashboard'
-import { parseStatsSearch, type StatsTab } from '@/components/landing/native-stats/stats-navigation'
+import { parseStatsSearch } from '@/components/landing/native-stats/stats-navigation'
 
 function StatsPage() {
-  const { tab = 'overview' } = Route.useSearch()
-  const navigate = Route.useNavigate()
-
-  const handleTabChange = (nextTab: StatsTab) => {
-    void navigate({
-      search: (previous) => ({ ...previous, tab: nextTab })
-    })
-  }
-
+  const { tab, preview } = Route.useSearch()
+  if (tab === 'analysis') return <Navigate to="/stats/analysis" search={{ preview }} replace />
   return (
     <main className="flex-1 container pt-0 pb-0">
-      <NativeStatsDashboard tab={tab} onTabChange={handleTabChange} />
+      <NativeStatsDashboard />
     </main>
   )
 }

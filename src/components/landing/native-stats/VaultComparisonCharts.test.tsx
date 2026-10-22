@@ -144,7 +144,7 @@ describe('custom allocator comparisons', () => {
       </QueryClientProvider>
     )
     render(chart())
-    const section = screen.getByRole('region', { name: 'V3 vault product comparison' })
+    const section = screen.getByRole('region', { name: 'V3 vault comparison' })
     await waitFor(() => expect(section.querySelectorAll('.recharts-line-curve')).toHaveLength(2))
     expect(screen.getByText('4-week moving average · Average weekly net earnings (USD)')).toBeTruthy()
     const requests = () => fetch.mock.calls.filter(([url]) => String(url).includes('vaultAddress='))
@@ -159,20 +159,20 @@ describe('custom allocator comparisons', () => {
     }
     const first = section.querySelector('.recharts-line-curve')?.getAttribute('d') ?? ''
     expect(first.match(/[ML]/g)).toHaveLength(7)
-    const metric = screen.getByRole('group', { name: 'Vault product metric' })
+    const metric = screen.getByRole('group', { name: 'Vault metric' })
     fireEvent.click(within(metric).getByRole('button', { name: 'Fees' }))
     expect(screen.getByText('4-week moving average · Average weekly fees (USD)')).toBeTruthy()
-    expect(screen.queryByRole('heading', { name: 'Earnings by Vault Product' })).toBeNull()
+    expect(screen.queryByRole('heading', { name: 'Earnings by Vault' })).toBeNull()
     expect(section.querySelectorAll('.recharts-line-curve')).toHaveLength(2)
     expect(requests()).toHaveLength(2)
     fireEvent.click(within(metric).getByRole('button', { name: 'Earnings' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Show earnings by vault product as bars' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Show earnings by vault as bars' }))
     await waitFor(() => expect(section.querySelectorAll('.recharts-bar')).toHaveLength(2))
     expect(section.querySelectorAll('.recharts-line-curve')).toHaveLength(0)
     expect(screen.queryByText('4-week moving average · Average weekly net earnings (USD)')).toBeNull()
     expect(requests()).toHaveLength(4)
     const loaded = requests().length
-    fireEvent.click(screen.getByRole('button', { name: 'Show earnings by vault product as lines' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Show earnings by vault as lines' }))
     await waitFor(() => expect(section.querySelectorAll('.recharts-line-curve')).toHaveLength(2))
     expect(requests()).toHaveLength(loaded)
     client.clear()
@@ -206,7 +206,7 @@ describe('custom allocator comparisons', () => {
       </QueryClientProvider>
     )
     const rendered = render(chart())
-    const section = screen.getByRole('region', { name: 'V3 vault product comparison' })
+    const section = screen.getByRole('region', { name: 'V3 vault comparison' })
     await waitFor(() => expect(section.querySelectorAll('.recharts-bar')).toHaveLength(2))
     const requests = () => fetch.mock.calls.filter(([url]) => String(url).includes('vaultAddress='))
     expect(requests()).toHaveLength(2)
@@ -260,8 +260,8 @@ describe('custom allocator comparisons', () => {
     await waitFor(() => expect(section.querySelectorAll('.recharts-bar')).toHaveLength(1))
     expect(requests()).toHaveLength(2)
     rendered.rerender(chart({ view: 'cumulative' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Show earnings by vault product as lines' }))
-    const metric = screen.getByRole('group', { name: 'Vault product metric' })
+    fireEvent.click(screen.getByRole('button', { name: 'Show earnings by vault as lines' }))
+    const metric = screen.getByRole('group', { name: 'Vault metric' })
     fireEvent.click(within(metric).getByRole('button', { name: 'Fees' }))
     await waitFor(() => expect(section.querySelectorAll('.recharts-line-curve')).toHaveLength(1))
     expect(screen.getByRole('button', { name: 'Choose vaults (1)' })).toBeTruthy()
@@ -277,15 +277,13 @@ describe('custom allocator comparisons', () => {
     ).toEqual(['All Chains', 'Ethereum'])
     fireEvent.keyDown(screen.getByRole('textbox'), { key: 'Escape' })
     rendered.rerender(chart({ view: 'cumulative' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Show fees by vault product as bars' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Show fees by vault as bars' }))
     await waitFor(() => expect(section.querySelectorAll('.recharts-bar')).toHaveLength(1))
-    const fees = screen
-      .getByRole('heading', { name: 'Fees by Vault Product' })
-      .closest('.fee-chart-card') as HTMLElement
+    const fees = screen.getByRole('heading', { name: 'Fees by Vault' }).closest('.fee-chart-card') as HTMLElement
     fireEvent.click(within(fees).getByRole('button', { name: /Katana allocator/ }))
     expect(fees.querySelectorAll('.recharts-bar')).toHaveLength(0)
     fireEvent.click(
-      within(screen.getByRole('group', { name: 'Vault product metric' })).getByRole('button', { name: 'Earnings' })
+      within(screen.getByRole('group', { name: 'Vault metric' })).getByRole('button', { name: 'Earnings' })
     )
     expect(fees.querySelectorAll('.recharts-bar')).toHaveLength(0)
     client.clear()

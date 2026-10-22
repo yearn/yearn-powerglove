@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import type { ChainFeeHistoryView } from './ChainFeeHistoryCharts'
 import type { ChartTypeControl } from './ChartTypeToggle'
+import { ChartViewToggle } from './ChartViewToggle'
 import type { FeeHistoryInterval } from './canonical-fees'
 import type { ChainFeeMetric } from './chain-fee-history'
 import { FeeBreakdownChart } from './FeeBreakdownChart'
@@ -15,6 +16,7 @@ export function VaultTypeFeeCharts({
   periods,
   interval,
   view,
+  onViewChange,
   renderType,
   onRenderTypeChange
 }: ChartTypeControl & {
@@ -22,6 +24,7 @@ export function VaultTypeFeeCharts({
   periods: FeeHistoryPeriod[]
   interval: FeeHistoryInterval
   view: ChainFeeHistoryView
+  onViewChange?: (view: ChainFeeHistoryView) => void
 }) {
   const [metric, setMetric] = useState<ChainFeeMetric>('earnings')
   const { catalog, histories, loading, error, retry } = useVaultTypeFeeHistories(query, periods)
@@ -51,6 +54,9 @@ export function VaultTypeFeeCharts({
             subtitle={metric === 'earnings' ? 'Gross gains less losses' : 'Gross fees charged'}
             metric={metric}
             metricControl={<FeeMetricToggle value={metric} onValueChange={setMetric} label="Vault type" />}
+            viewControl={
+              <ChartViewToggle view={view} onViewChange={onViewChange} interval={interval} label="Vault type" />
+            }
             data={data[view]}
             series={data.series}
             interval={interval}

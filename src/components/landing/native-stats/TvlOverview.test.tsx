@@ -1,7 +1,8 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { type ComponentProps, cloneElement, type ReactElement, useState } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { StatsContext } from './StatsContext'
+import { SharedStatsChartControls } from './SharedStatsChartControls'
+import { StatsContext, StatsTimeRangeContext } from './StatsContext'
 import { TvlOverview } from './TvlOverview'
 
 vi.mock('recharts', async (original) => {
@@ -93,20 +94,24 @@ let failEthereum = false
 let legacyPricingGaps = false
 let capturedChartRows: unknown
 function Overview() {
+  const [range, setRange] = useState({ start: '2023-01-01', end: '2026-01-01' })
   const [chainFilter, setChainFilter] = useState('all')
   return (
-    <StatsContext.Provider
-      value={{ chainFilter, density: 'comfortable', lastFetchedAt: null, setLastFetchedAt: vi.fn() }}
-    >
-      <TvlOverview
-        chainSelector={
-          <select aria-label="Chain" value={chainFilter} onChange={(event) => setChainFilter(event.target.value)}>
-            <option value="all">All Chains</option>
-            <option value="1">Ethereum</option>
-          </select>
-        }
-      />
-    </StatsContext.Provider>
+    <StatsTimeRangeContext.Provider value={{ range, setRange }}>
+      <StatsContext.Provider
+        value={{ chainFilter, density: 'comfortable', lastFetchedAt: null, setLastFetchedAt: vi.fn() }}
+      >
+        <SharedStatsChartControls
+          chainSelector={
+            <select aria-label="Chain" value={chainFilter} onChange={(event) => setChainFilter(event.target.value)}>
+              <option value="all">All Chains</option>
+              <option value="1">Ethereum</option>
+            </select>
+          }
+        />
+        <TvlOverview />
+      </StatsContext.Provider>
+    </StatsTimeRangeContext.Provider>
   )
 }
 afterEach(() => {
@@ -118,6 +123,17 @@ afterEach(() => {
 })
 
 describe('shared TVL chart controls', () => {
+  it('shows TVL and active vault cards while leaving unavailable weekly harvests as a dash', () => {
+    render(<Overview />)
+    const tvl = screen.getByRole('article', { name: 'Total TVL' })
+    expect(within(tvl).getByText('$150')).toBeTruthy()
+    const active = screen.getByRole('article', { name: 'Active Vaults' })
+    expect(within(active).getByText('2')).toBeTruthy()
+    const harvests = screen.getByRole('article', { name: 'Weekly Harvests' })
+    expect(within(harvests).getByText('—')).toBeTruthy()
+    expect(within(harvests).queryByText('0')).toBeNull()
+  })
+
   it('renders API amounts and sparse dates without headline scaling or invented zero TVL', () => {
     legacyPricingGaps = true
     render(<Overview />)
@@ -146,8 +162,11 @@ describe('shared TVL chart controls', () => {
     }
     fireEvent.click(screen.getByRole('button', { name: 'Collapse chart controls' }))
     expect(screen.queryByRole('slider')).toBeNull()
+    expect(screen.queryByRole('combobox', { name: 'Chain' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Expand chart controls' }).getAttribute('aria-expanded')).toBe('false')
     fireEvent.click(screen.getByRole('button', { name: 'Expand chart controls' }))
     expect(screen.getByRole('slider', { name: 'Range start' })).toBe(start)
+    expect(screen.getByRole('combobox', { name: 'Chain' })).toBeTruthy()
   })
 
   it('applies the shared render type and range to drilldowns and scopes actual and price-neutral history by chain', () => {

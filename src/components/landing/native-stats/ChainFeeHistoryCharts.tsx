@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { ChartTypeControl } from './ChartTypeToggle'
+import { ChartViewToggle } from './ChartViewToggle'
 import type { FeeHistoryInterval } from './canonical-fees'
 import type { ChainFeeMetric } from './chain-fee-history'
 import { buildChainFeeHistorySeries } from './chain-fee-history'
@@ -16,6 +17,7 @@ export function ChainFeeHistoryCharts({
   chainIds,
   periods,
   view,
+  onViewChange,
   interval,
   renderType,
   onRenderTypeChange
@@ -24,6 +26,7 @@ export function ChainFeeHistoryCharts({
   chainIds: number[]
   periods: FeeHistoryPeriod[]
   view: ChainFeeHistoryView
+  onViewChange?: (view: ChainFeeHistoryView) => void
   interval: FeeHistoryInterval
 }) {
   const [metric, setMetric] = useState<ChainFeeMetric>('earnings')
@@ -54,6 +57,7 @@ export function ChainFeeHistoryCharts({
           subtitle={metric === 'earnings' ? 'Gross gains less losses' : 'Gross fees charged'}
           metric={metric}
           metricControl={<FeeMetricToggle value={metric} onValueChange={setMetric} label="Chain" />}
+          viewControl={<ChartViewToggle view={view} onViewChange={onViewChange} interval={interval} label="Chain" />}
           data={series[view]}
           series={chartSeries}
           interval={interval}

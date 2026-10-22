@@ -1,10 +1,12 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { type ReactNode, useContext, useState } from 'react'
+import { type ReactNode, useContext } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { NativeStatsDashboard } from './NativeStatsDashboard'
 import { StatsContext } from './StatsContext'
-import type { StatsTab } from './stats-navigation'
 
+vi.mock('@tanstack/react-router', () => ({
+  Link: ({ to, children }: { to: string; children: ReactNode }) => <a href={to}>{children}</a>
+}))
 vi.mock('./hooks', () => ({ HAS_TVL_API: true, HAS_FEES_API: true }))
 vi.mock('./StatsChainSelector', () => ({
   StatsChainSelector: ({ value, onValueChange }: { value: string; onValueChange: (value: string) => void }) => (
@@ -14,11 +16,19 @@ vi.mock('./StatsChainSelector', () => ({
     </select>
   )
 }))
+vi.mock('./SharedStatsChartControls', () => ({
+  SharedStatsChartControls: ({ chainSelector }: { chainSelector: ReactNode }) => (
+    <div data-testid="shared-controls">{chainSelector}</div>
+  )
+}))
 vi.mock('./TvlOverview', () => ({
-  TvlOverview: ({ chainSelector }: { chainSelector: ReactNode }) => <div>TVL overview data{chainSelector}</div>
+  TvlOverview: () => <div>TVL overview data</div>
 }))
 vi.mock('./FeesPanel', () => ({
-  FeesPanel: ({ chainSelector }: { chainSelector: ReactNode }) => <div>Fee chart data{chainSelector}</div>
+  FeesPanel: () => <div>Fee chart data</div>
+}))
+vi.mock('./FeeYieldAnalysis', () => ({
+  FeeYieldAnalysis: () => <div>Fee yield analysis · {useContext(StatsContext).chainFilter}</div>
 }))
 vi.mock('./AuditPanel', () => ({
   AuditPanel: () => <div>Vault breakdown data · {useContext(StatsContext).chainFilter}</div>
@@ -30,53 +40,46 @@ vi.mock('./ComparisonPanel', () => ({
   ComparisonPanel: () => <div>Comparison data · {useContext(StatsContext).chainFilter}</div>
 }))
 
-function Dashboard({ initialTab = 'overview' }: { initialTab?: StatsTab }) {
-  const [tab, setTab] = useState<StatsTab>(initialTab)
-  return <NativeStatsDashboard tab={tab} onTabChange={setTab} />
-}
-
 afterEach(cleanup)
 
-describe('consolidated stats tabs', () => {
-  it('puts vault breakdown on TVL and mounts its data only when expanded', () => {
-    render(<Dashboard />)
-    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['TVL', 'Fees', 'Other Analysis'])
-    expect(screen.getByText('TVL overview data')).toBeTruthy()
-    const trigger = screen.getByRole('button', { name: 'Vault breakdown' })
-    expect(trigger.getAttribute('aria-expanded')).toBe('false')
+describe('stats pages', () => {
+  it('shows TVL before fees on one page with shared chain selection and an analysis link at the bottom', () => {
+    render(<NativeStatsDashboard />)
+    expect(screen.queryByRole('tab')).toBeNull()
+    expect(screen.getAllByTestId('shared-controls')).toHaveLength(1)
+    expect(screen.getAllByRole('combobox', { name: 'Chain' })).toHaveLength(1)
+    const tvl = screen.getByText('TVL overview data')
+    const fees = screen.getByText('Fee chart data')
+    const link = screen.getByRole('link', { name: 'Other Analysis' })
+    expect(tvl.compareDocumentPosition(fees) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(fees.compareDocumentPosition(link) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(link.getAttribute('href')).toBe('/stats/analysis')
+    expect(screen.queryByRole('button', { name: 'Vault Breakdown' })).toBeNull()
+    expect(screen.queryByText(/Fee yield analysis/)).toBeNull()
+    fireEvent.change(screen.getAllByRole('combobox', { name: 'Chain' })[0], { target: { value: '1' } })
+    expect(
+      screen.getAllByRole('combobox', { name: 'Chain' }).every((select) => (select as HTMLSelectElement).value === '1')
+    ).toBe(true)
+  })
+
+  it('keeps supplementary analysis on its own page and loads collapsed tables only when expanded', () => {
+    render(<NativeStatsDashboard analysis />)
+    expect(screen.queryByText('TVL overview data')).toBeNull()
+    expect(screen.queryByText('Fee chart data')).toBeNull()
+    expect(screen.getByRole('link', { name: 'Back to Stats' }).getAttribute('href')).toBe('/stats')
+    expect(screen.getByText('Fee yield analysis · all')).toBeTruthy()
+    const sections = ['Vault Breakdown', 'Vault Breakdown 2', 'Compare TVL to DefiLlama']
+    for (const name of sections)
+      expect(screen.getByRole('button', { name }).getAttribute('aria-expanded')).toBe('false')
     expect(screen.queryByText(/Vault breakdown data/)).toBeNull()
-    const origins = screen.getByRole('button', { name: 'Vault Breakdown 2' })
-    expect(origins.getAttribute('aria-expanded')).toBe('false')
     expect(screen.queryByText(/Vault origins data/)).toBeNull()
-    fireEvent.change(screen.getByRole('combobox', { name: 'Chain' }), { target: { value: '1' } })
-    fireEvent.click(trigger)
-    expect(trigger.getAttribute('aria-expanded')).toBe('true')
-    expect(screen.getByText('Vault breakdown data · 1')).toBeTruthy()
-    fireEvent.click(origins)
-    expect(screen.getByText('Vault origins data · 1')).toBeTruthy()
-    fireEvent.click(trigger)
-    expect(screen.queryByText(/Vault breakdown data/)).toBeNull()
-  })
-
-  it('opens the TVL comparison by default without a Curation Products section', () => {
-    render(<Dashboard initialTab="analysis" />)
-    const comparison = screen.getByRole('button', { name: 'Compare TVL to DefiLlama' })
-    expect(comparison.getAttribute('aria-expanded')).toBe('true')
-    expect(screen.queryByRole('button', { name: 'Curation Products' })).toBeNull()
-    expect(screen.getByText('Comparison data · all')).toBeTruthy()
-    fireEvent.click(comparison)
     expect(screen.queryByText(/Comparison data/)).toBeNull()
-    fireEvent.click(comparison)
-    expect(screen.getByText('Comparison data · all')).toBeTruthy()
-  })
-
-  it('retains the shared chain selection across the three tabs', () => {
-    render(<Dashboard />)
     fireEvent.change(screen.getByRole('combobox', { name: 'Chain' }), { target: { value: '1' } })
-    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Other Analysis' }), { button: 0, ctrlKey: false })
+    for (const name of sections) fireEvent.click(screen.getByRole('button', { name }))
+    expect(screen.getByText('Vault breakdown data · 1')).toBeTruthy()
+    expect(screen.getByText('Vault origins data · 1')).toBeTruthy()
     expect(screen.getByText('Comparison data · 1')).toBeTruthy()
-    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Fees' }), { button: 0, ctrlKey: false })
-    expect(screen.getByText('Fee chart data')).toBeTruthy()
-    expect((screen.getByRole('combobox', { name: 'Chain' }) as HTMLSelectElement).value).toBe('1')
+    fireEvent.click(screen.getByRole('button', { name: 'Vault Breakdown' }))
+    expect(screen.queryByText(/Vault breakdown data/)).toBeNull()
   })
 })

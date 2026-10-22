@@ -17,7 +17,7 @@ export default function Header() {
   const desktopSearchRef = useRef<HTMLDivElement>(null)
   const mobileSearchRef = useRef<HTMLDivElement>(null)
   const mobileMenuId = useId()
-  const hideMobileSearch = pathname === '/' || pathname === '/stats'
+  const hideMobileSearch = pathname === '/' || pathname === '/stats' || pathname.startsWith('/stats/')
 
   // Filter vaults based on the search term
   const filteredVaults = vaults.filter(

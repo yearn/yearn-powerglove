@@ -5,6 +5,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { assertCanonicalFeeResponse } from '@/lib/fee-api-contract'
 import type { ChainFeeHistoryView } from './ChainFeeHistoryCharts'
 import type { ChartTypeControl } from './ChartTypeToggle'
+import { ChartViewToggle } from './ChartViewToggle'
 import type { CanonicalFeeHistory, CanonicalVaultFee, FeeHistoryInterval } from './canonical-fees'
 import type { ChainFeeMetric } from './chain-fee-history'
 import { FeeBreakdownChart } from './FeeBreakdownChart'
@@ -53,6 +54,7 @@ export function VaultComparisonCharts({
   rankedVaults,
   periods,
   view,
+  onViewChange,
   interval,
   renderType,
   onRenderTypeChange,
@@ -63,6 +65,7 @@ export function VaultComparisonCharts({
   rankedVaults: CanonicalVaultFee[]
   periods: FeeHistoryPeriod[]
   view: ChainFeeHistoryView
+  onViewChange?: (view: ChainFeeHistoryView) => void
   interval: FeeHistoryInterval
   selectedKeys: string[] | null
   onSelectedKeysChange: (keys: string[]) => void
@@ -155,10 +158,10 @@ export function VaultComparisonCharts({
     onSelectedKeysChange(keys.includes(key) ? keys.filter((item) => item !== key) : [...keys, key])
 
   return (
-    <section className="chain-fee-charts fee-chart-group" aria-label="V3 vault product comparison" aria-busy={loading}>
+    <section className="chain-fee-charts fee-chart-group" aria-label="V3 vault comparison" aria-busy={loading}>
       <div className="card fee-chart-card">
         <div className="fee-chart-header">
-          <h2>Compare V3 Vault Products</h2>
+          <h2>Compare V3 Vaults</h2>
           <div className="allocator-comparison-actions">
             <Popover
               onOpenChange={(open) => {
@@ -282,7 +285,7 @@ export function VaultComparisonCharts({
         ) : (
           <FeeBreakdownChart
             stacked={false}
-            title={`${metric === 'earnings' ? 'Earnings' : 'Fees'} by Vault Product`}
+            title={`${metric === 'earnings' ? 'Earnings' : 'Fees'} by Vault`}
             subtitle={
               smoothed
                 ? `4-week moving average · Average weekly ${metric === 'earnings' ? 'net earnings' : 'fees'} (USD)`
@@ -291,7 +294,8 @@ export function VaultComparisonCharts({
                   : 'Gross fees charged'
             }
             metric={metric}
-            metricControl={<FeeMetricToggle value={metric} onValueChange={setMetric} label="Vault product" />}
+            metricControl={<FeeMetricToggle value={metric} onValueChange={setMetric} label="Vault" />}
+            viewControl={<ChartViewToggle view={view} onViewChange={onViewChange} interval={interval} label="Vault" />}
             data={chartData}
             series={series}
             interval={smoothed ? 'weekly' : interval}

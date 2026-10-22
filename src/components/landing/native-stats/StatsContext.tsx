@@ -1,4 +1,5 @@
 import { createContext } from 'react'
+import type { ChartDateRange } from '@/components/charts/chart-utils'
 
 export type StatsDensity = 'comfortable' | 'compact'
 
@@ -15,3 +16,8 @@ export const StatsContext = createContext<StatsContextValue>({
   lastFetchedAt: null,
   setLastFetchedAt: () => {}
 })
+
+export const StatsTimeRangeContext = createContext<{
+  range: ChartDateRange | null
+  setRange: (range: ChartDateRange) => void
+}>({ range: null, setRange: () => {} })

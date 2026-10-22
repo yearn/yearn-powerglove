@@ -108,7 +108,10 @@ describe('monthly fee table', () => {
         <Table />
       </QueryClientProvider>
     )
-    expect(screen.getByText('Loading monthly fees for all vaults…')).toBeTruthy()
+    expect(screen.getByText('Loading monthly earnings for all vaults…')).toBeTruthy()
+    fireEvent.click(
+      within(screen.getByRole('group', { name: 'Monthly vault metric' })).getByRole('button', { name: 'Fees' })
+    )
     const table = await screen.findByRole('table', { name: /Vault fees for/ })
     expect(within(table).getAllByRole('columnheader')).toHaveLength(14)
     const rows = within(table).getAllByRole('row').slice(2)
@@ -127,8 +130,12 @@ describe('monthly fee table', () => {
         .slice(1)
         .every((cell) => cell.textContent === '—')
     ).toBe(true)
-    const earnings = screen.getByRole('table', { name: /Vault earnings for/ })
-    expect(earnings.textContent).toContain('-$404')
+    const toggle = screen.getByRole('group', { name: 'Monthly vault metric' })
+    fireEvent.click(within(toggle).getByRole('button', { name: 'Earnings' }))
+    expect(screen.getAllByRole('table')).toHaveLength(1)
+    expect(screen.queryByRole('table', { name: /Vault fees for/ })).toBeNull()
+    expect(screen.getByRole('table', { name: /Vault earnings for/ }).textContent).toContain('-$404')
+    fireEvent.click(within(toggle).getByRole('button', { name: 'Fees' }))
     expect(fetch).toHaveBeenCalledTimes(13)
     expect(peak).toBeLessThanOrEqual(6)
     const queries = fetch.mock.calls.map(([url]) => new URL(String(url), 'http://localhost').searchParams)
@@ -149,6 +156,10 @@ describe('monthly fee table', () => {
     expect(within(table).getAllByRole('row')[2].textContent).toContain('Bob')
     fireEvent.change(screen.getByRole('textbox', { name: 'Search vault fees' }), { target: { value: 'Alice' } })
     expect(within(table).getAllByRole('row')).toHaveLength(3)
+    fireEvent.click(within(toggle).getByRole('button', { name: 'Earnings' }))
+    expect(screen.getByRole('textbox', { name: 'Search vault earnings' }).getAttribute('value')).toBe('Alice')
+    expect(screen.getAllByRole('link', { name: 'Alice' })).toHaveLength(1)
+    fireEvent.click(within(toggle).getByRole('button', { name: 'Fees' }))
     fireEvent.change(screen.getByRole('textbox', { name: 'Search vault fees' }), { target: { value: '' } })
     fireEvent.change(screen.getAllByRole('combobox', { name: 'Chain' })[0], { target: { value: '1' } })
     expect(screen.queryByRole('link', { name: 'Bob' })).toBeNull()
@@ -173,6 +184,9 @@ describe('monthly fee table', () => {
       <QueryClientProvider client={client}>
         <Table />
       </QueryClientProvider>
+    )
+    fireEvent.click(
+      within(screen.getByRole('group', { name: 'Monthly vault metric' })).getByRole('button', { name: 'Fees' })
     )
     await screen.findByRole('button', { name: 'Retry monthly fees' })
     expect(screen.queryByRole('table')).toBeNull()

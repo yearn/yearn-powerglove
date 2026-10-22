@@ -4,6 +4,7 @@ import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, 
 import { Tooltip as HelpTooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import type { ChainFeeHistoryView } from './ChainFeeHistoryCharts'
 import { type ChartTypeControl, ChartTypeToggle } from './ChartTypeToggle'
+import { ChartViewToggle } from './ChartViewToggle'
 import type { FeeHistoryInterval } from './canonical-fees'
 import { FeeMetricToggle } from './FeeMetricToggle'
 import { type FeeHistoryPoint, formatFeeHistoryTick } from './fee-history'
@@ -85,12 +86,14 @@ export function FeeYieldChart({
   periods,
   interval,
   view,
+  onViewChange,
   renderType,
   onRenderTypeChange
 }: ChartTypeControl & {
   periods: FeeHistoryPoint[]
   interval: FeeHistoryInterval
   view: ChainFeeHistoryView
+  onViewChange?: (view: ChainFeeHistoryView) => void
 }) {
   const [metric, setMetric] = useState<TvlYieldMetric>('fees')
   const { chainFilter } = useContext(StatsContext)
@@ -125,6 +128,7 @@ export function FeeYieldChart({
             (Annualized)
           </h2>
           <FeeMetricToggle value={metric} onValueChange={setMetric} label="TVL yield" />
+          <ChartViewToggle view={view} onViewChange={onViewChange} interval={interval} label="TVL yield" />
           <ChartTypeToggle
             value={renderType}
             onValueChange={onRenderTypeChange}

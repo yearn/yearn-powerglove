@@ -14,6 +14,7 @@ import { Route as AboutRouteImport } from './routes/about'
 import { Route as DisclaimerRouteImport } from './routes/disclaimer'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as StatsRouteImport } from './routes/stats'
+import { Route as StatsAnalysisRouteImport } from './routes/stats_.analysis'
 import { Route as VaultsChainIdVaultAddressIndexRouteImport } from './routes/vaults/$chainId/$vaultAddress/index'
 
 const IndexRoute = IndexRouteImport.update({
@@ -41,6 +42,11 @@ const StatsRoute = StatsRouteImport.update({
   path: '/stats',
   getParentRoute: () => rootRouteImport,
 } as any)
+const StatsAnalysisRoute = StatsAnalysisRouteImport.update({
+  id: '/stats_/analysis',
+  path: '/stats/analysis',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const VaultsChainIdVaultAddressIndexRoute =
   VaultsChainIdVaultAddressIndexRouteImport.update({
     id: '/vaults/$chainId/$vaultAddress/',
@@ -54,6 +60,7 @@ export interface FileRoutesByFullPath {
   '/disclaimer': typeof DisclaimerRoute
   '/privacy': typeof PrivacyRoute
   '/stats': typeof StatsRoute
+  '/stats/analysis': typeof StatsAnalysisRoute
   '/vaults/$chainId/$vaultAddress/': typeof VaultsChainIdVaultAddressIndexRoute
 }
 export interface FileRoutesByTo {
@@ -62,6 +69,7 @@ export interface FileRoutesByTo {
   '/disclaimer': typeof DisclaimerRoute
   '/privacy': typeof PrivacyRoute
   '/stats': typeof StatsRoute
+  '/stats/analysis': typeof StatsAnalysisRoute
   '/vaults/$chainId/$vaultAddress': typeof VaultsChainIdVaultAddressIndexRoute
 }
 export interface FileRoutesById {
@@ -71,6 +79,7 @@ export interface FileRoutesById {
   '/disclaimer': typeof DisclaimerRoute
   '/privacy': typeof PrivacyRoute
   '/stats': typeof StatsRoute
+  '/stats_/analysis': typeof StatsAnalysisRoute
   '/vaults/$chainId/$vaultAddress/': typeof VaultsChainIdVaultAddressIndexRoute
 }
 export interface FileRouteTypes {
@@ -81,6 +90,7 @@ export interface FileRouteTypes {
     | '/disclaimer'
     | '/privacy'
     | '/stats'
+    | '/stats/analysis'
     | '/vaults/$chainId/$vaultAddress/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -89,6 +99,7 @@ export interface FileRouteTypes {
     | '/disclaimer'
     | '/privacy'
     | '/stats'
+    | '/stats/analysis'
     | '/vaults/$chainId/$vaultAddress'
   id:
     | '__root__'
@@ -97,6 +108,7 @@ export interface FileRouteTypes {
     | '/disclaimer'
     | '/privacy'
     | '/stats'
+    | '/stats_/analysis'
     | '/vaults/$chainId/$vaultAddress/'
   fileRoutesById: FileRoutesById
 }
@@ -106,6 +118,7 @@ export interface RootRouteChildren {
   DisclaimerRoute: typeof DisclaimerRoute
   PrivacyRoute: typeof PrivacyRoute
   StatsRoute: typeof StatsRoute
+  StatsAnalysisRoute: typeof StatsAnalysisRoute
   VaultsChainIdVaultAddressIndexRoute: typeof VaultsChainIdVaultAddressIndexRoute
 }
 
@@ -146,6 +159,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StatsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/stats_/analysis': {
+      id: '/stats_/analysis'
+      path: '/stats/analysis'
+      fullPath: '/stats/analysis'
+      preLoaderRoute: typeof StatsAnalysisRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/vaults/$chainId/$vaultAddress/': {
       id: '/vaults/$chainId/$vaultAddress/'
       path: '/vaults/$chainId/$vaultAddress'
@@ -162,6 +182,7 @@ const rootRouteChildren: RootRouteChildren = {
   DisclaimerRoute: DisclaimerRoute,
   PrivacyRoute: PrivacyRoute,
   StatsRoute: StatsRoute,
+  StatsAnalysisRoute: StatsAnalysisRoute,
   VaultsChainIdVaultAddressIndexRoute: VaultsChainIdVaultAddressIndexRoute,
 }
 export const routeTree = rootRouteImport
