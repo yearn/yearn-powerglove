@@ -131,75 +131,75 @@ export function EffectiveFeeCapitalDetails({
               <strong className="fee-flow-card-value">{monthlyUsd(capital.direct)}</strong>
             </article>
           </section>
-          <section aria-label="Upstream excluded capital">
-            <h3>Upstream · excluded</h3>
-            <div className="fee-flow-branches">
-              {capital.upstream === null ? (
-                <div className="fee-flow-empty">Upstream TVL is unavailable for this publication.</div>
-              ) : capital.upstream === 0 ? (
-                <div className="fee-flow-empty">No upstream ownership deducted.</div>
-              ) : (
-                <>
-                  {capital.positions.map((position, index) => (
-                    <FeeFlowCard
-                      key={`${position.via}:${index}`}
-                      flowId={`upstream-${index}`}
-                      next="selected"
-                      label={`Excluded upstream ${position.sources.map((source) => source.name ?? source.address).join(', ') || 'Unknown source'}`}
-                      names={position.sources}
-                      name="Source vault unavailable"
-                      amount={position.amount}
-                      amountLabel="Excluded capital"
-                      muted
-                      navigable={navigable}
-                    >
-                      {position.sources.map((source) => {
-                        const fees = feeNodes.get(originVaultId(source.chainId, source.address))
-                        return (
-                          <div key={originVaultId(source.chainId, source.address)}>
-                            {position.sources.length > 1 && (
-                              <span className="fee-flow-label">{source.name || shortAddr(source.address)}</span>
-                            )}
-                            <VaultMetadata vault={source} />
-                            <LayerFees performance={fees?.perfFee ?? null} management={fees?.mgmtFee ?? null} />
-                          </div>
-                        )
-                      })}
-                      {position.via && (
-                        <span className="fee-flow-address" title={position.via}>
-                          via {shortAddr(position.via)}
-                        </span>
-                      )}
-                    </FeeFlowCard>
-                  ))}
-                  {capital.unattributedUpstream !== null && capital.unattributedUpstream > 0.01 && (
-                    <FeeFlowCard
-                      flowId="upstream-other"
-                      next="selected"
-                      label="Other upstream ownership"
-                      name="Other upstream ownership"
-                      amount={capital.unattributedUpstream}
-                      amountLabel="Excluded capital"
-                      muted
-                      navigable={navigable}
-                    >
-                      <span className="fee-flow-address">Source details unavailable</span>
-                    </FeeFlowCard>
-                  )}
-                </>
-              )}
-            </div>
-            <div className="fee-flow-total">
-              <span>Total upstream excluded</span>
-              <strong>{monthlyUsd(capital.upstream)}</strong>
-            </div>
-            {capital.excludedBridges !== null && capital.excludedBridges > 0 && (
-              <div className="fee-flow-total fee-flow-muted">
-                <span>Other exclusions · migrated bridge</span>
-                <strong>{monthlyUsd(capital.excludedBridges)}</strong>
+          {capital.upstream !== 0 && (
+            <section aria-label="Upstream excluded capital">
+              <h3>Upstream · excluded</h3>
+              <div className="fee-flow-branches">
+                {capital.upstream === null ? (
+                  <div className="fee-flow-empty">Upstream TVL is unavailable for this publication.</div>
+                ) : (
+                  <>
+                    {capital.positions.map((position, index) => (
+                      <FeeFlowCard
+                        key={`${position.via}:${index}`}
+                        flowId={`upstream-${index}`}
+                        next="selected"
+                        label={`Excluded upstream ${position.sources.map((source) => source.name ?? source.address).join(', ') || 'Unknown source'}`}
+                        names={position.sources}
+                        name="Source vault unavailable"
+                        amount={position.amount}
+                        amountLabel="Excluded capital"
+                        muted
+                        navigable={navigable}
+                      >
+                        {position.sources.map((source) => {
+                          const fees = feeNodes.get(originVaultId(source.chainId, source.address))
+                          return (
+                            <div key={originVaultId(source.chainId, source.address)}>
+                              {position.sources.length > 1 && (
+                                <span className="fee-flow-label">{source.name || shortAddr(source.address)}</span>
+                              )}
+                              <VaultMetadata vault={source} />
+                              <LayerFees performance={fees?.perfFee ?? null} management={fees?.mgmtFee ?? null} />
+                            </div>
+                          )
+                        })}
+                        {position.via && (
+                          <span className="fee-flow-address" title={position.via}>
+                            via {shortAddr(position.via)}
+                          </span>
+                        )}
+                      </FeeFlowCard>
+                    ))}
+                    {capital.unattributedUpstream !== null && capital.unattributedUpstream > 0.01 && (
+                      <FeeFlowCard
+                        flowId="upstream-other"
+                        next="selected"
+                        label="Other upstream ownership"
+                        name="Other upstream ownership"
+                        amount={capital.unattributedUpstream}
+                        amountLabel="Excluded capital"
+                        muted
+                        navigable={navigable}
+                      >
+                        <span className="fee-flow-address">Source details unavailable</span>
+                      </FeeFlowCard>
+                    )}
+                  </>
+                )}
               </div>
-            )}
-          </section>
+              <div className="fee-flow-total">
+                <span>Total upstream excluded</span>
+                <strong>{monthlyUsd(capital.upstream)}</strong>
+              </div>
+            </section>
+          )}
+          {capital.excludedBridges !== null && capital.excludedBridges > 0 && (
+            <div className="fee-flow-total fee-flow-muted">
+              <span>Other exclusions · migrated bridge</span>
+              <strong>{monthlyUsd(capital.excludedBridges)}</strong>
+            </div>
+          )}
         </section>
         <section className="fee-flow-stage fee-flow-selected" aria-label="Selected vault">
           <article className="fee-flow-card fee-flow-selected-card" data-flow-id="selected" data-flow-parent="direct">

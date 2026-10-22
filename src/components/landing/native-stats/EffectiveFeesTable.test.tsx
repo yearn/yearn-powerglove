@@ -2,7 +2,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { afterEach, expect, it, vi } from 'vitest'
+import type { KongVaultListItem } from '@/types/kong'
+import { EffectiveFeeCapitalDetails } from './EffectiveFeeCapitalDetails'
 import { EffectiveFeesTable } from './EffectiveFeesTable'
+import { feeCapitalVaults } from './effective-fee-capital'
 import type { FeeStackSummary } from './types'
 import type { OriginAudit, OriginGraph } from './vault-origin'
 
@@ -141,9 +144,10 @@ const graph: OriginGraph = {
 let urls: string[] = []
 let mismatch = false
 const clients: QueryClient[] = []
-function Table() {
+function Table({ metadata }: { metadata?: KongVaultListItem[] }) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   clients.push(client)
+  if (metadata) client.setQueryData(['fee-vault-type-catalog'], metadata)
   return (
     <QueryClientProvider client={client}>
       <EffectiveFeesTable feeStack={stack} vaults={[]} chainSelector={null} />
@@ -159,6 +163,7 @@ afterEach(() => {
 })
 it('preserves the canonical vault list and rates while showing reported, upstream, and adjusted downstream capital', () => {
   render(<Table />)
+  expect(screen.getByRole('heading', { name: 'Adjusted TVL and Fees by Vault' })).toBeTruthy()
   expect(urls).toContain('/api/audit/tree?datasetId=selected')
   expect(urls).toContain('/api/tvl/graph?includeRetired=true&datasetId=selected')
   const table = screen.getByRole('table', { name: 'Current effective fees for direct vault deposits' })
@@ -223,4 +228,38 @@ it('does not show upstream details from a mismatched publication', () => {
   fireEvent.click(screen.getByRole('button', { name: 'Fee breakdown for Example vault' }))
   expect(screen.queryByRole('link', { name: 'Upstream vault' })).toBeNull()
   expect(screen.getByText('Upstream TVL is unavailable for this publication.')).toBeTruthy()
+})
+
+it('omits a known-zero upstream section while keeping downstream allocations', () => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  clients.push(client)
+  render(
+    <QueryClientProvider client={client}>
+      <EffectiveFeeCapitalDetails
+        row={{ ...stack.entries![0], root, adjustedTvlUsd: 200 }}
+        vaults={feeCapitalVaults({ ...audit, vaults: [{ ...audit.vaults[0], countedTvlUsd: 200 }] }, 'selected')}
+        graph={graph}
+        datasetId="selected"
+        feeNodes={new Map()}
+        navigable={new Set()}
+      />
+    </QueryClientProvider>
+  )
+  expect(screen.queryByRole('region', { name: 'Upstream excluded capital' })).toBeNull()
+  expect(screen.getByRole('region', { name: 'Direct deposits' })).toBeTruthy()
+  expect(screen.getByRole('region', { name: 'Downstream included capital' })).toBeTruthy()
+  expect(screen.getByText('Idle funds')).toBeTruthy()
+})
+
+it.each([
+  { name: 'explicitly hidden', metadata: [{ ...root.vault, address: '0xROOT', isHidden: true }], visible: false },
+  { name: 'explicitly visible', metadata: [{ ...root.vault, isHidden: false }], visible: true },
+  { name: 'flag unavailable', metadata: [root.vault], visible: true },
+  { name: 'metadata unavailable', metadata: [], visible: true },
+  { name: 'hidden only on another chain', metadata: [{ ...root.vault, chainId: 10, isHidden: true }], visible: true }
+])('keeps the correct Effective Fees rows when $name', ({ metadata, visible }) => {
+  render(<Table metadata={metadata} />)
+  const row = screen.queryByRole('button', { name: 'Fee breakdown for Example vault' })
+  expect(row !== null).toBe(visible)
+  if (!visible) expect(screen.getByText('No vaults match these filters.')).toBeTruthy()
 })

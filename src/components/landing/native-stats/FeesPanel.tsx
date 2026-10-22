@@ -414,8 +414,7 @@ const DEFAULT_FEE_CHART_TYPES = {
   overall: 'line',
   feeYield: 'bar',
   allocator: 'line',
-  chainEarnings: 'bar',
-  chainFees: 'bar',
+  chain: 'bar',
   vaultType: 'bar'
 } as const
 
@@ -749,7 +748,7 @@ export function FeesPanel({ chainSelector }: { chainSelector: ReactNode }) {
         )}
 
         <ChainFeeHistoryCharts
-          chartTypes={{ earnings: chartType('chainEarnings'), fees: chartType('chainFees') }}
+          {...chartType('chain')}
           query={historyFilters.toString()}
           chainIds={historyChainIds}
           periods={feeHistorySeries}
@@ -771,7 +770,7 @@ export function FeesPanel({ chainSelector }: { chainSelector: ReactNode }) {
       {/* ---- Effective Fees ---- */}
       {feeStackError && (
         <div className="card">
-          <h2>Effective Fees</h2>
+          <h2>Adjusted TVL and Fees by Vault</h2>
           <div className="error-retry">
             <div className="error-message">Effective fees unavailable: {feeStackError}</div>
             <button className="page-btn" onClick={retryFeeStack}>

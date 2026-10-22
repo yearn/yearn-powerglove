@@ -1,8 +1,10 @@
-import { useMemo } from 'react'
-import type { FeeChartTypeControls } from './ChartTypeToggle'
+import { useMemo, useState } from 'react'
+import type { ChartTypeControl } from './ChartTypeToggle'
 import type { FeeHistoryInterval } from './canonical-fees'
+import type { ChainFeeMetric } from './chain-fee-history'
 import { buildChainFeeHistorySeries } from './chain-fee-history'
 import { FeeBreakdownChart } from './FeeBreakdownChart'
+import { FeeMetricToggle } from './FeeMetricToggle'
 import type { FeeHistoryPeriod } from './fee-history'
 import { CHAIN_COLORS, CHAIN_NAMES, SkeletonChart } from './hooks'
 import { useChainFeeHistories } from './useChainFeeHistories'
@@ -15,15 +17,16 @@ export function ChainFeeHistoryCharts({
   periods,
   view,
   interval,
-  chartTypes
-}: {
+  renderType,
+  onRenderTypeChange
+}: ChartTypeControl & {
   query: string
   chainIds: number[]
   periods: FeeHistoryPeriod[]
   view: ChainFeeHistoryView
   interval: FeeHistoryInterval
-  chartTypes: FeeChartTypeControls
 }) {
+  const [metric, setMetric] = useState<ChainFeeMetric>('earnings')
   const { data, loading, error, retry } = useChainFeeHistories(query, chainIds)
   const chartSeries = chainIds.map((chainId) => ({
     key: String(chainId),
@@ -44,26 +47,17 @@ export function ChainFeeHistoryCharts({
           </button>
         </div>
       ) : (
-        <>
-          <FeeBreakdownChart
-            {...chartTypes.earnings}
-            title="Earnings by Chain"
-            subtitle="Gross gains less losses"
-            metric="earnings"
-            data={series[view]}
-            series={chartSeries}
-            interval={interval}
-          />
-          <FeeBreakdownChart
-            {...chartTypes.fees}
-            title="Fees by Chain"
-            subtitle="Gross fees charged"
-            metric="fees"
-            data={series[view]}
-            series={chartSeries}
-            interval={interval}
-          />
-        </>
+        <FeeBreakdownChart
+          renderType={renderType}
+          onRenderTypeChange={onRenderTypeChange}
+          title={`${metric === 'earnings' ? 'Earnings' : 'Fees'} by Chain`}
+          subtitle={metric === 'earnings' ? 'Gross gains less losses' : 'Gross fees charged'}
+          metric={metric}
+          metricControl={<FeeMetricToggle value={metric} onValueChange={setMetric} label="Chain" />}
+          data={series[view]}
+          series={chartSeries}
+          interval={interval}
+        />
       )}
     </section>
   )

@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { cloneElement, type ReactElement } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { ChartTypeControl, FeeChartTypeControls } from './ChartTypeToggle'
+import type { ChartTypeControl } from './ChartTypeToggle'
 import { FeesPanel } from './FeesPanel'
 
 vi.mock('./EffectiveFeesTable', () => ({ EffectiveFeesTable: () => <div>Effective fees table</div> }))
@@ -15,13 +15,8 @@ vi.mock('recharts', async (importOriginal) => ({
 }))
 
 vi.mock('./ChainFeeHistoryCharts', () => ({
-  ChainFeeHistoryCharts: ({ view, chartTypes }: { view: string; chartTypes: FeeChartTypeControls }) => (
-    <div
-      data-testid="chain-view"
-      data-view={view}
-      data-render-type={chartTypes.earnings.renderType}
-      data-fees-type={chartTypes.fees.renderType}
-    />
+  ChainFeeHistoryCharts: ({ view, renderType }: { view: string } & ChartTypeControl) => (
+    <div data-testid="chain-view" data-view={view} data-render-type={renderType} />
   )
 }))
 vi.mock('./VaultTypeFeeCharts', () => ({
@@ -204,7 +199,6 @@ describe('shared fee chart view', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Show earnings and fees as bars' }))
     expect(chart.querySelectorAll('.recharts-bar')).toHaveLength(2)
     expect(screen.getByTestId('allocator-view').getAttribute('data-render-type')).toBe('line')
-    expect(screen.getByTestId('chain-view').getAttribute('data-fees-type')).toBe('bar')
     expect(screen.getByTestId('chain-view').getAttribute('data-render-type')).toBe('bar')
     expect(screen.getByTestId('vault-view').getAttribute('data-render-type')).toBe('bar')
   })

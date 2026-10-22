@@ -7,8 +7,6 @@ export interface ChartTypeControl {
   onRenderTypeChange: (value: StatsChartType) => void
 }
 
-export type FeeChartTypeControls = Record<'earnings' | 'fees', ChartTypeControl>
-
 export function ChartTypeToggle({
   value,
   onValueChange,

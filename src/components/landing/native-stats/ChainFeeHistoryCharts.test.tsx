@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { cloneElement, type ReactElement, useState } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ChainFeeHistoryCharts } from './ChainFeeHistoryCharts'
+import { ChainFeeHistoryCharts, type ChainFeeHistoryView } from './ChainFeeHistoryCharts'
 import type { StatsChartType } from './ChartTypeToggle'
 import type { CanonicalFeeHistoryBucket } from './canonical-fees'
 
@@ -52,20 +52,23 @@ const histories = [
   }
 ]
 
-function Charts({ initialType = 'bar' }: { initialType?: StatsChartType }) {
-  const [earnings, setEarnings] = useState<StatsChartType>(initialType)
-  const [fees, setFees] = useState<StatsChartType>(initialType)
+function Charts({
+  initialType = 'bar',
+  view = 'periodic'
+}: {
+  initialType?: StatsChartType
+  view?: ChainFeeHistoryView
+}) {
+  const [renderType, setRenderType] = useState<StatsChartType>(initialType)
   return (
     <ChainFeeHistoryCharts
       query="interval=monthly"
       chainIds={[1, 137, 42161]}
       periods={periods}
-      view="periodic"
+      view={view}
       interval="monthly"
-      chartTypes={{
-        earnings: { renderType: earnings, onRenderTypeChange: setEarnings },
-        fees: { renderType: fees, onRenderTypeChange: setFees }
-      }}
+      renderType={renderType}
+      onRenderTypeChange={setRenderType}
     />
   )
 }
@@ -89,10 +92,33 @@ describe('chain fee chart stacking', () => {
     fireEvent.click(within(chart).getByRole('button', { name: 'Polygon' }))
     expect(chart.querySelectorAll('.recharts-bar')).toHaveLength(2)
     fireEvent.click(screen.getByRole('button', { name: 'Show earnings by chain as lines' }))
-    const fees = screen.getByRole('heading', { name: 'Fees by Chain' }).closest('.fee-chart-card')
-    expect(fees?.querySelectorAll('.recharts-bar')).toHaveLength(3)
+    expect(screen.queryByRole('heading', { name: 'Fees by Chain' })).toBeNull()
     expect(chart.querySelectorAll('.recharts-area-curve')).toHaveLength(2)
     expect(within(chart).getByRole('button', { name: 'Polygon' }).getAttribute('aria-pressed')).toBe('false')
+  })
+
+  it('switches a single chain chart between earnings and fees while preserving series, type, and view', () => {
+    const rendered = render(<Charts />)
+    const section = screen.getByRole('region', { name: 'Earnings and fees by chain' })
+    const toggle = within(section).getByRole('group', { name: 'Chain metric' })
+    expect(section.querySelectorAll('.fee-chart-card')).toHaveLength(1)
+    fireEvent.click(within(section).getByRole('button', { name: 'Polygon' }))
+    fireEvent.click(within(toggle).getByRole('button', { name: 'Fees' }))
+    expect(screen.getByRole('heading', { name: 'Fees by Chain' })).toBeTruthy()
+    expect(screen.queryByRole('heading', { name: 'Earnings by Chain' })).toBeNull()
+    expect(section.querySelectorAll('.recharts-bar')).toHaveLength(2)
+    fireEvent.click(screen.getByRole('button', { name: 'Show fees by chain as lines' }))
+    const periodicPath = section.querySelector('.recharts-area-curve')?.getAttribute('d')
+    rendered.rerender(<Charts view="cumulative" />)
+    expect(within(toggle).getByRole('button', { name: 'Fees' }).getAttribute('aria-pressed')).toBe('true')
+    expect(section.querySelectorAll('.recharts-area-curve')).toHaveLength(2)
+    expect(section.querySelector('.recharts-area-curve')?.getAttribute('d')).not.toBe(periodicPath)
+    fireEvent.click(within(toggle).getByRole('button', { name: 'Earnings' }))
+    expect(screen.getByRole('heading', { name: 'Earnings by Chain' })).toBeTruthy()
+    expect(within(section).getByRole('button', { name: 'Polygon' }).getAttribute('aria-pressed')).toBe('false')
+    expect(screen.getByRole('button', { name: 'Show earnings by chain as lines' }).getAttribute('aria-pressed')).toBe(
+      'true'
+    )
   })
 
   it('subtracts losses within the stack and keeps tiny negatives beside the preceding boundary', () => {

@@ -1,6 +1,7 @@
 import type { DirectDepositFeeRow } from './direct-deposit-fees'
 import { directDepositTvl, feeStackLayers } from './direct-deposit-fees'
 import { downstreamCapital } from './downstream-capital'
+import { combineProductAllocations, internalProductEdges, isCombinedProduct } from './product-capital'
 import type { FeeStackNode } from './types'
 import type { OriginAudit, OriginGraph, OriginVault } from './vault-origin'
 import { originVaultId } from './vault-origin'
@@ -18,8 +19,18 @@ const sumKnown = (values: (number | null | undefined)[]) =>
   values.every((value) => typeof value === 'number' && Number.isFinite(value))
     ? values.reduce<number>((sum, value) => sum + (value as number), 0)
     : null
-export const reportedDepositTvl = (row: DirectDepositFeeRow, vaults: Map<string, OriginVault>) =>
-  sumKnown(distinctRoots(row).map((root) => vaults.get(rootId(root))?.tvlUsd))
+export function reportedDepositTvl(
+  row: DirectDepositFeeRow,
+  vaults: Map<string, OriginVault>,
+  graph?: OriginGraph | null,
+  datasetId?: string
+) {
+  const gross = sumKnown(distinctRoots(row).map((root) => vaults.get(rootId(root))?.tvlUsd))
+  if (!isCombinedProduct(row)) return gross
+  if (gross === null || !datasetId || graph?.datasetId !== datasetId) return null
+  const internal = sumKnown(internalProductEdges(row, graph).map((edge) => edge.deductedTvlUsd))
+  return internal !== null && internal <= gross + 0.01 ? Math.max(0, gross - internal) : null
+}
 
 export interface UpstreamFeeCapital {
   sources: FeeStackNode['vault'][]
@@ -36,7 +47,8 @@ export function effectiveFeeCapital(
 ) {
   const roots = distinctRoots(row)
   const members = new Set(roots.map(rootId))
-  const reported = reportedDepositTvl(row, vaults)
+  const combinedProduct = isCombinedProduct(row)
+  const reported = reportedDepositTvl(row, vaults, graph, datasetId)
   const adjustedByVault = new Map(
     [...vaults].flatMap(([id, vault]) =>
       typeof vault.countedTvlUsd === 'number' ? [[id, vault.countedTvlUsd] as const] : []
@@ -62,7 +74,7 @@ export function effectiveFeeCapital(
       )
     })
   const matched = !!datasetId && graph?.datasetId === datasetId
-  const downstreamRoots =
+  const memberRoots =
     consistent && matched
       ? downstreamCapital(
           roots.map((root, index) => ({ vault: root.vault, capitalUsd: rootAdjusted[index]! })),
@@ -74,6 +86,10 @@ export function effectiveFeeCapital(
           ])
         )
       : null
+  const downstreamRoots =
+    combinedProduct && memberRoots && adjusted !== null
+      ? combineProductAllocations(row, memberRoots, adjusted)
+      : memberRoots
   const excludedBridges = matched
     ? sumKnown(
         (graph.bridgeExclusions ?? [])
@@ -85,9 +101,11 @@ export function effectiveFeeCapital(
     reported !== null && adjusted !== null && excludedBridges !== null ? reported - adjusted - excludedBridges : null
   const upstream = difference !== null && difference >= -0.01 ? Math.max(0, difference) : null
   const positions: UpstreamFeeCapital[] = []
+  const internalEdges = matched ? new Set(internalProductEdges(row, graph).map((edge) => edge.id)) : new Set<string>()
   if (matched) {
     const nodes = new Map(graph.nodes.map((node) => [node.id, node]))
     for (const edge of graph.edges) {
+      if (internalEdges.has(edge.id)) continue
       if (!members.has(edge.targetNodeId) || typeof edge.deductedTvlUsd !== 'number' || edge.deductedTvlUsd <= 0)
         continue
       const source = nodes.get(edge.sourceNodeId)
@@ -115,6 +133,7 @@ export function effectiveFeeCapital(
     excludedBridges,
     positions,
     downstreamRoots,
+    combinedProduct,
     unattributedUpstream: upstream !== null ? Math.max(0, upstream - knownPositions) : null
   }
 }

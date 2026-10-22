@@ -69,6 +69,7 @@ export function EffectiveFeesTable({
     () =>
       sortStacks(
         directDepositFeeRows(feeStack.chains, feeStack.entries)
+          .filter((row) => metadataByVault.get(originVaultId(row.vault.chainId, row.vault.address))?.isHidden !== true)
           .map((row) => ({
             ...row,
             vaultType: monthlyVaultType({
@@ -91,7 +92,7 @@ export function EffectiveFeesTable({
           effective: (row) => row.performanceFee ?? -1,
           management: (row) => row.managementFee ?? -1,
           tvl: (row) => directDepositTvl(row, adjustedTvl) ?? -1,
-          reported: (row) => reportedDepositTvl(row, capitalVaults) ?? -1
+          reported: (row) => reportedDepositTvl(row, capitalVaults, graphMatched ? feeGraph : null, tvlDatasetId) ?? -1
         }
       ),
     [
@@ -102,6 +103,9 @@ export function EffectiveFeesTable({
       sortStacks,
       adjustedTvl,
       capitalVaults,
+      feeGraph,
+      graphMatched,
+      tvlDatasetId,
       metadataByVault,
       vaults
     ]
@@ -110,10 +114,10 @@ export function EffectiveFeesTable({
   const pagedStacks = sortedStacks.slice(stackPagination.start, stackPagination.end)
 
   return (
-    <section className="monthly-vault-fees" aria-label="Effective Fees">
+    <section className="monthly-vault-fees" aria-label="Adjusted TVL and Fees by Vault">
       <div className="monthly-fee-toolbar">
         <div>
-          <h2>Effective Fees</h2>
+          <h2>Adjusted TVL and Fees by Vault</h2>
           <p className="text-dim">
             Effective fees for a direct deposit, including underlying allocations. Latest published configuration and
             allocation snapshot.
@@ -179,7 +183,7 @@ export function EffectiveFeesTable({
               />
               <th
                 {...stackSort.th('reported', 'Reported TVL', 'text-right')}
-                title="Reported total assets, including idle funds. Product rows sum the reported assets of their published member vaults."
+                title="Reported total assets, including idle funds. Product rows consolidate their published members and exclude internal ownership."
               />
               <th {...stackSort.th('effective', 'effective perf. fee', 'text-right')} />
               <th
@@ -228,7 +232,9 @@ export function EffectiveFeesTable({
                       </span>
                     </th>
                     <td>{monthlyUsd(directDepositTvl(row, adjustedTvl))}</td>
-                    <td>{monthlyUsd(reportedDepositTvl(row, capitalVaults))}</td>
+                    <td>
+                      {monthlyUsd(reportedDepositTvl(row, capitalVaults, graphMatched ? feeGraph : null, tvlDatasetId))}
+                    </td>
                     <td
                       title={
                         row.feeRateBasis === 'stack'
@@ -268,9 +274,10 @@ export function EffectiveFeesTable({
       <details className="effective-fee-methodology">
         <summary>Methodology</summary>
         <p>
-          Reported TVL is reported total assets, including idle funds. Product rows sum their published member vaults.
-          Adjusted TVL excludes capital already attributed to upstream vaults and any separately published bridge
-          exclusions. Ownership between product members is shown as upstream capital.
+          Reported TVL is reported total assets, including idle funds. Product rows combine their published members and
+          remove ownership between those members so the same assets appear once. Adjusted TVL excludes capital already
+          attributed to upstream vaults and any separately published bridge exclusions. Product inputs show only
+          ownership from outside the product; internal member transfers are hidden.
         </p>
         <p>
           Grey upstream nodes show excluded capital and the source vault’s own layer fees for context. These upstream
