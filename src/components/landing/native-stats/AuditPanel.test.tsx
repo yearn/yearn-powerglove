@@ -18,6 +18,7 @@ const vault = {
 }
 let membership: unknown = null
 let auditError: string | null = null
+let comparisonError: string | null = null
 const retry = vi.fn()
 vi.mock('@tanstack/react-router', () => ({ Link: ({ children }: { children: ReactNode }) => <span>{children}</span> }))
 vi.mock('./hooks', async (original) => ({
@@ -27,7 +28,7 @@ vi.mock('./hooks', async (original) => ({
       ? { summedTvl: 100, overlapTvl: 100, crossChainOverlap: 0, vaultCount: 1, vaults: [vault], crossChainVaults: [] }
       : membership,
     loading: false,
-    error: url.startsWith('/api/audit/tree') ? auditError : null,
+    error: url.startsWith('/api/audit/tree') ? auditError : comparisonError,
     retry,
     fetchedAt: null
   })
@@ -36,6 +37,7 @@ afterEach(() => {
   cleanup()
   membership = null
   auditError = null
+  comparisonError = null
   retry.mockClear()
 })
 describe('native audit accounting and verified membership', () => {
@@ -68,4 +70,20 @@ it('shows and retries audit-tree failures', () => {
   expect(screen.getByRole('alert').textContent).toContain('Request failed')
   fireEvent.click(screen.getByRole('button', { name: 'Retry vault breakdown' }))
   expect(retry).toHaveBeenCalledOnce()
+})
+
+it('distinguishes comparison failure from measured zero and offers retry', () => {
+  comparisonError = 'Comparison failed'
+  render(<AuditPanel />)
+  expect(screen.getByText(/DefiLlama comparison unavailable/)).toBeTruthy()
+  expect(screen.queryByText(/0 local-only/)).toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: 'Retry comparison' }))
+  expect(retry).toHaveBeenCalledOnce()
+  expect(screen.getByText('Example vault')).toBeTruthy()
+})
+it('keeps genuine successful zero comparison results visible', () => {
+  membership = { diff: { missingFromDefillama: [] }, includedVaults: [] }
+  render(<AuditPanel />)
+  expect(screen.getByText(/0 local-only/)).toBeTruthy()
+  expect(screen.queryByRole('button', { name: 'Retry comparison' })).toBeNull()
 })

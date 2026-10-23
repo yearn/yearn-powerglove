@@ -1,5 +1,9 @@
 import { type KeyboardEvent, useCallback, useEffect, useRef, useState } from 'react'
-import { assertCanonicalFeeResponse, requiresCanonicalFeeResponse } from '@/lib/fee-api-contract'
+import {
+  assertCanonicalFeeResponse,
+  assertFeeStackResponse,
+  requiresCanonicalFeeResponse
+} from '@/lib/fee-api-contract'
 
 type StatsApiLane = 'tvl' | 'tvl-analytics' | 'fees' | 'fee-analytics'
 
@@ -156,6 +160,7 @@ export function useFetch<T>(url: string, options: UseFetchOptions = {}) {
             }
             const payload = await response.json()
             const request = new URL(url, 'https://stats.invalid')
+            if (request.pathname.replace(/\/$/, '') === '/api/fees/stack') assertFeeStackResponse(payload)
             if (requiresCanonicalFeeResponse(request.pathname)) {
               assertCanonicalFeeResponse(payload, request.searchParams.get('scope') ?? 'contract')
             }

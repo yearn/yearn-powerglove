@@ -462,9 +462,12 @@ export function AuditPanel() {
 
   const url = `/api/audit/tree${chainFilter !== 'all' ? `?chainId=${chainFilter}` : ''}`
   const { data, loading, fetchedAt, error, retry } = useFetch<AuditTreeResponse>(url)
-  const { data: defillamaComparison } = useFetch<DefillamaComparableComparison>(
-    '/api/comparison/defillama-comparable?includeVaultBreakdown=true'
-  )
+  const {
+    data: defillamaComparison,
+    loading: comparisonLoading,
+    error: comparisonError,
+    retry: retryComparison
+  } = useFetch<DefillamaComparableComparison>('/api/comparison/defillama-comparable?includeVaultBreakdown=true')
 
   useEffect(() => {
     if (fetchedAt) setLastFetchedAt(fetchedAt)
@@ -674,8 +677,21 @@ export function AuditPanel() {
         />
 
         <span className="text-dim audit-filter-summary">
-          {filteredVaults.length} vaults · {filteredMissingFromDefillama.length} local-only ·{' '}
-          {fmt(missingFromDefillamaTvl)}
+          {filteredVaults.length} vaults ·{' '}
+          {comparisonLoading ? (
+            'DefiLlama comparison loading…'
+          ) : comparisonError || !defillamaComparison?.diff ? (
+            <>
+              DefiLlama comparison unavailable{' '}
+              <button type="button" className="page-btn" onClick={retryComparison}>
+                Retry comparison
+              </button>
+            </>
+          ) : (
+            <>
+              {filteredMissingFromDefillama.length} local-only · {fmt(missingFromDefillamaTvl)}
+            </>
+          )}
         </span>
       </div>
 

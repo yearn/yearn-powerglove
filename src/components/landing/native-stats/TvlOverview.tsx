@@ -12,10 +12,12 @@ import { CAT_COLORS, CHAIN_NAMES, CHAIN_SHORT, CHART_COLORS, fmt, SkeletonCards,
 import { StatsContext, StatsTimeRangeContext } from './StatsContext'
 import {
   buildConstantPriceTvlUrl,
+  buildTopSeriesChart,
   buildTvlHistoryUrl,
   DAY_SECONDS,
   getAvailableChartSeries,
   getPriceNeutralCoverageLabel,
+  getStackRenderSeries,
   getTvlHistoryErrorMessage,
   isPriceNeutralOverlayVisible,
   labelVersionHistoryChart,
@@ -63,61 +65,6 @@ function formatHistoryGroup(groupBy: string | undefined): string {
   if (groupBy === 'vault') return 'vault'
   if (groupBy === 'category') return 'version'
   return groupBy ?? 'series'
-}
-
-function hasSeriesValue(row: Record<string, unknown>, series: string): boolean {
-  const value = row[series]
-  return typeof value === 'number' && Number.isFinite(value)
-}
-
-function getLatestSeriesValue(rows: TvlHistoryRun['chart'], series: string): number {
-  for (let index = rows.length - 1; index >= 0; index -= 1) {
-    const value = rows[index]?.[series]
-    if (typeof value === 'number' && Number.isFinite(value)) return value
-  }
-
-  return 0
-}
-
-function buildTopTvlHistoryChart(
-  rows: TvlHistoryRun['chart'],
-  seriesKeys: string[],
-  remainingSeries: string
-): { rows: TvlHistoryRun['chart']; series: string[] } {
-  const rankedSeries = [...seriesKeys].sort((a, b) => getLatestSeriesValue(rows, b) - getLatestSeriesValue(rows, a))
-  const topSeries = rankedSeries.slice(0, TVL_HISTORY_TOP_SERIES_COUNT)
-  const otherSeries = rankedSeries.slice(TVL_HISTORY_TOP_SERIES_COUNT)
-  const hasOtherSeries = otherSeries.length > 0
-
-  const chartRows = rows.map((row) => {
-    const nextRow: TvlHistoryRun['chart'][number] = { timestamp: row.timestamp }
-
-    for (const series of topSeries) {
-      if (hasSeriesValue(row, series)) nextRow[series] = row[series]
-    }
-
-    if (hasOtherSeries) {
-      const otherTvl = otherSeries.reduce((sum, series) => {
-        const value = row[series]
-        return typeof value === 'number' && Number.isFinite(value) ? sum + value : sum
-      }, 0)
-
-      if (otherTvl > 0) nextRow[remainingSeries] = otherTvl
-    }
-
-    return nextRow
-  })
-
-  return {
-    rows: chartRows,
-    series: hasOtherSeries ? [...topSeries, remainingSeries] : topSeries
-  }
-}
-
-function getStackRenderSeries(seriesKeys: string[], remainingSeries: string): string[] {
-  const topSeries = seriesKeys.filter((series) => series !== remainingSeries)
-  const hasRemainingSeries = seriesKeys.includes(remainingSeries)
-  return [...topSeries.slice().reverse(), ...(hasRemainingSeries ? [remainingSeries] : [])]
 }
 
 function getHistoryBarSize(rowCount: number): number {
@@ -324,7 +271,7 @@ export function TvlOverview() {
   }[tvlHistoryBreakdown]
   const tvlHistoryChart = useMemo(() => {
     if (!rawTvlHistory) return { rows: [], series: [] }
-    const topTvlHistory = buildTopTvlHistoryChart(rawTvlHistory.chart, rawTvlHistory.series, tvlHistoryRemainingSeries)
+    const topTvlHistory = buildTopSeriesChart(rawTvlHistory.chart, rawTvlHistory.series, tvlHistoryRemainingSeries)
     const labeledHistory =
       tvlHistoryBreakdown === 'category'
         ? labelVersionHistoryChart(topTvlHistory.rows, topTvlHistory.series)
@@ -366,7 +313,7 @@ export function TvlOverview() {
     if (!constantPriceHistory) return { rows: [], series: [] }
     const sourceRows = selectConstantPriceChart(constantPriceHistory, 'constant-price')
     const series = getAvailableChartSeries(sourceRows)
-    return buildTopTvlHistoryChart(sourceRows, series, TVL_HISTORY_REMAINING_CHAIN_SERIES)
+    return buildTopSeriesChart(sourceRows, series, TVL_HISTORY_REMAINING_CHAIN_SERIES)
   }, [constantPriceHistory])
   const isPriceNeutralVisible = isPriceNeutralOverlayVisible(tvlHistoryView, showPriceNeutral)
   const displayedHistoryRows = useMemo(

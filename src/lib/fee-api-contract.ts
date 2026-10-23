@@ -23,3 +23,16 @@ export function assertCanonicalFeeResponse(payload: unknown, scope = 'contract')
 export function requiresCanonicalFeeResponse(path: string): boolean {
   return /^\/api\/fees(?:\/(?:vaults|history))?$/.test(path.replace(/\/$/, ''))
 }
+
+/** Stack data has its own shape rather than the canonical fees scope envelope. */
+export function assertFeeStackResponse(payload: unknown): void {
+  if (
+    !payload ||
+    typeof payload !== 'object' ||
+    !('chains' in payload) ||
+    !Array.isArray(payload.chains) ||
+    ('entries' in payload && !Array.isArray(payload.entries))
+  ) {
+    throw new Error('Effective fee stack response is invalid')
+  }
+}
