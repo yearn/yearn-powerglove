@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { assertCanonicalFeeResponse } from './fee-api-contract'
+import { assertCanonicalFeeResponse, requiresCanonicalFeeResponse } from './fee-api-contract'
 
 describe('canonical fee API boundary', () => {
   it('rejects a legacy publication even when its fee amount looks plausible', () => {
@@ -17,4 +17,13 @@ describe('canonical fee API boundary', () => {
       expect(() => assertCanonicalFeeResponse({ datasetId: 'current', aggregationScope: scope }, scope)).not.toThrow()
     }
   })
+})
+
+it('shares the canonical response boundary across fee routes', () => {
+  for (const path of ['/api/fees', '/api/fees/', '/api/fees/history', '/api/fees/vaults']) {
+    expect(requiresCanonicalFeeResponse(path)).toBe(true)
+  }
+  for (const path of ['/api/fees/stack', '/api/profitability', '/api/tvl', '/api/fees/history/extra']) {
+    expect(requiresCanonicalFeeResponse(path)).toBe(false)
+  }
 })

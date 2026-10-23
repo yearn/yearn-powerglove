@@ -263,9 +263,7 @@ export function EffectiveFeesTable({
         </table>
         {!sortedStacks.length && <p className="monthly-fee-empty text-dim">No vaults match these filters.</p>}
       </div>
-      <div className="monthly-fee-footer effective-fee-pagination">
-        {stackPagination.Pagination && <stackPagination.Pagination />}
-      </div>
+      <div className="monthly-fee-footer effective-fee-pagination">{stackPagination.pagination}</div>
     </section>
   )
 }

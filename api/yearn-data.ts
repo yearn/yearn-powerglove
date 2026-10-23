@@ -1,4 +1,4 @@
-import { assertCanonicalFeeResponse } from '../src/lib/fee-api-contract.js'
+import { assertCanonicalFeeResponse, requiresCanonicalFeeResponse } from '../src/lib/fee-api-contract.js'
 
 const DATA_ROUTES = new Set([
   '/api/publication',
@@ -59,7 +59,7 @@ export default async function handler(req: { method?: string; url?: string }, re
       return res.status(502).json({ error: 'Stats API is unavailable' })
     }
     const body = await response.json()
-    if (response.ok && /^\/api\/fees(?:\/(?:vaults|history))?$/.test(path)) {
+    if (response.ok && requiresCanonicalFeeResponse(path)) {
       assertCanonicalFeeResponse(body, request.searchParams.get('scope') ?? 'contract')
     }
     res.setHeader('Cache-Control', response.headers.get('Cache-Control') ?? 'no-store')

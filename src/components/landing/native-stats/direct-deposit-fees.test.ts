@@ -83,3 +83,17 @@ it('uses canonical product entries without duplicating component rows or using g
   expect(directDepositTvl({ ...rows[0], adjustedTvlUsd: null }, graph)).toBeNull()
   expect(directDepositTvl({ ...rows[0], adjustedTvlUsd: undefined }, graph)).toBe(60)
 })
+
+it('preserves an explicitly empty canonical catalog instead of reconstructing product policy from chains', () => {
+  const root: FeeStackNode = {
+    vault: { address: '0xroot', chainId: 1, name: 'Root' },
+    perfFee: 1000,
+    mgmtFee: 0,
+    capitalUsd: 100,
+    children: [],
+    availability: { state: 'available' }
+  }
+  const chains = [{ root, maxDepth: 1, effectivePerfFee: 1000, effectiveMgmtFee: 0 }]
+  expect(directDepositFeeRows(chains, [])).toEqual([])
+  expect(directDepositFeeRows(chains)).toHaveLength(1)
+})

@@ -112,7 +112,7 @@ function MonthlyVaultTable({
   const annualTotal = totals.some((value) => value === null)
     ? null
     : totals.reduce<number>((sum, value) => sum + (value ?? 0), 0)
-  const { start, end, setPage, Pagination } = usePagination(rows.length, 10)
+  const { start, end, setPage, pagination } = usePagination(rows.length, 10)
   const filtersKey = `${chainFilter}:${typeFilter}`
   const [paginationFiltersKey, setPaginationFiltersKey] = useState(filtersKey)
   if (paginationFiltersKey !== filtersKey) {
@@ -287,7 +287,7 @@ function MonthlyVaultTable({
           </section>
           <div className="monthly-fee-footer">
             <span className="text-dim">{rows.length.toLocaleString()} vaults · Rounded to the nearest dollar</span>
-            {Pagination && <Pagination />}
+            {pagination}
           </div>
         </>
       )}

@@ -1,5 +1,5 @@
 import { type KeyboardEvent, useCallback, useEffect, useRef, useState } from 'react'
-import { assertCanonicalFeeResponse } from '@/lib/fee-api-contract'
+import { assertCanonicalFeeResponse, requiresCanonicalFeeResponse } from '@/lib/fee-api-contract'
 
 type StatsApiLane = 'tvl' | 'tvl-analytics' | 'fees' | 'fee-analytics'
 
@@ -160,7 +160,7 @@ export function useFetch<T>(url: string, options: UseFetchOptions = {}) {
             }
             const payload = await response.json()
             const request = new URL(url, 'https://stats.invalid')
-            if (/^\/api\/fees(?:\/(?:vaults|history))?$/.test(request.pathname)) {
+            if (requiresCanonicalFeeResponse(request.pathname)) {
               assertCanonicalFeeResponse(payload, request.searchParams.get('scope') ?? 'contract')
             }
             return { payload, timestamp: Date.now(), status: response.status }
@@ -436,34 +436,32 @@ export function usePagination(totalItems: number, pageSize = 30) {
     if (page >= totalPages && totalPages > 0) setPage(totalPages - 1)
   }, [page, totalPages])
 
-  const Pagination =
-    totalPages <= 1
-      ? null
-      : () => (
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '0.75rem',
-              marginTop: '0.75rem'
-            }}
-          >
-            <button className="page-btn" disabled={page === 0} onClick={() => setPage((current) => current - 1)}>
-              Prev
-            </button>
-            <span className="text-dim" style={{ fontSize: '0.78rem' }}>
-              {start + 1}–{Math.min(end, totalItems)} of {totalItems}
-            </span>
-            <button
-              className="page-btn"
-              disabled={page >= totalPages - 1}
-              onClick={() => setPage((current) => current + 1)}
-            >
-              Next
-            </button>
-          </div>
-        )
+  const pagination =
+    totalPages <= 1 ? null : (
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '0.75rem',
+          marginTop: '0.75rem'
+        }}
+      >
+        <button className="page-btn" disabled={page === 0} onClick={() => setPage((current) => current - 1)}>
+          Prev
+        </button>
+        <span className="text-dim" style={{ fontSize: '0.78rem' }}>
+          {start + 1}–{Math.min(end, totalItems)} of {totalItems}
+        </span>
+        <button
+          className="page-btn"
+          disabled={page >= totalPages - 1}
+          onClick={() => setPage((current) => current + 1)}
+        >
+          Next
+        </button>
+      </div>
+    )
 
-  return { page, start, end, totalPages, setPage, Pagination }
+  return { page, start, end, totalPages, setPage, pagination }
 }

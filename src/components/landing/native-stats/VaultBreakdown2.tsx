@@ -127,7 +127,7 @@ export function VaultBreakdown2() {
       if (right === null) return -1
       return (left - right) * (sort.descending ? -1 : 1)
     })
-  const { start, end, setPage, Pagination } = usePagination(rows.length, 25)
+  const { start, end, setPage, pagination } = usePagination(rows.length, 25)
   const loading = audit.loading || (!!datasetId && graph.loading)
   const error =
     audit.error ||
@@ -291,7 +291,7 @@ export function VaultBreakdown2() {
             </table>
             {!rows.length && <p className="monthly-fee-empty text-dim">No vaults match these filters.</p>}
           </section>
-          {Pagination && <Pagination />}
+          {pagination}
         </>
       ) : null}
     </section>

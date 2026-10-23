@@ -11,3 +11,8 @@ export function assertCanonicalFeeResponse(payload: unknown, scope = 'contract')
     throw new Error('Fee API is outdated or returned the wrong aggregation scope. Check the Yearn Data API target.')
   }
 }
+
+/** Fee payloads validated at both the server proxy and browser cache boundary. */
+export function requiresCanonicalFeeResponse(path: string): boolean {
+  return /^\/api\/fees(?:\/(?:vaults|history))?$/.test(path.replace(/\/$/, ''))
+}
