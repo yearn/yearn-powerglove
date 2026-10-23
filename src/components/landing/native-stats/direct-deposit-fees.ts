@@ -72,3 +72,25 @@ export function directDepositTvl(row: DirectDepositFeeRow, externalTvl: Map<stri
     ? row.adjustedTvlUsd
     : (externalTvl.get(`${row.vault.chainId}:${row.vault.address.toLowerCase()}`) ?? null)
 }
+
+/** Table-only treasury exclusion; the published graph and aggregate TVL stay intact. */
+export function treasuryAdjustedTvl(
+  row: DirectDepositFeeRow,
+  externalTvl: Map<string, number>,
+  exclusions: ReadonlyMap<string, number | null>
+) {
+  const published = directDepositTvl(row, externalTvl)
+  const ids = [...new Set(row.roots.map((root) => `${root.vault.chainId}:${root.vault.address.toLowerCase()}`))]
+  const amounts = ids.map((id) => exclusions.get(id) ?? (exclusions.has(id) ? null : 0))
+  if (published === null || amounts.some((amount) => amount === null || !Number.isFinite(amount) || amount < 0))
+    return null
+  if (
+    ids.some(
+      (id, index) =>
+        amounts[index]! > 0 && (externalTvl.get(id) === undefined || amounts[index]! > externalTvl.get(id)! + 0.01)
+    )
+  )
+    return null
+  const excluded = amounts.reduce<number>((sum, amount) => sum + amount!, 0)
+  return excluded <= published + 0.01 ? Math.max(0, published - excluded) : null
+}

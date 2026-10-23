@@ -75,6 +75,107 @@ const graph: OriginGraph = {
 }
 
 describe('effective fee capital attribution', () => {
+  it('excludes treasury capital only from this table and scales included allocations', () => {
+    const original = JSON.stringify({ row, audit, graph })
+    const capital = effectiveFeeCapital(
+      row,
+      feeCapitalVaults(audit, 'selected'),
+      graph,
+      'selected',
+      new Map(),
+      new Map([['1:0xroot', 30]])
+    )
+    expect(capital).toMatchObject({ reported: 200, adjusted: 90, direct: 90, upstream: 80, treasuryExcluded: 30 })
+    expect(capital.downstreamRoots?.[0].children.map((child) => child.capitalUsd)).toEqual([54, 27, 9])
+    expect(JSON.stringify({ row, audit, graph })).toBe(original)
+    expect(row.performanceFee).toBe(2800)
+  })
+
+  it('keeps unavailable or excessive treasury exclusions out of adjusted values', () => {
+    for (const exclusion of [null, 121]) {
+      const capital = effectiveFeeCapital(
+        row,
+        feeCapitalVaults(audit, 'selected'),
+        graph,
+        'selected',
+        new Map(),
+        new Map([['1:0xroot', exclusion]])
+      )
+      expect(capital.adjusted).toBeNull()
+      expect(capital.direct).toBeNull()
+      expect(capital.downstreamRoots).toBeNull()
+      expect(capital.upstream).toBe(80)
+    }
+  })
+
+  it('subtracts actual treasury holdings from each combined member without duplicating internal ownership', () => {
+    const locked = { ...root, vault: { ...root.vault, address: '0xlocked' }, capitalUsd: 40, children: [] }
+    const combined = { ...row, roots: [root, locked], adjustedTvlUsd: 200, feeRateBasis: 'product' as const }
+    const data: OriginAudit = {
+      ...audit,
+      vaults: [
+        { ...audit.vaults[0], countedTvlUsd: 160 },
+        {
+          ...audit.vaults[0],
+          address: '0xlocked',
+          tvlUsd: 40,
+          countedTvlUsd: 40,
+          strategies: [{ address: '0xlocked', debtUsd: 40, targetVaultAddress: '0xroot', targetVaultChainId: 1 }]
+        }
+      ]
+    }
+    const productGraph: OriginGraph = {
+      ...graph,
+      nodes: [
+        ...graph.nodes,
+        {
+          id: '1:0xroot',
+          ...root.vault,
+          name: 'Root',
+          nodeType: 'vault',
+          category: 'v3',
+          rawTvlUsd: 200,
+          externalTvlUsd: 160,
+          isRetired: false
+        }
+      ],
+      edges: [
+        ...graph.edges,
+        {
+          id: 'internal',
+          sourceNodeId: '1:0xlocked',
+          targetNodeId: '1:0xroot',
+          holderAddress: '0xlocked',
+          kind: 'auto',
+          tvlUsd: 40,
+          deductedTvlUsd: 40
+        }
+      ]
+    }
+    const capital = effectiveFeeCapital(
+      combined,
+      feeCapitalVaults(data, 'selected'),
+      productGraph,
+      'selected',
+      new Map(),
+      new Map([
+        ['1:0xroot', 20],
+        ['1:0xlocked', 10]
+      ])
+    )
+    expect(capital).toMatchObject({
+      reported: 200,
+      adjusted: 170,
+      upstream: 0,
+      treasuryExcluded: 30,
+      direct: 170,
+      positions: []
+    })
+    expect(capital.downstreamRoots?.[0].capitalUsd).toBe(170)
+    expect(capital.downstreamRoots?.[0].children.map((child) => child.capitalUsd)).toEqual([102, 51, 17])
+    expect(combined.adjustedTvlUsd).toBe(200)
+  })
+
   it('reconciles reported assets, excluded upstream ownership, and adjusted downstream capital without changing rates', () => {
     const capital = effectiveFeeCapital(row, feeCapitalVaults(audit, 'selected'), graph, 'selected')
     expect(capital).toMatchObject({

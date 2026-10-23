@@ -1,26 +1,14 @@
-import { ExternalLink } from 'lucide-react'
-import { CHAIN_ID_TO_BLOCK_EXPLORER, isSupportedChainId } from '@/constants/chains'
-import type { DirectDepositFeeRow } from './direct-deposit-fees'
-import { FeeFlowCard } from './FeeFlowCard'
-import { CHAIN_NAMES, shortAddr } from './hooks'
 import { monthlyUsd } from './monthly-vault-data'
-import { useDirectDepositSources } from './useDirectDepositSources'
-import type { OriginGraph, OriginVault } from './vault-origin'
+import { RegisteredDepositCard } from './RegisteredDepositCard'
+import type { DirectDepositSourceState } from './useDirectDepositSources'
 
 export function DirectDepositSources({
-  row,
-  vaults,
-  graph,
-  datasetId,
+  sources,
   direct
 }: {
-  row: DirectDepositFeeRow
-  vaults: Map<string, OriginVault>
-  graph: OriginGraph | null
-  datasetId?: string
+  sources: DirectDepositSourceState
   direct: number | null
 }) {
-  const sources = useDirectDepositSources(row, vaults, graph, datasetId, direct)
   if (!sources.groups.length)
     return (
       <article className="fee-flow-card" data-flow-id="direct" data-flow-next="selected">
@@ -32,50 +20,9 @@ export function DirectDepositSources({
     <>
       <div className="fee-flow-branches">
         {sources.groups
-          .filter((group) => group.id !== 'treasury' || group.amount !== 0)
+          .filter((group) => group.id !== 'treasury')
           .map((group) => (
-            <FeeFlowCard
-              key={group.id}
-              flowId={`direct-${group.id}`}
-              next="selected"
-              label={group.label}
-              name={group.label}
-              amount={group.amount}
-              amountLabel="Included direct deposits"
-              navigable={new Set()}
-            >
-              {group.positions
-                .filter((position) => group.id !== 'treasury' || position.amount !== 0)
-                .map(({ depositor, vault, amount }) => {
-                  const explorer = isSupportedChainId(depositor.chainId)
-                    ? CHAIN_ID_TO_BLOCK_EXPLORER[depositor.chainId].replace(/\/$/, '')
-                    : null
-                  return (
-                    <div className="fee-flow-depositor" key={`${vault.chainId}:${vault.address}:${depositor.id}`}>
-                      <div className="fee-flow-depositor-value">
-                        {explorer ? (
-                          <a
-                            href={`${explorer}/address/${depositor.address}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            onClick={(event) => event.stopPropagation()}
-                          >
-                            {depositor.label}
-                            <ExternalLink size={12} aria-hidden="true" />
-                          </a>
-                        ) : (
-                          <span>{depositor.label}</span>
-                        )}
-                        <strong>{monthlyUsd(amount)}</strong>
-                      </div>
-                      <span className="fee-flow-address">
-                        {CHAIN_NAMES[vault.chainId] ?? vault.chainId} · {shortAddr(depositor.address)} ·{' '}
-                        {vault.name ?? shortAddr(vault.address)}
-                      </span>
-                    </div>
-                  )
-                })}
-            </FeeFlowCard>
+            <RegisteredDepositCard key={group.id} group={group} />
           ))}
         <article className="fee-flow-card fee-flow-direct-other" data-flow-id="direct-other" data-flow-next="selected">
           <span>Other direct deposits</span>
@@ -89,7 +36,7 @@ export function DirectDepositSources({
             {sources.conflict
               ? 'Depositor balances could not be reconciled with direct deposits.'
               : 'Some depositor balances are unavailable for this snapshot.'}{' '}
-            The total below is unchanged.
+            Unresolved amounts remain unavailable.
           </span>
           {sources.canRetry && (
             <button type="button" className="page-btn" onClick={sources.retry}>

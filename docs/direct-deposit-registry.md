@@ -1,9 +1,11 @@
 # Registered direct deposit sources
 
-The expanded **Adjusted TVL and Fees by Vault** rows partition direct capital
-into Yearn treasury deposits, Alchemix deposits (where applicable), and Other direct
-deposits. These are included sources, not upstream exclusions. They do not change
-reported TVL, adjusted TVL, product membership, or effective fee rates.
+The **Adjusted TVL and Fees by Vault** table excludes Yearn treasury deposits from
+its adjusted TVL and included downstream capital. Expanded rows show these wallets
+in the muted **Upstream · excluded** section. Alchemix deposits (where applicable)
+and Other direct deposits remain included. This is a table-only adjustment: aggregate
+TVL, history, reported TVL, canonical product membership, and published fee rates
+are unchanged.
 
 Confirmed zero treasury deposits are hidden, including zero-value member positions
 inside the expanded treasury list. Unavailable balances remain visible as unknown.
@@ -37,8 +39,11 @@ the MYT contract itself must not be counted again.
 
 ## Valuation and unavailable states
 
-- Reads happen only for expanded rows with applicable registry entries. The
-  existing configured RPC client must support archive reads and browser requests.
+- Read applicable registry balances for the table before sorting and pagination,
+  so collapsed rows use the same treasury exclusion as their rollouts. Requests
+  are batched by chain in groups of at most 25 vaults. A failed batch keeps its
+  balances unavailable without erasing successful batches. The configured RPC
+  client must support archive reads and browser requests.
 - Resolve the last finalized block at or before the canonical graph's
   `asOfTimestamp`, matching Yearn Data's dated observation convention. Cache this
   block by chain/date, and read all holder balances and total supply at that block.
@@ -49,11 +54,16 @@ the MYT contract itself must not be counted again.
   API. Sum actual holder share values across those members; internal product
   holdings do not become additional registered deposits.
 - Subtract any already-published upstream deduction for the same holder and
-  target, so registered sources do not repeat excluded Yearn ownership.
+  target, so treasury exclusions do not repeat excluded Yearn ownership. A vault
+  already excluded through the canonical bridge policy gets no additional treasury
+  deduction.
+- Deduct each member's known treasury amount from its canonical external capital,
+  then attribute its remaining capital downstream using the existing allocation
+  graph. Combined products still count each member and internal transfer once.
 - The remainder is available only when all source amounts are known and fit
   within the published direct total. Failed reads, missing supply/prices, or
-  reconciliation conflicts show a dash, preserve the total, and allow retry.
+  reconciliation conflicts show a dash for affected adjusted amounts and allow retry.
   A successful zero balance remains zero.
 
-Fee and product accounting remains in Yearn Data. This registry describes holders,
-not product membership or new address-specific accounting policies.
+Fee and product accounting remains in Yearn Data. This registry describes holders;
+the table's treasury exclusion does not alter the canonical aggregate accounting.

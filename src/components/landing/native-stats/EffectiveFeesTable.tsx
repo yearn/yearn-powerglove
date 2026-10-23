@@ -1,16 +1,17 @@
 import { useQuery } from '@tanstack/react-query'
-import { Link } from '@tanstack/react-router'
 import { ChevronDown } from 'lucide-react'
 import { Fragment, type ReactNode, useContext, useMemo, useState } from 'react'
 import { fetchKongVaultListRaw } from '@/lib/kong-vault-client'
 import type { CanonicalVaultFee } from './canonical-fees'
-import { directDepositFeeRows, directDepositTvl, externalTvlByVault, feeStackLayers } from './direct-deposit-fees'
+import { directDepositFeeRows, externalTvlByVault, feeStackLayers, treasuryAdjustedTvl } from './direct-deposit-fees'
 import { EffectiveFeeCapitalDetails } from './EffectiveFeeCapitalDetails'
 import { feeCapitalVaults, reportedDepositTvl } from './effective-fee-capital'
-import { bpsPct, CHAIN_NAMES, powergloveVaultPath, shortAddr, useFetch, usePagination, useSort } from './hooks'
+import { FlowVaultName } from './FeeFlowCard'
+import { bpsPct, CHAIN_NAMES, shortAddr, useFetch, usePagination, useSort } from './hooks'
 import { monthlyUsd, monthlyVaultType } from './monthly-vault-data'
 import { StatsContext } from './StatsContext'
 import type { FeeStackSummary } from './types'
+import { useTableDepositSources } from './useTableDepositSources'
 import { type OriginAudit, type OriginGraph, originVaultId } from './vault-origin'
 
 export function EffectiveFeesTable({
@@ -79,6 +80,7 @@ export function EffectiveFeesTable({
         })),
     [feeStack, metadataByVault, vaults]
   )
+  const deposits = useTableDepositSources(stackRows, capitalVaults, graphMatched ? feeGraph : null, tvlDatasetId)
   const sortedStacks = useMemo(
     () =>
       sortStacks(
@@ -92,7 +94,7 @@ export function EffectiveFeesTable({
           name: (row) => row.vault.name || '',
           effective: (row) => row.performanceFee ?? -1,
           management: (row) => row.managementFee ?? -1,
-          tvl: (row) => directDepositTvl(row, adjustedTvl) ?? -1,
+          tvl: (row) => treasuryAdjustedTvl(row, adjustedTvl, deposits.exclusions) ?? -1,
           reported: (row) => reportedDepositTvl(row, capitalVaults, graphMatched ? feeGraph : null, tvlDatasetId) ?? -1
         }
       ),
@@ -106,7 +108,8 @@ export function EffectiveFeesTable({
       capitalVaults,
       feeGraph,
       graphMatched,
-      tvlDatasetId
+      tvlDatasetId,
+      deposits.exclusions
     ]
   )
   const stackPagination = usePagination(sortedStacks.length, 10)
@@ -155,6 +158,17 @@ export function EffectiveFeesTable({
           />
         </div>
       </div>
+      {deposits.loading && <output className="text-dim">Loading treasury exclusions at the TVL snapshot…</output>}
+      {deposits.unavailable && (
+        <div className="error-retry">
+          <p>
+            Some treasury exclusions are unavailable for this snapshot. Affected adjusted values remain unavailable.
+          </p>
+          <button type="button" className="page-btn" onClick={deposits.retry}>
+            Retry treasury exclusions
+          </button>
+        </div>
+      )}
       {(feeGraphError ||
         audit.error ||
         (feeGraph && !graphMatched) ||
@@ -181,7 +195,7 @@ export function EffectiveFeesTable({
               <th {...stackSort.th('name', 'Vault')} />
               <th
                 {...stackSort.th('tvl', 'Adjusted TVL', 'text-right')}
-                title="External TVL after upstream vault ownership is deducted, matching TVL Flow."
+                title="External TVL after upstream vault ownership and Yearn treasury deposits are excluded for this table. Aggregate TVL is unchanged."
               />
               <th
                 {...stackSort.th('reported', 'Reported TVL', 'text-right')}
@@ -224,20 +238,14 @@ export function EffectiveFeesTable({
                         >
                           <ChevronDown className="chain-stat-chevron" size={15} strokeWidth={1.8} aria-hidden="true" />
                         </button>
-                        {navigableVaults.has(originVaultId(row.vault.chainId, row.vault.address)) ? (
-                          <Link to={powergloveVaultPath(row.vault.chainId, row.vault.address)}>
-                            {row.vault.name || shortAddr(row.vault.address)}
-                          </Link>
-                        ) : (
-                          <span>{row.vault.name || shortAddr(row.vault.address)}</span>
-                        )}
+                        <FlowVaultName vault={row.vault} navigable={navigableVaults} />
                       </div>
                       <span className="monthly-fee-address">
                         {shortAddr(row.vault.address)} · {CHAIN_NAMES[row.vault.chainId] ?? row.vault.chainId} ·{' '}
                         {row.vaultType}
                       </span>
                     </th>
-                    <td>{monthlyUsd(directDepositTvl(row, adjustedTvl))}</td>
+                    <td>{monthlyUsd(treasuryAdjustedTvl(row, adjustedTvl, deposits.exclusions))}</td>
                     <td>
                       {monthlyUsd(reportedDepositTvl(row, capitalVaults, graphMatched ? feeGraph : null, tvlDatasetId))}
                     </td>
@@ -262,6 +270,8 @@ export function EffectiveFeesTable({
                           datasetId={tvlDatasetId}
                           feeNodes={feeNodes}
                           navigable={navigableVaults}
+                          sources={deposits.sources.get(key)}
+                          treasuryByVault={deposits.exclusions}
                         />
                       </td>
                     </tr>

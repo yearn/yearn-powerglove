@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { findDepositSnapshotBlock, readDepositBalances } from './direct-deposit-balances'
+import { findDepositSnapshotBlock, readDepositBalanceBatch, readDepositBalances } from './direct-deposit-balances'
 
 const { getBlock, multicall } = vi.hoisted(() => ({ getBlock: vi.fn(), multicall: vi.fn() }))
 vi.mock('@/lib/public-client', () => ({ getPublicClient: () => ({ getBlock, multicall }) }))
@@ -15,6 +15,32 @@ beforeEach(() => {
 })
 
 describe('dated depositor reads', () => {
+  it('bounds table batches and preserves successful batches when another request fails', async () => {
+    multicall
+      .mockResolvedValueOnce(
+        Array.from({ length: 25 }, () => [
+          { status: 'success', result: 100n },
+          { status: 'success', result: 0n },
+          { status: 'success', result: 5n }
+        ]).flat()
+      )
+      .mockRejectedValueOnce(new Error('archive request failed'))
+    const targets = Array.from({ length: 26 }, (_, index) => ({ id: String(index), address: vault, holders }) as const)
+    const result = await readDepositBalanceBatch(1, targets, 55n)
+    expect(multicall).toHaveBeenCalledTimes(2)
+    expect(multicall.mock.calls[0][0]).toMatchObject({ blockNumber: 55n, allowFailure: true })
+    expect(result.get('0')).toEqual({
+      totalSupply: 100n,
+      holders: [
+        { address: holders[0], shares: 0n },
+        { address: holders[1], shares: 5n }
+      ]
+    })
+    expect(result.get('25')).toEqual({
+      totalSupply: null,
+      holders: holders.map((address) => ({ address, shares: null }))
+    })
+  })
   it('finds the last block at or before the snapshot, including exact boundaries', async () => {
     expect(await findDepositSnapshotBlock(1, 555)).toBe(55n)
     expect(await findDepositSnapshotBlock(1, 550)).toBe(55n)

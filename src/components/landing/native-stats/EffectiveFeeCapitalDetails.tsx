@@ -2,13 +2,16 @@ import { Info } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { DirectDepositSources } from './DirectDepositSources'
 import type { DirectDepositFeeRow } from './direct-deposit-fees'
+import { treasuryExclusions } from './direct-deposit-sources'
 import type { DownstreamCapitalNode } from './downstream-capital'
 import { effectiveFeeCapital } from './effective-fee-capital'
 import { FeeFlowCard, FlowVaultName } from './FeeFlowCard'
 import { FeeFlowDiagram } from './FeeFlowDiagram'
 import { bpsPct, CHAIN_NAMES, shortAddr } from './hooks'
 import { monthlyUsd } from './monthly-vault-data'
+import { RegisteredDepositCard } from './RegisteredDepositCard'
 import type { FeeStackNode } from './types'
+import { type DirectDepositSourceState, useDirectDepositSources } from './useDirectDepositSources'
 import { useFeeFlowStrategyNames } from './useFeeFlowStrategyNames'
 import { type OriginGraph, type OriginVault, originVaultId } from './vault-origin'
 
@@ -106,7 +109,9 @@ export function EffectiveFeeCapitalDetails({
   graph,
   datasetId,
   feeNodes,
-  navigable
+  navigable,
+  sources: tableSources,
+  treasuryByVault
 }: {
   row: DirectDepositFeeRow
   vaults: Map<string, OriginVault>
@@ -114,8 +119,23 @@ export function EffectiveFeeCapitalDetails({
   datasetId?: string
   feeNodes: Map<string, FeeStackNode>
   navigable: ReadonlySet<string>
+  sources?: DirectDepositSourceState
+  treasuryByVault?: ReadonlyMap<string, number | null>
 }) {
-  const capital = effectiveFeeCapital(row, vaults, graph, datasetId, feeNodes)
+  const published = effectiveFeeCapital(row, vaults, graph, datasetId, feeNodes)
+  const fetchedSources = useDirectDepositSources(row, vaults, graph, datasetId, published.direct, !tableSources)
+  const sources = tableSources ?? fetchedSources
+  const capital = effectiveFeeCapital(
+    row,
+    vaults,
+    graph,
+    datasetId,
+    feeNodes,
+    treasuryByVault ?? treasuryExclusions(row, sources.groups)
+  )
+  const treasury = sources.groups.find((group) => group.id === 'treasury')
+  const excluded =
+    capital.upstream !== null && capital.treasuryExcluded !== null ? capital.upstream + capital.treasuryExcluded : null
   const strategyNames = useFeeFlowStrategyNames(capital.downstreamRoots)
   const singleRoot = capital.downstreamRoots?.length === 1 ? capital.downstreamRoots[0] : null
   const branches = singleRoot ? singleRoot.children : capital.downstreamRoots
@@ -125,18 +145,13 @@ export function EffectiveFeeCapitalDetails({
         <section className="fee-flow-stage fee-flow-upstream" aria-label="Capital sources">
           <section aria-label="Direct deposits">
             <h3>Direct deposits</h3>
-            <DirectDepositSources
-              row={row}
-              vaults={vaults}
-              graph={graph}
-              datasetId={datasetId}
-              direct={capital.direct}
-            />
+            <DirectDepositSources sources={sources} direct={capital.direct} />
           </section>
-          {capital.upstream !== 0 && (
+          {(capital.upstream !== 0 || (treasury?.amount !== undefined && treasury.amount !== 0)) && (
             <section aria-label="Upstream excluded capital">
               <h3>Upstream · excluded</h3>
               <div className="fee-flow-branches">
+                {treasury && treasury.amount !== 0 && <RegisteredDepositCard group={treasury} excluded />}
                 {capital.upstream === null ? (
                   <div className="fee-flow-empty">Upstream TVL is unavailable for this publication.</div>
                 ) : (
@@ -192,7 +207,7 @@ export function EffectiveFeeCapitalDetails({
               </div>
               <div className="fee-flow-total">
                 <span>Total upstream excluded</span>
-                <strong>{monthlyUsd(capital.upstream)}</strong>
+                <strong>{monthlyUsd(excluded)}</strong>
               </div>
             </section>
           )}

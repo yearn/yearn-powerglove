@@ -45,6 +45,23 @@ export interface DepositSourceGroup {
   positions: DepositSourcePosition[]
 }
 
+export function treasuryExclusions(row: DirectDepositFeeRow, groups: DepositSourceGroup[]) {
+  const positions = groups.find((group) => group.id === 'treasury')?.positions ?? []
+  return new Map(
+    [...new Map(row.roots.map((root) => [originVaultId(root.vault.chainId, root.vault.address), root])).keys()].map(
+      (id) =>
+        [
+          id,
+          sumKnown(
+            positions
+              .filter((position) => originVaultId(position.vault.chainId, position.vault.address) === id)
+              .map((position) => position.amount)
+          )
+        ] as const
+    )
+  )
+}
+
 const sumKnown = (values: (number | null)[]) =>
   values.every((value) => value !== null) ? values.reduce<number>((sum, value) => sum + value!, 0) : null
 
@@ -82,7 +99,13 @@ export function directDepositSources(
                 edge.targetNodeId === target.id && edge.holderAddress.toLowerCase() === depositor.address.toLowerCase()
             )
             .reduce((sum, edge) => sum + (edge.deductedTvlUsd ?? 0), 0) ?? 0
-        const amount = gross !== null && excluded <= gross + 0.01 ? Math.max(0, gross - excluded) : null
+        const bridgeExcluded =
+          group.id === 'treasury' && graph?.bridgeExclusions?.some((bridge) => bridge.sourceNodeId === target.id)
+        const amount = bridgeExcluded
+          ? 0
+          : gross !== null && excluded <= gross + 0.01
+            ? Math.max(0, gross - excluded)
+            : null
         entry.positions.push({ depositor, vault: target, amount })
       }
       groups.set(group.id, entry)

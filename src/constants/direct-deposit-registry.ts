@@ -18,7 +18,8 @@ export interface DirectDepositGroup {
 const treasurySource =
   'https://github.com/yearn/governance-apps/blob/5cbcb43e8d0d4da4f70dea63825d893cbc526452/docs/apps/treasury/registry.json'
 
-/** Holder labels only. Product membership, TVL, and overlap accounting remain canonical API data.
+/** Holder identities for source labels and the table-only treasury exclusion.
+ * Product membership and aggregate TVL accounting remain canonical API data.
  * Treasury accounts are scoped to Ethereum, as in the pinned registry. Connector targets
  * were checked with vault() and MYT() on 2026-10-23; never infer a vault from its name.
  */

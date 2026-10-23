@@ -2204,6 +2204,7 @@
 }
 
 .pg-stats .fee-stack-vault > span {
+  align-items: center;
   color: var(--text);
 }
 .pg-stats .fee-stack-detail > td {
@@ -2542,7 +2543,8 @@
   overflow-wrap: anywhere;
 }
 
-.pg-stats .fee-flow-card .fee-flow-open {
+.pg-stats .fee-flow-card .fee-flow-open,
+.pg-stats .fee-stack-vault .fee-flow-open {
   display: inline-flex;
   flex-shrink: 0;
   align-items: center;

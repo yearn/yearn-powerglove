@@ -2,7 +2,12 @@ import { describe, expect, it } from 'vitest'
 import { DIRECT_DEPOSIT_REGISTRY, type DirectDepositGroup } from '@/constants/direct-deposit-registry'
 import type { DepositBalances } from '@/lib/direct-deposit-balances'
 import type { DirectDepositFeeRow } from './direct-deposit-fees'
-import { depositShareValue, directDepositSources, registeredDepositTargets } from './direct-deposit-sources'
+import {
+  depositShareValue,
+  directDepositSources,
+  registeredDepositTargets,
+  treasuryExclusions
+} from './direct-deposit-sources'
 import type { OriginGraph, OriginVault } from './vault-origin'
 import { originVaultId } from './vault-origin'
 
@@ -59,6 +64,7 @@ describe('registered direct deposit attribution', () => {
   it('partitions the direct total and preserves existing upstream exclusions', () => {
     const result = directDepositSources(registeredDepositTargets(row), vaults, graph, new Map([[id, balances]]), 100)
     expect(result.groups.map((group) => group.amount)).toEqual([15, 20])
+    expect(treasuryExclusions(row, result.groups).get(id)).toBe(15)
     expect(result.other).toBe(65)
     const excluded: OriginGraph = {
       ...graph,
@@ -77,6 +83,34 @@ describe('registered direct deposit attribution', () => {
     const reduced = directDepositSources(registeredDepositTargets(row), vaults, excluded, new Map([[id, balances]]), 95)
     expect(reduced.groups.map((group) => group.amount)).toEqual([15, 15])
     expect(reduced.other).toBe(65)
+  })
+
+  it('does not exclude treasury shares twice after canonical ownership or a bridge exclusion', () => {
+    const ownership: OriginGraph = {
+      ...graph,
+      edges: [
+        {
+          id: 'owned',
+          sourceNodeId: 'upstream',
+          targetNodeId: id,
+          holderAddress: treasury[1].address,
+          tvlUsd: 5,
+          deductedTvlUsd: 5,
+          kind: 'share'
+        }
+      ]
+    }
+    const targets = registeredDepositTargets(row)
+    const sources = directDepositSources(targets, vaults, ownership, new Map([[id, balances]]), 95)
+    expect(treasuryExclusions(row, sources.groups).get(id)).toBe(10)
+    const bridge = directDepositSources(
+      targets,
+      vaults,
+      { ...graph, bridgeExclusions: [{ sourceNodeId: id, tvlUsd: 100 }] },
+      new Map(),
+      100
+    )
+    expect(treasuryExclusions(row, bridge.groups).get(id)).toBe(0)
   })
 
   it('deduplicates product roots and combines balances across the API-supplied members', () => {

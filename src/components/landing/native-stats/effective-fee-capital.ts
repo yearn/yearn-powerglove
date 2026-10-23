@@ -1,5 +1,5 @@
 import type { DirectDepositFeeRow } from './direct-deposit-fees'
-import { directDepositTvl, feeStackLayers } from './direct-deposit-fees'
+import { directDepositTvl, feeStackLayers, treasuryAdjustedTvl } from './direct-deposit-fees'
 import { downstreamCapital } from './downstream-capital'
 import { combineProductAllocations, internalProductEdges, isCombinedProduct } from './product-capital'
 import type { FeeStackNode } from './types'
@@ -43,7 +43,8 @@ export function effectiveFeeCapital(
   vaults: Map<string, OriginVault>,
   graph: OriginGraph | null,
   datasetId: string | undefined,
-  feeNodes: Map<string, FeeStackNode> = new Map()
+  feeNodes: Map<string, FeeStackNode> = new Map(),
+  treasuryByVault: ReadonlyMap<string, number | null> = new Map()
 ) {
   const roots = distinctRoots(row)
   const members = new Set(roots.map(rootId))
@@ -54,14 +55,27 @@ export function effectiveFeeCapital(
       typeof vault.countedTvlUsd === 'number' ? [[id, vault.countedTvlUsd] as const] : []
     )
   )
-  const adjusted = directDepositTvl(row, adjustedByVault)
+  const publishedAdjusted = directDepositTvl(row, adjustedByVault)
+  const adjusted = treasuryAdjustedTvl(row, adjustedByVault, treasuryByVault)
   const rootAdjusted = roots.map((root) => vaults.get(rootId(root))?.countedTvlUsd)
+  const treasuryExcluded = sumKnown(
+    roots.map((root) => treasuryByVault.get(rootId(root)) ?? (treasuryByVault.has(rootId(root)) ? null : 0))
+  )
+  const includedRoots = roots.map((root, index) => {
+    const excluded = treasuryByVault.get(rootId(root)) ?? (treasuryByVault.has(rootId(root)) ? null : 0)
+    const published = rootAdjusted[index]
+    return typeof published === 'number' && excluded !== null && excluded >= 0 && excluded <= published + 0.01
+      ? Math.max(0, published - excluded)
+      : null
+  })
   const adjustedSum = sumKnown(rootAdjusted)
   // Keep the canonical product total; never invent an allocation between members.
   const consistent =
+    publishedAdjusted !== null &&
     adjusted !== null &&
+    includedRoots.every((value) => value !== null) &&
     adjustedSum !== null &&
-    Math.abs(adjusted - adjustedSum) < 0.01 &&
+    Math.abs(publishedAdjusted - adjustedSum) < 0.01 &&
     roots.every((root, index) => {
       const reportedRoot = vaults.get(rootId(root))?.tvlUsd
       const adjustedRoot = rootAdjusted[index]
@@ -77,7 +91,7 @@ export function effectiveFeeCapital(
   const memberRoots =
     consistent && matched
       ? downstreamCapital(
-          roots.map((root, index) => ({ vault: root.vault, capitalUsd: rootAdjusted[index]! })),
+          roots.map((root, index) => ({ vault: root.vault, capitalUsd: includedRoots[index]! })),
           vaults,
           graph,
           new Map([
@@ -98,7 +112,9 @@ export function effectiveFeeCapital(
       )
     : null
   const difference =
-    reported !== null && adjusted !== null && excludedBridges !== null ? reported - adjusted - excludedBridges : null
+    reported !== null && publishedAdjusted !== null && excludedBridges !== null
+      ? reported - publishedAdjusted - excludedBridges
+      : null
   const upstream = difference !== null && difference >= -0.01 ? Math.max(0, difference) : null
   const positions: UpstreamFeeCapital[] = []
   const internalEdges = matched ? new Set(internalProductEdges(row, graph).map((edge) => edge.id)) : new Set<string>()
@@ -128,7 +144,11 @@ export function effectiveFeeCapital(
   return {
     reported,
     adjusted,
-    direct: reported !== null && upstream !== null ? reported - upstream : null,
+    direct:
+      adjusted !== null && reported !== null && upstream !== null && treasuryExcluded !== null
+        ? reported - upstream - treasuryExcluded
+        : null,
+    treasuryExcluded,
     upstream,
     excludedBridges,
     positions,

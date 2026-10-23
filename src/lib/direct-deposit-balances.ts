@@ -27,6 +27,52 @@ export interface DepositBalances {
   holders: { address: Address; shares: bigint | null }[]
 }
 
+export interface DepositBalanceTarget {
+  id: string
+  address: Address
+  holders: readonly Address[]
+}
+
+/** Bound archive RPC requests when the table needs balances before sorting. */
+export async function readDepositBalanceBatch(
+  chainId: ChainId,
+  targets: readonly DepositBalanceTarget[],
+  blockNumber: bigint
+): Promise<Map<string, DepositBalances>> {
+  const client = getPublicClient(chainId)
+  const balances = new Map<string, DepositBalances>()
+  for (let offset = 0; offset < targets.length; offset += 25) {
+    const batch = targets.slice(offset, offset + 25)
+    const contracts = batch.flatMap(({ address, holders }) => [
+      { address, abi: erc20Abi, functionName: 'totalSupply' as const },
+      ...holders.map((holder) => ({
+        address,
+        abi: erc20Abi,
+        functionName: 'balanceOf' as const,
+        args: [holder] as const
+      }))
+    ])
+    const results = await client
+      .multicall({ blockNumber, allowFailure: true, batchSize: 32768, contracts })
+      .catch(() => null)
+    let index = 0
+    for (const target of batch) {
+      const supply = results?.[index++]
+      balances.set(target.id, {
+        totalSupply: supply?.status === 'success' && typeof supply.result === 'bigint' ? supply.result : null,
+        holders: target.holders.map((address) => {
+          const result = results?.[index++]
+          return {
+            address,
+            shares: result?.status === 'success' && typeof result.result === 'bigint' ? result.result : null
+          }
+        })
+      })
+    }
+  }
+  return balances
+}
+
 /** Read shares and supply at one block; a failed call is unavailable, never zero. */
 export async function readDepositBalances(
   chainId: ChainId,

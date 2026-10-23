@@ -11,7 +11,8 @@ export function useDirectDepositSources(
   vaults: Map<string, OriginVault>,
   graph: OriginGraph | null,
   datasetId: string | undefined,
-  direct: number | null
+  direct: number | null,
+  active = true
 ) {
   const client = useQueryClient()
   const targets = registeredDepositTargets(row)
@@ -20,7 +21,7 @@ export function useDirectDepositSources(
     typeof observedTimestamp === 'number' && Number.isSafeInteger(observedTimestamp) && observedTimestamp > 0
       ? observedTimestamp
       : undefined
-  const enabled = !!datasetId && graph?.datasetId === datasetId && timestamp !== undefined && direct !== null
+  const enabled = active && !!datasetId && graph?.datasetId === datasetId && timestamp !== undefined && direct !== null
   const queries = useQueries({
     queries: targets.map((target) => {
       const holders = [
@@ -67,3 +68,5 @@ export function useDirectDepositSources(
     }
   }
 }
+
+export type DirectDepositSourceState = ReturnType<typeof useDirectDepositSources>

@@ -4,6 +4,8 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { DIRECT_DEPOSIT_REGISTRY } from '@/constants/direct-deposit-registry'
 import { DirectDepositSources } from './DirectDepositSources'
 import type { DirectDepositFeeRow } from './direct-deposit-fees'
+import { RegisteredDepositCard } from './RegisteredDepositCard'
+import { useDirectDepositSources } from './useDirectDepositSources'
 import type { OriginGraph, OriginVault } from './vault-origin'
 import { originVaultId } from './vault-origin'
 
@@ -37,12 +39,25 @@ const balances = {
   ]
 }
 const clients: QueryClient[] = []
+function Sources({ row: sourceRow, graph: sourceGraph }: { row: DirectDepositFeeRow; graph: OriginGraph }) {
+  const sources = useDirectDepositSources(sourceRow, vaults, sourceGraph, 'published', 100)
+  const treasury = sources.groups.find((group) => group.id === 'treasury')
+  const direct = treasury ? (treasury.amount === null ? null : 100 - treasury.amount) : 100
+  return (
+    <>
+      <DirectDepositSources sources={sources} direct={direct} />
+      <section aria-label="Upstream excluded capital">
+        {treasury && treasury.amount !== 0 && <RegisteredDepositCard group={treasury} excluded />}
+      </section>
+    </>
+  )
+}
 function show(overrides: { graph?: OriginGraph; row?: DirectDepositFeeRow } = {}) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   clients.push(client)
   return render(
     <QueryClientProvider client={client}>
-      <DirectDepositSources row={row} vaults={vaults} graph={graph} datasetId="published" direct={100} {...overrides} />
+      <Sources row={row} graph={graph} {...overrides} />
     </QueryClientProvider>
   )
 }
@@ -63,7 +78,9 @@ it('renders a reconciled breakdown with collapsed, independently linked wallets'
   await waitFor(() => expect(within(treasury).getByText('$15')).toBeTruthy())
   expect(within(alchemix.querySelector('summary')!).getByText('$20')).toBeTruthy()
   expect(screen.getByText('$65')).toBeTruthy()
-  expect(screen.getByText('$100')).toBeTruthy()
+  expect(screen.getByText('$85')).toBeTruthy()
+  expect(treasury.classList.contains('fee-flow-muted')).toBe(true)
+  expect(treasury.closest('section')?.getAttribute('aria-label')).toBe('Upstream excluded capital')
   expect(treasury.hasAttribute('open')).toBe(false)
   fireEvent.click(treasury.querySelector('summary')!)
   const link = within(treasury).getByRole('link', { name: 'ychad.eth' })
@@ -131,20 +148,20 @@ it('keeps unknown treasury positions visible while omitting known zeros', async 
   expect(within(treasury.querySelector('summary')!).getByText('—')).toBeTruthy()
 })
 
-it('shows loading without fabricating a balance or changing the published total', () => {
+it('shows loading without fabricating a balance or an adjusted total', () => {
   findBlock.mockReturnValue(new Promise(() => {}))
   show()
   expect(screen.getByText(/Loading depositor balances/)).toBeTruthy()
   expect(screen.queryByText('$0')).toBeNull()
-  expect(screen.getByText('$100')).toBeTruthy()
+  expect(screen.getByText('Total direct deposits').parentElement?.querySelector('strong')?.textContent).toBe('—')
 })
 
-it('keeps errors unavailable and retries without changing the total', async () => {
+it('keeps errors unavailable and retries the treasury exclusion', async () => {
   readBalances.mockRejectedValueOnce(new Error('RPC unavailable'))
   show()
   const retry = await screen.findByRole('button', { name: 'Retry depositor balances' })
   expect(screen.queryByText('$0')).toBeNull()
-  expect(screen.getByText('$100')).toBeTruthy()
+  expect(screen.getByText('Total direct deposits').parentElement?.querySelector('strong')?.textContent).toBe('—')
   fireEvent.click(retry)
   await waitFor(() => expect(screen.getByText('$65')).toBeTruthy())
   expect(findBlock).toHaveBeenCalledTimes(1)
