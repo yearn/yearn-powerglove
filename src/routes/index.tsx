@@ -6,9 +6,9 @@ function StatsPage() {
   const { tab, preview } = Route.useSearch()
   if (tab === 'analysis') return <Navigate to="/stats/analysis" search={{ preview }} replace />
   return (
-    <main className="w-full min-w-0 flex-1">
+    <div className="w-full min-w-0 flex-1">
       <NativeStatsDashboard />
-    </main>
+    </div>
   )
 }
 

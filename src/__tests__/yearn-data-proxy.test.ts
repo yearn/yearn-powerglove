@@ -97,3 +97,37 @@ describe('hosted Yearn Data proxy', () => {
     expect(res.json).toHaveBeenCalledWith({ error: 'Stats API is unavailable' })
   })
 })
+
+it.each([410, 500, 503])('keeps upstream %s responses uncacheable while preserving the error', async (status) => {
+  vi.stubEnv('YEARN_DATA_API_URL', 'https://data-preview.vercel.app')
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ error: 'Unavailable' }), {
+        status,
+        headers: { 'Cache-Control': 'public, max-age=3600', 'Vercel-CDN-Cache-Control': 'public, s-maxage=3600' }
+      })
+    )
+  )
+  const res = response()
+  await handler({ method: 'GET', url: '/api/tvl' }, res)
+  expect(res.status).toHaveBeenCalledWith(status)
+  expect(res.json).toHaveBeenCalledWith({ error: 'Unavailable' })
+  expect(res.setHeader.mock.calls).toEqual([['Cache-Control', 'no-store']])
+})
+
+it('retains cache directives for successful upstream data', async () => {
+  vi.stubEnv('YEARN_DATA_API_URL', 'https://data-preview.vercel.app')
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ tvl: 1 }), {
+        headers: { 'Cache-Control': 'public, max-age=60', 'Vercel-CDN-Cache-Control': 'public, s-maxage=120' }
+      })
+    )
+  )
+  const res = response()
+  await handler({ method: 'GET', url: '/api/tvl' }, res)
+  expect(res.setHeader).toHaveBeenCalledWith('Cache-Control', 'public, max-age=60')
+  expect(res.setHeader).toHaveBeenCalledWith('Vercel-CDN-Cache-Control', 'public, s-maxage=120')
+})
