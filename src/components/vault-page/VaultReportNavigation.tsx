@@ -15,7 +15,9 @@ type VaultReportNavigationProps = {
 }
 
 export function VaultReportNavigation({ ariaLabel, prefix, sections }: VaultReportNavigationProps) {
+  const positionRef = useRef<HTMLDivElement | null>(null)
   const navigationRef = useRef<HTMLElement | null>(null)
+  const [isStuck, setIsStuck] = useState(false)
   const [activeSection, setActiveSection] = useState(sections[0]?.id ?? '')
 
   const scrollToSection = useCallback(
@@ -63,6 +65,8 @@ export function VaultReportNavigation({ ariaLabel, prefix, sections }: VaultRepo
       const navigation = navigationRef.current
       const stickyTop = navigation ? Number.parseFloat(window.getComputedStyle(navigation).top) || 0 : 0
       const threshold = stickyTop + (navigation?.offsetHeight ?? 0) + 16
+      const position = positionRef.current
+      setIsStuck(Boolean(position && position.getBoundingClientRect().top < stickyTop))
       let nextSection = sections[0]?.id ?? ''
 
       for (const link of sections) {
@@ -92,38 +96,44 @@ export function VaultReportNavigation({ ariaLabel, prefix, sections }: VaultRepo
   }, [prefix, sections])
 
   return (
-    <nav
-      ref={navigationRef}
-      aria-label={ariaLabel}
-      className="sticky z-[18] overflow-x-auto bg-white"
-      style={{ top: 'calc(var(--vault-header-height, 60px) + 3.5rem)' }}
-      data-testid="vault-report-navigation"
-    >
-      <div className="flex min-w-max items-end border-b border-[#d8d8d8]">
-        {sections.map((link) => (
-          <a
-            key={link.id}
-            href={`#${getVaultReportSectionId(prefix, link.id)}`}
-            onClick={(event) => {
-              event.preventDefault()
-              event.stopPropagation()
-              setActiveSection(link.id)
-              window.history.replaceState(window.history.state, '', `#${getVaultReportSectionId(prefix, link.id)}`)
-              const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'
-              scheduleSectionScroll(link.id, behavior)
-            }}
-            aria-current={activeSection === link.id ? 'location' : undefined}
-            className={cn(
-              'relative -mb-px -mr-px border border-t-2 border-[#dedede] px-4 py-3 text-sm transition-colors last:mr-0 focus-visible:z-20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0657f9]',
-              activeSection === link.id
-                ? 'z-10 border-b-white border-t-[#0657f9] bg-white font-medium text-black'
-                : 'border-t-[#dedede] bg-[#fafafa] text-[#808080] hover:bg-white hover:text-[#4f4f4f]'
-            )}
-          >
-            {link.label}
-          </a>
-        ))}
-      </div>
-    </nav>
+    <>
+      <div ref={positionRef} aria-hidden="true" className="h-0" />
+      <nav
+        ref={navigationRef}
+        aria-label={ariaLabel}
+        className={cn('sticky z-[18]', isStuck ? 'bg-transparent' : 'bg-white')}
+        style={{ top: 'calc(var(--vault-header-height, 60px) + 3.5rem)' }}
+        data-testid="vault-report-navigation"
+        data-stuck={String(isStuck)}
+      >
+        <div className="overflow-x-auto drop-shadow-[0_2px_2px_rgba(0,0,0,0.06)]">
+          <div className="flex min-w-max items-start border-t border-[#d8d8d8]">
+            {sections.map((link) => (
+              <a
+                key={link.id}
+                href={`#${getVaultReportSectionId(prefix, link.id)}`}
+                onClick={(event) => {
+                  event.preventDefault()
+                  event.stopPropagation()
+                  setActiveSection(link.id)
+                  window.history.replaceState(window.history.state, '', `#${getVaultReportSectionId(prefix, link.id)}`)
+                  const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'
+                  scheduleSectionScroll(link.id, behavior)
+                }}
+                aria-current={activeSection === link.id ? 'location' : undefined}
+                className={cn(
+                  'relative -mt-px -mr-px border border-b-2 border-[#dedede] px-4 py-3 text-sm transition-colors last:mr-0 focus-visible:z-20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0657f9]',
+                  activeSection === link.id
+                    ? 'z-10 border-t-white border-b-[#0657f9] bg-white font-medium text-black'
+                    : 'border-b-[#dedede] bg-[#fafafa] text-[#808080] hover:bg-white hover:text-[#4f4f4f]'
+                )}
+              >
+                {link.label}
+              </a>
+            ))}
+          </div>
+        </div>
+      </nav>
+    </>
   )
 }

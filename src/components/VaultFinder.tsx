@@ -34,7 +34,7 @@ export function VaultFinder({ onOpen }: { onOpen?: () => void }) {
       <PopoverTrigger asChild>
         <Button
           variant="outline"
-          className="h-10 shrink-0 gap-2 rounded-none border border-gray-200 px-3 md:border-gray-300 hover:bg-muted hover:text-foreground data-[state=open]:bg-muted"
+          className="h-10 shrink-0 gap-2 rounded-none border border-gray-200 px-3 text-muted-foreground md:border-gray-300 hover:bg-muted hover:text-foreground data-[state=open]:bg-muted"
           aria-label="Find a vault"
           title="Find a vault"
         >
