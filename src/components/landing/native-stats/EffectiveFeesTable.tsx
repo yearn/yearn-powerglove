@@ -61,10 +61,7 @@ export function EffectiveFeesTable({
     () => new Map((vaultMetadata ?? []).map((vault) => [`${vault.chainId}:${vault.address.toLowerCase()}`, vault])),
     [vaultMetadata]
   )
-  const navigableVaults = useMemo(
-    () => new Set([...capitalVaults.keys(), ...feeNodes.keys(), ...metadataByVault.keys()]),
-    [capitalVaults, feeNodes, metadataByVault]
-  )
+  const navigableVaults = useMemo(() => new Set(metadataByVault.keys()), [metadataByVault])
   const stackRows = useMemo(
     () =>
       directDepositFeeRows(feeStack.chains, feeStack.entries)
@@ -227,9 +224,13 @@ export function EffectiveFeesTable({
                         >
                           <ChevronDown className="chain-stat-chevron" size={15} strokeWidth={1.8} aria-hidden="true" />
                         </button>
-                        <Link to={powergloveVaultPath(row.vault.chainId, row.vault.address)}>
-                          {row.vault.name || shortAddr(row.vault.address)}
-                        </Link>
+                        {navigableVaults.has(originVaultId(row.vault.chainId, row.vault.address)) ? (
+                          <Link to={powergloveVaultPath(row.vault.chainId, row.vault.address)}>
+                            {row.vault.name || shortAddr(row.vault.address)}
+                          </Link>
+                        ) : (
+                          <span>{row.vault.name || shortAddr(row.vault.address)}</span>
+                        )}
                       </div>
                       <span className="monthly-fee-address">
                         {shortAddr(row.vault.address)} · {CHAIN_NAMES[row.vault.chainId] ?? row.vault.chainId} ·{' '}

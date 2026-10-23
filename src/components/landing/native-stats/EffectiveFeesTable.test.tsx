@@ -163,7 +163,9 @@ afterEach(() => {
   mismatch = false
 })
 it('preserves the canonical vault list and rates while showing reported, upstream, and adjusted downstream capital', () => {
-  render(<Table />)
+  render(
+    <Table metadata={[root.vault, { ...stack.chains[0].root.vault, name: 'Upstream vault' }, root.children[0].vault]} />
+  )
   expect(screen.getByRole('heading', { name: 'Adjusted TVL and Fees by Vault' })).toBeTruthy()
   expect(urls).toContain('/api/audit/tree?datasetId=selected')
   expect(urls).toContain('/api/tvl/graph?includeRetired=true&datasetId=selected')
@@ -219,6 +221,18 @@ it('preserves the canonical vault list and rates while showing reported, upstrea
     target: { value: 'no matching vault' }
   })
   expect(screen.getByText('No vaults match these filters.')).toBeTruthy()
+})
+it('links only catalog vaults, leaving external names as text in the table and expanded flows', () => {
+  render(<Table metadata={[{ ...stack.chains[0].root.vault, name: 'Upstream vault' }]} />)
+  const table = screen.getByRole('table', { name: 'Current effective fees for direct vault deposits' })
+  expect(within(table).queryByRole('link', { name: 'Example vault' })).toBeNull()
+  expect(within(table).getByText('Example vault', { exact: true })).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: 'Fee breakdown for Example vault' }))
+  const diagram = screen.getByRole('figure', { name: 'Capital and fee flows for Example vault' })
+  expect(within(diagram).queryByRole('link', { name: 'Open Example vault Powerglove page' })).toBeNull()
+  expect(within(diagram).queryByRole('link', { name: 'Open Downstream vault Powerglove page' })).toBeNull()
+  expect(within(diagram).getByText('Downstream vault', { exact: true })).toBeTruthy()
+  expect(within(diagram).getByRole('link', { name: 'Open Upstream vault Powerglove page' })).toBeTruthy()
 })
 it('does not show upstream details from a mismatched publication', () => {
   mismatch = true
@@ -292,5 +306,6 @@ it('allows filtering an effective-fee entry classified as External', () => {
   const filter = screen.getByRole('combobox', { name: 'Effective fees vault type' })
   expect(within(filter).getByRole('option', { name: 'External' })).toBeTruthy()
   fireEvent.change(filter, { target: { value: 'External' } })
-  expect(screen.getByRole('link', { name: 'Example vault' })).toBeTruthy()
+  expect(screen.getByText('Example vault', { exact: true })).toBeTruthy()
+  expect(screen.queryByRole('link', { name: 'Example vault' })).toBeNull()
 })

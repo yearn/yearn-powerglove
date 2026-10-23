@@ -13,7 +13,15 @@ export function FeeFlowDiagram({ children, label }: { children: ReactNode; label
       const byId = new Map(cards.map((card) => [card.dataset.flowId, card]))
       const connections = cards.flatMap((card) => [
         ...(card.dataset.flowParent ? [{ source: byId.get(card.dataset.flowParent), target: card, muted: false }] : []),
-        ...(card.dataset.flowNext ? [{ source: card, target: byId.get(card.dataset.flowNext), muted: true }] : [])
+        ...(card.dataset.flowNext
+          ? [
+              {
+                source: card,
+                target: byId.get(card.dataset.flowNext),
+                muted: card.classList.contains('fee-flow-muted')
+              }
+            ]
+          : [])
       ])
       setPaths(
         connections.flatMap(({ source, target, muted }) => {

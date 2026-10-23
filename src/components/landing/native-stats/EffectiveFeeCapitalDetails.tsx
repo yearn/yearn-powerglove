@@ -1,5 +1,6 @@
 import { Info } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { DirectDepositSources } from './DirectDepositSources'
 import type { DirectDepositFeeRow } from './direct-deposit-fees'
 import type { DownstreamCapitalNode } from './downstream-capital'
 import { effectiveFeeCapital } from './effective-fee-capital'
@@ -126,10 +127,13 @@ export function EffectiveFeeCapitalDetails({
         <section className="fee-flow-stage fee-flow-upstream" aria-label="Capital sources">
           <section aria-label="Direct deposits">
             <h3>Direct deposits</h3>
-            <article className="fee-flow-card" data-flow-id="direct">
-              <span>Direct (non-Yearn) deposits</span>
-              <strong className="fee-flow-card-value">{monthlyUsd(capital.direct)}</strong>
-            </article>
+            <DirectDepositSources
+              row={row}
+              vaults={vaults}
+              graph={graph}
+              datasetId={datasetId}
+              direct={capital.direct}
+            />
           </section>
           {capital.upstream !== 0 && (
             <section aria-label="Upstream excluded capital">
@@ -202,7 +206,7 @@ export function EffectiveFeeCapitalDetails({
           )}
         </section>
         <section className="fee-flow-stage fee-flow-selected" aria-label="Selected vault">
-          <article className="fee-flow-card fee-flow-selected-card" data-flow-id="selected" data-flow-parent="direct">
+          <article className="fee-flow-card fee-flow-selected-card" data-flow-id="selected">
             <FlowVaultName vault={row.vault} navigable={navigable} />
             <VaultMetadata vault={row.vault} />
             <div className="fee-flow-selected-metrics">
