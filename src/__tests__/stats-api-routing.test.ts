@@ -15,7 +15,6 @@ describe('stats API routing', () => {
     expect(getStatsApiLane('/api/comparison')).toBe('tvl')
     expect(getStatsApiLane('/api/audit/tree')).toBe('tvl')
     expect(getStatsApiLane('/api/tvl/history/runs/latest/constant-price')).toBe('tvl')
-    expect(getStatsApiLane('/api/tvl/curation-products')).toBe('tvl')
     expect(getStatsApiLane('/api/comparison/defillama-comparable')).toBe('tvl')
     expect(getStatsApiLane('/api/analytics/publication')).toBe('tvl')
     expect(getStatsApiLane('/api/tvl/graph')).toBe('tvl')

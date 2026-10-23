@@ -1,3 +1,10 @@
+export class CanonicalFeeResponseError extends Error {
+  constructor() {
+    super('Fee API is outdated or returned the wrong aggregation scope. Check the Yearn Data API target.')
+    this.name = 'CanonicalFeeResponseError'
+  }
+}
+
 /** Shared boundary for canonical fee data. Legacy APIs must not look like valid fees. */
 export function assertCanonicalFeeResponse(payload: unknown, scope = 'contract'): void {
   if (
@@ -8,7 +15,7 @@ export function assertCanonicalFeeResponse(payload: unknown, scope = 'contract')
     !('aggregationScope' in payload) ||
     payload.aggregationScope !== scope
   ) {
-    throw new Error('Fee API is outdated or returned the wrong aggregation scope. Check the Yearn Data API target.')
+    throw new CanonicalFeeResponseError()
   }
 }
 

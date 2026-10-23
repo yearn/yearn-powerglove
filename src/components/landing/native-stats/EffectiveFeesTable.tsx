@@ -65,28 +65,32 @@ export function EffectiveFeesTable({
     () => new Set([...capitalVaults.keys(), ...feeNodes.keys(), ...metadataByVault.keys()]),
     [capitalVaults, feeNodes, metadataByVault]
   )
+  const stackRows = useMemo(
+    () =>
+      directDepositFeeRows(feeStack.chains, feeStack.entries)
+        .filter((row) => metadataByVault.get(originVaultId(row.vault.chainId, row.vault.address))?.isHidden !== true)
+        .map((row) => ({
+          ...row,
+          vaultType: monthlyVaultType({
+            ...vaults.find(
+              (vault) =>
+                vault.chainId === row.vault.chainId && vault.address.toLowerCase() === row.vault.address.toLowerCase()
+            ),
+            ...metadataByVault.get(`${row.vault.chainId}:${row.vault.address.toLowerCase()}`),
+            ...row.vault
+          })
+        })),
+    [feeStack, metadataByVault, vaults]
+  )
   const sortedStacks = useMemo(
     () =>
       sortStacks(
-        directDepositFeeRows(feeStack.chains, feeStack.entries)
-          .filter((row) => metadataByVault.get(originVaultId(row.vault.chainId, row.vault.address))?.isHidden !== true)
-          .map((row) => ({
-            ...row,
-            vaultType: monthlyVaultType({
-              ...vaults.find(
-                (vault) =>
-                  vault.chainId === row.vault.chainId && vault.address.toLowerCase() === row.vault.address.toLowerCase()
-              ),
-              ...metadataByVault.get(`${row.vault.chainId}:${row.vault.address.toLowerCase()}`),
-              ...row.vault
-            })
-          }))
-          .filter(
-            (row) =>
-              (chainFilter === 'all' || String(row.vault.chainId) === chainFilter) &&
-              (stackTypeFilter === 'all' || row.vaultType === stackTypeFilter) &&
-              `${row.vault.name ?? ''} ${row.vault.address}`.toLowerCase().includes(stackSearch.trim().toLowerCase())
-          ),
+        stackRows.filter(
+          (row) =>
+            (chainFilter === 'all' || String(row.vault.chainId) === chainFilter) &&
+            (stackTypeFilter === 'all' || row.vaultType === stackTypeFilter) &&
+            `${row.vault.name ?? ''} ${row.vault.address}`.toLowerCase().includes(stackSearch.trim().toLowerCase())
+        ),
         {
           name: (row) => row.vault.name || '',
           effective: (row) => row.performanceFee ?? -1,
@@ -96,7 +100,7 @@ export function EffectiveFeesTable({
         }
       ),
     [
-      feeStack,
+      stackRows,
       chainFilter,
       stackSearch,
       stackTypeFilter,
@@ -105,9 +109,7 @@ export function EffectiveFeesTable({
       capitalVaults,
       feeGraph,
       graphMatched,
-      tvlDatasetId,
-      metadataByVault,
-      vaults
+      tvlDatasetId
     ]
   )
   const stackPagination = usePagination(sortedStacks.length, 10)
@@ -136,11 +138,13 @@ export function EffectiveFeesTable({
             }}
           >
             <option value="all">All vault types</option>
-            {['Allocator', 'Strategy', 'Factory', 'Legacy'].map((type) => (
-              <option key={type} value={type}>
-                {type}
-              </option>
-            ))}
+            {Array.from(new Set(stackRows.map((row) => row.vaultType)))
+              .sort()
+              .map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
           </select>
           <input
             className="search-input"

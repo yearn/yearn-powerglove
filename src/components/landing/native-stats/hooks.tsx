@@ -21,7 +21,6 @@ export function getStatsApiLane(url: string): StatsApiLane {
       '/api/tvl',
       '/api/tvl/history/runs/latest',
       '/api/tvl/history/runs/latest/constant-price',
-      '/api/tvl/curation-products',
       '/api/tvl/graph',
       '/api/audit/tree',
       '/api/analytics/publication',
@@ -426,7 +425,11 @@ export function usePagination(totalItems: number, pageSize = 30) {
           marginTop: '0.75rem'
         }}
       >
-        <button className="page-btn" disabled={page === 0} onClick={() => setPage((current) => current - 1)}>
+        <button
+          className="page-btn"
+          aria-disabled={page === 0}
+          onClick={() => setPage((current) => Math.max(0, current - 1))}
+        >
           Prev
         </button>
         <span className="text-dim" style={{ fontSize: '0.78rem' }}>
@@ -434,8 +437,8 @@ export function usePagination(totalItems: number, pageSize = 30) {
         </span>
         <button
           className="page-btn"
-          disabled={page >= totalPages - 1}
-          onClick={() => setPage((current) => current + 1)}
+          aria-disabled={page >= totalPages - 1}
+          onClick={() => setPage((current) => Math.min(totalPages - 1, current + 1))}
         >
           Next
         </button>

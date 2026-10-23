@@ -138,3 +138,12 @@ describe('published fee requests', () => {
     expect(result.current.error).toBeNull()
   })
 })
+
+it('preserves the proxy contract-mismatch message for the panel error UI', async () => {
+  const message = 'Fee API is outdated or returned the wrong aggregation scope. Check the Yearn Data API target.'
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ error: message }), { status: 502 })))
+  const { result } = renderHook(() => useFetch('/api/fees?since=contract-error'))
+  await waitFor(() => expect(result.current.error).toBe(message))
+  expect(result.current.data).toBeNull()
+  expect(result.current.status).toBe(502)
+})

@@ -57,6 +57,7 @@ describe('hosted Yearn Data proxy', () => {
   it.each([
     ['POST', '/api/tvl', 405],
     ['GET', '/api/unknown', 404],
+    ['GET', '/api/tvl/curation-products', 404],
     ['GET', '/api/yearn-data?__statsPath=/api/unknown', 404],
     ['GET', '/api/tvl', 503]
   ])('rejects %s %s without contacting an unconfigured upstream', async (method, url, status) => {
@@ -85,7 +86,9 @@ describe('hosted Yearn Data proxy', () => {
     const res = response()
     await handler({ method: 'GET', url: '/api/fees' }, res)
     expect(res.status).toHaveBeenCalledWith(502)
-    expect(res.json).toHaveBeenCalledWith({ error: 'Stats API is unavailable' })
+    expect(res.json).toHaveBeenCalledWith({
+      error: 'Fee API is outdated or returned the wrong aggregation scope. Check the Yearn Data API target.'
+    })
   })
 
   it('does not follow protected API redirects or expose their body', async () => {
@@ -130,4 +133,35 @@ it('retains cache directives for successful upstream data', async () => {
   await handler({ method: 'GET', url: '/api/tvl' }, res)
   expect(res.setHeader).toHaveBeenCalledWith('Cache-Control', 'public, max-age=60')
   expect(res.setHeader).toHaveBeenCalledWith('Vercel-CDN-Cache-Control', 'public, s-maxage=120')
+})
+
+it('distinguishes a failed upstream request from an incompatible fee response', async () => {
+  vi.stubEnv('YEARN_DATA_API_URL', 'https://data-preview.vercel.app')
+  vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('upstream fetch failed')))
+  const res = response()
+  await handler({ method: 'GET', url: '/api/fees' }, res)
+  expect(res.status).toHaveBeenCalledWith(502)
+  expect(res.json).toHaveBeenCalledWith({ error: 'Stats API is unavailable' })
+})
+
+it('reports a wrong fee aggregation scope as an incompatible response', async () => {
+  vi.stubEnv('YEARN_DATA_API_URL', 'https://data-preview.vercel.app')
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          datasetId: 'selected',
+          aggregationScope: 'contract'
+        })
+      )
+    )
+  )
+  const res = response()
+  await handler({ method: 'GET', url: '/api/fees/vaults?scope=product' }, res)
+  expect(res.status).toHaveBeenCalledWith(502)
+  expect(res.json).toHaveBeenCalledWith({
+    error: 'Fee API is outdated or returned the wrong aggregation scope. Check the Yearn Data API target.'
+  })
+  expect(res.setHeader.mock.calls).toEqual([['Cache-Control', 'no-store']])
 })

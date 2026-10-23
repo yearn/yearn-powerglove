@@ -1,4 +1,8 @@
-import { assertCanonicalFeeResponse, requiresCanonicalFeeResponse } from '../src/lib/fee-api-contract.js'
+import {
+  assertCanonicalFeeResponse,
+  CanonicalFeeResponseError,
+  requiresCanonicalFeeResponse
+} from '../src/lib/fee-api-contract.js'
 
 const DATA_ROUTES = new Set([
   '/api/publication',
@@ -6,7 +10,6 @@ const DATA_ROUTES = new Set([
   '/api/tvl/graph',
   '/api/tvl/history/runs/latest',
   '/api/tvl/history/runs/latest/constant-price',
-  '/api/tvl/curation-products',
   '/api/audit/tree',
   '/api/fees',
   '/api/fees/history',
@@ -68,7 +71,8 @@ export default async function handler(req: { method?: string; url?: string }, re
       if (cdnCache) res.setHeader('Vercel-CDN-Cache-Control', cdnCache)
     }
     return res.status(response.status).json(body)
-  } catch {
+  } catch (error) {
+    if (error instanceof CanonicalFeeResponseError) return res.status(502).json({ error: error.message })
     return res.status(502).json({ error: 'Stats API is unavailable' })
   }
 }

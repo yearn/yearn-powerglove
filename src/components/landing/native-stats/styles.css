@@ -2727,3 +2727,8 @@
     font-size: clamp(0.875rem, 4vw, 1.125rem);
   }
 }
+
+.pg-stats .page-btn[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

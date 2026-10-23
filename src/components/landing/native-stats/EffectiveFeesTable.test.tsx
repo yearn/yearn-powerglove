@@ -284,5 +284,13 @@ it('returns to the first effective-fee page when the shared chain changes', () =
   expect(screen.getByText('11–20 of 40')).toBeTruthy()
   rendered.rerender(table('1'))
   expect(screen.getByText('1–10 of 35')).toBeTruthy()
-  expect((screen.getByRole('button', { name: 'Prev' }) as HTMLButtonElement).disabled).toBe(true)
+  expect(screen.getByRole('button', { name: 'Prev' }).getAttribute('aria-disabled')).toBe('true')
+})
+
+it('allows filtering an effective-fee entry classified as External', () => {
+  render(<Table />)
+  const filter = screen.getByRole('combobox', { name: 'Effective fees vault type' })
+  expect(within(filter).getByRole('option', { name: 'External' })).toBeTruthy()
+  fireEvent.change(filter, { target: { value: 'External' } })
+  expect(screen.getByRole('link', { name: 'Example vault' })).toBeTruthy()
 })

@@ -21,10 +21,6 @@
       "destination": "/api/yearn-data?__statsPath=/api/tvl/history/runs/latest/constant-price"
     },
     {
-      "source": "/api/tvl/curation-products",
-      "destination": "/api/yearn-data?__statsPath=/api/tvl/curation-products"
-    },
-    {
       "source": "/api/audit/tree",
       "destination": "/api/yearn-data?__statsPath=/api/audit/tree"
     },
