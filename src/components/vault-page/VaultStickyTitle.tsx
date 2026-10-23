@@ -36,7 +36,7 @@ export function VaultStickyTitle({ vaultName }: VaultStickyTitleProps) {
       <div
         aria-hidden={!isStuck}
         className={cn(
-          'flex h-14 min-w-0 items-center bg-white px-4 transition-opacity duration-150 ease-out sm:px-6',
+          'flex h-14 min-w-0 items-center border-x border-[#d8d8d8] bg-white px-4 transition-opacity duration-150 ease-out sm:px-6',
           isStuck ? 'opacity-100' : 'opacity-0'
         )}
       >
