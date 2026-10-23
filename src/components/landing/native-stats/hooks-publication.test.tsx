@@ -32,3 +32,30 @@ it('rejects malformed fee stacks before caching and recovers through scoped retr
   await waitFor(() => expect(result.current.data).toEqual({ chains: [] }))
   expect(result.current.error).toBeNull()
 })
+
+it('reselects a retired publication on retry while sharing concurrent initial selection', async () => {
+  const oldId = 'c'.repeat(64)
+  const newId = 'd'.repeat(64)
+  let selections = 0
+  const fetch = vi.fn(async (url: string) => {
+    if (url === '/api/analytics/publication')
+      return { ok: true, status: 200, json: async () => ({ publicationId: ++selections === 1 ? oldId : newId }) }
+    if (url.includes(oldId)) return { ok: false, status: 410, json: async () => ({ error: 'Retired publication' }) }
+    return { ok: true, status: 200, json: async () => ({ publicationId: newId }) }
+  })
+  vi.stubGlobal('fetch', fetch)
+  const { result } = renderHook(() => ({
+    first: useFetch('/api/profitability?rotation-test=1'),
+    second: useFetch('/api/comparison?rotation-test=1')
+  }))
+  await waitFor(() => expect(result.current.first.status).toBe(410))
+  await waitFor(() => expect(result.current.second.status).toBe(410))
+  expect(selections).toBe(1)
+  act(() => {
+    result.current.first.retry()
+    result.current.second.retry()
+  })
+  await waitFor(() => expect(result.current.first.data).toEqual({ publicationId: newId }))
+  await waitFor(() => expect(result.current.second.data).toEqual({ publicationId: newId }))
+  expect(selections).toBe(2)
+})

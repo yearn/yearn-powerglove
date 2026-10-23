@@ -36,7 +36,8 @@ export function DirectDepositSources({
             {sources.conflict
               ? 'Depositor balances could not be reconciled with direct deposits.'
               : 'Some depositor balances are unavailable for this snapshot.'}{' '}
-            Unresolved amounts remain unavailable.
+            Unresolved amounts remain unavailable. Check that the configured chain RPC supports archive reads and
+            browser access to historical state.
           </span>
           {sources.canRetry && (
             <button type="button" className="page-btn" onClick={sources.retry}>

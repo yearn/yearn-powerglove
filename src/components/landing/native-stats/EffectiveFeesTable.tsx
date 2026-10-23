@@ -163,6 +163,8 @@ export function EffectiveFeesTable({
         <div className="error-retry">
           <p>
             Some treasury exclusions are unavailable for this snapshot. Affected adjusted values remain unavailable.
+            Historical balance reads require archive-capable RPCs; check the configured Ethereum RPC and browser access
+            to historical state.
           </p>
           <button type="button" className="page-btn" onClick={deposits.retry}>
             Retry treasury exclusions

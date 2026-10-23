@@ -1430,8 +1430,9 @@ export function TvlFlowGraphTool({ embedded = false, strategyMetadata = [], vaul
     return () => window.removeEventListener('keydown', closeOnEscape)
   }, [isInspectorOpen])
 
+  const Wrapper = embedded ? 'div' : 'main'
   return (
-    <main className={cn(embedded ? 'w-full' : 'container flex-1 pb-0 pt-0')}>
+    <Wrapper className={cn(embedded ? 'w-full' : 'container flex-1 pb-0 pt-0')}>
       <section
         className={cn(
           'pg-stats rounded-none bg-white',
@@ -1539,6 +1540,6 @@ export function TvlFlowGraphTool({ embedded = false, strategyMetadata = [], vaul
           </div>
         )}
       </section>
-    </main>
+    </Wrapper>
   )
 }

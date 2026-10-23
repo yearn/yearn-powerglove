@@ -149,7 +149,9 @@ export function useFetch<T>(url: string, options: UseFetchOptions = {}) {
       }))
       let request = !bypassCache ? inFlightFetches.get(key) : undefined
       if (!request) {
-        const pending = selectedAnalyticsUrl(key, url, apiBase)
+        const selectedUrl = selectedAnalyticsUrl(key, url, apiBase)
+        const selection = analyticsSelections.get(apiBase)
+        const pending = selectedUrl
           .then(fetch)
           .then(async (response) => {
             if (!response.ok) {
@@ -170,6 +172,15 @@ export function useFetch<T>(url: string, options: UseFetchOptions = {}) {
             if (inFlightFetches.get(key) === pending)
               fetchCache.set(key, { data: result.payload, timestamp: result.timestamp })
             return result
+          })
+          .catch((error: HttpError) => {
+            if (
+              error.status === 410 &&
+              !new URLSearchParams(url.split('?')[1]).has('publicationId') &&
+              analyticsSelections.get(apiBase) === selection
+            )
+              analyticsSelections.delete(apiBase)
+            throw error
           })
           .finally(() => {
             if (inFlightFetches.get(key) === pending) inFlightFetches.delete(key)
@@ -224,10 +235,12 @@ export function useFetch<T>(url: string, options: UseFetchOptions = {}) {
 
 export function fmt(n: number | null | undefined, decimals = 1): string {
   if (n == null || !Number.isFinite(n)) return '—'
-  if (Math.abs(n) >= 1e9) return `$${(n / 1e9).toFixed(decimals)}B`
-  if (Math.abs(n) >= 1e6) return `$${(n / 1e6).toFixed(decimals)}M`
-  if (Math.abs(n) >= 1e3) return `$${(n / 1e3).toFixed(decimals)}K`
-  return `$${Math.abs(n) < 0.5 ? '0' : n.toFixed(0)}`
+  const sign = n <= -0.5 ? '-' : ''
+  const value = Math.abs(n)
+  if (value >= 1e9) return `${sign}$${(value / 1e9).toFixed(decimals)}B`
+  if (value >= 1e6) return `${sign}$${(value / 1e6).toFixed(decimals)}M`
+  if (value >= 1e3) return `${sign}$${(value / 1e3).toFixed(decimals)}K`
+  return `${sign}$${value < 0.5 ? '0' : value.toFixed(0)}`
 }
 
 export function pct(n: number): string {
