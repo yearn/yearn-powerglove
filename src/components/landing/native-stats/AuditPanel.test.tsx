@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { AuditPanel, computeCountedTvl } from './AuditPanel'
@@ -17,6 +17,8 @@ const vault = {
   strategies: []
 }
 let membership: unknown = null
+let auditError: string | null = null
+const retry = vi.fn()
 vi.mock('@tanstack/react-router', () => ({ Link: ({ children }: { children: ReactNode }) => <span>{children}</span> }))
 vi.mock('./hooks', async (original) => ({
   ...(await original<typeof import('./hooks')>()),
@@ -25,12 +27,16 @@ vi.mock('./hooks', async (original) => ({
       ? { summedTvl: 100, overlapTvl: 100, crossChainOverlap: 0, vaultCount: 1, vaults: [vault], crossChainVaults: [] }
       : membership,
     loading: false,
+    error: url.startsWith('/api/audit/tree') ? auditError : null,
+    retry,
     fetchedAt: null
   })
 }))
 afterEach(() => {
   cleanup()
   membership = null
+  auditError = null
+  retry.mockClear()
 })
 describe('native audit accounting and verified membership', () => {
   it('uses native counted zero and preserves unknown amounts', () => {
@@ -48,4 +54,18 @@ describe('native audit accounting and verified membership', () => {
     render(<AuditPanel />)
     expect(document.querySelector('.audit-dl-counted-tag')?.textContent).toBe('DL')
   })
+})
+
+it('keeps the audit tree visible when the optional comparison diff is omitted', () => {
+  membership = { includedVaults: [] }
+  render(<AuditPanel />)
+  expect(screen.getByText('Example vault')).toBeTruthy()
+  expect(document.querySelector('.audit-dl-counted-tag')).toBeNull()
+})
+it('shows and retries audit-tree failures', () => {
+  auditError = 'Request failed'
+  render(<AuditPanel />)
+  expect(screen.getByRole('alert').textContent).toContain('Request failed')
+  fireEvent.click(screen.getByRole('button', { name: 'Retry vault breakdown' }))
+  expect(retry).toHaveBeenCalledOnce()
 })

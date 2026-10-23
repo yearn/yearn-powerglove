@@ -70,7 +70,7 @@ interface DefillamaMissingVault {
 
 interface DefillamaComparableComparison {
   includedVaults?: DefillamaMissingVault[]
-  diff: {
+  diff?: {
     missingFromDefillama: DefillamaMissingVault[]
   }
 }
@@ -461,9 +461,9 @@ export function AuditPanel() {
   const { sorted: sortVaults } = vaultSort
 
   const url = `/api/audit/tree${chainFilter !== 'all' ? `?chainId=${chainFilter}` : ''}`
-  const { data, loading, fetchedAt } = useFetch<AuditTreeResponse>(url)
+  const { data, loading, fetchedAt, error, retry } = useFetch<AuditTreeResponse>(url)
   const { data: defillamaComparison } = useFetch<DefillamaComparableComparison>(
-    '/api/comparison/defillama-comparable?includeVaultBreakdown=false'
+    '/api/comparison/defillama-comparable?includeVaultBreakdown=true'
   )
 
   useEffect(() => {
@@ -524,7 +524,10 @@ export function AuditPanel() {
   const missingFromDefillamaByVault = useMemo(() => {
     if (!defillamaComparison) return new Map<string, DefillamaMissingVault>()
     return new Map(
-      defillamaComparison.diff.missingFromDefillama.map((vault) => [vaultKey(vault.chainId, vault.vaultAddress), vault])
+      (defillamaComparison.diff?.missingFromDefillama ?? []).map((vault) => [
+        vaultKey(vault.chainId, vault.vaultAddress),
+        vault
+      ])
     )
   }, [defillamaComparison])
 
@@ -594,6 +597,15 @@ export function AuditPanel() {
         <SkeletonCards count={3} />
         <SkeletonChart />
       </>
+    )
+  if (error)
+    return (
+      <div className="error-retry" role="alert">
+        <p>Vault breakdown could not be loaded: {error}</p>
+        <button type="button" className="page-btn" onClick={retry}>
+          Retry vault breakdown
+        </button>
+      </div>
     )
   if (!data) return null
 

@@ -147,7 +147,11 @@ export function ChainTvlHistory({
     const priceNeutralSeries = getAvailableChartSeries(data.constantPriceChart)
     const rows =
       view === 'line' && showPriceNeutral
-        ? mergePriceNeutralTotal(actualRows, data.constantPriceChart, priceNeutralSeries)
+        ? mergePriceNeutralTotal(
+            actualRows,
+            data.constantPriceChart.filter((row) => actualRows.some((actual) => actual.timestamp === row.timestamp)),
+            priceNeutralSeries
+          )
         : actualRows
 
     return {

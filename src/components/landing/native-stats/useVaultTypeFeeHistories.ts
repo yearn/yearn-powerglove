@@ -53,7 +53,7 @@ export async function fetchVaultTypeFeeHistories(
 export function useVaultTypeFeeHistories(query: string, periods: FeeHistoryPeriod[]) {
   const base = resolveStatsApiBase('fees') ?? ''
   const catalog = useQuery({
-    queryKey: ['fee-vault-type-catalog'],
+    queryKey: ['fee-vault-type-required-catalog'],
     queryFn: async () => {
       const vaults = await fetchKongVaultListRaw()
       if (!vaults.length) throw new Error('Vault catalog is unavailable')
