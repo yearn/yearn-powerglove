@@ -106,9 +106,12 @@ export function FeeYieldAnalysis() {
   if (chainFilter !== 'all') query.set('chainId', chainFilter)
   const { data: profData, loading, error, retry } = useFetch<ProfitabilitySummary>(`/api/profitability?${query}`)
   const [quadrantFilter, setQuadrantFilter] = useState<Quadrant | 'all'>('all')
-  const scatterData = useMemo(() => {
-    if (!profData) return []
-    const base = profData.vaults
+  const scatter = useMemo(() => {
+    if (!profData) return { points: [], excluded: 0 }
+    const candidates = profData.vaults
+      .filter((v) => chainFilter === 'all' || String(v.chainId) === chainFilter)
+      .filter((v) => quadrantFilter === 'all' || v.quadrant === quadrantFilter)
+    const base = candidates
       .filter(
         (v): v is VaultProfitability & { feeYield: number; tvlUsd: number; quadrant: Quadrant } =>
           v.feeYield != null &&
@@ -119,16 +122,22 @@ export function FeeYieldAnalysis() {
           v.tvlUsd <= 1e8
       )
       .filter((v) => chainFilter === 'all' || String(v.chainId) === chainFilter)
-    const eligible = quadrantFilter !== 'all' ? base.filter((v) => v.quadrant === quadrantFilter) : base
-    if (eligible.length < 4) return eligible.map((v) => ({ ...v, logTvl: Math.log10(v.tvlUsd) }))
+    const eligible = base
+    if (eligible.length < 4)
+      return {
+        points: eligible.map((v) => ({ ...v, logTvl: Math.log10(v.tvlUsd) })),
+        excluded: candidates.length - eligible.length
+      }
     const yields = eligible.map((v) => v.feeYield).sort((a, b) => a - b)
     const q1 = yields[Math.floor(yields.length * 0.25)]
     const q3 = yields[Math.floor(yields.length * 0.75)]
     const iqr = q3 - q1
     const upper = q3 + 1.5 * iqr
-    return eligible.filter((v) => v.feeYield <= upper).map((v) => ({ ...v, logTvl: Math.log10(v.tvlUsd) }))
+    const points = eligible.filter((v) => v.feeYield <= upper).map((v) => ({ ...v, logTvl: Math.log10(v.tvlUsd) }))
+    return { points, excluded: candidates.length - points.length }
   }, [profData, quadrantFilter, chainFilter])
 
+  const scatterData = scatter.points
   const trendLine = useMemo(() => {
     if (scatterData.length < 5) return null
     const n = scatterData.length
@@ -272,7 +281,10 @@ export function FeeYieldAnalysis() {
               </ScatterChart>
             </ResponsiveContainer>
           </div>
-          <span className="sr-only">Scatter plot showing TVL vs fee yield for {scatterData.length} vaults.</span>
+          <p className="text-dim">
+            Showing {scatterData.length} vaults. {scatter.excluded} excluded by the $10K–$100M TVL range, unavailable
+            fee yield, or fee-yield outlier filter. Quadrant counts include excluded vaults.
+          </p>
         </div>
       )}
     </>

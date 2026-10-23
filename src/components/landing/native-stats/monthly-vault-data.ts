@@ -19,7 +19,9 @@ export function completedFeeMonths(now: number): FeeHistoryPeriod[] {
 export const monthlyVaultKey = (vault: Pick<CanonicalVaultFee, 'chainId' | 'address'>) =>
   `${vault.chainId}:${vault.address.toLowerCase()}`
 export type MonthlyFeeVault = Pick<CanonicalVaultFee, 'chainId' | 'address' | 'name'> &
-  Pick<KongVaultListItem, 'type' | 'kind' | 'vaultType' | 'apiVersion' | 'v3'> & { contractFamily?: string }
+  Pick<KongVaultListItem, 'type' | 'kind' | 'vaultType' | 'apiVersion' | 'v3' | 'isHidden'> & {
+    contractFamily?: string
+  }
 export interface MonthlyVaultRow {
   vault: MonthlyFeeVault
   vaultType: string
@@ -47,25 +49,27 @@ export function buildMonthlyVaultRows(
     vaults.set(key, { ...published.get(key), ...vault, name: published.get(key)?.name || vault.name })
   }
   const months = histories.map((rows) => new Map(rows.map((vault) => [monthlyVaultKey(vault), vault])))
-  return [...vaults].map(([key, vault]) => {
-    const values = months.map((rows) => {
-      const row = rows.get(key)
-      if (row)
-        return canonicalDecimalToNumber(metric === 'fees' ? row.totalFeesPaidUsd : row.lifetimeEarnings?.netYieldUsd)
-      const known = published.get(key)
-      return known && (metric === 'fees' || canonicalDecimalToNumber(known.lifetimeEarnings?.netYieldUsd) !== null)
-        ? 0
-        : null
+  return [...vaults]
+    .filter(([, vault]) => vault.isHidden !== true)
+    .map(([key, vault]) => {
+      const values = months.map((rows) => {
+        const row = rows.get(key)
+        if (row)
+          return canonicalDecimalToNumber(metric === 'fees' ? row.totalFeesPaidUsd : row.lifetimeEarnings?.netYieldUsd)
+        const known = published.get(key)
+        return known && (metric === 'fees' || canonicalDecimalToNumber(known.lifetimeEarnings?.netYieldUsd) !== null)
+          ? 0
+          : null
+      })
+      return {
+        vault,
+        vaultType: monthlyVaultType(vault),
+        months: values,
+        total: values.some((value) => value === null)
+          ? null
+          : values.reduce<number>((sum, value) => sum + (value ?? 0), 0)
+      }
     })
-    return {
-      vault,
-      vaultType: monthlyVaultType(vault),
-      months: values,
-      total: values.some((value) => value === null)
-        ? null
-        : values.reduce<number>((sum, value) => sum + (value ?? 0), 0)
-    }
-  })
 }
 export function monthlyUsd(value: number | null): string {
   if (value === null) return '—'

@@ -31,7 +31,7 @@ export function useTableDepositSources(
     typeof timestamp === 'number' &&
     Number.isSafeInteger(timestamp) &&
     timestamp > 0
-  const queries = useQueries({
+  const state = useQueries({
     queries: chains.map((chainId) => {
       const chainTargets = targets
         .filter((target) => target.chainId === chainId)
@@ -58,46 +58,56 @@ export function useTableDepositSources(
           return readDepositBalanceBatch(chainId, chainTargets, block)
         }
       }
+    }),
+    combine: (queries) => ({
+      balances: queries.map((query) => query.data),
+      fetching: queries.map((query) => query.isFetching)
     })
   })
-  const balances = new Map<string, DepositBalances>(enabled ? queries.flatMap((query) => [...(query.data ?? [])]) : [])
-  const published = externalTvlByVault(graph, datasetId)
-  const sources = new Map<string, DirectDepositSourceState>()
-  const exclusions = new Map<string, number | null>()
-  for (const row of rows) {
-    const rowTargets = registeredDepositTargets(row)
-    const members = new Set(row.roots.map((root) => originVaultId(root.vault.chainId, root.vault.address)))
-    const bridges = graph?.bridgeExclusions?.filter((bridge) => members.has(bridge.sourceNodeId)) ?? []
-    const adjusted = directDepositTvl(row, published)
-    const direct =
-      adjusted !== null && bridges.every((bridge) => typeof bridge.tvlUsd === 'number')
-        ? adjusted + bridges.reduce((sum, bridge) => sum + bridge.tvlUsd!, 0)
-        : null
-    const breakdown = directDepositSources(rowTargets, vaults, enabled ? graph : null, balances, direct)
-    const rowChains = new Set(rowTargets.map((target) => target.chainId))
-    const rowQueries = queries.filter((_, index) => rowChains.has(chains[index]))
-    const loading = enabled && rowQueries.some((query) => query.isFetching)
-    sources.set(originVaultId(row.vault.chainId, row.vault.address), {
-      ...breakdown,
-      loading,
-      unavailable: !loading && breakdown.groups.some((group) => group.amount === null),
-      canRetry: enabled && rowQueries.length > 0,
-      retry: () => {
-        for (const query of rowQueries) void query.refetch()
+  return useMemo(() => {
+    const chains = [...new Set(targets.map((target) => target.chainId))].filter(isSupportedChainId)
+    const balances = new Map<string, DepositBalances>(
+      enabled ? state.balances.flatMap((balances) => [...(balances ?? [])]) : []
+    )
+    const published = externalTvlByVault(graph, datasetId)
+    const sources = new Map<string, DirectDepositSourceState>()
+    const exclusions = new Map<string, number | null>()
+    for (const row of rows) {
+      const rowTargets = registeredDepositTargets(row)
+      const members = new Set(row.roots.map((root) => originVaultId(root.vault.chainId, root.vault.address)))
+      const bridges = graph?.bridgeExclusions?.filter((bridge) => members.has(bridge.sourceNodeId)) ?? []
+      const adjusted = directDepositTvl(row, published)
+      const direct =
+        adjusted !== null && bridges.every((bridge) => typeof bridge.tvlUsd === 'number')
+          ? adjusted + bridges.reduce((sum, bridge) => sum + bridge.tvlUsd!, 0)
+          : null
+      const breakdown = directDepositSources(rowTargets, vaults, enabled ? graph : null, balances, direct)
+      const rowChains = new Set(rowTargets.map((target) => target.chainId))
+      const rowChainIds = chains.filter((chainId) => rowChains.has(chainId))
+      const loading = enabled && chains.some((chainId, index) => rowChains.has(chainId) && state.fetching[index])
+      sources.set(originVaultId(row.vault.chainId, row.vault.address), {
+        ...breakdown,
+        loading,
+        unavailable: !loading && breakdown.groups.some((group) => group.amount === null),
+        canRetry: enabled && rowChainIds.length > 0,
+        retry: () => {
+          for (const chainId of rowChainIds)
+            void client.refetchQueries({ queryKey: ['table-deposit-balances', datasetId, timestamp, chainId] })
+        }
+      })
+      for (const [id, value] of treasuryExclusions(row, breakdown.groups)) {
+        exclusions.set(id, value)
       }
-    })
-    for (const [id, value] of treasuryExclusions(row, breakdown.groups)) {
-      exclusions.set(id, value)
     }
-  }
-  const loading = enabled && queries.some((query) => query.isFetching)
-  return {
-    sources,
-    exclusions,
-    loading,
-    unavailable: enabled && !loading && [...exclusions.values()].some((amount) => amount === null),
-    retry: () => {
-      for (const query of queries) void query.refetch()
+    const loading = enabled && state.fetching.some(Boolean)
+    return {
+      sources,
+      exclusions,
+      loading,
+      unavailable: enabled && !loading && [...exclusions.values()].some((amount) => amount === null),
+      retry: () => {
+        void client.refetchQueries({ queryKey: ['table-deposit-balances', datasetId, timestamp] })
+      }
     }
-  }
+  }, [state, targets, rows, vaults, graph, datasetId, timestamp, enabled, client])
 }

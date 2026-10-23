@@ -106,3 +106,16 @@ describe('monthly vault fee matrix', () => {
     expect(monthlyUsd(1234.56)).toBe('$1,235')
   })
 })
+
+it('hides upstream-hidden vaults from monthly rows and unavailable counts', () => {
+  const rows = buildMonthlyVaultRows(
+    [vault(1, '10')],
+    [[vault(1, '10')]],
+    [
+      { chainId: 1, address: '0xabc', name: 'Hidden published', isHidden: true },
+      { chainId: 1, address: '0xdef', name: 'Hidden catalog only', isHidden: true },
+      { chainId: 1, address: '0xvisible', name: 'Visible', isHidden: false }
+    ]
+  )
+  expect(rows.map((row) => row.vault.name)).toEqual(['Visible'])
+})
