@@ -111,6 +111,11 @@ export function EffectiveFeesTable({
     ]
   )
   const stackPagination = usePagination(sortedStacks.length, 10)
+  const [paginationChain, setPaginationChain] = useState(chainFilter)
+  if (paginationChain !== chainFilter) {
+    setPaginationChain(chainFilter)
+    stackPagination.setPage(0)
+  }
   const pagedStacks = sortedStacks.slice(stackPagination.start, stackPagination.end)
 
   return (

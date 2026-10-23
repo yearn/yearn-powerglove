@@ -6,6 +6,7 @@ import type { KongVaultListItem } from '@/types/kong'
 import { EffectiveFeeCapitalDetails } from './EffectiveFeeCapitalDetails'
 import { EffectiveFeesTable } from './EffectiveFeesTable'
 import { feeCapitalVaults } from './effective-fee-capital'
+import { StatsContext } from './StatsContext'
 import type { FeeStackSummary } from './types'
 import type { OriginAudit, OriginGraph } from './vault-origin'
 
@@ -260,4 +261,28 @@ it.each([
   const row = screen.queryByRole('button', { name: 'Fee breakdown for Example vault' })
   expect(row !== null).toBe(visible)
   if (!visible) expect(screen.getByText('No vaults match these filters.')).toBeTruthy()
+})
+
+it('returns to the first effective-fee page when the shared chain changes', () => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  clients.push(client)
+  const entries = Array.from({ length: 40 }, (_, index) => {
+    const vault = { address: `0xvault${index}`, chainId: index < 35 ? 1 : 10, name: `Vault ${index}` }
+    return { ...stack.entries![0], vault, roots: [{ ...root, vault }], adjustedTvlUsd: 100 - index }
+  })
+  const table = (chainFilter: string) => (
+    <QueryClientProvider client={client}>
+      <StatsContext.Provider
+        value={{ chainFilter, density: 'comfortable', lastFetchedAt: null, setLastFetchedAt: vi.fn() }}
+      >
+        <EffectiveFeesTable feeStack={{ ...stack, entries }} vaults={[]} chainSelector={null} />
+      </StatsContext.Provider>
+    </QueryClientProvider>
+  )
+  const rendered = render(table('all'))
+  fireEvent.click(screen.getByRole('button', { name: 'Next' }))
+  expect(screen.getByText('11–20 of 40')).toBeTruthy()
+  rendered.rerender(table('1'))
+  expect(screen.getByText('1–10 of 35')).toBeTruthy()
+  expect((screen.getByRole('button', { name: 'Prev' }) as HTMLButtonElement).disabled).toBe(true)
 })

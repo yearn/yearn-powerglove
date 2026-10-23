@@ -68,13 +68,13 @@ Example entry:
 
 ## Yearn Data fee and earnings pairing
 
-Set `VITE_PUBLIC_YEARN_DATA_API_URL` for production core views or
-`VITE_YEARN_DATA_API_TARGET` for the local Vite proxy. These route only the
-fee summary, monthly history and vault totals to yearn-data.
-
-Keep the existing `VITE_PUBLIC_YEARN_FEES_API_URL` / `VITE_YEARN_FEES_API_TARGET`
-for fee-stack and profitability analytics, and keep TVL configuration unchanged.
-With no new Yearn Data setting, core views retain the existing fee API fallback.
+Set `VITE_PUBLIC_YEARN_DATA_API_URL` to select a public Yearn Data origin,
+or leave it empty to use the same-origin server proxy. The hosted proxy reads
+server-only `YEARN_DATA_API_URL`; local Vite uses `VITE_YEARN_DATA_API_TARGET`
+and defaults to `https://yearn-data-api-preview.vercel.app`. These settings
+cover current TVL, fee summary/history/catalog, fee-stack, profitability, audit,
+graph, and comparison views. Legacy TVL/fees/metrics public URL settings apply
+only to supplementary endpoints outside these current routes.
 
 The core summary selects an opaque dataset ID, which pins history and vault
 requests to the same completed publication. The Fees tab displays the published
@@ -83,5 +83,4 @@ those diagnostics in yearn-data's selected publication and native exports.
 
 Use the yearn-data repository's `docs/powerglove-pairing.md` for source selection,
 cutoff/pricing requirements and manual refresh. Rebuild after changing public
-Vite configuration; review `/stats?tab=fees` with the existing analytics services
-still reachable.
+Vite configuration; review Stats at `/` and additional analysis at `/stats/analysis`.

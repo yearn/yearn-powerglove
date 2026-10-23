@@ -8,25 +8,12 @@ import { ErrorBoundary } from './ErrorBoundary'
 import { FeesPanel } from './FeesPanel'
 import { FeeYieldAnalysis } from './FeeYieldAnalysis'
 import { defaultFeeTimeRange } from './fee-timeframe'
-import { HAS_FEES_API, HAS_TVL_API } from './hooks'
 import { SharedStatsChartControls } from './SharedStatsChartControls'
 import { StatsChainSelector } from './StatsChainSelector'
 import { StatsContext, type StatsDensity, StatsTimeRangeContext } from './StatsContext'
 import { TvlOverview } from './TvlOverview'
 import { VaultBreakdown2 } from './VaultBreakdown2'
 import './styles.css'
-
-function MissingApiNotice({ lane }: { lane: 'TVL' | 'fees' }) {
-  return (
-    <div className="card">
-      <h2>Yearn {lane} API not configured</h2>
-      <p className="text-dim" style={{ marginTop: '0.5rem', lineHeight: 1.6 }}>
-        Set <code>VITE_PUBLIC_YEARN_DATA_API_URL</code> to a reachable Yearn Data API, or configure the local server
-        proxy with <code>VITE_YEARN_DATA_API_TARGET</code>.
-      </p>
-    </div>
-  )
-}
 
 function AnalysisSection({
   title,
@@ -95,35 +82,27 @@ export function NativeStatsDashboard({ analysis = false }: { analysis?: boolean 
                   {chainSelector}
                 </div>
                 <AnalysisSection title="TVL vs Fee Yield" defaultOpen>
-                  {HAS_FEES_API ? <FeeYieldAnalysis /> : <MissingApiNotice lane="fees" />}
+                  <FeeYieldAnalysis />
                 </AnalysisSection>
                 <AnalysisSection title="Vault Breakdown">
-                  {HAS_TVL_API ? <AuditPanel /> : <MissingApiNotice lane="TVL" />}
+                  <AuditPanel />
                 </AnalysisSection>
                 <AnalysisSection title="Vault Breakdown 2">
-                  {HAS_TVL_API ? <VaultBreakdown2 /> : <MissingApiNotice lane="TVL" />}
+                  <VaultBreakdown2 />
                 </AnalysisSection>
                 <AnalysisSection title="Compare TVL to DefiLlama">
-                  {HAS_TVL_API ? <ComparisonPanel /> : <MissingApiNotice lane="TVL" />}
+                  <ComparisonPanel />
                 </AnalysisSection>
               </>
             ) : (
               <>
                 <SharedStatsChartControls chainSelector={chainSelector} />
-                {HAS_TVL_API ? (
-                  <ErrorBoundary>
-                    <TvlOverview />
-                  </ErrorBoundary>
-                ) : (
-                  <MissingApiNotice lane="TVL" />
-                )}
-                {HAS_FEES_API ? (
-                  <ErrorBoundary>
-                    <FeesPanel />
-                  </ErrorBoundary>
-                ) : (
-                  <MissingApiNotice lane="fees" />
-                )}
+                <ErrorBoundary>
+                  <TvlOverview />
+                </ErrorBoundary>
+                <ErrorBoundary>
+                  <FeesPanel />
+                </ErrorBoundary>
                 <div className="stats-page-navigation stats-more-analysis">
                   <Link to="/stats/analysis" className="page-btn">
                     Other Analysis

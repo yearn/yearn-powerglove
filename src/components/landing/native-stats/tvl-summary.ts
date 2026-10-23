@@ -26,8 +26,6 @@ export interface AdjustedChainTvl {
   tvl: number
 }
 
-const TVL_BY_CHAIN_EXCLUDED_CHAINS = new Set(['Berachain', 'Sonic'])
-
 export function normalizeTvlSummary(data: LegacyTvlSummary): TvlSummary {
   return {
     ...data,
@@ -56,7 +54,7 @@ export function buildAdjustedChainTvl(
 ): AdjustedChainTvl[] {
   return (
     Object.entries(data.tvlByChain)
-      .filter(([chain]) => !TVL_BY_CHAIN_EXCLUDED_CHAINS.has(chain) && (chainFilter === 'all' || chain === chainFilter))
+      .filter(([chain]) => chainFilter === 'all' || chain === chainFilter)
       .map(([chain, rawTvl]) => ({
         chain,
         tvl: getAdjustedChainTvl(rawTvl, data.overlapByChain[chain], data.crossChainOverlapByChain[chain])
@@ -65,10 +63,6 @@ export function buildAdjustedChainTvl(
       .filter((row): row is AdjustedChainTvl => row.tvl !== null && row.tvl !== 0)
       .sort((a, b) => b.tvl - a.tvl)
   )
-}
-
-export function buildChainTvlCsvRows(chainData: Array<AdjustedChainTvl & { label: string }>): Array<[string, number]> {
-  return chainData.map(({ label, tvl }) => [label, tvl])
 }
 
 export function resolveChainId(chain: string, chainNames: Record<number, string>): number | null {

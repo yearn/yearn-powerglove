@@ -57,9 +57,6 @@ export function resolveStatsApiBase(lane: StatsApiLane): string | null {
   return null
 }
 
-export const HAS_TVL_API = resolveStatsApiBase('tvl') !== null
-export const HAS_FEES_API = resolveStatsApiBase('fees') !== null
-
 const fetchCache = new Map<string, { data: unknown; timestamp: number }>()
 const inFlightFetches = new Map<string, Promise<{ payload: unknown; timestamp: number; status: number }>>()
 const CACHE_TTL = 5 * 60 * 1000
@@ -381,24 +378,6 @@ export function useDebouncedValue<T>(value: T, delay = 200): T {
     return () => clearTimeout(id)
   }, [delay, value])
   return debounced
-}
-
-export function exportCSV(filename: string, headers: string[], rows: (string | number)[][]) {
-  const csvEscape = (value: string | number) => {
-    const stringValue = String(value)
-    return stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')
-      ? `"${stringValue.replace(/"/g, '""')}"`
-      : stringValue
-  }
-
-  const csv = [headers.map(csvEscape).join(','), ...rows.map((row) => row.map(csvEscape).join(','))].join('\n')
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-  const objectUrl = URL.createObjectURL(blob)
-  const anchor = document.createElement('a')
-  anchor.href = objectUrl
-  anchor.download = filename
-  anchor.click()
-  URL.revokeObjectURL(objectUrl)
 }
 
 export function SkeletonCards({ count = 5 }: { count?: number }) {

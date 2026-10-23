@@ -8,7 +8,7 @@ Supplementary legacy endpoints retain their separate API configuration.
 
 The current upstream is:
 
-`https://yearn-data-api-preview-5v92arw2b-rossgalloways-projects.vercel.app`
+`https://yearn-data-api-preview.vercel.app`
 
 This API uses the read-only Neon role and the selected hosted publication. The
 preview frontend has no database credentials. Verify `/api/publication` alongside

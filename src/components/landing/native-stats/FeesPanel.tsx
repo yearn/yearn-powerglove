@@ -220,9 +220,11 @@ export function FeeHistoryChart({
             <Tooltip
               contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 4 }}
               labelStyle={{ color: 'var(--text)' }}
-              formatter={(value: number, name: string) => [
-                fmt(value, 2),
-                name === 'averageTvlUsd' ? 'Average TVL' : (seriesLabels.get(name as FeeHistorySeriesKey) ?? name)
+              formatter={(value, name) => [
+                fmt(typeof value === 'number' ? value : null, 2),
+                name === 'averageTvlUsd'
+                  ? 'Average TVL'
+                  : (seriesLabels.get(name as FeeHistorySeriesKey) ?? String(name ?? ''))
               ]}
               cursor={{ stroke: 'rgba(6, 87, 249, 0.22)' }}
             />

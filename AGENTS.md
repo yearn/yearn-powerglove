@@ -36,7 +36,7 @@
 
 - Duplicate `.env.example` to `.env` and supply values such as `VITE_PUBLIC_GRAPHQL_URL`; never commit populated files.
 - Network clients live in `src/lib/apollo-client.ts` and `src/wagmi.ts`; update both when pointing to new services.
-- Ensure new environment variables use the `VITE_` prefix so Vite can expose them to the browser.
+- Use the `VITE_` prefix only for values intended for the browser. Server-only configuration and secrets, including `YEARN_DATA_API_URL` and `YEARN_DATA_API_PROTECTION_BYPASS`, must never use that prefix.
 
 ## Financial stats data contract
 

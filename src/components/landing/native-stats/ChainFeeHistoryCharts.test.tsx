@@ -135,9 +135,9 @@ describe('chain fee chart stacking', () => {
     expect(ys[1][0]).toBeCloseTo(ys[0][0], 2)
     expect(ys[1][1]).toBeCloseTo(ys[0][1], 2)
     expect(ys[1][2]).toBeCloseTo(ys[0][2], 2)
-    const zero = [...chart.querySelectorAll('.recharts-yAxis .recharts-cartesian-axis-tick-value')].find(
-      (tick) => tick.textContent === '$0'
-    )
+    const zero = [
+      ...chart.querySelectorAll(':is(.recharts-yAxis, .recharts-yAxis-tick-labels) .recharts-cartesian-axis-tick-value')
+    ].find((tick) => tick.textContent === '$0')
     if (!zero) throw new Error('Zero tick not rendered')
     const zeroY = Number(zero.getAttribute('y'))
     // 100 + 0 - 20 = 80: the final stack boundary is lower, but still above zero.

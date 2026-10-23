@@ -7,6 +7,7 @@ import {
   findTvlFlowVaultNodeId,
   fitTvlFlowBounds,
   graphEdgeGeometry,
+  layoutGraph,
   mapGraphResponse,
   type SpotFlowEdge,
   type SpotFlowNode,
@@ -247,4 +248,21 @@ describe('Yearn Data flow deductions', () => {
     expect(edgeDeductionNote(mapped.edges[0])).toBe(expected)
     expect(mapped.edges[0].tvlUsd).toBe(1000)
   })
+})
+
+it('bounds an unfocused layout with a reachable cycle and retains acyclic depths', () => {
+  const nodes = ['root', 'a', 'b'].map((id) => ({ ...vaultNode, id }))
+  const edge = (sourceNodeId: string, targetNodeId: string): SpotFlowEdge => ({
+    id: sourceNodeId + targetNodeId,
+    sourceNodeId,
+    targetNodeId,
+    holderAddress: '0xholder',
+    kind: 'auto',
+    tvlUsd: 1
+  })
+  const edges = [edge('root', 'a'), edge('a', 'b')]
+  expect(layoutGraph(nodes, edges, null).map((node) => node.depth)).toEqual([0, 1, 2])
+  const cyclic = layoutGraph(nodes, [...edges, edge('b', 'a')], null)
+  expect(cyclic).toHaveLength(3)
+  expect(cyclic.every((node) => Number.isFinite(node.x) && node.depth < nodes.length)).toBe(true)
 })

@@ -1,5 +1,5 @@
 import { ChevronDown, ChevronRight } from 'lucide-react'
-import { Fragment, useContext, useEffect, useMemo, useState } from 'react'
+import { Fragment, useContext, useEffect, useId, useMemo, useState } from 'react'
 import { Bar, BarChart, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { CategoryDiscrepancies } from './CategoryDiscrepancies'
 import { CHAIN_NAMES, fmt, pct, SkeletonCards, SkeletonChart, useFetch, useSort } from './hooks'
@@ -29,6 +29,7 @@ export function ComparisonPanel() {
   const { chainFilter, setLastFetchedAt } = useContext(StatsContext)
   const { data, loading, error, fetchedAt, retry } = useFetch<Comparison>('/api/comparison')
   const [expandedCategories, setExpandedCategories] = useState<string[]>([])
+  const detailsId = useId()
   const catSort = useSort('ours')
   const { sorted: sortCategories } = catSort
 
@@ -223,7 +224,7 @@ export function ComparisonPanel() {
                 width={60}
               />
               <Tooltip
-                formatter={(value: number) => fmt(value)}
+                formatter={(value) => fmt(typeof value === 'number' ? value : null)}
                 {...TOOLTIP_STYLE}
                 cursor={{ fill: 'rgba(6, 87, 249, 0.08)' }}
               />
@@ -263,7 +264,7 @@ export function ComparisonPanel() {
                         <button
                           type="button"
                           aria-expanded={expandedCategories.includes(c.category)}
-                          aria-controls={`category-details-${c.defillamaProtocol}`}
+                          aria-controls={`${detailsId}-category-${encodeURIComponent(c.category)}`}
                           onClick={() =>
                             setExpandedCategories((previous) =>
                               previous.includes(c.category)
@@ -317,7 +318,7 @@ export function ComparisonPanel() {
                       </td>
                     </tr>
                     {expandedCategories.includes(c.category) && (
-                      <tr id={`category-details-${c.defillamaProtocol}`}>
+                      <tr id={`${detailsId}-category-${encodeURIComponent(c.category)}`}>
                         <td colSpan={7} style={{ background: 'var(--surface-2)' }}>
                           <CategoryDiscrepancies
                             category={c.category}

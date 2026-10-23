@@ -110,9 +110,12 @@ describe('TVL context on earnings and fees', () => {
     expect(main.querySelector('.fee-tvl-overlay path')?.getAttribute('fill-opacity')).toBe('0.18')
     const axes = main.querySelectorAll('.recharts-yAxis')
     expect(axes).toHaveLength(2)
-    expect(axes[0].textContent).not.toContain('M')
-    expect(axes[1].textContent).toContain('M')
-    expect(axes[1].textContent).toContain('TVL')
+    // Recharts 3 renders tick labels outside the axis groups.
+    const tickGroups = main.querySelectorAll('.recharts-yAxis-tick-labels')
+    const labels = tickGroups.length ? tickGroups : axes
+    expect(labels[0].textContent).not.toContain('M')
+    expect(labels[1].textContent).toContain('M')
+    expect(main.querySelector('text.recharts-label')?.textContent).toContain('TVL')
     await waitFor(() =>
       expect(
         screen.getByRole('region', { name: 'Fees per dollar of TVL' }).querySelectorAll('.recharts-bar')

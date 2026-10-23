@@ -158,11 +158,13 @@ function MonthlyVaultTable({
               onChange={(event) => onTypeChange(event.target.value)}
             >
               <option value="all">All vault types</option>
-              {['Allocator', 'Strategy', 'Factory', 'Legacy'].map((type) => (
-                <option key={type} value={type}>
-                  {type}
-                </option>
-              ))}
+              {Array.from(new Set((fees.data?.[metric] ?? []).map((row) => row.vaultType)))
+                .sort()
+                .map((type) => (
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
+                ))}
             </select>
           )}
           <input

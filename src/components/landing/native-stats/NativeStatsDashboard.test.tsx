@@ -7,7 +7,6 @@ import { StatsContext } from './StatsContext'
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ to, children }: { to: string; children: ReactNode }) => <a href={to}>{children}</a>
 }))
-vi.mock('./hooks', () => ({ HAS_TVL_API: true, HAS_FEES_API: true }))
 vi.mock('./StatsChainSelector', () => ({
   StatsChainSelector: ({ value, onValueChange }: { value: string; onValueChange: (value: string) => void }) => (
     <select aria-label="Chain" value={value} onChange={(event) => onValueChange(event.target.value)}>

@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildAdjustedChainTvl,
-  buildChainTvlCsvRows,
   type LegacyTvlSummary,
   normalizeTvlSummary,
   resolveChainId,
@@ -119,21 +118,7 @@ describe('TVL by Chain adjustment', () => {
     expect(buildAdjustedChainTvl(data, 'all')).toEqual([{ chain: 'Ethereum', tvl: 90 }])
   })
 
-  it('uses the same adjusted value for the rendered chain data and CSV rows', () => {
-    const data = normalizeTvlSummary(
-      legacySummary({
-        tvlByChain: { Ethereum: 200 },
-        overlapByChain: { Ethereum: 25 },
-        crossChainOverlapByChain: { Ethereum: 50 }
-      })
-    )
-    const chainData = buildAdjustedChainTvl(data, 'all').map((row) => ({ ...row, label: row.chain }))
-
-    expect(chainData[0]?.tvl).toBe(125)
-    expect(buildChainTvlCsvRows(chainData)).toEqual([['Ethereum', 125]])
-  })
-
-  it('excludes Berachain and Sonic from the table and CSV source', () => {
+  it('includes selectable Berachain and Sonic in the breakdown', () => {
     const data = normalizeTvlSummary(
       legacySummary({
         tvlByChain: { Ethereum: 100, Berachain: 2, Sonic: 1 },
@@ -143,10 +128,13 @@ describe('TVL by Chain adjustment', () => {
     )
     const chainData = buildAdjustedChainTvl(data, 'all').map((row) => ({ ...row, label: row.chain }))
 
-    expect(chainData).toEqual([{ chain: 'Ethereum', label: 'Ethereum', tvl: 100 }])
-    expect(buildChainTvlCsvRows(chainData)).toEqual([['Ethereum', 100]])
-    expect(buildAdjustedChainTvl(data, 'Berachain')).toEqual([])
-    expect(buildAdjustedChainTvl(data, 'Sonic')).toEqual([])
+    expect(chainData).toEqual([
+      { chain: 'Ethereum', label: 'Ethereum', tvl: 100 },
+      { chain: 'Berachain', label: 'Berachain', tvl: 2 },
+      { chain: 'Sonic', label: 'Sonic', tvl: 1 }
+    ])
+    expect(buildAdjustedChainTvl(data, 'Berachain')).toEqual([{ chain: 'Berachain', tvl: 2 }])
+    expect(buildAdjustedChainTvl(data, 'Sonic')).toEqual([{ chain: 'Sonic', tvl: 1 }])
   })
 
   it('keeps negative adjusted upstream values visible instead of silently dropping them', () => {

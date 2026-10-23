@@ -488,7 +488,7 @@ const MOCK_EDGES: SpotFlowEdge[] = [
   }
 ]
 
-function layoutGraph(nodes: SpotFlowNode[], edges: SpotFlowEdge[], focusedNodeId: string | null): LayoutNode[] {
+export function layoutGraph(nodes: SpotFlowNode[], edges: SpotFlowEdge[], focusedNodeId: string | null): LayoutNode[] {
   const nodeIds = new Set(nodes.map((node) => node.id))
   const incoming = new Map<string, number>()
   const outgoing = new Map<string, number>()
@@ -540,6 +540,9 @@ function layoutGraph(nodes: SpotFlowNode[], edges: SpotFlowEdge[], focusedNodeId
     while (queue.length > 0) {
       const item = queue.shift()
       if (!item) break
+      // A simple path has at most N - 1 edges. Bound depth relaxation so
+      // a reachable cycle cannot keep re-enqueuing nodes with larger depths.
+      if (item.depth >= nodes.length) continue
       const previousDepth = depthByNode.get(item.nodeId)
       if (previousDepth !== undefined && previousDepth >= item.depth) continue
       depthByNode.set(item.nodeId, item.depth)
