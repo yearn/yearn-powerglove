@@ -243,6 +243,34 @@ it('does not show upstream details from a mismatched publication', () => {
   expect(screen.getByText('Upstream TVL is unavailable for this publication.')).toBeTruthy()
 })
 
+it('shows canonical product effective fees while keeping the selected layer own fees separate', () => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  clients.push(client)
+  const productRoot = { ...root, perfFee: 0, mgmtFee: 0 }
+  const locked = { ...productRoot, vault: { ...root.vault, address: '0xlocked', name: 'Locked member' } }
+  const entry = {
+    ...stack.entries![0],
+    roots: [productRoot, locked],
+    memberAddresses: ['0xroot', '0xlocked'],
+    feeRateBasis: 'product' as const,
+    performanceFee: 425,
+    managementFee: 15
+  }
+  render(
+    <QueryClientProvider client={client}>
+      <EffectiveFeesTable feeStack={{ ...stack, entries: [entry] }} vaults={[]} chainSelector={null} />
+    </QueryClientProvider>
+  )
+  const rate = screen.getByText('4.3%')
+  expect(rate.getAttribute('title')).toBe('Effective rate including underlying allocations')
+  expect(screen.getByText('0.15%')).toBeTruthy()
+  expect(screen.getAllByRole('button', { name: /Fee breakdown for/ })).toHaveLength(1)
+  expect(screen.queryByRole('button', { name: 'Fee breakdown for Locked member' })).toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: 'Fee breakdown for Example vault' }))
+  const selected = screen.getByRole('region', { name: 'Selected vault' })
+  expect(within(selected).getByRole('button', { name: 'Fees: performance 0.0%; annual management 0.00%' })).toBeTruthy()
+})
+
 it('omits a known-zero upstream section while keeping downstream allocations', () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   clients.push(client)

@@ -243,9 +243,9 @@ export function EffectiveFeesTable({
                     </td>
                     <td
                       title={
-                        row.feeRateBasis === 'stack'
-                          ? 'Effective rate including underlying allocations'
-                          : 'Own vault/product fee. Underlying fee rates are shown in the expanded breakdown.'
+                        row.feeRateBasis === 'vault'
+                          ? 'Own vault fee. Underlying fee rates are shown in the expanded breakdown.'
+                          : 'Effective rate including underlying allocations'
                       }
                     >
                       {bpsPct(row.performanceFee)}

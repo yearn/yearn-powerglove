@@ -119,8 +119,6 @@ export function EffectiveFeeCapitalDetails({
   const strategyNames = useFeeFlowStrategyNames(capital.downstreamRoots)
   const singleRoot = capital.downstreamRoots?.length === 1 ? capital.downstreamRoots[0] : null
   const branches = singleRoot ? singleRoot.children : capital.downstreamRoots
-  const selectedPerformance = row.feeRateBasis === 'product' ? row.performanceFee : row.root.perfFee
-  const selectedManagement = row.feeRateBasis === 'product' ? row.managementFee : row.root.mgmtFee
   return (
     <TooltipProvider delayDuration={200}>
       <FeeFlowDiagram label={`Capital and fee flows for ${row.vault.name ?? row.vault.address}`}>
@@ -219,7 +217,7 @@ export function EffectiveFeeCapitalDetails({
                 <strong>{monthlyUsd(capital.adjusted)}</strong>
               </div>
             </div>
-            <LayerFees performance={selectedPerformance} management={selectedManagement} />
+            <LayerFees performance={row.root.perfFee} management={row.root.mgmtFee} />
           </article>
         </section>
         <section className="fee-flow-stage fee-flow-downstream" aria-label="Downstream included capital">
