@@ -67,3 +67,22 @@ Example entry:
 
 - Vitest runs in jsdom with Testing Library; shared mocks live in `setupTests.ts`.
 - Prefer mocking Apollo/HTTP rather than hitting live services.
+
+## Yearn Data fee and earnings pairing
+
+Set `VITE_PUBLIC_YEARN_DATA_API_URL` to select a public Yearn Data origin,
+or leave it empty to use the same-origin server proxy. The hosted proxy reads
+server-only `YEARN_DATA_API_URL`; local Vite uses `VITE_YEARN_DATA_API_TARGET`
+and defaults to `https://yearn-data-api-preview.vercel.app`. These settings
+cover current TVL, fee summary/history/catalog, fee-stack, profitability, audit,
+graph, and comparison views. Legacy TVL/fees/metrics public URL settings apply
+only to supplementary endpoints outside these current routes.
+
+The core summary selects an opaque dataset ID, which pins history and vault
+requests to the same completed publication. The Fees tab displays the published
+amounts without coverage counters or source-quality reasons. Developers retain
+those diagnostics in yearn-data's selected publication and native exports.
+
+Use the yearn-data repository's `docs/powerglove-pairing.md` for source selection,
+cutoff/pricing requirements and manual refresh. Rebuild after changing public
+Vite configuration; review Stats at `/` and additional analysis at `/stats/analysis`.

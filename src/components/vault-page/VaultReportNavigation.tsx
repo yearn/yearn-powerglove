@@ -95,33 +95,36 @@ export function VaultReportNavigation({ ariaLabel, prefix, sections }: VaultRepo
     <nav
       ref={navigationRef}
       aria-label={ariaLabel}
-      className="sticky top-[131px] z-[18] overflow-x-auto bg-white min-[500px]:top-[187px] md:top-[136px]"
+      className="sticky z-[18] bg-white"
+      style={{ top: 'calc(var(--vault-header-height, 60px) + 3.5rem)' }}
       data-testid="vault-report-navigation"
     >
-      <div className="flex min-w-max items-end border-b border-[#d8d8d8]">
-        {sections.map((link) => (
-          <a
-            key={link.id}
-            href={`#${getVaultReportSectionId(prefix, link.id)}`}
-            onClick={(event) => {
-              event.preventDefault()
-              event.stopPropagation()
-              setActiveSection(link.id)
-              window.history.replaceState(window.history.state, '', `#${getVaultReportSectionId(prefix, link.id)}`)
-              const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'
-              scheduleSectionScroll(link.id, behavior)
-            }}
-            aria-current={activeSection === link.id ? 'location' : undefined}
-            className={cn(
-              'relative -mb-px -mr-px border border-t-2 border-[#dedede] px-4 py-3 text-sm transition-colors last:mr-0 focus-visible:z-20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0657f9]',
-              activeSection === link.id
-                ? 'z-10 border-b-white border-t-[#0657f9] bg-white font-medium text-black'
-                : 'border-t-[#dedede] bg-[#fafafa] text-[#808080] hover:bg-white hover:text-[#4f4f4f]'
-            )}
-          >
-            {link.label}
-          </a>
-        ))}
+      <div className="overflow-x-auto">
+        <div className="flex min-w-max items-end border-b border-[#d8d8d8]">
+          {sections.map((link) => (
+            <a
+              key={link.id}
+              href={`#${getVaultReportSectionId(prefix, link.id)}`}
+              onClick={(event) => {
+                event.preventDefault()
+                event.stopPropagation()
+                setActiveSection(link.id)
+                window.history.replaceState(window.history.state, '', `#${getVaultReportSectionId(prefix, link.id)}`)
+                const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'
+                scheduleSectionScroll(link.id, behavior)
+              }}
+              aria-current={activeSection === link.id ? 'location' : undefined}
+              className={cn(
+                'relative -mb-px -mr-px border border-b-2 border-[#dedede] px-4 py-3 text-sm transition-colors last:mr-0 focus-visible:z-20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0657f9]',
+                activeSection === link.id
+                  ? 'z-10 border-b-[#0657f9] border-t-[#dedede] bg-white font-medium text-black'
+                  : 'border-t-[#dedede] bg-[#fafafa] text-[#808080] hover:bg-white hover:text-[#4f4f4f]'
+              )}
+            >
+              {link.label}
+            </a>
+          ))}
+        </div>
       </div>
     </nav>
   )
