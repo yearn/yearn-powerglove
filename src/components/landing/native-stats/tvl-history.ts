@@ -46,15 +46,17 @@ export function buildConstantPriceTvlUrl({ from, to }: { from: number; to: numbe
 export function buildChainTvlHistoryUrl({
   breakdown,
   chainId,
+  priceAdjusted = false,
   from,
   to
 }: {
   breakdown: ChainTvlHistoryBreakdown
   chainId: number
+  priceAdjusted?: boolean
   from: number
   to: number
 }): string {
-  return `/api/tvl/history/runs/latest/constant-price?mode=external&groupBy=${breakdown}&interval=weekly&chainId=${chainId}&from=${from}&to=${to}&includeCurrent=true&format=chart${breakdown === 'vault' ? '&top=10' : ''}`
+  return `/api/tvl/history/runs/latest/constant-price?mode=external&groupBy=${breakdown}&interval=weekly&chainId=${chainId}&from=${from}&to=${to}&includeCurrent=true${priceAdjusted && breakdown === 'vault' ? '' : `&format=chart${breakdown === 'vault' ? '&top=10' : ''}`}`
 }
 
 export function selectConstantPriceChart(
@@ -177,8 +179,8 @@ export function mergePriceNeutralTotal(
   return [...rowsByTimestamp.values()].sort((a, b) => a.timestamp - b.timestamp)
 }
 
-export function isPriceNeutralOverlayVisible(view: 'line' | 'bar', requested: boolean): boolean {
-  return view === 'line' && requested
+export function isPriceNeutralOverlayVisible(_view: 'line' | 'bar', requested: boolean): boolean {
+  return requested
 }
 
 export function getTvlHistoryErrorMessage({

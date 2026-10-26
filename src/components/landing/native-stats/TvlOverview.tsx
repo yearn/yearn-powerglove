@@ -19,9 +19,7 @@ import {
   getPriceNeutralCoverageLabel,
   getStackRenderSeries,
   getTvlHistoryErrorMessage,
-  isPriceNeutralOverlayVisible,
   labelVersionHistoryChart,
-  mergePriceNeutralTotal,
   type OverallTvlHistoryBreakdown,
   PRICE_NEUTRAL_TOTAL_SERIES,
   selectConstantPriceChart
@@ -109,7 +107,8 @@ export function TvlHistoryTooltip({
   payload,
   canonicalTotalByTimestamp,
   remainingSeries,
-  comparisonSeries
+  comparisonSeries,
+  priceAdjusted = false
 }: {
   active?: boolean
   label?: number | string
@@ -117,6 +116,7 @@ export function TvlHistoryTooltip({
   canonicalTotalByTimestamp: Record<number, number>
   remainingSeries: string
   comparisonSeries?: string
+  priceAdjusted?: boolean
 }) {
   if (!active || !payload?.length) return null
 
@@ -155,7 +155,7 @@ export function TvlHistoryTooltip({
       <div className="mb-2 grid gap-1.5 border-b border-border pb-2 text-xs">
         {total !== null && (
           <div className="flex items-center justify-between gap-4">
-            <span className="text-muted-foreground">Actual TVL</span>
+            <span className="text-muted-foreground">{priceAdjusted ? 'Price-adjusted TVL' : 'Actual TVL'}</span>
             <span className="font-semibold tabular-nums text-foreground" data-testid="tvl-history-tooltip-total">
               {fmt(total)}
             </span>
@@ -163,7 +163,9 @@ export function TvlHistoryTooltip({
         )}
         {comparisonPayload && (
           <div className="flex items-center justify-between gap-4">
-            <span className="text-muted-foreground">{comparisonSeries}</span>
+            <span className="text-muted-foreground">
+              {comparisonSeries === PRICE_NEUTRAL_TOTAL_SERIES ? 'Price-adjusted TVL' : comparisonSeries}
+            </span>
             <span
               className="font-semibold tabular-nums text-foreground"
               data-testid="tvl-history-tooltip-price-neutral"
@@ -200,7 +202,7 @@ export function TvlOverview() {
     retry
   } = useFetch<LegacyTvlSummary>(chainFilter === 'all' ? '/api/tvl' : `/api/tvl?chainId=${chainFilter}`)
   const [tvlHistoryBreakdown, setTvlHistoryBreakdown] = useState<OverallTvlHistoryBreakdown>('chain')
-  const [showPriceNeutral, setShowPriceNeutral] = useState(true)
+  const [showPriceNeutral, setShowPriceNeutral] = useState(false)
   const [tvlHistoryView, setTvlHistoryView] = useState<StatsChartType>('bar')
   const [selectedHistoryChain, setSelectedHistoryChain] = useState<string | null>(null)
   const [historyEndAnchor] = useState(() => Math.floor(Date.now() / 1000))
@@ -228,6 +230,7 @@ export function TvlOverview() {
     retry: retryTvlHistory
   } = useFetch<TvlHistoryRun>(tvlHistoryUrl, { enabled: Boolean(rawData) })
   const constantPriceFilters = new URLSearchParams(buildConstantPriceTvlUrl(selectedBounds).split('?')[1])
+  constantPriceFilters.set('groupBy', tvlHistoryBreakdown)
   if (rawData?.datasetId) constantPriceFilters.set('datasetId', rawData.datasetId)
   if (chainFilter !== 'all') constantPriceFilters.set('chainId', chainFilter)
   const constantPriceUrl = `/api/tvl/history/runs/latest/constant-price?${constantPriceFilters}`
@@ -238,7 +241,7 @@ export function TvlOverview() {
     status: constantPriceStatus,
     retry: retryConstantPrice
   } = useFetch<ConstantPriceTvlHistory>(constantPriceUrl, {
-    enabled: Boolean(rawTvlHistory) && showPriceNeutral && tvlHistoryView === 'line'
+    enabled: Boolean(rawTvlHistory) && showPriceNeutral
   })
   const [isTvlHistoryInspecting, setIsTvlHistoryInspecting] = useState(false)
   const tvlHistoryTotalFillId = `tvl-history-total-fill-${useId().replace(/:/g, '')}`
@@ -270,8 +273,12 @@ export function TvlOverview() {
     category: TVL_HISTORY_REMAINING_VERSION_SERIES
   }[tvlHistoryBreakdown]
   const tvlHistoryChart = useMemo(() => {
-    if (!rawTvlHistory) return { rows: [], series: [] }
-    const topTvlHistory = buildTopSeriesChart(rawTvlHistory.chart, rawTvlHistory.series, tvlHistoryRemainingSeries)
+    if (!rawTvlHistory || (showPriceNeutral && !constantPriceHistory)) return { rows: [], series: [] }
+    const sourceRows = showPriceNeutral
+      ? selectConstantPriceChart(constantPriceHistory!, 'constant-price')
+      : rawTvlHistory.chart
+    const sourceSeries = showPriceNeutral ? getAvailableChartSeries(sourceRows) : rawTvlHistory.series
+    const topTvlHistory = buildTopSeriesChart(sourceRows, sourceSeries, tvlHistoryRemainingSeries)
     const labeledHistory =
       tvlHistoryBreakdown === 'category'
         ? labelVersionHistoryChart(topTvlHistory.rows, topTvlHistory.series)
@@ -283,7 +290,15 @@ export function TvlOverview() {
       rows: rangedRows,
       series: labeledHistory.series
     }
-  }, [rawTvlHistory, tvlHistoryBreakdown, selectedBounds.from, selectedBounds.to, tvlHistoryRemainingSeries])
+  }, [
+    rawTvlHistory,
+    constantPriceHistory,
+    showPriceNeutral,
+    tvlHistoryBreakdown,
+    selectedBounds.from,
+    selectedBounds.to,
+    tvlHistoryRemainingSeries
+  ])
   const tvlHistoryRows = useMemo(
     () => addTotalTvlSeries(tvlHistoryChart.rows, tvlHistoryChart.series),
     [tvlHistoryChart.rows, tvlHistoryChart.series]
@@ -294,8 +309,8 @@ export function TvlOverview() {
     [tvlHistoryRemainingSeries, tvlHistorySeries]
   )
   const tvlHistoryCanonicalTotalByTimestamp = useMemo(
-    () => getCanonicalTotalByTimestamp(rawTvlHistory),
-    [rawTvlHistory]
+    () => (showPriceNeutral ? {} : getCanonicalTotalByTimestamp(rawTvlHistory)),
+    [rawTvlHistory, showPriceNeutral]
   )
   const tvlHistoryColorBySeries = useMemo(
     () =>
@@ -309,20 +324,9 @@ export function TvlOverview() {
       ),
     [tvlHistoryBreakdown, tvlHistoryColors, tvlHistorySeries]
   )
-  const constantPriceChart = useMemo(() => {
-    if (!constantPriceHistory) return { rows: [], series: [] }
-    const sourceRows = selectConstantPriceChart(constantPriceHistory, 'constant-price')
-    const series = getAvailableChartSeries(sourceRows)
-    return buildTopSeriesChart(sourceRows, series, TVL_HISTORY_REMAINING_CHAIN_SERIES)
-  }, [constantPriceHistory])
-  const isPriceNeutralVisible = isPriceNeutralOverlayVisible(tvlHistoryView, showPriceNeutral)
-  const displayedHistoryRows = useMemo(
-    () =>
-      isPriceNeutralVisible && constantPriceHistory
-        ? mergePriceNeutralTotal(tvlHistoryRows, constantPriceChart.rows, constantPriceChart.series)
-        : tvlHistoryRows,
-    [constantPriceChart.rows, constantPriceChart.series, constantPriceHistory, isPriceNeutralVisible, tvlHistoryRows]
-  )
+  const displayedHistoryRows = tvlHistoryRows
+  const historyLoading = tvlHistoryLoading || (showPriceNeutral && constantPriceLoading)
+  const historyError = tvlHistoryError || (showPriceNeutral && constantPriceError)
   const hasTvlHistory = displayedHistoryRows.length > 0 && tvlHistorySeries.length > 0
   const tvlHistoryRangeLabel = rawTvlHistory
     ? `${formatFullDate(rawTvlHistory.range.from)} - ${formatFullDate(rawTvlHistory.range.to)}`
@@ -427,8 +431,8 @@ export function TvlOverview() {
                     {constantPriceHistory && (
                       <>
                         <div className="mt-1 border-t border-border pt-2 text-muted-foreground">
-                          Price-neutral TVL values underlying assets at each vault&apos;s first available valid price in
-                          the selected timeframe. It removes later price movement, but includes earned yield.
+                          Price-adjusted TVL values underlying assets at each vault&apos;s first available valid price
+                          in the selected timeframe. It removes later price movement, but includes earned yield.
                         </div>
                         <div className="flex items-center justify-between gap-4">
                           <span className="text-muted-foreground">Reference window</span>
@@ -462,23 +466,14 @@ export function TvlOverview() {
               </TabsTrigger>
             </TabsList>
           </Tabs>
-          {tvlHistoryView === 'line' && (
-            <div className="tvl-history-series-switch" aria-label="TVL history series">
-              <span className="tvl-history-series-label">
-                <span className="tvl-history-series-swatch actual" aria-hidden="true" />
-                Actual TVL
-              </span>
-              <button
-                type="button"
-                className={showPriceNeutral ? 'active' : undefined}
-                aria-pressed={showPriceNeutral}
-                onClick={() => setShowPriceNeutral((current) => !current)}
-              >
-                <span className="tvl-history-series-swatch price-neutral" aria-hidden="true" />
-                {constantPriceLoading && showPriceNeutral ? 'Loading price-neutral…' : 'Price-neutral TVL'}
-              </button>
-            </div>
-          )}
+          <label className="flex cursor-pointer items-center gap-2 text-xs">
+            <input
+              type="checkbox"
+              checked={showPriceNeutral}
+              onChange={(event) => setShowPriceNeutral(event.target.checked)}
+            />
+            price adjusted
+          </label>
         </div>
 
         {tvlHistoryBreakdown === 'category' && tvlHistorySeries.length > 0 && (
@@ -496,7 +491,7 @@ export function TvlOverview() {
           </div>
         )}
 
-        {tvlHistoryLoading && (
+        {historyLoading && (
           <div className="flex h-80 items-center justify-center text-sm text-muted-foreground">
             Loading TVL history...
           </div>
@@ -511,16 +506,16 @@ export function TvlOverview() {
           </div>
         )}
 
-        {!tvlHistoryLoading && !tvlHistoryError && !hasTvlHistory && (
+        {!historyLoading && !historyError && !hasTvlHistory && (
           <div className="flex h-80 items-center justify-center text-sm text-muted-foreground">
             No TVL history data for this selected timeframe.
           </div>
         )}
 
-        {!tvlHistoryLoading && !tvlHistoryError && hasTvlHistory && (
+        {!historyLoading && !historyError && hasTvlHistory && (
           <div
             className={`chart-container tvl-history-chart${isTvlHistoryInspecting ? ' is-inspecting' : ''}`}
-            data-price-neutral-overlay={isPriceNeutralVisible && Boolean(constantPriceHistory)}
+            data-price-adjusted={showPriceNeutral}
             style={{ height: 320 }}
           >
             <ResponsiveContainer width="100%" height="100%">
@@ -559,7 +554,7 @@ export function TvlOverview() {
                     <TvlHistoryTooltip
                       canonicalTotalByTimestamp={tvlHistoryCanonicalTotalByTimestamp}
                       remainingSeries={tvlHistoryRemainingSeries}
-                      comparisonSeries={isPriceNeutralVisible ? PRICE_NEUTRAL_TOTAL_SERIES : undefined}
+                      priceAdjusted={showPriceNeutral}
                     />
                   }
                   cursor={
@@ -602,26 +597,9 @@ export function TvlOverview() {
                       connectNulls
                       isAnimationActive={false}
                     />
-                    {isPriceNeutralVisible && constantPriceHistory && (
-                      <Line
-                        type="monotone"
-                        dataKey={PRICE_NEUTRAL_TOTAL_SERIES}
-                        stroke="var(--chart-lavender, #6f83c7)"
-                        strokeWidth={2}
-                        strokeDasharray="6 4"
-                        dot={false}
-                        activeDot={{
-                          r: 4,
-                          strokeWidth: 1.5,
-                          stroke: 'var(--surface)',
-                          fill: 'var(--chart-lavender, #6f83c7)'
-                        }}
-                        connectNulls
-                        isAnimationActive={false}
-                      />
-                    )}
                   </>
                 )}
+
                 {tvlHistoryView === 'bar' &&
                   tvlHistoryStackSeries.map((series, index) => (
                     <Bar
@@ -640,7 +618,7 @@ export function TvlOverview() {
             </ResponsiveContainer>
           </div>
         )}
-        {isPriceNeutralVisible && constantPriceError && (
+        {showPriceNeutral && constantPriceError && (
           <div className="tvl-history-comparison-error">
             <span>
               {getTvlHistoryErrorMessage({

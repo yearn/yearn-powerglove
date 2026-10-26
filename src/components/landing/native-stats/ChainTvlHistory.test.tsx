@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { afterEach, expect, it, vi } from 'vitest'
 import { ChainTvlHistory } from './ChainTvlHistory'
@@ -37,7 +37,7 @@ vi.mock('./hooks', async (original) => ({
   })
 }))
 afterEach(cleanup)
-it('keeps the price-neutral overlay within the selected actual history', () => {
+it('replaces actual values with adjusted values within the selected range', () => {
   render(
     <ChainTvlHistory
       chainId={1}
@@ -47,9 +47,10 @@ it('keeps the price-neutral overlay within the selected actual history', () => {
       renderType="line"
     />
   )
+  fireEvent.click(screen.getByRole('checkbox', { name: 'price adjusted' }))
   const rows = JSON.parse(screen.getByTestId('chart').textContent!)
   expect(rows).toHaveLength(1)
   expect(rows[0].timestamp).toBe(10)
   expect(Object.values(rows[0])).toContain(90)
-  expect(Object.values(rows[0])).toContain(100)
+  expect(Object.values(rows[0])).not.toContain(100)
 })

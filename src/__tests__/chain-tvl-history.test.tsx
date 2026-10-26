@@ -99,7 +99,7 @@ describe('chain TVL history drilldown', () => {
     expect(screen.getByText('Ethereum TVL History')).not.toBeNull()
     expect(screen.getByRole('tab', { name: 'Vaults' }).getAttribute('data-state')).toBe('active')
     expect(screen.getByRole('tab', { name: 'Version' })).not.toBeNull()
-    expect(screen.queryByRole('button', { name: 'Price-neutral TVL' })).toBeNull()
+    expect((screen.getByRole('checkbox', { name: 'price adjusted' }) as HTMLInputElement).checked).toBe(false)
 
     fireEvent.click(screen.getByRole('button', { name: '1 Year' }))
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
@@ -138,6 +138,38 @@ describe('chain TVL history drilldown', () => {
     await waitFor(() => expect(document.querySelectorAll('.recharts-bar')).toHaveLength(11))
   })
 
+  it('requests per-vault adjusted values instead of the compact total when selected', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(
+      async (input) =>
+        ({
+          ok: true,
+          status: 200,
+          json: async () =>
+            String(input).includes('format=chart')
+              ? {
+                  ...history,
+                  meta: { ...history.meta, topSeries: ['Ethereum Vault'] },
+                  constantPriceChart: [{ timestamp: 1_900_000_000, 'Price-neutral TVL': 90 }]
+                }
+              : history
+        }) as Response
+    )
+    render(
+      <ChainTvlHistory
+        chainId={1}
+        chainLabel="Ethereum"
+        datasetId="adjusted-regression"
+        allTimeRange={{ from: 1_900_000_000, to: 2_000_000_000 }}
+      />
+    )
+    await waitFor(() => expect(document.querySelectorAll('.recharts-bar')).toHaveLength(1))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'price adjusted' }))
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+    expect(String(fetchMock.mock.calls[1][0])).not.toContain('format=chart')
+    expect(String(fetchMock.mock.calls[1][0])).toContain('datasetId=adjusted-regression')
+    await waitFor(() => expect(document.querySelectorAll('.recharts-bar-rectangle')).not.toHaveLength(0))
+  })
+
   it('switches a chain history from vaults to versions', async () => {
     const versionHistory: ConstantPriceTvlHistory = {
       ...history,
@@ -166,7 +198,7 @@ describe('chain TVL history drilldown', () => {
     expect(screen.getByRole('tab', { name: 'Version' }).getAttribute('data-state')).toBe('active')
   })
 
-  it('keeps price-neutral comparison on lines and removes it from bars', async () => {
+  it('defaults the comparison off and preserves the opt-in across chart views', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: true,
       status: 200,
@@ -182,12 +214,16 @@ describe('chain TVL history drilldown', () => {
     expect(screen.getByRole('button', { name: 'Show Ethereum TVL as bars' }).getAttribute('aria-pressed')).toBe('true')
     expect(screen.queryByRole('button', { name: '30D' })).toBeNull()
     expect(screen.queryByRole('button', { name: '90D' })).toBeNull()
+    await waitFor(() => expect(document.querySelector('[data-price-adjusted="false"]')).not.toBeNull())
+    fireEvent.click(screen.getByRole('checkbox', { name: 'price adjusted' }))
+    await waitFor(() => expect(document.querySelector('[data-price-adjusted="true"]')).not.toBeNull())
     fireEvent.click(screen.getByRole('button', { name: 'Show Ethereum TVL as lines' }))
-    expect(document.querySelector('[data-price-neutral-overlay="true"]')).not.toBeNull()
+    await waitFor(() => expect(document.querySelector('[data-price-adjusted="true"]')).not.toBeNull())
 
     fireEvent.click(screen.getByRole('button', { name: 'Show Ethereum TVL as bars' }))
 
-    expect(screen.queryByRole('button', { name: 'Price-neutral TVL' })).toBeNull()
-    expect(document.querySelector('[data-price-neutral-overlay="false"]')).not.toBeNull()
+    await waitFor(() => expect(document.querySelector('[data-price-adjusted="true"]')).not.toBeNull())
+    fireEvent.click(screen.getByRole('checkbox', { name: 'price adjusted' }))
+    await waitFor(() => expect(document.querySelector('[data-price-adjusted="false"]')).not.toBeNull())
   })
 })

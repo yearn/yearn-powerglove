@@ -128,7 +128,7 @@ describe('constant-price TVL history integration', () => {
     })
   })
 
-  it('overlays the price-neutral total on line charts only', () => {
+  it('overlays the price-neutral total when requested in either chart view', () => {
     const rows = mergePriceNeutralTotal(constantPriceHistory.actualChart, constantPriceHistory.constantPriceChart, [
       'Ethereum',
       'Base'
@@ -139,7 +139,7 @@ describe('constant-price TVL history integration', () => {
       { timestamp: 200, Base: 50, [PRICE_NEUTRAL_TOTAL_SERIES]: 55 }
     ])
     expect(isPriceNeutralOverlayVisible('line', true)).toBe(true)
-    expect(isPriceNeutralOverlayVisible('bar', true)).toBe(false)
+    expect(isPriceNeutralOverlayVisible('bar', true)).toBe(true)
     expect(isPriceNeutralOverlayVisible('line', false)).toBe(false)
   })
 
@@ -174,7 +174,7 @@ describe('constant-price TVL history integration', () => {
     )
 
     expect(screen.getByText('Actual TVL')).not.toBeNull()
-    expect(screen.getByText(PRICE_NEUTRAL_TOTAL_SERIES)).not.toBeNull()
+    expect(screen.getByText('Price-adjusted TVL')).not.toBeNull()
     expect(screen.getByTestId('tvl-history-tooltip-total').textContent).toContain('$150')
     expect(screen.getByTestId('tvl-history-tooltip-price-neutral').textContent).toContain('$140')
   })

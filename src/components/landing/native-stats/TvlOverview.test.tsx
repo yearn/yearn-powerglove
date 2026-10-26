@@ -39,7 +39,15 @@ vi.mock('./hooks', async (original) => ({
           ? { ...summary, datasetId: undefined, totalTvl: 300 }
           : summary
         : url.includes('constant-price')
-          ? { actualChart: chartRows, constantPriceChart: chartRows, meta: {}, range: history.range }
+          ? {
+              actualChart: chartRows,
+              constantPriceChart: chartRows.map((row) => ({
+                ...row,
+                Ethereum: row.Ethereum === undefined ? undefined : row.Ethereum / 2
+              })),
+              meta: {},
+              range: history.range
+            }
           : {
               ...history,
               mode: legacyPricingGaps ? 'raw' : history.mode,
@@ -201,4 +209,18 @@ describe('shared TVL chart controls', () => {
     expect(screen.queryByText('Error: Summary unavailable')).toBeNull()
     expect(screen.getByRole('heading', { name: 'TVL History' })).toBeTruthy()
   })
+})
+
+it('makes price-adjusted TVL opt-in in both chart views', () => {
+  const { container } = render(<Overview />)
+  const toggle = screen.getByRole('checkbox', { name: 'price adjusted' })
+  expect((toggle as HTMLInputElement).checked).toBe(false)
+  expect((capturedChartRows as { Ethereum: number }[])[0].Ethereum).toBe(100)
+  fireEvent.click(toggle)
+  expect((capturedChartRows as { Ethereum: number }[])[0].Ethereum).toBe(50)
+  expect(container.querySelector('[data-price-adjusted="true"]')).not.toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: 'Show TVL as lines' }))
+  expect((toggle as HTMLInputElement).checked).toBe(true)
+  fireEvent.click(toggle)
+  expect(container.querySelector('[data-price-adjusted="false"]')).not.toBeNull()
 })

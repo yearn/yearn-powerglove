@@ -663,6 +663,8 @@
 }
 
 .pg-stats .chain-history-controls {
+  justify-content: flex-start;
+  flex-wrap: wrap;
   margin-bottom: 0.75rem;
 }
 
@@ -2658,7 +2660,7 @@
 
 .pg-stats .fee-summary-stat {
   min-width: 0;
-  padding: 1rem 0.75rem;
+  padding: 1rem 1.5rem;
   border: 1px solid var(--border);
   background: var(--surface);
   text-align: left;
