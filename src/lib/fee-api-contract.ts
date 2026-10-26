@@ -21,7 +21,7 @@ export function assertCanonicalFeeResponse(payload: unknown, scope = 'contract')
 
 /** Fee payloads validated at both the server proxy and browser cache boundary. */
 export function requiresCanonicalFeeResponse(path: string): boolean {
-  return /^\/api\/fees(?:\/(?:vaults|history))?$/.test(path.replace(/\/$/, ''))
+  return /^\/api\/fees(?:\/(?:vaults(?:\/history)?|history))?$/.test(path.replace(/\/$/, ''))
 }
 
 /** Stack data has its own shape rather than the canonical fees scope envelope. */

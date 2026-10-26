@@ -20,7 +20,7 @@ describe('canonical fee API boundary', () => {
 })
 
 it('shares the canonical response boundary across fee routes', () => {
-  for (const path of ['/api/fees', '/api/fees/', '/api/fees/history', '/api/fees/vaults']) {
+  for (const path of ['/api/fees', '/api/fees/', '/api/fees/history', '/api/fees/vaults', '/api/fees/vaults/history']) {
     expect(requiresCanonicalFeeResponse(path)).toBe(true)
   }
   for (const path of ['/api/fees/stack', '/api/profitability', '/api/tvl', '/api/fees/history/extra']) {

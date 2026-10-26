@@ -1,7 +1,7 @@
 import { deriveVaultType } from '@/lib/kong-vault-derivation'
 import type { KongVaultListItem } from '@/types/kong'
 import { getVaultDisplayType } from '@/utils/vaultDataUtils'
-import type { CanonicalVaultFee } from './canonical-fees'
+import type { CanonicalVaultFee, CanonicalVaultHistoryFee } from './canonical-fees'
 import { canonicalDecimalToNumber, type FeeHistoryPeriod } from './fee-history'
 
 export function completedFeeMonths(now: number): FeeHistoryPeriod[] {
@@ -30,7 +30,7 @@ export interface MonthlyVaultRow {
 }
 export function buildMonthlyVaultRows(
   catalog: CanonicalVaultFee[],
-  histories: CanonicalVaultFee[][],
+  histories: CanonicalVaultHistoryFee[][],
   metadata: MonthlyFeeVault[] = [],
   metric: 'fees' | 'earnings' = 'fees'
 ): MonthlyVaultRow[] {

@@ -14,6 +14,7 @@ const DATA_ROUTES = new Set([
   '/api/fees',
   '/api/fees/history',
   '/api/fees/vaults',
+  '/api/fees/vaults/history',
   '/api/fees/stack',
   '/api/profitability',
   '/api/analytics/publication',

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import handler from '../../api/yearn-data'
+import vercelConfig from '../../vercel.json'
 
 function response() {
   const json = vi.fn()
@@ -12,6 +13,30 @@ afterEach(() => {
 })
 
 describe('hosted Yearn Data proxy', () => {
+  it('rewrites and forwards grouped product history with canonical validation', async () => {
+    const rewrite = vercelConfig.rewrites.find((route) => route.source === '/api/fees/vaults/history')
+    expect(rewrite?.destination).toBe('/api/yearn-data?__statsPath=/api/fees/vaults/history')
+    vi.stubEnv('YEARN_DATA_API_URL', 'https://data-preview.vercel.app')
+    const fetch = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(
+          JSON.stringify({ datasetId: 'selected', aggregationScope: 'product', interval: 'monthly', buckets: [] })
+        )
+      )
+    vi.stubGlobal('fetch', fetch)
+    const res = response()
+    await handler({ method: 'GET', url: `${rewrite?.destination}&scope=product&datasetId=selected` }, res)
+    expect(fetch.mock.calls[0][0].toString()).toBe(
+      'https://data-preview.vercel.app/api/fees/vaults/history?scope=product&datasetId=selected'
+    )
+    expect(res.status).toHaveBeenCalledWith(200)
+    fetch.mockResolvedValueOnce(new Response(JSON.stringify({ datasetId: 'selected', aggregationScope: 'contract' })))
+    const wrong = response()
+    await handler({ method: 'GET', url: `${rewrite?.destination}&scope=product` }, wrong)
+    expect(wrong.status).toHaveBeenCalledWith(502)
+  })
+
   it('preserves graph filters and keeps upstream authentication on the server', async () => {
     vi.stubEnv('YEARN_DATA_API_URL', 'https://data-preview.vercel.app')
     vi.stubEnv('YEARN_DATA_API_PROTECTION_BYPASS', 'server-secret')

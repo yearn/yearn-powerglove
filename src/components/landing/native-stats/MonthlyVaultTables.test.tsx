@@ -4,6 +4,7 @@ import { type ReactNode, useState } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { CanonicalVaultFee } from './canonical-fees'
 import { MonthlyVaultTables } from './MonthlyVaultTables'
+import { completedFeeMonths } from './monthly-vault-data'
 import { StatsContext } from './StatsContext'
 
 vi.mock('@tanstack/react-router', () => ({
@@ -68,7 +69,7 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 describe('monthly fee table', () => {
-  it('pins 12 bounded month requests, displays all vaults, and filters/sorts without refetching', async () => {
+  it('pins one grouped 12-month request, displays all vaults, and filters/sorts without refetching', async () => {
     vi.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-10-12T00:00:00Z'))
     let active = 0,
       peak = 0
@@ -87,18 +88,22 @@ describe('monthly fee table', () => {
       peak = Math.max(peak, active)
       await new Promise((resolve) => setTimeout(resolve, 5))
       active--
-      const month = new Date(Number(params.get('since')) * 1000).toISOString().slice(0, 7)
       return {
         ok: true,
         json: async () => ({
           aggregationScope: 'product',
           datasetId: 'selected',
-          vaults:
-            month === '2025-10'
-              ? [vault(1, 'Alice', '100.25'), vault(137, 'Bob', '42')]
-              : month === '2025-11'
-                ? [vault(1, 'Alice', '101.5')]
-                : []
+          interval: 'monthly',
+          dataCutoffTimestamp: Date.now() / 1000,
+          buckets: completedFeeMonths(Date.now() / 1000).map((period) => ({
+            ...period,
+            vaults:
+              period.period === '2025-10'
+                ? [vault(1, 'Alice', '100.25'), vault(137, 'Bob', '42')]
+                : period.period === '2025-11'
+                  ? [vault(1, 'Alice', '101.5')]
+                  : []
+          }))
         })
       } as Response
     })
@@ -141,18 +146,15 @@ describe('monthly fee table', () => {
     expect(screen.queryByRole('table', { name: /Vault fees for/ })).toBeNull()
     expect(screen.getByRole('table', { name: /Vault earnings for/ }).textContent).toContain('-$404')
     fireEvent.click(within(toggle).getByRole('button', { name: 'Fees' }))
-    expect(fetch).toHaveBeenCalledTimes(13)
-    expect(peak).toBeLessThanOrEqual(6)
+    expect(fetch).toHaveBeenCalledTimes(2)
+    expect(peak).toBe(1)
     const queries = fetch.mock.calls.map(([url]) => new URL(String(url), 'http://localhost').searchParams)
     expect(queries.every((params) => params.get('datasetId') === 'selected')).toBe(true)
     expect(queries.every((params) => params.get('scope') === 'product')).toBe(true)
-    expect(queries.filter((params) => params.has('since'))).toHaveLength(12)
-    expect(
-      queries
-        .filter((params) => params.has('since'))
-        .map((params) => new Date(Number(params.get('since')) * 1000).toISOString().slice(0, 7))
-        .sort()
-    ).toEqual(Array.from({ length: 12 }, (_, i) => new Date(Date.UTC(2025, 9 + i, 1)).toISOString().slice(0, 7)))
+    expect(queries.filter((params) => params.has('since'))).toHaveLength(1)
+    expect(queries[1].get('since')).toBe(String(Date.parse('2025-10-01') / 1000))
+    expect(queries[1].get('until')).toBe(String(Date.parse('2026-10-01') / 1000))
+    expect(queries[1].get('interval')).toBe('monthly')
     const totalRow = within(table).getByRole('rowheader', { name: 'All vaults' }).closest('tr')!
     expect(within(totalRow).getAllByRole('cell')[0].textContent).toBe('$244Partial · 1/3 vaults incomplete')
     expect(within(totalRow).getAllByText('Partial · 1/3 vaults unavailable')).toHaveLength(12)
@@ -170,7 +172,7 @@ describe('monthly fee table', () => {
     fireEvent.change(screen.getByRole('textbox', { name: 'Search vault fees' }), { target: { value: '' } })
     fireEvent.change(screen.getAllByRole('combobox', { name: 'Chain' })[0], { target: { value: '1' } })
     expect(screen.queryByRole('link', { name: 'Bob' })).toBeNull()
-    expect(fetch).toHaveBeenCalledTimes(13)
+    expect(fetch).toHaveBeenCalledTimes(2)
     client.clear()
   })
   it('blocks mixed publications and retries without displaying failed months as zero', async () => {
@@ -182,7 +184,13 @@ describe('monthly fee table', () => {
         json: async () => ({
           aggregationScope: 'product',
           datasetId: invalid && params.has('since') ? 'wrong' : 'selected',
-          vaults: [vault(1, 'Alice', '10')]
+          vaults: [vault(1, 'Alice', '10')],
+          interval: 'monthly',
+          dataCutoffTimestamp: Date.now() / 1000,
+          buckets: completedFeeMonths(Date.now() / 1000).map((period) => ({
+            ...period,
+            vaults: [vault(1, 'Alice', '10')]
+          }))
         })
       } as Response
     })

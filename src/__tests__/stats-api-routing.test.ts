@@ -6,6 +6,7 @@ describe('stats API routing', () => {
     expect(getStatsApiLane('/api/fees')).toBe('fees')
     expect(getStatsApiLane('/api/fees/history?interval=monthly')).toBe('fees')
     expect(getStatsApiLane('/api/fees/vaults?chainId=1')).toBe('fees')
+    expect(getStatsApiLane('/api/fees/vaults/history?scope=product')).toBe('fees')
     expect(getStatsApiLane('/api/fees/stack')).toBe('fees')
     expect(getStatsApiLane('/api/profitability')).toBe('fees')
   })
