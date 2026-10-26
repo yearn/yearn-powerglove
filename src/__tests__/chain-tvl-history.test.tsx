@@ -138,20 +138,26 @@ describe('chain TVL history drilldown', () => {
     await waitFor(() => expect(document.querySelectorAll('.recharts-bar')).toHaveLength(11))
   })
 
-  it('requests per-vault adjusted values instead of the compact total when selected', async () => {
+  it('requests ranked compact adjusted vault values and renders each selected vault', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(
       async (input) =>
         ({
           ok: true,
           status: 200,
           json: async () =>
-            String(input).includes('format=chart')
+            String(input).includes('topMetric=constant-price')
               ? {
+                  ...history,
+                  points: [],
+                  meta: { ...history.meta, topSeries: ['Ethereum Vault', 'Second Vault'] },
+                  actualChart: [{ timestamp: 1_900_000_000, 'Ethereum Vault': 100, 'Second Vault': 20 }],
+                  constantPriceChart: [{ timestamp: 1_900_000_000, 'Ethereum Vault': 90, 'Second Vault': 30 }]
+                }
+              : {
                   ...history,
                   meta: { ...history.meta, topSeries: ['Ethereum Vault'] },
                   constantPriceChart: [{ timestamp: 1_900_000_000, 'Price-neutral TVL': 90 }]
                 }
-              : history
         }) as Response
     )
     render(
@@ -165,9 +171,15 @@ describe('chain TVL history drilldown', () => {
     await waitFor(() => expect(document.querySelectorAll('.recharts-bar')).toHaveLength(1))
     fireEvent.click(screen.getByRole('checkbox', { name: 'price adjusted' }))
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
-    expect(String(fetchMock.mock.calls[1][0])).not.toContain('format=chart')
-    expect(String(fetchMock.mock.calls[1][0])).toContain('datasetId=adjusted-regression')
-    await waitFor(() => expect(document.querySelectorAll('.recharts-bar-rectangle')).not.toHaveLength(0))
+    const adjustedParams = new URL(String(fetchMock.mock.calls[1][0]), 'https://example.com').searchParams
+    expect(adjustedParams.get('format')).toBe('chart')
+    expect(adjustedParams.get('top')).toBe('10')
+    expect(adjustedParams.get('topMetric')).toBe('constant-price')
+    expect(adjustedParams.get('datasetId')).toBe('adjusted-regression')
+    await waitFor(() => {
+      expect(document.querySelectorAll('.recharts-bar')).toHaveLength(2)
+      expect(document.querySelectorAll('.recharts-bar-rectangle')).toHaveLength(2)
+    })
   })
 
   it('switches a chain history from vaults to versions', async () => {

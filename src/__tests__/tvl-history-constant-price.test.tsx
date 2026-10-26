@@ -84,6 +84,18 @@ describe('constant-price TVL history integration', () => {
     expect(versionUrl).toContain('groupBy=category')
     expect(vaultUrl).toContain('includeCurrent=true')
     expect(versionUrl).toContain('includeCurrent=true')
+    expect(vaultUrl).toContain('format=chart&top=10')
+    expect(vaultUrl).not.toContain('topMetric')
+    const adjustedVaultUrl = buildChainTvlHistoryUrl({
+      breakdown: 'vault',
+      chainId: 1,
+      priceAdjusted: true,
+      from: 100,
+      to: 200
+    })
+    expect(adjustedVaultUrl).toContain('format=chart&top=10&topMetric=constant-price')
+    expect(versionUrl).toContain('format=chart')
+    expect(versionUrl).not.toContain('top=')
   })
 
   it('refetches with a new reference window when the timeframe changes', async () => {

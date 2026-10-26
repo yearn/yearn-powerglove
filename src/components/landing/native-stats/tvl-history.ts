@@ -56,7 +56,7 @@ export function buildChainTvlHistoryUrl({
   from: number
   to: number
 }): string {
-  return `/api/tvl/history/runs/latest/constant-price?mode=external&groupBy=${breakdown}&interval=weekly&chainId=${chainId}&from=${from}&to=${to}&includeCurrent=true${priceAdjusted && breakdown === 'vault' ? '' : `&format=chart${breakdown === 'vault' ? '&top=10' : ''}`}`
+  return `/api/tvl/history/runs/latest/constant-price?mode=external&groupBy=${breakdown}&interval=weekly&chainId=${chainId}&from=${from}&to=${to}&includeCurrent=true&format=chart${breakdown === 'vault' ? `&top=10${priceAdjusted ? '&topMetric=constant-price' : ''}` : ''}`
 }
 
 export function selectConstantPriceChart(
