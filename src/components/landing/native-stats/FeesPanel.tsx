@@ -511,22 +511,19 @@ export function FeesPanel() {
                 {
                   title: 'Gross Fees',
                   field: 'totalFeesPaidUsd',
-                  description: 'Fees charged across the stack',
-                  color: ''
+                  description: 'Fees charged across the stack'
                 },
                 {
                   title: 'Net Yield',
                   field: 'netLifetimeEarningsUsd',
-                  description: 'Gross gains less losses',
-                  color: 'text-green'
+                  description: 'Gross gains less losses'
                 },
                 {
                   title: 'Gross Gains',
                   field: 'grossGainsUsd',
-                  description: 'Reported vault gains',
-                  color: 'text-blue'
+                  description: 'Reported vault gains'
                 },
-                { title: 'Losses', field: 'lossesUsd', description: 'Reported vault losses', color: 'text-red' }
+                { title: 'Losses', field: 'lossesUsd', description: 'Reported vault losses' }
               ] as const
             ).map((metric) => (
               <section className="fee-summary-stat" key={metric.field} aria-label={metric.title}>
@@ -534,7 +531,7 @@ export function FeesPanel() {
                 <dl className="fee-summary-values">
                   <div>
                     <dt>All time</dt>
-                    <dd className={metric.color}>
+                    <dd>
                       {allTime.loading && !allTimeSummary
                         ? '…'
                         : formatCanonicalUsd(allTimeSummary?.[metric.field] ?? null)}
@@ -542,7 +539,7 @@ export function FeesPanel() {
                   </div>
                   <div>
                     <dt>Since {rangeLabel(selectedRange.start)}</dt>
-                    <dd className={metric.color}>{formatCanonicalUsd(summary[metric.field])}</dd>
+                    <dd>{formatCanonicalUsd(summary[metric.field])}</dd>
                   </div>
                 </dl>
               </section>

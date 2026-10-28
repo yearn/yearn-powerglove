@@ -8,6 +8,7 @@ import { useRootDarkMode } from '@/hooks/useRootDarkMode'
 import { buildBlueShadePalette } from '@/lib/theme-blue-palette'
 import { ChainTvlHistory } from './ChainTvlHistory'
 import { ChartTypeToggle, type StatsChartType } from './ChartTypeToggle'
+import { formatTvlHistoryTick } from './fee-history'
 import { CAT_COLORS, CHAIN_NAMES, CHAIN_SHORT, CHART_COLORS, fmt, SkeletonCards, useFetch } from './hooks'
 import { StatsContext, StatsTimeRangeContext } from './StatsContext'
 import {
@@ -33,14 +34,9 @@ import {
 } from './tvl-summary'
 import type { ConstantPriceTvlHistory, TvlHistoryRun } from './types'
 
-const TVL_HISTORY_TOP_SERIES_COUNT = 10
 const TVL_HISTORY_REMAINING_CHAIN_SERIES = 'All other chains'
 const TVL_HISTORY_REMAINING_VERSION_SERIES = 'All other versions'
 const TVL_HISTORY_TOTAL_SERIES = 'Total TVL'
-
-function formatDate(timestamp: number | string): string {
-  return new Date(Number(timestamp) * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-}
 
 function formatFullDate(timestamp: number | string): string {
   return new Date(Number(timestamp) * 1000).toLocaleDateString('en-US', {
@@ -56,13 +52,6 @@ function getWarningCount(meta: Record<string, unknown>): number {
   if (typeof warnings === 'number' && Number.isFinite(warnings)) return warnings
   if (typeof meta.warningCount === 'number' && Number.isFinite(meta.warningCount)) return meta.warningCount
   return 0
-}
-
-function formatHistoryGroup(groupBy: string | undefined): string {
-  if (groupBy === 'chain') return 'chain'
-  if (groupBy === 'vault') return 'vault'
-  if (groupBy === 'category') return 'version'
-  return groupBy ?? 'series'
 }
 
 function getHistoryBarSize(rowCount: number): number {
@@ -376,12 +365,29 @@ export function TvlOverview() {
             <div className="fee-chart-title-row">
               <h2>TVL History</h2>
               <ChartTypeToggle value={tvlHistoryView} onValueChange={setTvlHistoryView} label="TVL" />
-            </div>
-            <div className="sub">
-              Saved run grouped by {formatHistoryGroup(rawTvlHistory?.groupBy)};{' '}
-              {tvlHistoryBreakdown === 'category'
-                ? `${tvlHistorySeries.length} versions`
-                : `top ${Math.min(TVL_HISTORY_TOP_SERIES_COUNT, tvlHistorySeries.length)} ${tvlHistorySeries.length === 1 ? 'chain' : 'chains'} by latest TVL`}
+              <div className="tvl-history-controls" aria-label="TVL history controls">
+                <Tabs
+                  value={tvlHistoryBreakdown}
+                  onValueChange={(value) => setTvlHistoryBreakdown(value as OverallTvlHistoryBreakdown)}
+                >
+                  <TabsList className="tvl-history-tabs" aria-label="TVL history breakdown">
+                    <TabsTrigger className="tvl-history-tab" value="chain">
+                      Chains
+                    </TabsTrigger>
+                    <TabsTrigger className="tvl-history-tab" value="category">
+                      Version
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
+                <label className="flex cursor-pointer items-center gap-2 text-xs">
+                  <input
+                    type="checkbox"
+                    checked={showPriceNeutral}
+                    onChange={(event) => setShowPriceNeutral(event.target.checked)}
+                  />
+                  price adjusted
+                </label>
+              </div>
             </div>
           </div>
           <div className="tvl-history-header-actions">
@@ -452,30 +458,6 @@ export function TvlOverview() {
           </div>
         </div>
 
-        <div className="tvl-history-controls" aria-label="TVL history controls">
-          <Tabs
-            value={tvlHistoryBreakdown}
-            onValueChange={(value) => setTvlHistoryBreakdown(value as OverallTvlHistoryBreakdown)}
-          >
-            <TabsList className="tvl-history-tabs" aria-label="TVL history breakdown">
-              <TabsTrigger className="tvl-history-tab" value="chain">
-                Chains
-              </TabsTrigger>
-              <TabsTrigger className="tvl-history-tab" value="category">
-                Version
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-          <label className="flex cursor-pointer items-center gap-2 text-xs">
-            <input
-              type="checkbox"
-              checked={showPriceNeutral}
-              onChange={(event) => setShowPriceNeutral(event.target.checked)}
-            />
-            price adjusted
-          </label>
-        </div>
-
         {tvlHistoryBreakdown === 'category' && tvlHistorySeries.length > 0 && (
           <div className="tvl-history-version-legend" aria-label="TVL version series">
             {tvlHistorySeries.map((series) => (
@@ -535,10 +517,12 @@ export function TvlOverview() {
                 <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
                 <XAxis
                   dataKey="timestamp"
-                  tickFormatter={formatDate}
+                  tickFormatter={formatTvlHistoryTick}
                   tick={{ fill: 'var(--text-3)', fontSize: 11 }}
                   axisLine={{ stroke: 'var(--border)' }}
-                  tickLine={false}
+                  angle={-45}
+                  textAnchor="end"
+                  height={50}
                   interval={Math.max(0, Math.floor(displayedHistoryRows.length / 8) - 1)}
                   minTickGap={16}
                 />

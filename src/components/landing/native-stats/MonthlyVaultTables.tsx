@@ -1,7 +1,8 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
-import { ArrowDown, ArrowUp } from 'lucide-react'
+import { ArrowDown, ArrowUp, Info } from 'lucide-react'
 import { type ReactNode, useContext, useId, useMemo, useState } from 'react'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { assertCanonicalFeeResponse } from '@/lib/fee-api-contract'
 import { fetchKongVaultListRaw } from '@/lib/kong-vault-client'
 import type { CanonicalFeeSummary, CanonicalVaultFee } from './canonical-fees'
@@ -14,6 +15,24 @@ import { fetchVaultTypeFeeHistories } from './useVaultTypeFeeHistories'
 
 const monthLabel = (period: string) =>
   new Date(`${period}-01T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' })
+
+function PartialTotal({ value, label, warning }: { value: number | null; label: string; warning: string | null }) {
+  return (
+    <span className="monthly-fee-total-value">
+      {monthlyUsd(value)}
+      {warning && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button type="button" className="monthly-fee-coverage" aria-label={`Partial coverage for ${label}`}>
+              <Info size={13} aria-hidden="true" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent className="max-w-xs">{warning}. This total includes only available values.</TooltipContent>
+        </Tooltip>
+      )}
+    </span>
+  )
+}
 
 export function MonthlyVaultTables({ chainSelector }: { chainSelector: ReactNode }) {
   const [typeFilter, setTypeFilter] = useState('all')
@@ -234,73 +253,83 @@ function MonthlyVaultTable({
         <>
           {/* biome-ignore lint/a11y/noNoninteractiveTabindex: Keyboard users need to scroll the monthly columns. */}
           <section className="monthly-fee-table-scroll" tabIndex={0} aria-label={`Monthly vault ${metric} table`}>
-            <table className="monthly-fee-table">
-              <caption className="sr-only">
-                Vault {metric} for the last 12 completed months in USD. Unavailable amounts are shown as a dash.
-              </caption>
-              <thead>
-                <tr>
-                  <th scope="col">Vault</th>
-                  <th
-                    scope="col"
-                    aria-sort={sort.column === 'total' ? (sort.descending ? 'descending' : 'ascending') : 'none'}
-                  >
-                    {sortButton('total', 'annual total')}
-                  </th>
-                  {months.map((month, index) => (
+            <TooltipProvider delayDuration={200}>
+              <table className="monthly-fee-table">
+                <caption className="sr-only">
+                  Vault {metric} for the last 12 completed months in USD. Unavailable amounts are shown as a dash.
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Vault</th>
                     <th
-                      key={month.period}
                       scope="col"
-                      aria-sort={sort.column === index ? (sort.descending ? 'descending' : 'ascending') : 'none'}
+                      aria-sort={sort.column === 'total' ? (sort.descending ? 'descending' : 'ascending') : 'none'}
                     >
-                      {sortButton(index, monthLabel(month.period))}
+                      {sortButton('total', 'annual total')}
                     </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                <tr className="monthly-fee-total">
-                  <th scope="row">
-                    {search.trim() || chainFilter !== 'all' || typeFilter !== 'all' ? 'Filtered vaults' : 'All vaults'}
-                  </th>
-                  <td>
-                    {monthlyUsd(annualTotal)}
-                    {annualTotal !== null && incompleteVaults > 0 && (
-                      <span className="monthly-fee-address">
-                        Partial · {incompleteVaults}/{rows.length} vaults incomplete
-                      </span>
-                    )}
-                  </td>
-                  {totals.map((value, index) => (
-                    <td key={months[index].period}>
-                      {monthlyUsd(value)}
-                      {value !== null && unavailableByMonth[index] > 0 && (
-                        <span className="monthly-fee-address">
-                          Partial · {unavailableByMonth[index]}/{rows.length} vaults unavailable
-                        </span>
-                      )}
-                    </td>
-                  ))}
-                </tr>
-                {rows.slice(start, end).map((row) => (
-                  <tr key={monthlyVaultKey(row.vault)}>
-                    <th scope="row">
-                      <Link to={powergloveVaultPath(row.vault.chainId, row.vault.address)} title={row.vault.address}>
-                        {row.vault.name ?? shortAddr(row.vault.address)}
-                      </Link>
-                      <span className="monthly-fee-address">
-                        {shortAddr(row.vault.address)} ·{' '}
-                        {CHAIN_NAMES[row.vault.chainId] ?? `Chain ${row.vault.chainId}`} · {row.vaultType}
-                      </span>
-                    </th>
-                    <td>{monthlyUsd(row.total)}</td>
-                    {row.months.map((value, index) => (
-                      <td key={months[index].period}>{monthlyUsd(value)}</td>
+                    {months.map((month, index) => (
+                      <th
+                        key={month.period}
+                        scope="col"
+                        aria-sort={sort.column === index ? (sort.descending ? 'descending' : 'ascending') : 'none'}
+                      >
+                        {sortButton(index, monthLabel(month.period))}
+                      </th>
                     ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  <tr className="monthly-fee-total">
+                    <th scope="row">
+                      {search.trim() || chainFilter !== 'all' || typeFilter !== 'all'
+                        ? 'Filtered vaults'
+                        : 'All vaults'}
+                    </th>
+                    <td>
+                      <PartialTotal
+                        value={annualTotal}
+                        label="annual total"
+                        warning={
+                          annualTotal !== null && incompleteVaults > 0
+                            ? `Partial · ${incompleteVaults}/${rows.length} vaults incomplete`
+                            : null
+                        }
+                      />
+                    </td>
+                    {totals.map((value, index) => (
+                      <td key={months[index].period}>
+                        <PartialTotal
+                          value={value}
+                          label={monthLabel(months[index].period)}
+                          warning={
+                            value !== null && unavailableByMonth[index] > 0
+                              ? `Partial · ${unavailableByMonth[index]}/${rows.length} vaults unavailable`
+                              : null
+                          }
+                        />
+                      </td>
+                    ))}
+                  </tr>
+                  {rows.slice(start, end).map((row) => (
+                    <tr key={monthlyVaultKey(row.vault)}>
+                      <th scope="row">
+                        <Link to={powergloveVaultPath(row.vault.chainId, row.vault.address)} title={row.vault.address}>
+                          {row.vault.name ?? shortAddr(row.vault.address)}
+                        </Link>
+                        <span className="monthly-fee-address">
+                          {shortAddr(row.vault.address)} ·{' '}
+                          {CHAIN_NAMES[row.vault.chainId] ?? `Chain ${row.vault.chainId}`} · {row.vaultType}
+                        </span>
+                      </th>
+                      <td>{monthlyUsd(row.total)}</td>
+                      {row.months.map((value, index) => (
+                        <td key={months[index].period}>{monthlyUsd(value)}</td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </TooltipProvider>
             {!rows.length && <p className="monthly-fee-empty text-dim">No vaults match these filters.</p>}
           </section>
           <div className="monthly-fee-footer">

@@ -138,20 +138,23 @@ describe('chain TVL history drilldown', () => {
     await waitFor(() => expect(document.querySelectorAll('.recharts-bar')).toHaveLength(11))
   })
 
-  it('requests per-vault adjusted values instead of the compact total when selected', async () => {
+  it('requests compact per-vault adjusted values when selected', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(
       async (input) =>
         ({
           ok: true,
           status: 200,
           json: async () =>
-            String(input).includes('format=chart')
+            String(input).includes('topMetric=constant-price')
               ? {
+                  ...history,
+                  meta: { ...history.meta, topSeries: ['Ethereum Vault'] }
+                }
+              : {
                   ...history,
                   meta: { ...history.meta, topSeries: ['Ethereum Vault'] },
                   constantPriceChart: [{ timestamp: 1_900_000_000, 'Price-neutral TVL': 90 }]
                 }
-              : history
         }) as Response
     )
     render(
@@ -165,7 +168,7 @@ describe('chain TVL history drilldown', () => {
     await waitFor(() => expect(document.querySelectorAll('.recharts-bar')).toHaveLength(1))
     fireEvent.click(screen.getByRole('checkbox', { name: 'price adjusted' }))
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
-    expect(String(fetchMock.mock.calls[1][0])).not.toContain('format=chart')
+    expect(String(fetchMock.mock.calls[1][0])).toContain('format=chart&top=10&topMetric=constant-price')
     expect(String(fetchMock.mock.calls[1][0])).toContain('datasetId=adjusted-regression')
     await waitFor(() => expect(document.querySelectorAll('.recharts-bar-rectangle')).not.toHaveLength(0))
   })
