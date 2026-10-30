@@ -3,6 +3,8 @@ import react from '@vitejs/plugin-react'
 import path from 'path'
 import { defineConfig, loadEnv } from 'vite'
 
+const DEFAULT_YEARN_DATA_API = 'https://yearn-data-api-preview.vercel.app'
+
 const DEFAULT_ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
 const parseAllowedHosts = (value?: string): string[] =>
@@ -10,6 +12,8 @@ const parseAllowedHosts = (value?: string): string[] =>
     .split(',')
     .map((host) => host.trim())
     .filter(Boolean)
+
+const proxyTo = (target: string) => ({ target, changeOrigin: true })
 
 const yvUsdAprProxy = {
   '/api/yvusd/aprs': {
@@ -23,6 +27,28 @@ const yvUsdAprProxy = {
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   const allowedHosts = [...DEFAULT_ALLOWED_HOSTS, ...parseAllowedHosts(env.LOCAL_VITE_ALLOWED_HOSTS)]
+  const yearnDataApiTarget =
+    env.VITE_YEARN_DATA_API_TARGET || env.VITE_PUBLIC_YEARN_DATA_API_URL || DEFAULT_YEARN_DATA_API
+  // This token is server-only. Never give it a VITE_ prefix or include it in browser fetches.
+  const hostedDataProxy = {
+    ...proxyTo(yearnDataApiTarget),
+    ...(env.YEARN_DATA_API_PROTECTION_BYPASS && new URL(yearnDataApiTarget).hostname.endsWith('.vercel.app')
+      ? { headers: { 'x-vercel-protection-bypass': env.YEARN_DATA_API_PROTECTION_BYPASS } }
+      : {})
+  }
+  const statsApiProxy = {
+    '/api/publication': hostedDataProxy,
+    '/api/audit/tree': hostedDataProxy,
+    '/api/analytics': hostedDataProxy,
+    '/api/comparison/defillama-comparable': hostedDataProxy,
+    '/api/comparison': hostedDataProxy,
+    '/api/tvl/graph': hostedDataProxy,
+    '/api/tvl': hostedDataProxy,
+    '/api/fees/stack': hostedDataProxy,
+    '/api/fees': hostedDataProxy,
+    '/api/profitability': hostedDataProxy
+  }
+  const appApiProxy = { ...yvUsdAprProxy, ...statsApiProxy }
 
   return {
     plugins: [TanStackRouterVite({ target: 'react', autoCodeSplitting: true }), react()],
@@ -35,12 +61,12 @@ export default defineConfig(({ mode }) => {
       process.env.NODE_ENV === 'development'
         ? {
             allowedHosts,
-            proxy: yvUsdAprProxy
+            proxy: appApiProxy
           }
         : {},
     preview: {
       allowedHosts,
-      proxy: yvUsdAprProxy
+      proxy: appApiProxy
     }
   }
 })
