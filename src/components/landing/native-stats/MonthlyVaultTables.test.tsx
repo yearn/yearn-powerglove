@@ -156,14 +156,7 @@ describe('monthly fee table', () => {
     const totalRow = within(table).getByRole('rowheader', { name: 'All vaults' }).closest('tr')!
     const annualCell = within(totalRow).getAllByRole('cell')[0]
     expect(annualCell.textContent).toBe('$244')
-    const annualWarning = within(annualCell).getByRole('button', { name: 'Partial coverage for annual total' })
-    fireEvent.focus(annualWarning)
-    expect((await screen.findByRole('tooltip')).textContent).toContain('Partial · 1/3 vaults incomplete')
-    fireEvent.blur(annualWarning)
-    const monthWarning = within(totalRow).getByRole('button', { name: 'Partial coverage for Oct 2025' })
-    fireEvent.focus(monthWarning)
-    expect((await screen.findByRole('tooltip')).textContent).toContain('Partial · 1/3 vaults unavailable')
-    fireEvent.blur(monthWarning)
+    expect(within(totalRow).queryByRole('button', { name: /Partial coverage/ })).toBeNull()
     const totalsBeforeSort = totalRow.textContent
     fireEvent.click(within(table).getByRole('button', { name: 'Sort by annual total' }))
     expect(within(table).getAllByRole('row')[1].textContent).toBe(totalsBeforeSort)
