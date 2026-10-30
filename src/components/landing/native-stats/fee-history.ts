@@ -27,10 +27,12 @@ export function feeHistoryBoundary(point: FeeHistoryPeriod, edge: 'start' | 'end
   return edge === 'start' ? `${point.period}-01` : new Date(Date.UTC(year, month, 1)).toISOString().slice(0, 10)
 }
 
-export function formatFeeHistoryTick(period: string, interval: FeeHistoryInterval): string {
-  return interval === 'monthly'
-    ? period.slice(0, 7)
-    : new Date(`${period}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+export function formatFeeHistoryTick(period: string, _interval: FeeHistoryInterval): string {
+  return period.slice(0, 7)
+}
+
+export function formatTvlHistoryTick(timestamp: number | string): string {
+  return new Date(Number(timestamp) * 1000).toISOString().slice(0, 7)
 }
 
 export function canonicalDecimalToNumber(value: string | null): number | null {

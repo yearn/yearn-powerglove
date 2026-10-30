@@ -6,6 +6,7 @@ import {
   canonicalDecimalToNumber,
   completedFeeHistoryBuckets,
   formatFeeHistoryTick,
+  formatTvlHistoryTick,
   utcMonthStartTimestamp
 } from './fee-history'
 
@@ -191,9 +192,11 @@ describe('buildCumulativeFeeHistorySeries', () => {
     expect(cumulative.map((point) => point.cumulativeNetYieldUsd)).toEqual([0, 80, 240])
   })
 
-  it('labels weekly points with the day and keeps monthly tick labels unchanged', () => {
-    expect(formatFeeHistoryTick('2025-10-06', 'weekly')).toBe('Oct 6')
-    expect(formatFeeHistoryTick('2025-10-01', 'monthly')).toBe('2025-10')
+  it('labels weekly, monthly and UTC timestamp points with year and month', () => {
+    expect(formatFeeHistoryTick('2025-10-06', 'weekly')).toBe('2025-10')
+    expect(formatFeeHistoryTick('2025-10', 'monthly')).toBe('2025-10')
+    expect(formatTvlHistoryTick(Date.parse('2025-01-01T00:00:00Z') / 1000)).toBe('2025-01')
+    expect(formatTvlHistoryTick(String(Date.parse('2024-12-31T23:59:59Z') / 1000))).toBe('2024-12')
   })
 
   it('spans all twelve completed months from an opening zero to the final total', () => {

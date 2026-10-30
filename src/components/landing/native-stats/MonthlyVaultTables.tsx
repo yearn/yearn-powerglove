@@ -121,8 +121,6 @@ function MonthlyVaultTable({
     const values = rows.map((row) => row.months[index]).filter((value) => value !== null)
     return values.length ? values.reduce((sum, value) => sum + value, 0) : null
   })
-  const unavailableByMonth = months.map((_, index) => rows.filter((row) => row.months[index] === null).length)
-  const incompleteVaults = rows.filter((row) => row.months.some((value) => value === null)).length
   const annualTotal = totals.some((value) => value === null)
     ? null
     : totals.reduce<number>((sum, value) => sum + (value ?? 0), 0)
@@ -275,23 +273,9 @@ function MonthlyVaultTable({
                   <th scope="row">
                     {search.trim() || chainFilter !== 'all' || typeFilter !== 'all' ? 'Filtered vaults' : 'All vaults'}
                   </th>
-                  <td>
-                    {monthlyUsd(annualTotal)}
-                    {annualTotal !== null && incompleteVaults > 0 && (
-                      <span className="monthly-fee-address">
-                        Partial · {incompleteVaults}/{rows.length} vaults incomplete
-                      </span>
-                    )}
-                  </td>
+                  <td>{monthlyUsd(annualTotal)}</td>
                   {totals.map((value, index) => (
-                    <td key={months[index].period}>
-                      {monthlyUsd(value)}
-                      {value !== null && unavailableByMonth[index] > 0 && (
-                        <span className="monthly-fee-address">
-                          Partial · {unavailableByMonth[index]}/{rows.length} vaults unavailable
-                        </span>
-                      )}
-                    </td>
+                    <td key={months[index].period}>{monthlyUsd(value)}</td>
                   ))}
                 </tr>
                 {rows.slice(start, end).map((row) => (

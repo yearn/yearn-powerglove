@@ -7,6 +7,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useRootDarkMode } from '@/hooks/useRootDarkMode'
 import { buildBlueShadePalette } from '@/lib/theme-blue-palette'
 import { ChartTypeToggle, type StatsChartType } from './ChartTypeToggle'
+import { formatTvlHistoryTick } from './fee-history'
 import { CAT_COLORS, fmt, useFetch } from './hooks'
 import {
   ACTUAL_TOTAL_SERIES,
@@ -28,10 +29,6 @@ import type { ConstantPriceTvlHistory } from './types'
 
 const REMAINING_VAULTS = 'All other vaults'
 const REMAINING_VERSIONS = 'All other versions'
-
-function formatDate(timestamp: number | string): string {
-  return new Date(Number(timestamp) * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-}
 
 function formatFullDate(timestamp: number | string): string {
   return new Date(Number(timestamp) * 1000).toLocaleDateString('en-US', {
@@ -169,7 +166,45 @@ export function ChainTvlHistory({
     <section className="chain-history-drilldown" aria-labelledby={`chain-history-${chainId}`}>
       <div className="chain-history-heading">
         <div>
-          <h3 id={`chain-history-${chainId}`}>{chainLabel} TVL History</h3>
+          <div className="fee-chart-title-row">
+            <h3 id={`chain-history-${chainId}`}>{chainLabel} TVL History</h3>
+            <div className="chain-history-controls">
+              <Tabs value={breakdown} onValueChange={(value) => setBreakdown(value as ChainTvlHistoryBreakdown)}>
+                <TabsList className="tvl-history-tabs" aria-label={`${chainLabel} TVL history breakdown`}>
+                  <TabsTrigger className="tvl-history-tab" value="vault">
+                    Vaults
+                  </TabsTrigger>
+                  <TabsTrigger className="tvl-history-tab" value="category">
+                    Version
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+              <label className="flex cursor-pointer items-center gap-2 text-xs">
+                <input
+                  type="checkbox"
+                  checked={showPriceNeutral}
+                  onChange={(event) => setShowPriceNeutral(event.target.checked)}
+                />
+                price adjusted
+              </label>
+              {!selectedRange && (
+                <div className="tvl-history-control-group" aria-label={`${chainLabel} history time range`}>
+                  {TVL_HISTORY_RANGE_OPTIONS.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      className={range === option.value ? 'active' : undefined}
+                      aria-pressed={range === option.value}
+                      onClick={() => setRange(option.value)}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {!renderType && <ChartTypeToggle value={view} onValueChange={setView} label={`${chainLabel} TVL`} />}
+            </div>
+          </div>
           <p>
             {breakdown === 'vault'
               ? `Vaults on ${chainLabel}; top ${Math.min(10, chart.series.length)} by latest ${showPriceNeutral ? 'price-adjusted' : 'actual'} TVL`
@@ -205,43 +240,6 @@ export function ChainTvlHistory({
         )}
       </div>
 
-      <div className="chain-history-controls">
-        <Tabs value={breakdown} onValueChange={(value) => setBreakdown(value as ChainTvlHistoryBreakdown)}>
-          <TabsList className="tvl-history-tabs" aria-label={`${chainLabel} TVL history breakdown`}>
-            <TabsTrigger className="tvl-history-tab" value="vault">
-              Vaults
-            </TabsTrigger>
-            <TabsTrigger className="tvl-history-tab" value="category">
-              Version
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
-        <label className="flex cursor-pointer items-center gap-2 text-xs">
-          <input
-            type="checkbox"
-            checked={showPriceNeutral}
-            onChange={(event) => setShowPriceNeutral(event.target.checked)}
-          />
-          price adjusted
-        </label>
-        {!selectedRange && (
-          <div className="tvl-history-control-group" aria-label={`${chainLabel} history time range`}>
-            {TVL_HISTORY_RANGE_OPTIONS.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                className={range === option.value ? 'active' : undefined}
-                aria-pressed={range === option.value}
-                onClick={() => setRange(option.value)}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-        )}
-        {!renderType && <ChartTypeToggle value={view} onValueChange={setView} label={`${chainLabel} TVL`} />}
-      </div>
-
       {loading && <div className="chain-history-state">Loading {chainLabel} history...</div>}
       {error && (
         <div className="chain-history-state error-retry">
@@ -270,10 +268,12 @@ export function ChainTvlHistory({
               <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
               <XAxis
                 dataKey="timestamp"
-                tickFormatter={formatDate}
+                tickFormatter={formatTvlHistoryTick}
                 tick={{ fill: 'var(--text-3)', fontSize: 11 }}
                 axisLine={{ stroke: 'var(--border)' }}
-                tickLine={false}
+                angle={-45}
+                textAnchor="end"
+                height={50}
                 interval={Math.max(0, Math.floor(chart.rows.length / 7) - 1)}
                 minTickGap={16}
               />
