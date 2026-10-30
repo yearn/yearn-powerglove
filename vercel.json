@@ -37,6 +37,10 @@
       "destination": "/api/yearn-data?__statsPath=/api/fees/vaults"
     },
     {
+      "source": "/api/fees/vaults/history",
+      "destination": "/api/yearn-data?__statsPath=/api/fees/vaults/history"
+    },
+    {
       "source": "/api/fees/stack",
       "destination": "/api/yearn-data?__statsPath=/api/fees/stack"
     },

@@ -33,7 +33,16 @@ export function getStatsApiLane(url: string): StatsApiLane {
     ].includes(path)
   )
     return 'tvl'
-  if (['/api/fees', '/api/fees/history', '/api/fees/vaults', '/api/fees/stack', '/api/profitability'].includes(path))
+  if (
+    [
+      '/api/fees',
+      '/api/fees/history',
+      '/api/fees/vaults',
+      '/api/fees/vaults/history',
+      '/api/fees/stack',
+      '/api/profitability'
+    ].includes(path)
+  )
     return 'fees'
   return path.startsWith('/api/fees') || path.startsWith('/api/profitability') ? 'fee-analytics' : 'tvl-analytics'
 }

@@ -51,7 +51,20 @@ export interface CanonicalVaultFee extends DepositorFeeTotals {
   lifetimeEarnings: LifetimeEarnings
 }
 
-function isMoney(value: unknown): boolean {
+/** Financial fields served by grouped chart histories. */
+export type CanonicalVaultHistoryFee = Pick<
+  CanonicalVaultFee,
+  | 'productId'
+  | 'memberAddresses'
+  | 'earningsAddress'
+  | 'address'
+  | 'chainId'
+  | 'name'
+  | 'contractFamily'
+  | 'totalFeesPaidUsd'
+> & { lifetimeEarnings: Pick<LifetimeEarnings, 'netYieldUsd'> }
+
+export function isMoney(value: unknown): boolean {
   return value === null || (typeof value === 'string' && /^-?\d+(?:\.\d+)?$/.test(value))
 }
 

@@ -1,5 +1,5 @@
 import type { KongVaultListItem } from '@/types/kong'
-import type { CanonicalVaultFee } from './canonical-fees'
+import type { CanonicalVaultHistoryFee } from './canonical-fees'
 import type { ChainFeeHistoryPoint } from './chain-fee-history'
 import { canonicalDecimalToNumber, type FeeHistoryPeriod, feeHistoryBoundary } from './fee-history'
 
@@ -14,7 +14,7 @@ export const VAULT_TYPE_SERIES = [
 
 type VaultType = (typeof VAULT_TYPE_SERIES)[number]['key']
 
-export function classifyVaultType(vault: CanonicalVaultFee, catalog: Map<string, KongVaultListItem>): VaultType {
+export function classifyVaultType(vault: CanonicalVaultHistoryFee, catalog: Map<string, KongVaultListItem>): VaultType {
   switch (vault.contractFamily) {
     case 'yearn-v3-allocator':
     case 'yearn-v3-tokenized-strategy':
@@ -33,7 +33,7 @@ export function classifyVaultType(vault: CanonicalVaultFee, catalog: Map<string,
 }
 
 export function buildVaultTypeFeeSeries(
-  histories: CanonicalVaultFee[][],
+  histories: CanonicalVaultHistoryFee[][],
   periods: FeeHistoryPeriod[],
   catalog: KongVaultListItem[]
 ) {

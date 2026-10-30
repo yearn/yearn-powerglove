@@ -640,7 +640,7 @@ export function FeesPanel() {
             <SkeletonChart />
           )}
 
-          <MonthlyVaultTables chainSelector={null} />
+          <MonthlyVaultTables chainSelector={null} datasetId={summary.datasetId} onRetryDataset={retrySummary} />
         </div>
       </section>
     </div>

@@ -8,7 +8,11 @@ import { StatsContext, StatsTimeRangeContext } from './StatsContext'
 
 vi.mock('./EffectiveFeesTable', () => ({ EffectiveFeesTable: () => <div>Effective fees table</div> }))
 
-vi.mock('./MonthlyVaultTables', () => ({ MonthlyVaultTables: () => <div>Monthly tables</div> }))
+vi.mock('./MonthlyVaultTables', () => ({
+  MonthlyVaultTables: ({ datasetId }: { datasetId: string | undefined }) => (
+    <div data-dataset-id={datasetId}>Monthly tables</div>
+  )
+}))
 
 vi.mock('recharts', async (importOriginal) => ({
   ...(await importOriginal<typeof import('recharts')>()),
@@ -219,6 +223,7 @@ describe('shared fee chart view', () => {
 
 it('orders the adjusted TVL table and fee charts as requested without supplementary analysis', () => {
   render(<FeesPanel />)
+  expect(screen.getByText('Monthly tables').getAttribute('data-dataset-id')).toBe('selected')
   const items = [
     screen.getByText('Effective fees table'),
     screen.getByRole('heading', { name: 'Monthly Earnings & Fees' }),

@@ -4,10 +4,10 @@ import { ArrowDown, ArrowUp } from 'lucide-react'
 import { type ReactNode, useContext, useId, useMemo, useState } from 'react'
 import { assertCanonicalFeeResponse } from '@/lib/fee-api-contract'
 import { fetchKongVaultListRaw } from '@/lib/kong-vault-client'
-import type { CanonicalFeeSummary, CanonicalVaultFee } from './canonical-fees'
+import type { CanonicalVaultFee } from './canonical-fees'
 import type { ChainFeeMetric } from './chain-fee-history'
 import { FeeMetricToggle } from './FeeMetricToggle'
-import { CHAIN_NAMES, powergloveVaultPath, resolveStatsApiBase, shortAddr, useFetch, usePagination } from './hooks'
+import { CHAIN_NAMES, powergloveVaultPath, resolveStatsApiBase, shortAddr, usePagination } from './hooks'
 import { buildMonthlyVaultRows, completedFeeMonths, monthlyUsd, monthlyVaultKey } from './monthly-vault-data'
 import { StatsContext } from './StatsContext'
 import { fetchVaultTypeFeeHistories } from './useVaultTypeFeeHistories'
@@ -15,11 +15,21 @@ import { fetchVaultTypeFeeHistories } from './useVaultTypeFeeHistories'
 const monthLabel = (period: string) =>
   new Date(`${period}-01T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' })
 
-export function MonthlyVaultTables({ chainSelector }: { chainSelector: ReactNode }) {
+export function MonthlyVaultTables({
+  chainSelector,
+  datasetId,
+  onRetryDataset
+}: {
+  chainSelector: ReactNode
+  datasetId: string | undefined
+  onRetryDataset: () => void
+}) {
   const [typeFilter, setTypeFilter] = useState('all')
   const [metric, setMetric] = useState<ChainFeeMetric>('earnings')
   return (
     <MonthlyVaultTable
+      datasetId={datasetId}
+      onRetryDataset={onRetryDataset}
       metric={metric}
       metricControl={<FeeMetricToggle value={metric} onValueChange={setMetric} label="Monthly vault" />}
       chainSelector={chainSelector}
@@ -30,12 +40,16 @@ export function MonthlyVaultTables({ chainSelector }: { chainSelector: ReactNode
 }
 
 function MonthlyVaultTable({
+  datasetId,
+  onRetryDataset,
   metric,
   metricControl,
   chainSelector,
   typeFilter,
   onTypeChange
 }: {
+  datasetId: string | undefined
+  onRetryDataset: () => void
   metric: 'fees' | 'earnings'
   metricControl: ReactNode
   chainSelector?: ReactNode
@@ -52,8 +66,6 @@ function MonthlyVaultTable({
   })
   const base = resolveStatsApiBase('fees') ?? ''
   const client = useQueryClient()
-  const summary = useFetch<CanonicalFeeSummary>('/api/fees')
-  const datasetId = summary.data?.datasetId
   const fees = useQuery({
     queryKey: ['monthly-vault-data', base, datasetId, months[0].period, 'product'],
     enabled: !!datasetId,
@@ -134,7 +146,7 @@ function MonthlyVaultTable({
         (sort.descending ? <ArrowDown size={12} aria-hidden="true" /> : <ArrowUp size={12} aria-hidden="true" />)}
     </button>
   )
-  const loading = summary.loading || (!!datasetId && fees.isPending)
+  const loading = !!datasetId && fees.isPending
   return (
     <section className="monthly-vault-fees" aria-labelledby={titleId} aria-busy={loading}>
       <div className="monthly-fee-toolbar">
@@ -179,14 +191,14 @@ function MonthlyVaultTable({
           />
         </div>
       </div>
-      {summary.error || fees.isError || (!summary.loading && !datasetId) ? (
+      {fees.isError || !datasetId ? (
         <div className="error-retry">
           <p>Monthly vault {metric} could not be loaded.</p>
           <button
             type="button"
             className="page-btn"
             onClick={() => {
-              summary.retry()
+              onRetryDataset()
               if (datasetId) void fees.refetch()
             }}
           >

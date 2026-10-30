@@ -4,6 +4,7 @@ import { type ReactNode, useState } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { CanonicalVaultFee } from './canonical-fees'
 import { MonthlyVaultTables } from './MonthlyVaultTables'
+import { completedFeeMonths } from './monthly-vault-data'
 import { StatsContext } from './StatsContext'
 
 vi.mock('@tanstack/react-router', () => ({
@@ -15,15 +16,6 @@ vi.mock('@/lib/kong-vault-client', () => ({
     { chainId: 137, address: '0xaaa', name: 'Bob' },
     { chainId: 1, address: '0xbbb', name: 'Untracked' }
   ]
-}))
-vi.mock('./hooks', async (original) => ({
-  ...(await original<typeof import('./hooks')>()),
-  useFetch: () => ({
-    data: { aggregationScope: 'product', datasetId: 'selected' },
-    loading: false,
-    error: null,
-    retry: vi.fn()
-  })
 }))
 const vault = (chainId: number, name: string, amount: string | null): CanonicalVaultFee => ({
   chainId,
@@ -46,13 +38,15 @@ const vault = (chainId: number, name: string, amount: string | null): CanonicalV
     netYieldUsd: amount === null ? null : String(-Number(amount) * 2)
   }
 })
-function Table() {
+function Table({ datasetId = 'selected' }: { datasetId?: string } = {}) {
   const [chainFilter, setChainFilter] = useState('all')
   return (
     <StatsContext.Provider
       value={{ chainFilter, density: 'comfortable', lastFetchedAt: null, setLastFetchedAt: vi.fn() }}
     >
       <MonthlyVaultTables
+        datasetId={datasetId}
+        onRetryDataset={vi.fn()}
         chainSelector={
           <select aria-label="Chain" value={chainFilter} onChange={(e) => setChainFilter(e.target.value)}>
             <option value="all">All Chains</option>
@@ -68,7 +62,7 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 describe('monthly fee table', () => {
-  it('pins 12 bounded month requests, displays all vaults, and filters/sorts without refetching', async () => {
+  it('uses the parent publication without summary discovery and refreshes when that publication changes', async () => {
     vi.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-10-12T00:00:00Z'))
     let active = 0,
       peak = 0
@@ -79,7 +73,7 @@ describe('monthly fee table', () => {
           ok: true,
           json: async () => ({
             aggregationScope: 'product',
-            datasetId: 'selected',
+            datasetId: params.get('datasetId'),
             vaults: [vault(1, 'Alice', '201.75'), vault(137, 'Bob', '42')]
           })
         } as Response
@@ -87,23 +81,27 @@ describe('monthly fee table', () => {
       peak = Math.max(peak, active)
       await new Promise((resolve) => setTimeout(resolve, 5))
       active--
-      const month = new Date(Number(params.get('since')) * 1000).toISOString().slice(0, 7)
       return {
         ok: true,
         json: async () => ({
           aggregationScope: 'product',
-          datasetId: 'selected',
-          vaults:
-            month === '2025-10'
-              ? [vault(1, 'Alice', '100.25'), vault(137, 'Bob', '42')]
-              : month === '2025-11'
-                ? [vault(1, 'Alice', '101.5')]
-                : []
+          datasetId: params.get('datasetId'),
+          interval: 'monthly',
+          dataCutoffTimestamp: Date.now() / 1000,
+          buckets: completedFeeMonths(Date.now() / 1000).map((period) => ({
+            ...period,
+            vaults:
+              period.period === '2025-10'
+                ? [vault(1, 'Alice', '100.25'), vault(137, 'Bob', '42')]
+                : period.period === '2025-11'
+                  ? [vault(1, 'Alice', '101.5')]
+                  : []
+          }))
         })
       } as Response
     })
     const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } })
-    render(
+    const { rerender } = render(
       <QueryClientProvider client={client}>
         <Table />
       </QueryClientProvider>
@@ -141,18 +139,18 @@ describe('monthly fee table', () => {
     expect(screen.queryByRole('table', { name: /Vault fees for/ })).toBeNull()
     expect(screen.getByRole('table', { name: /Vault earnings for/ }).textContent).toContain('-$404')
     fireEvent.click(within(toggle).getByRole('button', { name: 'Fees' }))
-    expect(fetch).toHaveBeenCalledTimes(13)
-    expect(peak).toBeLessThanOrEqual(6)
+    expect(fetch).toHaveBeenCalledTimes(2)
+    expect(fetch.mock.calls.every(([url]) => new URL(String(url), 'http://localhost').pathname !== '/api/fees')).toBe(
+      true
+    )
+    expect(peak).toBe(1)
     const queries = fetch.mock.calls.map(([url]) => new URL(String(url), 'http://localhost').searchParams)
     expect(queries.every((params) => params.get('datasetId') === 'selected')).toBe(true)
     expect(queries.every((params) => params.get('scope') === 'product')).toBe(true)
-    expect(queries.filter((params) => params.has('since'))).toHaveLength(12)
-    expect(
-      queries
-        .filter((params) => params.has('since'))
-        .map((params) => new Date(Number(params.get('since')) * 1000).toISOString().slice(0, 7))
-        .sort()
-    ).toEqual(Array.from({ length: 12 }, (_, i) => new Date(Date.UTC(2025, 9 + i, 1)).toISOString().slice(0, 7)))
+    expect(queries.filter((params) => params.has('since'))).toHaveLength(1)
+    expect(queries[1].get('since')).toBe(String(Date.parse('2025-10-01') / 1000))
+    expect(queries[1].get('until')).toBe(String(Date.parse('2026-10-01') / 1000))
+    expect(queries[1].get('interval')).toBe('monthly')
     const totalRow = within(table).getByRole('rowheader', { name: 'All vaults' }).closest('tr')!
     const annualCell = within(totalRow).getAllByRole('cell')[0]
     expect(annualCell.textContent).toBe('$244')
@@ -171,7 +169,77 @@ describe('monthly fee table', () => {
     fireEvent.change(screen.getByRole('textbox', { name: 'Search vault fees' }), { target: { value: '' } })
     fireEvent.change(screen.getAllByRole('combobox', { name: 'Chain' })[0], { target: { value: '1' } })
     expect(screen.queryByRole('link', { name: 'Bob' })).toBeNull()
-    expect(fetch).toHaveBeenCalledTimes(13)
+    expect(fetch).toHaveBeenCalledTimes(2)
+    rerender(
+      <QueryClientProvider client={client}>
+        <Table datasetId="next-publication" />
+      </QueryClientProvider>
+    )
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(4))
+    await screen.findByRole('table', { name: /Vault fees for/ })
+    expect(
+      fetch.mock.calls.slice(2).every(([url]) => {
+        const request = new URL(String(url), 'http://localhost')
+        return request.pathname !== '/api/fees' && request.searchParams.get('datasetId') === 'next-publication'
+      })
+    ).toBe(true)
+    client.clear()
+  })
+  it('retries parent discovery when its dataset is unavailable without requesting an unpinned summary', () => {
+    const fetch = vi.spyOn(globalThis, 'fetch')
+    const retry = vi.fn()
+    const client = new QueryClient()
+    render(
+      <QueryClientProvider client={client}>
+        <MonthlyVaultTables chainSelector={null} datasetId={undefined} onRetryDataset={retry} />
+      </QueryClientProvider>
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Retry monthly earnings' }))
+    expect(retry).toHaveBeenCalledOnce()
+    expect(fetch).not.toHaveBeenCalled()
+    expect(screen.queryByRole('table')).toBeNull()
+    client.clear()
+  })
+  it('refreshes the parent publication on retry after a pinned dataset expires', async () => {
+    const retry = vi.fn()
+    const fetch = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+      const params = new URL(String(url), 'http://localhost').searchParams
+      if (params.get('datasetId') === 'expired') return { ok: false, status: 410 } as Response
+      return {
+        ok: true,
+        json: async () => ({
+          aggregationScope: 'product',
+          datasetId: 'replacement',
+          vaults: [vault(1, 'Alice', '10')],
+          interval: 'monthly',
+          dataCutoffTimestamp: Date.now() / 1000,
+          buckets: completedFeeMonths(Date.now() / 1000).map((period) => ({
+            ...period,
+            vaults: [vault(1, 'Alice', '10')]
+          }))
+        })
+      } as Response
+    })
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const content = (datasetId: string) => (
+      <QueryClientProvider client={client}>
+        <MonthlyVaultTables chainSelector={null} datasetId={datasetId} onRetryDataset={retry} />
+      </QueryClientProvider>
+    )
+    const { rerender } = render(content('expired'))
+    fireEvent.click(await screen.findByRole('button', { name: 'Retry monthly earnings' }))
+    expect(retry).toHaveBeenCalledOnce()
+    rerender(content('replacement'))
+    const table = await screen.findByRole('table', { name: /Vault earnings for/ })
+    expect(table.textContent).toContain('-$240')
+    expect(
+      fetch.mock.calls.some(
+        ([url]) => new URL(String(url), 'http://localhost').searchParams.get('datasetId') === 'replacement'
+      )
+    ).toBe(true)
+    expect(fetch.mock.calls.every(([url]) => new URL(String(url), 'http://localhost').pathname !== '/api/fees')).toBe(
+      true
+    )
     client.clear()
   })
   it('blocks mixed publications and retries without displaying failed months as zero', async () => {
@@ -183,7 +251,13 @@ describe('monthly fee table', () => {
         json: async () => ({
           aggregationScope: 'product',
           datasetId: invalid && params.has('since') ? 'wrong' : 'selected',
-          vaults: [vault(1, 'Alice', '10')]
+          vaults: [vault(1, 'Alice', '10')],
+          interval: 'monthly',
+          dataCutoffTimestamp: Date.now() / 1000,
+          buckets: completedFeeMonths(Date.now() / 1000).map((period) => ({
+            ...period,
+            vaults: [vault(1, 'Alice', '10')]
+          }))
         })
       } as Response
     })

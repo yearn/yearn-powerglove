@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { assertCanonicalFeeResponse } from '@/lib/fee-api-contract'
 import { fetchKongVaultListRaw } from '@/lib/kong-vault-client'
-import type { CanonicalVaultFee } from './canonical-fees'
+import { type CanonicalVaultHistoryFee, isMoney } from './canonical-fees'
 import { type FeeHistoryPeriod, feeHistoryBoundary } from './fee-history'
 import { resolveStatsApiBase } from './hooks'
 
@@ -10,42 +10,60 @@ export async function fetchVaultTypeFeeHistories(
   query: string,
   periods: FeeHistoryPeriod[],
   signal: AbortSignal
-): Promise<CanonicalVaultFee[][]> {
-  const datasetId = new URLSearchParams(query).get('datasetId')
-  const histories: CanonicalVaultFee[][] = new Array(periods.length)
-  let next = 0
-  // Bound the fan-out while the API exposes vault totals per requested range.
-  await Promise.all(
-    Array.from({ length: Math.min(6, periods.length) }, async () => {
-      while (next < periods.length) {
-        const index = next++
-        const params = new URLSearchParams(query)
-        params.delete('interval')
-        params.set('since', String(Date.parse(feeHistoryBoundary(periods[index], 'start')) / 1000))
-        params.set('until', String(Date.parse(feeHistoryBoundary(periods[index], 'end')) / 1000))
-        const response = await fetch(`${base}/api/fees/vaults?${params}`, { signal })
-        if (!response.ok) throw new Error('Vault history request failed')
-        const payload = await response.json()
-        assertCanonicalFeeResponse(payload, params.get('scope') ?? 'contract')
-        if (
-          !Array.isArray(payload.vaults) ||
-          (datasetId && payload.datasetId !== datasetId) ||
-          !payload.vaults.every(
-            (vault: CanonicalVaultFee) =>
-              typeof vault.address === 'string' &&
-              typeof vault.chainId === 'number' &&
-              typeof vault.contractFamily === 'string' &&
-              vault.lifetimeEarnings != null
+): Promise<CanonicalVaultHistoryFee[][]> {
+  if (!periods.length) return []
+  const params = new URLSearchParams(query)
+  const datasetId = params.get('datasetId')
+  const interval = params.get('interval') ?? (periods[0].period.length === 10 ? 'weekly' : 'monthly')
+  const ranges = periods.map((period) => ({
+    period: period.period,
+    startTimestamp: Date.parse(feeHistoryBoundary(period, 'start')) / 1000,
+    endTimestamp: Date.parse(feeHistoryBoundary(period, 'end')) / 1000
+  }))
+  params.set('interval', interval)
+  params.set('since', String(Math.min(...ranges.map((range) => range.startTimestamp))))
+  params.set('until', String(Math.max(...ranges.map((range) => range.endTimestamp))))
+  const response = await fetch(`${base}/api/fees/vaults/history?${params}`, { signal })
+  if (!response.ok) throw new Error('Vault history request failed')
+  const payload = await response.json()
+  assertCanonicalFeeResponse(payload, params.get('scope') ?? 'contract')
+  if (
+    !Array.isArray(payload.buckets) ||
+    payload.interval !== interval ||
+    (datasetId && payload.datasetId !== datasetId) ||
+    typeof payload.dataCutoffTimestamp !== 'number' ||
+    !Number.isFinite(payload.dataCutoffTimestamp) ||
+    payload.dataCutoffTimestamp <= 0 ||
+    ranges.some((range) => range.startTimestamp >= payload.dataCutoffTimestamp)
+  ) {
+    throw new Error('Vault history does not match the selected dataset')
+  }
+  const histories = ranges.map((range) => {
+    const buckets = payload.buckets.filter(
+      (bucket: { period: string; startTimestamp: number; endTimestamp: number }) =>
+        bucket != null &&
+        bucket.period === range.period &&
+        bucket.startTimestamp === range.startTimestamp &&
+        bucket.endTimestamp === range.endTimestamp
+    )
+    const vaults: CanonicalVaultHistoryFee[] | undefined = buckets.length === 1 ? buckets[0].vaults : undefined
+    if (
+      !Array.isArray(vaults) ||
+      !vaults.every(
+        (vault) =>
+          vault != null &&
+          typeof vault.address === 'string' &&
+          typeof vault.chainId === 'number' &&
+          typeof vault.contractFamily === 'string' &&
+          vault.lifetimeEarnings != null &&
+          [vault.totalFeesPaidUsd, vault.lifetimeEarnings.netYieldUsd].every(
+            (value) => isMoney(value) && (value === null || Number.isFinite(Number(value)))
           )
-        ) {
-          throw new Error('Vault history does not match the selected dataset')
-        }
-        histories[index] = payload.vaults
-      }
-    })
-  ).catch((error: unknown) => {
-    next = periods.length
-    throw error
+      )
+    ) {
+      throw new Error('Vault history does not match the selected dataset')
+    }
+    return vaults
   })
   return histories
 }
