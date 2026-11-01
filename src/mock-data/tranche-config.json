@@ -1,0 +1,11 @@
+{
+  "id": "yvusd-tranches-2026-08-01-to-2026-11-01-v2",
+  "replayCashFlows": true,
+  "start": "2026-08-01T00:00:00Z",
+  "end": "2026-11-01T00:00:00Z",
+  "seniorReallocationUsd": "1000000",
+  "juniorAdditionUsd": "750000",
+  "equitySeedUsd": "250000",
+  "targetBps": { "senior": 500, "junior": 500, "equity": 0 },
+  "excessShareBps": { "senior": 0, "junior": 8000, "equity": 2000 }
+}
