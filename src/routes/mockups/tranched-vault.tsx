@@ -2,11 +2,12 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { ChevronDown } from 'lucide-react'
 import { SimulatedTranchePage } from '@/components/vault-page/SimulatedTranchePage'
 import { YVUSD_CHAIN_ID, YVUSD_LOCKED_ADDRESS, YVUSD_UNLOCKED_ADDRESS } from '@/constants/featuredVaults'
+import type { TrancheId } from '@/lib/tranche-simulation'
 import simulationUrl from '@/mock-data/tranche-simulation.json?url'
 import sourceUrl from '@/mock-data/tranche-source.json?url'
 
-export function TranchedVaultMockup({ junior = false }: { junior?: boolean }) {
-  const address = junior ? YVUSD_LOCKED_ADDRESS : YVUSD_UNLOCKED_ADDRESS
+export function TranchedVaultMockup({ tranche = 'senior' }: { tranche?: TrancheId }) {
+  const address = tranche === 'junior' ? YVUSD_LOCKED_ADDRESS : YVUSD_UNLOCKED_ADDRESS
   return (
     <div className="flex min-w-0 flex-1 flex-col">
       <details className="group fixed left-1/2 top-4 z-50 w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 border border-border bg-white text-sm shadow-lg">
@@ -38,7 +39,7 @@ export function TranchedVaultMockup({ junior = false }: { junior?: boolean }) {
           </Link>
         </div>
       </details>
-      <SimulatedTranchePage tranche={junior ? 'junior' : 'senior'} />
+      <SimulatedTranchePage tranche={tranche} />
     </div>
   )
 }

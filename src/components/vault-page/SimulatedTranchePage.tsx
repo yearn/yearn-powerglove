@@ -87,9 +87,9 @@ function SimulationSummary() {
   )
 }
 
-export function SimulatedTranchePage({ tranche }: { tranche: Extract<TrancheId, 'senior' | 'junior'> }) {
+export function SimulatedTranchePage({ tranche }: { tranche: TrancheId }) {
   const { summary, aprApyData, tvlData, ppsData } = getTrancheMockData(tranche)
-  const name = tranche === 'senior' ? 'Senior yvUSD' : 'Junior yvUSD'
+  const name = { senior: 'Senior yvUSD', junior: 'Junior yvUSD', equity: 'Equity yvUSD' }[tranche]
   const mainInfo: MainInfoPanelProps = {
     vaultId: `${name} · simulated`,
     vaultName: name,

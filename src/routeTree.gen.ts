@@ -14,6 +14,7 @@ import { Route as AboutRouteImport } from './routes/about'
 import { Route as DisclaimerRouteImport } from './routes/disclaimer'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as StatsRouteImport } from './routes/stats'
+import { Route as MockupsEquityYvusdRouteImport } from './routes/mockups/equity-yvusd'
 import { Route as MockupsJuniorYvusdRouteImport } from './routes/mockups/junior-yvusd'
 import { Route as MockupsTranchedVaultRouteImport } from './routes/mockups/tranched-vault'
 import { Route as StatsAnalysisRouteImport } from './routes/stats_.analysis'
@@ -43,6 +44,11 @@ const PrivacyRoute = PrivacyRouteImport.update({
 const StatsRoute = StatsRouteImport.update({
   id: '/stats',
   path: '/stats',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MockupsEquityYvusdRoute = MockupsEquityYvusdRouteImport.update({
+  id: '/mockups/equity-yvusd',
+  path: '/mockups/equity-yvusd',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MockupsJuniorYvusdRoute = MockupsJuniorYvusdRouteImport.update({
@@ -78,6 +84,7 @@ export interface FileRoutesByFullPath {
   '/disclaimer': typeof DisclaimerRoute
   '/privacy': typeof PrivacyRoute
   '/stats': typeof StatsRoute
+  '/mockups/equity-yvusd': typeof MockupsEquityYvusdRoute
   '/mockups/junior-yvusd': typeof MockupsJuniorYvusdRoute
   '/mockups/tranched-vault': typeof MockupsTranchedVaultRoute
   '/stats/analysis': typeof StatsAnalysisRoute
@@ -90,6 +97,7 @@ export interface FileRoutesByTo {
   '/disclaimer': typeof DisclaimerRoute
   '/privacy': typeof PrivacyRoute
   '/stats': typeof StatsRoute
+  '/mockups/equity-yvusd': typeof MockupsEquityYvusdRoute
   '/mockups/junior-yvusd': typeof MockupsJuniorYvusdRoute
   '/mockups/tranched-vault': typeof MockupsTranchedVaultRoute
   '/stats/analysis': typeof StatsAnalysisRoute
@@ -103,6 +111,7 @@ export interface FileRoutesById {
   '/disclaimer': typeof DisclaimerRoute
   '/privacy': typeof PrivacyRoute
   '/stats': typeof StatsRoute
+  '/mockups/equity-yvusd': typeof MockupsEquityYvusdRoute
   '/mockups/junior-yvusd': typeof MockupsJuniorYvusdRoute
   '/mockups/tranched-vault': typeof MockupsTranchedVaultRoute
   '/stats_/analysis': typeof StatsAnalysisRoute
@@ -117,6 +126,7 @@ export interface FileRouteTypes {
     | '/disclaimer'
     | '/privacy'
     | '/stats'
+    | '/mockups/equity-yvusd'
     | '/mockups/junior-yvusd'
     | '/mockups/tranched-vault'
     | '/stats/analysis'
@@ -129,6 +139,7 @@ export interface FileRouteTypes {
     | '/disclaimer'
     | '/privacy'
     | '/stats'
+    | '/mockups/equity-yvusd'
     | '/mockups/junior-yvusd'
     | '/mockups/tranched-vault'
     | '/stats/analysis'
@@ -141,6 +152,7 @@ export interface FileRouteTypes {
     | '/disclaimer'
     | '/privacy'
     | '/stats'
+    | '/mockups/equity-yvusd'
     | '/mockups/junior-yvusd'
     | '/mockups/tranched-vault'
     | '/stats_/analysis'
@@ -154,6 +166,7 @@ export interface RootRouteChildren {
   DisclaimerRoute: typeof DisclaimerRoute
   PrivacyRoute: typeof PrivacyRoute
   StatsRoute: typeof StatsRoute
+  MockupsEquityYvusdRoute: typeof MockupsEquityYvusdRoute
   MockupsJuniorYvusdRoute: typeof MockupsJuniorYvusdRoute
   MockupsTranchedVaultRoute: typeof MockupsTranchedVaultRoute
   StatsAnalysisRoute: typeof StatsAnalysisRoute
@@ -196,6 +209,13 @@ declare module '@tanstack/react-router' {
       path: '/stats'
       fullPath: '/stats'
       preLoaderRoute: typeof StatsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mockups/equity-yvusd': {
+      id: '/mockups/equity-yvusd'
+      path: '/mockups/equity-yvusd'
+      fullPath: '/mockups/equity-yvusd'
+      preLoaderRoute: typeof MockupsEquityYvusdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/mockups/junior-yvusd': {
@@ -242,6 +262,7 @@ const rootRouteChildren: RootRouteChildren = {
   DisclaimerRoute: DisclaimerRoute,
   PrivacyRoute: PrivacyRoute,
   StatsRoute: StatsRoute,
+  MockupsEquityYvusdRoute: MockupsEquityYvusdRoute,
   MockupsJuniorYvusdRoute: MockupsJuniorYvusdRoute,
   MockupsTranchedVaultRoute: MockupsTranchedVaultRoute,
   StatsAnalysisRoute: StatsAnalysisRoute,

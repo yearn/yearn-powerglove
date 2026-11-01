@@ -39,7 +39,10 @@ export function sortVaults(
   return [...vaultListData].sort((a, b) => {
     if (Boolean(a.isTranchedMockup) !== Boolean(b.isTranchedMockup)) return a.isTranchedMockup ? -1 : 1
     if (a.isTranchedMockup && b.isTranchedMockup)
-      return Number(Boolean(a.isJuniorMockup)) - Number(Boolean(b.isJuniorMockup))
+      return (
+        (a.isEquityMockup ? 2 : Number(Boolean(a.isJuniorMockup))) -
+        (b.isEquityMockup ? 2 : Number(Boolean(b.isJuniorMockup)))
+      )
     if (sortColumn === 'tvl') {
       const valueA = parseCompactDisplayNumber(a.tvl)
       const valueB = parseCompactDisplayNumber(b.tvl)

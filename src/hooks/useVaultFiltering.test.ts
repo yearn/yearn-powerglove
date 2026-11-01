@@ -20,14 +20,20 @@ const buildVault = (overrides: Partial<VaultListData>): VaultListData => ({
 })
 
 describe('sortVaults', () => {
-  it('pins Senior then Junior above real vaults regardless of sort direction', () => {
+  it('pins Senior, Junior, then Equity above real vaults regardless of sort direction', () => {
     const vaults = [
       buildVault({ id: 'real', tvl: '$100M' }),
+      { ...buildVault({ id: 'equity', tvl: '$250K' }), isTranchedMockup: true, isEquityMockup: true },
       { ...buildVault({ id: 'junior', tvl: '$5M' }), isTranchedMockup: true, isJuniorMockup: true },
       { ...buildVault({ id: 'senior', tvl: '$10M' }), isTranchedMockup: true }
     ]
     for (const direction of ['asc', 'desc'] as const) {
-      expect(sortVaults(vaults, 'tvl', direction).map((vault) => vault.id)).toEqual(['senior', 'junior', 'real'])
+      expect(sortVaults(vaults, 'tvl', direction).map((vault) => vault.id)).toEqual([
+        'senior',
+        'junior',
+        'equity',
+        'real'
+      ])
     }
   })
 

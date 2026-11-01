@@ -53,12 +53,12 @@ export function useVaultListData(vaults: Vault[], tokenAssets: TokenAsset[]): Va
       }
     })
 
-    const mockups: VaultListData[] = (['senior', 'junior'] as const).map((id) => {
+    const mockups: VaultListData[] = (['senior', 'junior', 'equity'] as const).map((id) => {
       const summary = lastSimulationPoint.tranches[id]
       const apy = summary.thirtyDayApy
       return {
         id: `${id}-yvusd-simulation`,
-        name: `${id === 'senior' ? 'Senior' : 'Junior'} yvUSD (simulated)`,
+        name: `${{ senior: 'Senior', junior: 'Junior', equity: 'Equity' }[id]} yvUSD (simulated)`,
         chain: CHAIN_ID_TO_NAME[1],
         chainIconUri: CHAIN_ID_TO_ICON[1],
         token: 'USDC',
@@ -67,6 +67,7 @@ export function useVaultListData(vaults: Vault[], tokenAssets: TokenAsset[]): Va
         tvl: formatTvlDisplay(summary.nav),
         isTranchedMockup: true,
         isJuniorMockup: id === 'junior',
+        isEquityMockup: id === 'equity',
         estimatedAPY: { display: '-', tooltipItems: [{ label: 'Simulation', value: 'No forward estimate' }] },
         estimatedApySortValue: Number.NaN,
         APY: buildSingleApyDisplay(apy).display,
