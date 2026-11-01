@@ -163,7 +163,14 @@ export function SingleVaultPageContent({
             reallocationData={reallocationData}
           />
         }
-        vaultActivity={<VaultActivityPanel vaultChainId={vaultChainId} vaultDetails={vaultDetails} />}
+        vaultActivity={
+          <VaultActivityPanel
+            vaultChainId={vaultChainId}
+            vaultDetails={vaultDetails}
+            maxHeight="max(0px, calc(100dvh - var(--vault-header-height, 60px) - 25rem))"
+            snapToRows
+          />
+        }
       />
     </VaultPageLayout>
   )

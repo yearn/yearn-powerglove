@@ -41,7 +41,7 @@ export function StandardVaultPage({ mainInfo, showAction, charts, strategies, va
   )
   const content = { performance: charts, strategies, activity: vaultActivity }
   return (
-    <div ref={pageRef} className="vault-ledger bg-[#f3f3f1] pb-10 text-[#151515]" data-testid="standard-vault-page">
+    <div ref={pageRef} className="vault-ledger bg-white text-[#151515]" data-testid="standard-vault-page">
       <VaultStickyTitle vaultName={mainInfo.vaultName} />
       <section id={getVaultReportSectionId('vault', 'overview')} className="scroll-mt-28 bg-white">
         <MainInfoPanel {...mainInfo} showAction={showAction} />
@@ -53,7 +53,7 @@ export function StandardVaultPage({ mainInfo, showAction, charts, strategies, va
           <section
             key={section.id}
             id={getVaultReportSectionId('vault', section.id)}
-            className="scroll-mt-28 border-x border-b border-[#d8d8d8] bg-white"
+            className="scroll-mt-28 border-x border-b border-[#d8d8d8] bg-white last:border-b-0"
           >
             <div className="px-4 pb-2 pt-12 sm:px-6 lg:px-8">
               <h2 className="text-2xl font-bold tracking-[-0.025em] text-[#111] sm:text-3xl">{section.label}</h2>

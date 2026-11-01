@@ -184,7 +184,7 @@ export function ChartsPanel(data: ChartData) {
 
   if (hasErrors) {
     return (
-      <div className="bg-white sm:border-x sm:border-border">
+      <div className="bg-white">
         <div className="flex h-96 items-center justify-center">
           <div className="text-red-500">Error loading chart data</div>
         </div>
@@ -550,7 +550,7 @@ export function ChartsPanel(data: ChartData) {
 
   if (isMobile) {
     return (
-      <div className="bg-white border-x border-border">
+      <div className="bg-white">
         <Tabs
           value={activeTab}
           className="w-full"
@@ -558,14 +558,14 @@ export function ChartsPanel(data: ChartData) {
             setActiveTab(value as ChartTab)
           }}
         >
-          <div className="border-b border-border">
+          <div className="sm:border-b sm:border-border">
             <div className="px-4 sm:px-6">
               <TabsList className="grid h-auto w-full grid-cols-3 gap-0 bg-transparent p-0">
                 {chartTabs.map((tab) => (
                   <TabsTrigger
                     key={tab.value}
                     value={tab.value}
-                    className="flex min-w-0 rounded-none border border-border px-2 py-3 text-center text-sm data-[state=active]:border-[#0657f9] data-[state=active]:bg-[#0657f9]/5 data-[state=active]:text-foreground data-[state=active]:shadow-none sm:border-x-0 sm:border-t-0 sm:border-b-2 sm:px-4"
+                    className="flex min-w-0 rounded-none border-b-2 border-r border-t border-border first:border-l px-2 py-3 text-center text-sm data-[state=active]:border-[#0657f9] data-[state=active]:bg-[#0657f9]/5 data-[state=active]:text-foreground data-[state=active]:shadow-none sm:border-x-0 sm:border-t-0 sm:border-b-2 sm:px-4"
                   >
                     {tab.mobileLabel}
                   </TabsTrigger>
@@ -584,7 +584,7 @@ export function ChartsPanel(data: ChartData) {
   }
 
   return (
-    <div className="bg-white border-x border-border">
+    <div className="bg-white">
       <Tabs
         value={activeTab}
         className="w-full"
