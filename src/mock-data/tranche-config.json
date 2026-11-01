@@ -1,6 +1,8 @@
 {
-  "id": "yvusd-tranches-2026-08-01-to-2026-11-01-v2",
+  "id": "yvusd-tranches-2026-08-01-to-2026-11-01-v3",
   "replayCashFlows": true,
+  "settlementDays": 7,
+  "profitUnlockDays": { "senior": 0, "junior": 7, "equity": 7 },
   "start": "2026-08-01T00:00:00Z",
   "end": "2026-11-01T00:00:00Z",
   "seniorReallocationUsd": "1000000",

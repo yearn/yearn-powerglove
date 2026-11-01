@@ -73,7 +73,13 @@ export function useVaultListData(vaults: Vault[], tokenAssets: TokenAsset[]): Va
         APY: buildSingleApyDisplay(apy).display,
         desktopThirtyDayAPY: {
           ...buildSingleApyDisplay(apy),
-          tooltipItems: [{ label: 'Simulated 30-day APY', value: 'As of November 1, 2026' }]
+          tooltipItems: [
+            {
+              label: 'Simulated 30-day APY',
+              value:
+                id === 'senior' ? 'As of November 1, 2026' : 'Includes seven-day profit unlocking · November 1, 2026'
+            }
+          ]
         },
         apySortValue: apy === null ? Number.NaN : normalizeApyDisplayValue(apy),
         apyRawValue: apy === null ? Number.NaN : apy * 100

@@ -49,8 +49,10 @@ function SimulationSummary() {
     <div className="border-x border-t border-border bg-white px-4 py-6 sm:px-6">
       <h2 className="text-lg font-semibold">Simulated migration · August 1 – November 1, 2026</h2>
       <p className="mt-1 text-sm text-muted-foreground">
-        92 daily intervals with inferred end-of-day net deposits and withdrawals. Earnings exclude cash flows; returns
-        are cash-flow-neutral and cumulative, not annualized.
+        92 daily intervals, 14 settlements (weekly plus a final one-day settlement), and inferred end-of-day net
+        deposits and withdrawals. TVL and economic earnings include locked profits; share returns and APYs reflect
+        seven-day excess-profit unlocking for Junior and Equity. Returns exclude cash flows and are cumulative, not
+        annualized.
       </p>
       <div className="mt-4 overflow-x-auto">
         <table className="w-full text-right text-sm tabular-nums">
@@ -60,8 +62,9 @@ function SimulationSummary() {
               <th className="px-3">Starting TVL</th>
               <th className="px-3">Net cash flow</th>
               <th className="px-3">Ending TVL</th>
-              <th className="px-3">Earnings</th>
-              <th className="pl-3">Return</th>
+              <th className="px-3">Economic earnings</th>
+              <th className="px-3">Locked profits</th>
+              <th className="pl-3">Unlocked return</th>
             </tr>
           </thead>
           <tbody>
@@ -76,6 +79,7 @@ function SimulationSummary() {
                   <td className="whitespace-nowrap px-3">{formatCurrency(result.cumulativeNetFlowUsd)}</td>
                   <td className="whitespace-nowrap px-3">{formatCurrency(result.nav)}</td>
                   <td className="whitespace-nowrap px-3">{formatCurrency(result.earningsUsd)}</td>
+                  <td className="whitespace-nowrap px-3">{formatCurrency(result.lockedProfitsUsd)}</td>
                   <td className="pl-3">{(result.cumulativeReturn * 100).toFixed(2)}%</td>
                 </tr>
               )
@@ -97,7 +101,7 @@ export function SimulatedTranchePage({ tranche }: { tranche: TrancheId }) {
     deploymentLabel: 'Simulated since',
     apiVersion: 'Counterfactual',
     description:
-      'Simulated migration of August 1 yvUSD balances. Senior targets 5% annually; Junior targets 5% plus 80% of excess, and Equity receives 20% of excess and absorbs losses first.\n\nDaily settlement and immediate excess realization, no added tranche fees, inferred end-of-day cash flows from original vault TVL/PPS, and USDC valued at $1. Underlying fees are already reflected in source share prices. Results end November 1, 2026 and are not live vault performance.',
+      'Simulated migration of August 1 yvUSD balances. Senior targets 5% annually; Junior targets 5% plus 80% of excess, and Equity receives 20% of excess and absorbs losses first.\n\nWeekly settlement with seven-day excess-profit unlocking for Junior and Equity; target accrual remains live. TVL includes locked profits, while share growth and APYs reflect unlocking. No added tranche fees, inferred end-of-day cash flows from original vault TVL/PPS, and USDC valued at $1. Underlying fees are already reflected in source share prices. Results end November 1, 2026 and are not live vault performance.',
     vaultToken: {
       icon: 'https://cdn.jsdelivr.net/gh/yearn/tokenassets@main/tokens/1/0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48/logo-32.png',
       name: 'USDC'
