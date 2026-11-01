@@ -11,7 +11,8 @@ vi.mock('@/components/charts/charts-panel', () => ({ ChartsPanel: () => <div>Sim
 describe('frozen tranche pages', () => {
   it.each([
     { tranche: 'senior' as const, name: 'Senior yvUSD', tvl: '$8,928,927.29' },
-    { tranche: 'junior' as const, name: 'Junior yvUSD', tvl: '$5,325,932.98' }
+    { tranche: 'junior' as const, name: 'Junior yvUSD', tvl: '$5,325,932.98' },
+    { tranche: 'equity' as const, name: 'Equity yvUSD', tvl: '$252,576.36' }
   ])('shows $name simulation even when the live reference fails', async ({ tranche, name, tvl }) => {
     render(<SimulatedTranchePage tranche={tranche} />)
     expect(screen.getByRole('heading', { name })).toBeTruthy()

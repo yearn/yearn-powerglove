@@ -8,6 +8,7 @@ import type { ApyDisplayValue } from '@/types/dataTypes'
 
 export interface VaultListData {
   isJuniorMockup?: boolean
+  isEquityMockup?: boolean
   isTranchedMockup?: boolean
   id: string
   name: string
@@ -188,11 +189,13 @@ export const VaultRow: React.FC<VaultRowProps> = ({ vault, iconStyle = 'badge' }
   return (
     <Link
       to={
-        vault.isJuniorMockup
-          ? '/mockups/junior-yvusd'
-          : vault.isTranchedMockup
-            ? '/mockups/tranched-vault'
-            : '/vaults/$chainId/$vaultAddress'
+        vault.isEquityMockup
+          ? '/mockups/equity-yvusd'
+          : vault.isJuniorMockup
+            ? '/mockups/junior-yvusd'
+            : vault.isTranchedMockup
+              ? '/mockups/tranched-vault'
+              : '/vaults/$chainId/$vaultAddress'
       }
       params={
         vault.isTranchedMockup
@@ -238,11 +241,13 @@ export const VaultMobileListRow: React.FC<VaultMobileListRowProps> = ({
   return (
     <Link
       to={
-        vault.isJuniorMockup
-          ? '/mockups/junior-yvusd'
-          : vault.isTranchedMockup
-            ? '/mockups/tranched-vault'
-            : '/vaults/$chainId/$vaultAddress'
+        vault.isEquityMockup
+          ? '/mockups/equity-yvusd'
+          : vault.isJuniorMockup
+            ? '/mockups/junior-yvusd'
+            : vault.isTranchedMockup
+              ? '/mockups/tranched-vault'
+              : '/vaults/$chainId/$vaultAddress'
       }
       params={
         vault.isTranchedMockup
