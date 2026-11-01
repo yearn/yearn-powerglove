@@ -18,9 +18,10 @@ export function TranchedVaultMockup({ tranche = 'senior' }: { tranche?: TrancheI
         <div className="max-h-[70vh] w-80 max-w-full overflow-y-auto border-t border-border px-4 py-3">
           <p className="mb-3 text-muted-foreground">
             Simulated August 1–November 1, 2026 migration. Senior starts with unlocked TVL minus $1M; Junior with locked
-            TVL plus $750K; Equity with $250K. Senior and Junior target 5%; excess splits 80% Junior / 20% Equity. Daily
-            settlement, immediate profit unlock, inferred daily cash flows, and no added fees. Live strategy references
-            are separate from simulated returns. No tranche transactions were executed.
+            TVL plus $750K; Equity with $250K. Senior and Junior target 5%; excess splits 80% Junior / 20% Equity.
+            Weekly settlement, seven-day excess-profit unlocking for Junior and Equity, inferred daily cash flows, and
+            no added fees. TVL includes locked profits; share returns and APYs reflect unlocking. Live strategy
+            references are separate from simulated returns. No tranche transactions were executed.
           </p>
           <div className="mb-3 flex flex-col gap-2">
             <a className="underline underline-offset-4" href={simulationUrl} download="yvusd-tranche-simulation.json">

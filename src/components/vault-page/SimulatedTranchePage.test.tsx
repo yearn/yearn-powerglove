@@ -11,8 +11,8 @@ vi.mock('@/components/charts/charts-panel', () => ({ ChartsPanel: () => <div>Sim
 describe('frozen tranche pages', () => {
   it.each([
     { tranche: 'senior' as const, name: 'Senior yvUSD', tvl: '$8,928,927.29' },
-    { tranche: 'junior' as const, name: 'Junior yvUSD', tvl: '$5,325,932.98' },
-    { tranche: 'equity' as const, name: 'Equity yvUSD', tvl: '$252,576.36' }
+    { tranche: 'junior' as const, name: 'Junior yvUSD', tvl: '$5,324,549.19' },
+    { tranche: 'equity' as const, name: 'Equity yvUSD', tvl: '$253,960.14' }
   ])('shows $name simulation even when the live reference fails', async ({ tranche, name, tvl }) => {
     render(<SimulatedTranchePage tranche={tranche} />)
     expect(screen.getByRole('heading', { name })).toBeTruthy()
@@ -21,6 +21,8 @@ describe('frozen tranche pages', () => {
     expect(screen.queryByText('Expected APY')).toBeNull()
     expect(await screen.findByText('Simulated charts')).toBeTruthy()
     expect(screen.getByText(/Live strategy reference is unavailable/)).toBeTruthy()
+    expect(screen.getByRole('columnheader', { name: 'Locked profits' })).toBeTruthy()
+    expect(screen.getByRole('columnheader', { name: 'Unlocked return' })).toBeTruthy()
     expect(screen.getByRole('rowheader', { name: /equity/i })).toBeTruthy()
   })
 })

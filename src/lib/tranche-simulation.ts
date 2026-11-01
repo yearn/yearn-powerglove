@@ -23,6 +23,8 @@ export interface TrancheHistorySource {
 }
 
 export interface TrancheSimulationConfig {
+  profitUnlockDays?: Partial<Record<TrancheId, number>>
+  settlementDays?: number
   replayCashFlows: boolean
   id: string
   start: string
@@ -50,7 +52,50 @@ const annualize = (end: number, start: number, days: number) =>
   // Canonical presentation precision avoids tiny Math.pow differences between Bun and Node.
   start > 0 && days > 0 ? Number(((end / start) ** (365 / days) - 1).toFixed(10)) : null
 
+// TokenizedStrategy 8c8929f: fee-free report-locked shares burn linearly.
+// New reports weight the remaining lock duration with the new seven-day lock.
+export class ProfitUnlocking {
+  private locked = 0n
+  private rate = 0n
+  private lastReport = 0
+  private end = 0
+  private static readonly RATE_SCALE = 10n ** 12n
+
+  remaining(time: number): bigint {
+    if (time >= this.end) return 0n
+    const unlocked = (this.rate * BigInt(time - this.lastReport)) / ProfitUnlocking.RATE_SCALE
+    return this.locked - min(this.locked, unlocked)
+  }
+
+  report(profit: bigint, assetsBefore: bigint, holderShares: bigint, time: number, duration: number) {
+    const previous = this.remaining(time)
+    const minted = assetsBefore > 0n ? (profit * (holderShares + previous)) / assetsBefore : 0n
+    const total = previous + minted
+    if (total === 0n || duration === 0) return
+    const period = Number((previous * BigInt(Math.max(0, this.end - time)) + minted * BigInt(duration)) / total)
+    this.reset(total, time, time + period)
+  }
+
+  absorbLoss(loss: bigint, assetsBefore: bigint, holderShares: bigint, time: number) {
+    const previous = this.remaining(time)
+    const burned = assetsBefore > 0n ? min(previous, (loss * (holderShares + previous)) / assetsBefore) : previous
+    this.reset(previous - burned, time, this.end)
+  }
+
+  private reset(locked: bigint, time: number, end: number) {
+    this.locked = locked
+    this.lastReport = time
+    this.end = locked > 0n ? end : time
+    this.rate = end > time ? (locked * ProfitUnlocking.RATE_SCALE) / BigInt(end - time) : 0n
+  }
+}
+
 export function simulateTranches(source: TrancheHistorySource, config: TrancheSimulationConfig) {
+  const settlementDays = config.settlementDays ?? 1
+  if (!Number.isInteger(settlementDays) || settlementDays < 1) throw new Error('Invalid settlement cadence')
+  for (const days of Object.values(config.profitUnlockDays ?? {})) {
+    if (!Number.isInteger(days) || days < 0) throw new Error('Invalid profit unlock duration')
+  }
   const start = Date.parse(config.start) / 1000
   const end = Date.parse(config.end) / 1000
   if (!Number.isInteger(start) || !Number.isInteger(end) || end <= start || (end - start) % DAY !== 0) {
@@ -101,7 +146,13 @@ export function simulateTranches(source: TrancheHistorySource, config: TrancheSi
     junior: initial.junior * 10n ** 12n,
     equity: initial.equity * 10n ** 12n
   }
+  const profitLocks = { senior: new ProfitUnlocking(), junior: new ProfitUnlocking(), equity: new ProfitUnlocking() }
+  const accountedAssets = { ...initial }
   const netFlows = { senior: 0n, junior: 0n, equity: 0n }
+  const lastAccrual = { senior: 0, junior: 0, equity: 0 }
+  const liveAssets = (id: TrancheId, index: number) =>
+    state[id].baseline +
+    (state[id].paused ? 0n : (state[id].baseline * rates[id] * BigInt((index - lastAccrual[id]) * DAY)) / WAD)
   let pool = total
   const observation = (key: 'totalTvl' | 'lockedTvl' | 'unlockedPps' | 'lockedPps', time: number, decimals: number) => {
     const matches = source.history?.[key].filter((row) => row.time === time)
@@ -135,15 +186,16 @@ export function simulateTranches(source: TrancheHistorySource, config: TrancheSi
     const targets = { senior: 0n, junior: 0n, equity: 0n }
     const losses = { senior: 0n, junior: 0n, equity: 0n }
     const excess = { senior: 0n, junior: 0n, equity: 0n }
-    if (index > 0) {
-      for (const id of TRANCHE_IDS) {
-        const tranche = state[id]
-        targets[id] = tranche.paused ? 0n : (tranche.baseline * rates[id] * BigInt(DAY)) / WAD
-        tranche.baseline += targets[id]
-      }
+    const isSettlement = index > 0 && (index % settlementDays === 0 || index === source.pps.length - 1)
+    const accrue = (id: TrancheId) => {
+      const next = liveAssets(id, index)
+      targets[id] += next - state[id].baseline
+      state[id].baseline = next
+      lastAccrual[id] = index
     }
+    if (isSettlement) for (const id of TRANCHE_IDS) accrue(id)
     const claims = TRANCHE_IDS.reduce((sum, id) => sum + state[id].baseline + state[id].pending, 0n)
-    const settlementPnl = pool - claims
+    const settlementPnl = isSettlement ? pool - claims : 0n
     if (settlementPnl > 0n) {
       for (const id of TRANCHE_IDS) {
         state[id].paused = false
@@ -168,27 +220,50 @@ export function simulateTranches(source: TrancheHistorySource, config: TrancheSi
     const tranches = Object.fromEntries(
       TRANCHE_IDS.map((id, position) => {
         const tranche = state[id]
+        const flow = flows[id]
+        if (flow !== 0n) accrue(id)
         const pendingBeforeReport = tranche.pending
-        // Daily report at settlement time; no extra tranche fees or profit-unlock delay.
+        const unlockSeconds = (config.profitUnlockDays?.[id] ?? 0) * DAY
+        const lock = profitLocks[id]
+        if (unlockSeconds > 0 && (isSettlement || flow !== 0n)) {
+          // Accrued target gains remain live; a net loss burns locked shares first.
+          if (tranche.baseline < accountedAssets[id]) {
+            lock.absorbLoss(accountedAssets[id] - tranche.baseline, accountedAssets[id], shares[id], point.time)
+          }
+          if (isSettlement) lock.report(pendingBeforeReport, tranche.baseline, shares[id], point.time, unlockSeconds)
+        }
+        // Report realizes controller excess economically, while vault shares lock its price impact.
         tranche.baseline += tranche.pending
         tranche.pending = 0n
         // Historical cash flows are applied at end of day, after settlement, at the current tranche price.
-        const flow = flows[id]
         if (flow < -tranche.baseline)
           throw new Error(`Historical withdrawal exceeds ${id} simulated capital on ${point.time}`)
         if (flow !== 0n) {
           if (tranche.baseline === 0n && shares[id] !== 0n)
             throw new Error('Cannot price a deposit into a wiped tranche')
           const magnitude = flow < 0n ? -flow : flow
+          const effectiveShares = shares[id] + lock.remaining(point.time)
+          const numerator = magnitude * effectiveShares
           const shareDelta =
-            tranche.baseline === 0n ? magnitude * 10n ** 12n : (magnitude * shares[id]) / tranche.baseline
+            tranche.baseline === 0n
+              ? magnitude * 10n ** 12n
+              : flow < 0n && unlockSeconds > 0
+                ? (numerator + tranche.baseline - 1n) / tranche.baseline
+                : numerator / tranche.baseline
+          if (flow < 0n && shareDelta > shares[id]) throw new Error('Withdrawal exceeds holder shares')
           shares[id] += flow < 0n ? -shareDelta : shareDelta
           tranche.baseline += flow
           netFlows[id] += flow
           pool += flow
         }
-        const nav = dollars(tranche.baseline)
-        const pps = shares[id] > 0n ? (Number(tranche.baseline) * 1e12) / Number(shares[id]) : 0
+        if (isSettlement || flow !== 0n) accountedAssets[id] = tranche.baseline
+        const navUnits = liveAssets(id, index)
+        const nav = dollars(navUnits)
+        const lockedShares = lock.remaining(point.time)
+        const effectiveShares = shares[id] + lockedShares
+        const lockedProfitUnits = effectiveShares > 0n ? (navUnits * lockedShares) / effectiveShares : 0n
+        const pps = effectiveShares > 0n ? (Number(navUnits) * 1e12) / Number(effectiveShares) : 0
+        const economicPps = shares[id] > 0n ? (Number(navUnits) * 1e12) / Number(shares[id]) : 0
         const prior = history[position]
         const apy = (days: number) => {
           const previous = prior[index - days]
@@ -196,12 +271,18 @@ export function simulateTranches(source: TrancheHistorySource, config: TrancheSi
         }
         const value = {
           nav,
-          navUnits: tranche.baseline.toString(),
+          navUnits: navUnits.toString(),
           pps,
           sharesUnits: shares[id].toString(),
+          effectiveSharesUnits: effectiveShares.toString(),
+          lockedSharesUnits: lockedShares.toString(),
+          lockedProfitsUsd: dollars(lockedProfitUnits),
+          unlockedAssetsUsd: dollars(navUnits - lockedProfitUnits),
+          economicPps,
+          economicCumulativeReturn: economicPps - 1,
           netFlowUsd: dollars(flow),
           cumulativeNetFlowUsd: dollars(netFlows[id]),
-          earningsUsd: dollars(tranche.baseline - initial[id] - netFlows[id]),
+          earningsUsd: dollars(navUnits - initial[id] - netFlows[id]),
           cumulativeReturn: pps - 1,
           oneDayApy: apy(1),
           sevenDayApy: apy(7),
@@ -221,6 +302,12 @@ export function simulateTranches(source: TrancheHistorySource, config: TrancheSi
         nav: number
         navUnits: string
         pps: number
+        effectiveSharesUnits: string
+        lockedSharesUnits: string
+        lockedProfitsUsd: number
+        unlockedAssetsUsd: number
+        economicPps: number
+        economicCumulativeReturn: number
         sharesUnits: string
         netFlowUsd: number
         cumulativeNetFlowUsd: number
@@ -236,21 +323,24 @@ export function simulateTranches(source: TrancheHistorySource, config: TrancheSi
         accrualPaused: boolean
       }
     >
-    const residual = pool - TRANCHE_IDS.reduce((sum, id) => sum + state[id].baseline, 0n)
-    if (residual < 0n) throw new Error('Tranche claims exceed pool assets after settlement')
+    const residual = pool - TRANCHE_IDS.reduce((sum, id) => sum + liveAssets(id, index), 0n)
+    if (isSettlement && residual < 0n) throw new Error('Tranche claims exceed pool assets after settlement')
     return {
+      isSettlement,
       time: point.time,
       date: new Date(point.time * 1000).toISOString().slice(0, 10),
       underlyingPps: point.value,
       poolNav: dollars(pool),
       poolNavUnits: pool.toString(),
       settlementPnlUsd: dollars(settlementPnl),
-      roundingResidualUnits: residual.toString(),
+      // Between settlements this is unallocated PnL, including any target shortfall.
+      unsettledPnlUnits: isSettlement ? '0' : residual.toString(),
+      roundingResidualUnits: isSettlement ? residual.toString() : '0',
       tranches
     }
   })
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     config,
     source,
     assumptions: {
@@ -259,16 +349,20 @@ export function simulateTranches(source: TrancheHistorySource, config: TrancheSi
       usdcUsdPrice: 1,
       additionalTrancheFeesBps: 0,
       reserveUsd: 0,
-      settlementSeconds: DAY,
-      reportSeconds: DAY,
-      profitUnlockSeconds: 0,
+      settlementSeconds: settlementDays * DAY,
+      reportSeconds: settlementDays * DAY,
+      profitUnlockSeconds: Object.fromEntries(
+        TRANCHE_IDS.map((id) => [id, (config.profitUnlockDays?.[id] ?? 0) * DAY])
+      ),
+      profitUnlockModel: 'Fee-free TokenizedStrategy 8c8929f report-locked shares; live target accrual',
+      tokenizedStrategyCommit: '8c8929f1878e8c5ad78aa0a6dabc877a890f68d9',
       externalFlows: config.replayCashFlows,
       cashFlowMethod: config.replayCashFlows
         ? 'Inferred from reported daily TVL less original PPS return; applied at end of day'
         : 'None',
       controllerYearSeconds: Number(CONTRACT_YEAR),
       apyYearDays: 365,
-      valuation: 'Economic NAV with daily excess realization; not actual deployed tranche share prices'
+      valuation: 'TVL includes locked profits; share returns use effective supply after profit unlocking'
     },
     initial: Object.fromEntries(TRANCHE_IDS.map((id) => [id, dollars(initial[id])])) as Record<TrancheId, number>,
     points

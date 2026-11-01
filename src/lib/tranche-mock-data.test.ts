@@ -37,6 +37,17 @@ describe('actual history joined to the simulated migration', () => {
     expect(senior.summary.cumulativeNetFlowUsd).toBeGreaterThan(0)
   })
 
+  it('charts unlocked share growth and APY while TVL includes locked profits', () => {
+    const junior = getTrancheMockData('junior')
+    const final = trancheSimulation.points[92].tranches.junior
+    const anchor = junior.ppsData.find((point) => point.date === '2026-08-01')!.PPS!
+    expect(junior.ppsData[junior.ppsData.length - 1]!.PPS).toBeCloseTo(final.pps * anchor, 12)
+    expect(final.lockedProfitsUsd).toBeGreaterThan(0)
+    expect(final.cumulativeReturn).toBeLessThan(final.economicCumulativeReturn)
+    expect(junior.tvlData[junior.tvlData.length - 1]!.TVL).toBe(final.nav)
+    expect(junior.aprApyData[junior.aprApyData.length - 1]!.thirtyDayApy).toBeCloseTo(final.thirtyDayApy! * 100, 7)
+  })
+
   it('preserves the original published Senior performance before migration', () => {
     const actual = source.history.seniorApy.find(
       (point) =>
