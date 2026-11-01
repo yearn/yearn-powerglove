@@ -7,6 +7,8 @@ import type { ApyDisplayValue } from '@/types/dataTypes'
 import { OptimizedImage } from '../ui/OptimizedImage'
 
 export interface VaultListData {
+  isJuniorMockup?: boolean
+  isTranchedMockup?: boolean
   id: string
   name: string
   chain: string
@@ -130,11 +132,21 @@ export const DesktopApyValue = ({ metric }: { metric: ApyDisplayValue }) => {
 export const VaultRow: React.FC<VaultRowProps> = ({ vault }) => {
   return (
     <Link
-      to="/vaults/$chainId/$vaultAddress"
-      params={{
-        chainId: (getChainIdByName(vault.chain) || 1).toString(),
-        vaultAddress: vault.id
-      }}
+      to={
+        vault.isJuniorMockup
+          ? '/mockups/junior-yvusd'
+          : vault.isTranchedMockup
+            ? '/mockups/tranched-vault'
+            : '/vaults/$chainId/$vaultAddress'
+      }
+      params={
+        vault.isTranchedMockup
+          ? undefined
+          : {
+              chainId: (getChainIdByName(vault.chain) || 1).toString(),
+              vaultAddress: vault.id
+            }
+      }
       className="flex px-6 py-2 border-b hover:bg-muted/40 transition-colors cursor-pointer bg-white"
       style={{ height: '50px' }}
     >
@@ -170,11 +182,21 @@ export const VaultRow: React.FC<VaultRowProps> = ({ vault }) => {
 export const VaultMobileListRow: React.FC<VaultMobileListRowProps> = ({ vault, isLast = false }) => {
   return (
     <Link
-      to="/vaults/$chainId/$vaultAddress"
-      params={{
-        chainId: (getChainIdByName(vault.chain) || 1).toString(),
-        vaultAddress: vault.id
-      }}
+      to={
+        vault.isJuniorMockup
+          ? '/mockups/junior-yvusd'
+          : vault.isTranchedMockup
+            ? '/mockups/tranched-vault'
+            : '/vaults/$chainId/$vaultAddress'
+      }
+      params={
+        vault.isTranchedMockup
+          ? undefined
+          : {
+              chainId: (getChainIdByName(vault.chain) || 1).toString(),
+              vaultAddress: vault.id
+            }
+      }
       className={cn(
         'block h-full bg-white px-3 py-2.5 transition-colors hover:bg-gray-50',
         !isLast && 'border-b border-gray-100'

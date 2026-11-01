@@ -113,7 +113,9 @@ export function MainInfoPanel({ showAction = true, ...data }: MainInfoPanelProps
           <div className="min-w-0">
             <div className="mb-2 flex flex-wrap items-center gap-2">
               <div className="text-sm text-gray-500">{data.vaultId}</div>
-              <div className="inline-block bg-gray-100 px-2 py-1 text-xs">Deployed: {data.deploymentDate}</div>
+              <div className="inline-block bg-gray-100 px-2 py-1 text-xs">
+                {data.deploymentLabel ?? 'Deployed'}: {data.deploymentDate}
+              </div>
             </div>
             <div className="mb-2 flex flex-col gap-1 sm:flex-row sm:items-end sm:gap-3">
               <h1 className="text-3xl font-bold" data-vault-title-source>
@@ -125,7 +127,7 @@ export function MainInfoPanel({ showAction = true, ...data }: MainInfoPanelProps
 
           <div className="w-full max-w-xl min-w-0 pt-3 min-[1100px]:col-start-1 min-[1100px]:row-start-2">
             <div className="grid min-w-0 grid-cols-2 content-start gap-x-6 gap-y-5 sm:grid-cols-3">
-              <Stat label="Expected APY">
+              <Stat label={data.expectedApyLabel ?? 'Expected APY'}>
                 <ApyMetricValue metric={data.oneDayAPY} />
               </Stat>
               <Stat label="7-day APY">
@@ -134,7 +136,7 @@ export function MainInfoPanel({ showAction = true, ...data }: MainInfoPanelProps
               <Stat label="30-day APY">
                 <ApyMetricValue metric={data.thirtyDayAPY} />
               </Stat>
-              <Stat label="Total Supply">{renderTotalSupply('sm:hidden', 'hidden sm:inline')}</Stat>
+              <Stat label={data.tvlLabel ?? 'Total Supply'}>{renderTotalSupply('sm:hidden', 'hidden sm:inline')}</Stat>
               <Stat label="Management Fee">
                 <span className="tabular-nums">{data.managementFee}</span>
               </Stat>
@@ -143,7 +145,7 @@ export function MainInfoPanel({ showAction = true, ...data }: MainInfoPanelProps
               </Stat>
               <Stat label="Network">{network}</Stat>
               <Stat label="Vault Token">{vaultToken}</Stat>
-              <Stat label="Vault Address">{vaultAddress}</Stat>
+              <Stat label={data.vaultAddressLabel ?? 'Vault Address'}>{vaultAddress}</Stat>
             </div>
           </div>
 

@@ -1,6 +1,10 @@
 export const VAULT_TYPES: {
   [key: string]: { id: number; name: string; icon?: string }
 } = {
+  'Tranched Vault': {
+    id: 6,
+    name: 'Tranched Vault'
+  },
   'Allocator Vault': {
     id: 1,
     name: 'Allocator Vault',

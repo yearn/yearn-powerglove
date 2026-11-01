@@ -1,6 +1,6 @@
 import { ChevronDown } from 'lucide-react'
 import React, { useMemo, useState } from 'react'
-import { CartesianGrid, Line, LineChart, ResponsiveContainer, XAxis, YAxis } from 'recharts'
+import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, XAxis, YAxis } from 'recharts'
 import { CHART_PALETTE } from '@/components/charts/chart-container'
 import {
   type ChartTimeframe,
@@ -228,6 +228,7 @@ interface APYChartProps {
   comparisonChartData?: ChartDataPoint[]
   comparisonLabel?: string
   timeframe: ChartTimeframe
+  migrationDate?: string
   hideAxes?: boolean
   hideTooltip?: boolean
   chartMargin?: Partial<{
@@ -440,6 +441,7 @@ export function APYSeriesSelector({
 export const APYChart: React.FC<APYChartProps> = React.memo(
   ({
     chartData,
+    migrationDate,
     comparisonChartData,
     comparisonLabel = 'Locked yvUSD',
     timeframe,
@@ -660,6 +662,14 @@ export const APYChart: React.FC<APYChartProps> = React.memo(
                 }}
               >
                 <CartesianGrid vertical={false} />
+                {migrationDate && (
+                  <ReferenceLine
+                    x={migrationDate}
+                    stroke="#777"
+                    strokeDasharray="4 4"
+                    label={{ value: 'Migration', position: 'insideTopRight', fontSize: 11 }}
+                  />
+                )}
                 <XAxis
                   dataKey="date"
                   minTickGap={isMobile ? 32 : 24}

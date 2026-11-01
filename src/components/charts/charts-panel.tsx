@@ -32,6 +32,7 @@ type ChartData = {
   aprApyData: aprApyChartData | null
   tvlData: tvlChartData | null
   ppsData: ppsChartData | null
+  migrationDate?: string
   isV3Vault?: boolean
   isYBold?: boolean
   isLoading?: boolean
@@ -160,6 +161,7 @@ export function ChartsPanel(data: ChartData) {
   const isMobile = useIsMobile()
   const [activeTab, setActiveTab] = useState<ChartTab>('historical-apy')
   const {
+    migrationDate,
     aprApyData,
     tvlData,
     ppsData,
@@ -308,6 +310,7 @@ export function ChartsPanel(data: ChartData) {
             <ChartErrorBoundary>
               <APYChart
                 chartData={aprApyData}
+                migrationDate={migrationDate}
                 timeframe={chartTimeframe}
                 visibleSeries={resolvedApyVisibleSeries}
                 onVisibleSeriesChange={setApyVisibleSeries}
@@ -345,7 +348,7 @@ export function ChartsPanel(data: ChartData) {
         return (
           <FixedHeightChartContainer heightClassName={chartHeightClassName}>
             <ChartErrorBoundary>
-              <PPSChart chartData={ppsData} timeframe={chartTimeframe} />
+              <PPSChart chartData={ppsData} timeframe={chartTimeframe} migrationDate={migrationDate} />
             </ChartErrorBoundary>
             {showGhostedOverlay && (
               <div className="pointer-events-none absolute inset-0 opacity-30">
@@ -384,7 +387,7 @@ export function ChartsPanel(data: ChartData) {
         return (
           <FixedHeightChartContainer heightClassName={chartHeightClassName}>
             <ChartErrorBoundary>
-              <TVLChart chartData={tvlData} timeframe={chartTimeframe} />
+              <TVLChart chartData={tvlData} timeframe={chartTimeframe} migrationDate={migrationDate} />
             </ChartErrorBoundary>
             {showGhostedOverlay && (
               <div className="pointer-events-none absolute inset-0 opacity-30">
