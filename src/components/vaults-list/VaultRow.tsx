@@ -7,6 +7,8 @@ import { cn } from '@/lib/utils'
 import type { ApyDisplayValue } from '@/types/dataTypes'
 
 export interface VaultListData {
+  isJuniorMockup?: boolean
+  isTranchedMockup?: boolean
   id: string
   name: string
   chain: string
@@ -185,11 +187,21 @@ export function RetiredVaultWarning() {
 export const VaultRow: React.FC<VaultRowProps> = ({ vault, iconStyle = 'badge' }) => {
   return (
     <Link
-      to="/vaults/$chainId/$vaultAddress"
-      params={{
-        chainId: (getChainIdByName(vault.chain) || 1).toString(),
-        vaultAddress: vault.id
-      }}
+      to={
+        vault.isJuniorMockup
+          ? '/mockups/junior-yvusd'
+          : vault.isTranchedMockup
+            ? '/mockups/tranched-vault'
+            : '/vaults/$chainId/$vaultAddress'
+      }
+      params={
+        vault.isTranchedMockup
+          ? undefined
+          : {
+              chainId: (getChainIdByName(vault.chain) || 1).toString(),
+              vaultAddress: vault.id
+            }
+      }
       className="grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)_minmax(0,2fr)] gap-x-6 pl-6 pr-10 py-2 border-b hover:bg-muted/40 transition-colors cursor-pointer bg-white"
       style={{ height: '50px' }}
     >
@@ -225,11 +237,21 @@ export const VaultMobileListRow: React.FC<VaultMobileListRowProps> = ({
 }) => {
   return (
     <Link
-      to="/vaults/$chainId/$vaultAddress"
-      params={{
-        chainId: (getChainIdByName(vault.chain) || 1).toString(),
-        vaultAddress: vault.id
-      }}
+      to={
+        vault.isJuniorMockup
+          ? '/mockups/junior-yvusd'
+          : vault.isTranchedMockup
+            ? '/mockups/tranched-vault'
+            : '/vaults/$chainId/$vaultAddress'
+      }
+      params={
+        vault.isTranchedMockup
+          ? undefined
+          : {
+              chainId: (getChainIdByName(vault.chain) || 1).toString(),
+              vaultAddress: vault.id
+            }
+      }
       className={cn(
         'block h-full bg-white px-3 py-2.5 transition-colors hover:bg-gray-50',
         !isLast && 'border-b border-gray-100'

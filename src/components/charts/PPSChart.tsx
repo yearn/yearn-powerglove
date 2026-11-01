@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react'
-import { CartesianGrid, Line, LineChart, ResponsiveContainer, XAxis, YAxis } from 'recharts'
+import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, XAxis, YAxis } from 'recharts'
 import { type ChartTimeframe, filterChartTimeframe } from '@/components/charts/chart-utils'
 import { ChartContainer, ChartTooltip } from '@/components/ui/chart'
 import { useIsMobile } from '@/components/ui/use-mobile'
@@ -10,6 +10,7 @@ type PercentSeriesKey = 'derivedApr'
 interface PPSChartProps {
   chartData: ChartDataPoint[]
   timeframe: ChartTimeframe
+  migrationDate?: string
   hideAxes?: boolean
   hideTooltip?: boolean
   dataKey?: 'PPS' | PercentSeriesKey
@@ -23,7 +24,7 @@ interface PPSChartProps {
 }
 
 export const PPSChart: React.FC<PPSChartProps> = React.memo(
-  ({ chartData, timeframe, hideAxes, hideTooltip, dataKey = 'PPS', chartMargin, yAxisWidth }) => {
+  ({ chartData, migrationDate, timeframe, hideAxes, hideTooltip, dataKey = 'PPS', chartMargin, yAxisWidth }) => {
     const isMobile = useIsMobile()
     const filteredData = useMemo(() => filterChartTimeframe(chartData, timeframe), [chartData, timeframe])
     const chartBottomPadding = isMobile ? 12 : 16
@@ -68,6 +69,14 @@ export const PPSChart: React.FC<PPSChartProps> = React.memo(
             }}
           >
             <CartesianGrid vertical={false} />
+            {migrationDate && (
+              <ReferenceLine
+                x={migrationDate}
+                stroke="#777"
+                strokeDasharray="4 4"
+                label={{ value: 'Migration', position: 'insideTopRight', fontSize: 11 }}
+              />
+            )}
             <XAxis
               dataKey="date"
               minTickGap={isMobile ? 32 : 24}

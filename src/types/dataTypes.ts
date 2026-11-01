@@ -12,6 +12,10 @@ export type ApyDisplayValue = {
 }
 
 export type MainInfoPanelProps = {
+  expectedApyLabel?: string
+  tvlLabel?: string
+  vaultAddressLabel?: string
+  deploymentLabel?: string
   vaultId: string
   deploymentDate: string
   vaultName: string

@@ -4,6 +4,7 @@ import { CHAIN_ID_TO_ICON, CHAIN_ID_TO_NAME } from '@/constants/chains'
 import { buildPairedApyDisplay, getEstimatedApySourceLabel } from '@/lib/apy-display'
 import { formatApyDisplay, formatTvlDisplay, normalizeApyDisplayValue } from '@/lib/formatters'
 import { buildKatanaApyDisplay, getThirtyDayDisplayApy, KATANA_CHAIN_ID } from '@/lib/katana-apy'
+import { lastSimulationPoint } from '@/lib/tranche-mock-data'
 import type { TokenAsset } from '@/types/tokenAsset'
 import type { Vault } from '@/types/vaultTypes'
 import { getVaultListType, resolveTokenIcon } from '@/utils/vaultDataUtils'
@@ -11,7 +12,7 @@ import { getVaultListType, resolveTokenIcon } from '@/utils/vaultDataUtils'
 export function useVaultListData(vaults: Vault[], tokenAssets: TokenAsset[]): VaultListData[] {
   // Memoize the data transformation to avoid recalculation on every render
   return useMemo((): VaultListData[] => {
-    return vaults.map((vault) => {
+    const rows = vaults.map((vault) => {
       const pairedEstimatedApy = vault.pairedEstimatedApy
       const pairedThirtyDayApy = vault.pairedThirtyDayApy
       const mobileApyRawValue = getThirtyDayDisplayApy(vault) ?? vault.apy?.net ?? 0
@@ -58,5 +59,32 @@ export function useVaultListData(vaults: Vault[], tokenAssets: TokenAsset[]): Va
         tvl: formatTvlDisplay(vault.tvl?.close ?? 0)
       }
     })
+
+    const mockups: VaultListData[] = (['senior', 'junior'] as const).map((id) => {
+      const summary = lastSimulationPoint.tranches[id]
+      const apy = summary.thirtyDayApy
+      return {
+        id: `${id}-yvusd-simulation`,
+        name: `${id === 'senior' ? 'Senior' : 'Junior'} yvUSD (simulated)`,
+        chain: CHAIN_ID_TO_NAME[1],
+        chainIconUri: CHAIN_ID_TO_ICON[1],
+        token: 'USDC',
+        tokenUri: resolveTokenIcon('0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', 'USDC', tokenAssets),
+        type: 'Tranched Vault',
+        tvl: formatTvlDisplay(summary.nav),
+        isTranchedMockup: true,
+        isJuniorMockup: id === 'junior',
+        estimatedAPY: { display: '-', tooltipItems: [{ label: 'Simulation', value: 'No forward estimate' }] },
+        estimatedApySortValue: Number.NaN,
+        APY: buildSingleApyDisplay(apy).display,
+        desktopThirtyDayAPY: {
+          ...buildSingleApyDisplay(apy),
+          tooltipItems: [{ label: 'Simulated 30-day APY', value: 'As of November 1, 2026' }]
+        },
+        apySortValue: apy === null ? Number.NaN : normalizeApyDisplayValue(apy),
+        apyRawValue: apy === null ? Number.NaN : apy * 100
+      }
+    })
+    return [...mockups, ...rows]
   }, [vaults, tokenAssets])
 }
