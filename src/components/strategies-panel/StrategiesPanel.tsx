@@ -271,7 +271,7 @@ export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
 
     return (
       <div className="w-full">
-        <div className="mx-auto w-full border-b border-border bg-white">
+        <div className="mx-auto w-full bg-white">
           <div className="flex items-center overflow-x-auto border-b border-border">
             {mainTabs.map((tab) => (
               <button
