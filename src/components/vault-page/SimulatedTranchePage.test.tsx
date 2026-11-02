@@ -17,6 +17,7 @@ describe('frozen tranche pages', () => {
     render(<SimulatedTranchePage tranche={tranche} />)
     expect(screen.getByRole('heading', { name })).toBeTruthy()
     expect(screen.getAllByText(tvl).length).toBeGreaterThan(0)
+    expect(screen.getByRole('region', { name: 'Allocation health' })).toBeTruthy()
     expect(screen.getByText('Last-day APY (sim.)')).toBeTruthy()
     expect(screen.queryByText('Expected APY')).toBeNull()
     expect(await screen.findByText('Simulated charts')).toBeTruthy()

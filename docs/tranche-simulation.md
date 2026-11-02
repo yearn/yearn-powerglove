@@ -116,3 +116,35 @@ pause/resume, missing input rejection, migration conservation, every day's pool/
 availability, and exact regeneration from frozen inputs. Inputs and all output downloads remain available for review. Cash-flow regressions verify that deposits/withdrawals create no return, original locked gains are not counted as deposits, and the real-to-simulated chart splice is continuous.
 
 Profit-lock tests cover full expiry, gradual unlocking, live targets, overlapping reports, loss buffering, remaining endpoint locks, unchanged economic NAV/Senior results, and chart use of unlocked PPS.
+
+## Allocation health: actual exposures, illustrative risk
+
+The Allocation health tab sits next to Current Strategy Allocations on the tranche mock pages.
+The panel uses actual yvUSD currentDebtUsd positions captured from Kong in
+src/mock-data/tranche-allocation-exposures.json. The receipt records observed block/time,
+retrieval time, source URL and raw-response hash. The panel omits the snapshot metadata row.
+It is a captured snapshot, not a continuously refreshed feed. Refresh intentionally with
+python3 scripts/fetch-tranche-allocation-exposures.py; review changes before committing.
+The capture rejects missing USD values, unknown funded strategies, duplicate entries and
+incomplete debt coverage. Its denominator is strategy debt plus idle at the same asset price,
+not a potentially older TVL history row.
+
+Actual USD debts are not rescaled to the simulated tranche AUM. Dependency concentration
+uses the captured actual allocation total; dependency loss caps use the simulated November 1
+Junior + Equity capital, excluding the illustrative $150K cooldown queue. The panel is an
+explicit hybrid scenario, not an assessment that these allocations existed at the simulation
+endpoint or a verified statement about actual tranche compliance.
+
+Dependency mappings and loss rates remain illustrative inputs in
+src/mock-data/tranche-allocation-inputs.json. Each actual position is counted once per mapped
+dependency; shared dependencies overlap. Gross leverage, collateral look-through, curators,
+oracles and exit discounts are not measured. Accordingly, position debt is an exposure proxy,
+not proof of complete dependency exposure. The two funded Pendle positions are aggregated.
+Cumulative risk-group exposure also uses actual debts, counted once per band using mock dependency risk scores. Yields, stress losses, liquidity, holder data and controls remain mock inputs.
+None of these inputs changes the return simulation.
+
+Rule 5 remains unresolved: written guidelines specify 25% of 60-day obligations locked in,
+while upstream rules.yaml specifies 50% at the pinned policy revision. Its mock $30K income
+input does not resolve that discrepancy. Profit-unlock balances are not future locked income.
+A verified assessment should eventually come from the upstream evaluator with complete and
+consistent actual inputs, confirmed policy, and its own date and coverage.

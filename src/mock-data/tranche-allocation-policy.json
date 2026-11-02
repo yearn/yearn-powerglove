@@ -1,0 +1,16 @@
+{
+  "revision": "ab2cafcf6f9ce3607cece001e0a199fab447a7da",
+  "source": "https://github.com/johnnyonline/ytranche-allocations/blob/ab2cafcf6f9ce3607cece001e0a199fab447a7da/GUIDELINES.md",
+  "dependencyLossMax": 0.25,
+  "dependencyShareMax": 0.3,
+  "stressLossMax": 0.75,
+  "reliableYieldCoverMin": 1.2,
+  "lockedIncomeWrittenMin": 0.25,
+  "lockedIncomeConfigMin": 0.5,
+  "lockedIncomeDays": 60,
+  "instantSeniorMin": 0.1,
+  "dailySeniorMin": 0.25,
+  "juniorShareMin": 0.15,
+  "warningMargin": 0.1,
+  "riskGroupCaps": { "2": 0.5, "3": 0.3, "4": 0.1, "5": 0.05 }
+}

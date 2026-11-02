@@ -10,6 +10,7 @@ import { getTrancheMockData, lastSimulationPoint, trancheSimulation } from '@/li
 import { TRANCHE_IDS, type TrancheId } from '@/lib/tranche-simulation'
 import type { MainInfoPanelProps } from '@/types/dataTypes'
 import { StandardVaultPage } from './StandardVaultPage'
+import { TrancheAllocationHealth } from './TrancheAllocationHealth'
 import { VaultPageLayout } from './VaultPageLayout'
 
 const ChartsPanel = lazy(() =>
@@ -23,14 +24,22 @@ function OriginalVaultPanel({ section }: { section: 'strategies' | 'activity' })
   })
   if (hasErrors) {
     return (
-      <p className="px-6 py-4">
-        Live {section === 'strategies' ? 'strategy reference' : 'vault activity'} is unavailable. The frozen simulation
-        is still available.
-      </p>
+      <>
+        {section === 'strategies' && <TrancheAllocationHealth />}
+        <p className="px-6 py-4">
+          Live {section === 'strategies' ? 'strategy reference' : 'vault activity'} is unavailable. The frozen
+          simulation is still available.
+        </p>
+      </>
     )
   }
   if (isInitialLoading || !vaultDetails) {
-    return <p className="px-6 py-4">Loading original vault {section}…</p>
+    return (
+      <>
+        {section === 'strategies' && <TrancheAllocationHealth />}
+        <p className="px-6 py-4">Loading original vault {section}…</p>
+      </>
+    )
   }
   return section === 'activity' ? (
     <VaultActivityPanel
@@ -40,7 +49,12 @@ function OriginalVaultPanel({ section }: { section: 'strategies' | 'activity' })
       snapToRows
     />
   ) : (
-    <StrategiesPanel vaultChainId={1} vaultDetails={vaultDetails} reallocationData={null} />
+    <StrategiesPanel
+      vaultChainId={1}
+      vaultDetails={vaultDetails}
+      reallocationData={null}
+      allocationHealth={<TrancheAllocationHealth />}
+    />
   )
 }
 

@@ -27,11 +27,12 @@ const TvlFlowGraphTool = React.lazy(() =>
 interface StrategiesPanelProps {
   vaultChainId: ChainId
   vaultDetails: VaultExtended
+  allocationHealth?: React.ReactNode
   reallocationData?: ReallocationData | null
 }
 
 export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
-  ({ vaultChainId, vaultDetails, reallocationData }) => {
+  ({ vaultChainId, vaultDetails, reallocationData, allocationHealth }) => {
     // Extract data logic to custom hooks
     const strategiesData = useStrategiesData(vaultChainId, vaultDetails)
     const sortingState = useSortingAndFiltering(strategiesData.strategies)
@@ -57,10 +58,12 @@ export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
       ? reallocationData.panels[reallocationData.panels.length - 1]?.id
       : undefined
     const mainTabs = React.useMemo(() => {
-      const list: string[] = ['Current Strategy Allocations', 'TVL Flow']
+      const list: string[] = ['Current Strategy Allocations']
+      if (allocationHealth) list.push('Allocation health')
+      list.push('TVL Flow')
       if (hasReallocation) list.push('Current Reallocation')
       return list
-    }, [hasReallocation])
+    }, [hasReallocation, allocationHealth])
 
     React.useEffect(() => {
       if (!mainTabs.includes(activeMainTab)) {
@@ -137,6 +140,8 @@ export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
 
     const renderMainTabContent = () => {
       switch (activeMainTab) {
+        case 'Allocation health':
+          return allocationHealth
         case 'TVL Flow':
           return (
             <React.Suspense
