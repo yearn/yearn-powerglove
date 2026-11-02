@@ -1,0 +1,67 @@
+{
+  "label": "Actual strategy debt snapshot; illustrative dependency mappings, loss rates and other risk inputs",
+  "cooldownWithdrawalsUsd": 150000,
+  "juniorWithdrawalsDue7dUsd": 150000,
+  "topThreeSeniorHoldingsUsd": 2500000,
+  "reliableYield": 0.064,
+  "lockedIncome60dUsd": 30000,
+  "instantCashAsSeniorShare": 0.085,
+  "cash24hUsd": 3000000,
+  "stressLossAsJuniorShare": 0.7,
+  "cooldownDays": 14,
+  "longestExitDays": 10,
+  "lossRecognitionDays": 7,
+  "newStrategyAmountUsd": 650000,
+  "newStrategyLossRate": 0.5,
+  "targetReviewDate": "2026-10-22",
+  "dependencies": [
+    {
+      "name": "Morpho",
+      "lossRate": 0.1,
+      "riskScore": 1
+    },
+    {
+      "name": "Sky / USDS",
+      "lossRate": 0.1,
+      "riskScore": 1
+    },
+    {
+      "name": "Pendle",
+      "lossRate": 0.6,
+      "riskScore": 3
+    },
+    {
+      "name": "Katana / bridge",
+      "lossRate": 0.75,
+      "riskScore": 4
+    },
+    {
+      "name": "USD3 issuer",
+      "lossRate": 1.0,
+      "riskScore": 5
+    },
+    {
+      "name": "Grove",
+      "lossRate": 0.25,
+      "riskScore": 2
+    },
+    {
+      "name": "Pawn Broker",
+      "lossRate": 0.75,
+      "riskScore": 3
+    },
+    {
+      "name": "Cap / stcUSD",
+      "lossRate": 0.5,
+      "riskScore": 3
+    }
+  ],
+  "strategyDependencies": {
+    "0x0e297de4005883c757c9f09fdf7cf1363c20e626": ["Morpho"],
+    "0xc5b16e7efe1ca05714477b8edcab4dee9b93a27c": ["Katana / bridge", "Morpho"],
+    "0xd362efc75ef1879f37a900823495f402cfdb0986": ["Pawn Broker", "Cap / stcUSD"],
+    "0x2df6c1602528de8b8a5c72baf6e70295b3a64142": ["Pendle", "Sky / USDS"],
+    "0x62ebe2ca290db3b649c390847f8204196771b438": ["Pendle", "USD3 issuer"],
+    "0xcadf62b59406a05754581c31c04f8f7b54af1e6e": ["Grove", "Sky / USDS"]
+  }
+}
