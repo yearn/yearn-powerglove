@@ -1,8 +1,35 @@
 import { Link } from '@tanstack/react-router'
 import { ArrowRight } from 'lucide-react'
+import type { HarvestSummary } from '@/lib/harvest-api-contract'
 import { fmt, useFetch } from './hooks'
 import type { TvlSummary } from './types'
 import './styles.css'
+
+function WeeklyHarvests() {
+  const { data, loading, error, retry } = useFetch<HarvestSummary>('/api/harvests')
+  const date = (timestamp: number) =>
+    new Date(timestamp * 1000).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      timeZone: 'UTC'
+    })
+  const title = data ? `${date(data.startTimestamp)} – ${date(data.endTimestamp - 1)} (UTC)` : undefined
+
+  return (
+    <article className="metric" aria-label="Harvests This Week" aria-busy={loading}>
+      <div className="label">Harvests This Week</div>
+      <div className="value" title={title}>
+        {data?.reportCount.toLocaleString() ?? '—'}
+      </div>
+      {error && (
+        <button type="button" onClick={retry} className="text-xs underline" aria-label="Retry harvests this week">
+          Retry
+        </button>
+      )}
+    </article>
+  )
+}
 
 export function VaultHeadlineStats({ data }: { data: Pick<TvlSummary, 'totalTvl' | 'vaultCount'> | null }) {
   return (
@@ -15,12 +42,7 @@ export function VaultHeadlineStats({ data }: { data: Pick<TvlSummary, 'totalTvl'
         <div className="label">Active Vaults</div>
         <div className="value">{data?.vaultCount.active?.toLocaleString() ?? '—'}</div>
       </article>
-      <article className="metric" aria-label="Weekly Harvests">
-        <div className="label">Weekly Harvests</div>
-        <div className="value" title="Weekly harvest counts are not available from the current data API.">
-          —
-        </div>
-      </article>
+      <WeeklyHarvests />
     </section>
   )
 }

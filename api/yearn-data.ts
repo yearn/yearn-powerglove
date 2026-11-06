@@ -3,9 +3,11 @@ import {
   CanonicalFeeResponseError,
   requiresCanonicalFeeResponse
 } from '../src/lib/fee-api-contract.js'
+import { assertHarvestSummary } from '../src/lib/harvest-api-contract.js'
 
 const DATA_ROUTES = new Set([
   '/api/publication',
+  '/api/harvests',
   '/api/tvl',
   '/api/tvl/graph',
   '/api/tvl/history/runs/latest',
@@ -63,6 +65,7 @@ export default async function handler(req: { method?: string; url?: string }, re
       return res.status(502).json({ error: 'Stats API is unavailable' })
     }
     const body = await response.json()
+    if (response.ok && path === '/api/harvests') assertHarvestSummary(body)
     if (response.ok && requiresCanonicalFeeResponse(path)) {
       assertCanonicalFeeResponse(body, request.searchParams.get('scope') ?? 'contract')
     }

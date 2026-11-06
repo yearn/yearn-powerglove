@@ -147,3 +147,28 @@ it('preserves the proxy contract-mismatch message for the panel error UI', async
   expect(result.current.data).toBeNull()
   expect(result.current.status).toBe(502)
 })
+
+it('rejects malformed harvest data before caching and shares the retry result', async () => {
+  const body = {
+    datasetId: 'a'.repeat(64),
+    reportCount: 0,
+    startTimestamp: 1793232000,
+    endTimestamp: 1793836800,
+    chainIds: [1],
+    byContractFamily: { 'yearn-v2-vault': 0, 'yearn-v3-allocator': 0, 'yearn-v3-tokenized-strategy': 0 },
+    methodology: 'published-contract-reports-v1'
+  }
+  const fetch = vi
+    .fn()
+    .mockResolvedValueOnce(response({ ...body, reportCount: null }))
+    .mockResolvedValueOnce(response(body))
+  vi.stubGlobal('fetch', fetch)
+  const first = renderHook(() => useFetch<{ reportCount: number }>('/api/harvests'))
+  await waitFor(() => expect(first.result.current.error).toBe('Weekly harvest data is invalid'))
+  expect(first.result.current.data).toBeNull()
+  act(() => first.result.current.retry())
+  await waitFor(() => expect(first.result.current.data?.reportCount).toBe(0))
+  const second = renderHook(() => useFetch<{ reportCount: number }>('/api/harvests'))
+  expect(second.result.current.data?.reportCount).toBe(0)
+  expect(fetch).toHaveBeenCalledTimes(2)
+})

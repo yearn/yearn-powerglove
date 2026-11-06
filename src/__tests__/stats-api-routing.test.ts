@@ -3,6 +3,7 @@ import { getStatsApiLane, resolveStatsApiBase } from '@/components/landing/nativ
 
 describe('stats API routing', () => {
   it('routes core fees and prepared financial analytics to yearn-data', () => {
+    expect(getStatsApiLane('/api/harvests')).toBe('fees')
     expect(getStatsApiLane('/api/fees')).toBe('fees')
     expect(getStatsApiLane('/api/fees/history?interval=monthly')).toBe('fees')
     expect(getStatsApiLane('/api/fees/vaults?chainId=1')).toBe('fees')

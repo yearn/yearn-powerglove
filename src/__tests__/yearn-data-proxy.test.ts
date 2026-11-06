@@ -190,3 +190,31 @@ it('reports a wrong fee aggregation scope as an incompatible response', async ()
   })
   expect(res.setHeader.mock.calls).toEqual([['Cache-Control', 'no-store']])
 })
+
+it('forwards the harvest route and rejects invalid counts', async () => {
+  const rewrite = vercelConfig.rewrites.find((route) => route.source === '/api/harvests')
+  expect(rewrite?.destination).toBe('/api/yearn-data?__statsPath=/api/harvests')
+  vi.stubEnv('YEARN_DATA_API_URL', 'https://data-preview.vercel.app')
+  const body = {
+    datasetId: 'a'.repeat(64),
+    reportCount: 0,
+    startTimestamp: 1793232000,
+    endTimestamp: 1793836800,
+    chainIds: [1],
+    byContractFamily: { 'yearn-v2-vault': 0, 'yearn-v3-allocator': 0, 'yearn-v3-tokenized-strategy': 0 },
+    methodology: 'published-contract-reports-v1'
+  }
+  const fetch = vi
+    .fn()
+    .mockResolvedValueOnce(new Response(JSON.stringify(body)))
+    .mockResolvedValueOnce(new Response(JSON.stringify({ ...body, reportCount: null })))
+  vi.stubGlobal('fetch', fetch)
+  const good = response()
+  await handler({ method: 'GET', url: `${rewrite?.destination}&chainId=1` }, good)
+  expect(fetch.mock.calls[0][0].toString()).toBe('https://data-preview.vercel.app/api/harvests?chainId=1')
+  expect(good.status).toHaveBeenCalledWith(200)
+  expect(good.json).toHaveBeenCalledWith(body)
+  const bad = response()
+  await handler({ method: 'GET', url: '/api/harvests' }, bad)
+  expect(bad.status).toHaveBeenCalledWith(502)
+})

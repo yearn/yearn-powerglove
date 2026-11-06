@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/api/harvests",
+      "destination": "/api/yearn-data?__statsPath=/api/harvests"
+    },
+    {
       "source": "/api/publication",
       "destination": "/api/yearn-data?__statsPath=/api/publication"
     },

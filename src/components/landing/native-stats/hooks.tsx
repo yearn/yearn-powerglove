@@ -4,6 +4,7 @@ import {
   assertFeeStackResponse,
   requiresCanonicalFeeResponse
 } from '@/lib/fee-api-contract'
+import { assertHarvestSummary } from '@/lib/harvest-api-contract'
 
 type StatsApiLane = 'tvl' | 'tvl-analytics' | 'fees' | 'fee-analytics'
 
@@ -35,6 +36,7 @@ export function getStatsApiLane(url: string): StatsApiLane {
     return 'tvl'
   if (
     [
+      '/api/harvests',
       '/api/fees',
       '/api/fees/history',
       '/api/fees/vaults',
@@ -171,6 +173,7 @@ export function useFetch<T>(url: string, options: UseFetchOptions = {}) {
             }
             const payload = await response.json()
             const request = new URL(url, 'https://stats.invalid')
+            if (request.pathname === '/api/harvests') assertHarvestSummary(payload)
             if (request.pathname.replace(/\/$/, '') === '/api/fees/stack') assertFeeStackResponse(payload)
             if (requiresCanonicalFeeResponse(request.pathname)) {
               assertCanonicalFeeResponse(payload, request.searchParams.get('scope') ?? 'contract')

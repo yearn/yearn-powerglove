@@ -38,6 +38,7 @@ export default defineConfig(({ mode }) => {
   }
   const statsApiProxy = {
     '/api/publication': hostedDataProxy,
+    '/api/harvests': hostedDataProxy,
     '/api/audit/tree': hostedDataProxy,
     '/api/analytics': hostedDataProxy,
     '/api/comparison/defillama-comparable': hostedDataProxy,

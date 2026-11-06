@@ -30,6 +30,7 @@ vi.mock('./hooks', async (original) => ({
   ...(await original<typeof import('./hooks')>()),
   useFetch: (url: string) => {
     urls.push(url)
+    if (url === '/api/harvests') return { data: null, loading: false, error: null, retry: vi.fn() }
     const params = new URLSearchParams(url.split('?')[1])
     const scoped = params.has('chainId')
     const chartRows = legacyPricingGaps ? gapRows : rows
@@ -137,7 +138,7 @@ describe('shared TVL chart controls', () => {
     expect(within(tvl).getByText('$150')).toBeTruthy()
     const active = screen.getByRole('article', { name: 'Active Vaults' })
     expect(within(active).getByText('2')).toBeTruthy()
-    const harvests = screen.getByRole('article', { name: 'Weekly Harvests' })
+    const harvests = screen.getByRole('article', { name: 'Harvests This Week' })
     expect(within(harvests).getByText('—')).toBeTruthy()
     expect(within(harvests).queryByText('0')).toBeNull()
   })
