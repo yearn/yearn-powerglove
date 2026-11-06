@@ -1,4 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { VaultsHeadline } from '@/components/landing/native-stats/VaultHeadlineStats'
 import YearnLoader from '@/components/utils/YearnLoader'
 import { VaultsList } from '@/components/vaults-list'
 import { useTokenAssetsContext } from '@/contexts/useTokenAssets'
@@ -6,6 +7,15 @@ import { useVaults } from '@/contexts/useVaults'
 import type { Vault } from '@/types/vaultTypes'
 
 export default function AllVaultsPage() {
+  return (
+    <div className="min-w-0 w-full flex-1">
+      <VaultsHeadline />
+      <VaultsContent />
+    </div>
+  )
+}
+
+function VaultsContent() {
   const { vaults, loading, error, loadingState } = useVaults()
   const { assets, loading: assetsLoading, error: assetsError } = useTokenAssetsContext()
 

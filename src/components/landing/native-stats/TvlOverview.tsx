@@ -33,6 +33,7 @@ import {
   toggleSelectedChain
 } from './tvl-summary'
 import type { ConstantPriceTvlHistory, TvlHistoryRun } from './types'
+import { VaultHeadlineStats } from './VaultHeadlineStats'
 
 const TVL_HISTORY_REMAINING_CHAIN_SERIES = 'All other chains'
 const TVL_HISTORY_REMAINING_VERSION_SERIES = 'All other versions'
@@ -342,22 +343,7 @@ export function TvlOverview() {
 
   return (
     <>
-      <section className="tvl-summary-cards" aria-label="Vault statistics">
-        <article className="metric" aria-label="Total TVL">
-          <div className="label">Total TVL</div>
-          <div className="value">{fmt(data.totalTvl)}</div>
-        </article>
-        <article className="metric" aria-label="Active Vaults">
-          <div className="label">Active Vaults</div>
-          <div className="value">{data.vaultCount.active?.toLocaleString() ?? '—'}</div>
-        </article>
-        <article className="metric" aria-label="Weekly Harvests">
-          <div className="label">Weekly Harvests</div>
-          <div className="value" title="Weekly harvest counts are not available from the current data API.">
-            —
-          </div>
-        </article>
-      </section>
+      <VaultHeadlineStats data={data} />
 
       <div className="card">
         <div className="mb-3 flex flex-wrap items-start justify-between gap-3">

@@ -76,7 +76,7 @@ export function NativeStatsDashboard({ analysis = false }: { analysis?: boolean 
             {analysis ? (
               <>
                 <div className="stats-page-navigation">
-                  <Link to="/" className="page-btn">
+                  <Link to="/stats" className="page-btn">
                     Back to Stats
                   </Link>
                   {chainSelector}

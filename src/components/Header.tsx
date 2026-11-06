@@ -14,11 +14,15 @@ export default function Header() {
   const mobileMenuId = useId()
   const navigation = [
     {
-      to: '/' as const,
-      label: 'Stats',
-      active: pathname === '/' || pathname === '/stats' || pathname.startsWith('/stats/')
+      to: '/vaults' as const,
+      label: 'Vaults',
+      active: pathname === '/' || pathname === '/vaults' || pathname.startsWith('/vaults/')
     },
-    { to: '/vaults' as const, label: 'Vaults', active: pathname === '/vaults' || pathname.startsWith('/vaults/') }
+    {
+      to: '/stats' as const,
+      label: 'Stats',
+      active: pathname === '/stats' || pathname.startsWith('/stats/')
+    }
   ]
 
   useEffect(() => {
@@ -60,7 +64,7 @@ export default function Header() {
               <Link
                 key={item.to}
                 to={item.to}
-                activeOptions={{ exact: item.to === '/', includeSearch: false }}
+                activeOptions={{ exact: false, includeSearch: false }}
                 aria-current={item.active ? 'page' : undefined}
                 className={`${headerNavLinkClassName} ${item.active ? 'font-semibold text-foreground' : 'font-medium text-muted-foreground'}`}
               >
@@ -107,7 +111,7 @@ export default function Header() {
                           <DialogPrimitive.Close key={item.to} asChild>
                             <Link
                               to={item.to}
-                              activeOptions={{ exact: item.to === '/', includeSearch: false }}
+                              activeOptions={{ exact: false, includeSearch: false }}
                               aria-current={item.active ? 'page' : undefined}
                               className={`py-3 text-sm hover:text-foreground ${item.active ? 'font-semibold text-foreground' : 'font-medium text-muted-foreground'}`}
                             >
