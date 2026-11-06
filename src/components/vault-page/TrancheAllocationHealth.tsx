@@ -1,11 +1,25 @@
+import { useQueries, useQuery } from '@tanstack/react-query'
 import { AlertTriangle, CheckCircle2, ChevronDown, CircleHelp, XCircle } from 'lucide-react'
+import { lazy, Suspense, useState } from 'react'
 import { formatCurrency, formatTvlDisplay } from '@/lib/formatters'
+import { fetchKongVaultSnapshotRaw } from '@/lib/kong-vault-client'
+import { getStrategyRiskLevel } from '@/lib/strategy-risk'
 import {
   type AllocationCheck,
   type AllocationStatus,
   getTrancheAllocationHealth,
   worstAllocationStatus
 } from '@/lib/tranche-allocation-health'
+import {
+  fetchMorphoVaultLookthrough,
+  fetchPawnLooperRates,
+  YVUSD_MORPHO_VAULT_ADDRESS
+} from '@/lib/yvusd-reporting-client'
+import exposures from '@/mock-data/tranche-allocation-exposures.json'
+
+const TrancheStrategyResearch = lazy(() =>
+  import('./TrancheStrategyResearch').then((module) => ({ default: module.TrancheStrategyResearch }))
+)
 
 function amount(value: number, unit: AllocationCheck['unit']) {
   if (unit === 'percent') return `${(value * 100).toFixed(2)}%`
@@ -183,19 +197,30 @@ function StrategyConcentration({
 }
 
 function DependencyLossDetails({ report }: { report: ReturnType<typeof getTrancheAllocationHealth> }) {
-  const dependencies = [...report.dependencies].sort((a, b) => b.loss - a.loss)
   return (
     <section aria-label="Single-dependency loss assumptions" className="space-y-3 text-foreground">
       <p className="text-muted-foreground">
-        Each dependency’s actual strategy debt is multiplied by its mock loss rate. The largest loss is compared with
-        25% of Junior + Equity capital, excluding cooldown withdrawals.
+        Provisional dependency rating = highest available Kong strategy risk level among its mapped strategies. Missing
+        strategy ratings keep coverage incomplete. These are proxies, not dependency ratings approved by risk.
       </p>
+      <p className="text-muted-foreground">
+        Policy loss rates: risk 1 → 10%, 2 → 25%, 3 → 50%, 4 → 75%, 5 → 100%. These are stress assumptions, not failure
+        probabilities. Base loss = min(capital × leverage × affected share × policy rate, capital × affected share).
+        Exit losses are still unknown and excluded from the base calculation.
+      </p>
+      {report.provisionalLoss.maxKnownBaseLoss !== null &&
+        report.provisionalLoss.maxKnownBaseLoss > report.juniorCapital * report.policy.dependencyLossMax && (
+          <p className="text-red-700">
+            The known-input base loss exceeds the cap under these provisional assumptions. Missing inputs still prevent
+            a complete assessment.
+          </p>
+        )}
       <div className="overflow-x-auto">
         <table className="w-full text-left tabular-nums">
-          <caption className="sr-only">All assumed dependency losses · ranked largest first</caption>
+          <caption className="sr-only">Provisional dependency loss inputs</caption>
           <thead>
             <tr className="border-b border-border text-muted-foreground">
-              {['Dependency', 'Exposure (actual debt)', 'Loss rate (mock)', 'Modeled loss', '% of junior capital'].map(
+              {['Dependency', 'Kong proxy', 'Policy rate', 'Known-input base loss', 'Coverage before exit losses'].map(
                 (label) => (
                   <th key={label} className="whitespace-nowrap py-2 pr-4 font-normal">
                     {label}
@@ -205,28 +230,149 @@ function DependencyLossDetails({ report }: { report: ReturnType<typeof getTranch
             </tr>
           </thead>
           <tbody>
-            {dependencies.map((dependency) => (
+            {report.provisionalLoss.dependencies.map((dependency) => (
               <tr key={dependency.name} className="border-b border-border last:border-0">
-                <th scope="row" className="whitespace-nowrap py-2 pr-4 font-medium">
+                <th scope="row" className="py-2 pr-4 font-medium">
                   {dependency.name}
                 </th>
-                <td className="whitespace-nowrap py-2 pr-4">{formatCurrency(dependency.exposure)}</td>
-                <td className="whitespace-nowrap py-2 pr-4">{amount(dependency.lossRate, 'percent')}</td>
-                <td className="whitespace-nowrap py-2 pr-4">{formatCurrency(dependency.loss)}</td>
                 <td className="whitespace-nowrap py-2 pr-4">
-                  {amount(dependency.loss / report.juniorCapital, 'percent')}
+                  {dependency.score === null ? 'Needs rating' : `${dependency.score}/5 · provisional`}
+                </td>
+                <td className="whitespace-nowrap py-2 pr-4">
+                  {dependency.lossRate === null ? 'Needs rating' : amount(dependency.lossRate, 'percent')}
+                </td>
+                <td className="whitespace-nowrap py-2 pr-4">
+                  {dependency.baseLoss === null ? 'Not calculated' : formatCurrency(dependency.baseLoss)}
+                </td>
+                <td className="py-2 pr-4">
+                  {dependency.complete ? 'Base inputs available' : 'Incomplete ratings or exposure inputs'}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      <div className="space-y-2">
+        {report.provisionalLoss.dependencies.map((dependency) => (
+          <details key={dependency.name} className="border-t border-border pt-2">
+            <summary className="cursor-pointer">{dependency.name} · position inputs</summary>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left tabular-nums">
+                <thead>
+                  <tr className="text-muted-foreground">
+                    {['Strategy / rating source', 'Leverage / source', 'Affected share / source', 'Base loss'].map(
+                      (label) => (
+                        <th key={label} className="py-2 pr-4 font-normal">
+                          {label}
+                        </th>
+                      )
+                    )}
+                  </tr>
+                </thead>
+                <tbody>
+                  {dependency.links.map((link) => (
+                    <tr key={link.strategy.address} className="border-t border-border">
+                      <th scope="row" className="min-w-[180px] py-2 pr-4 font-medium">
+                        {link.strategy.name}
+                        <div className="mt-1 text-muted-foreground font-normal">
+                          {link.score === null
+                            ? {
+                                loading: 'Kong rating loading…',
+                                unavailable: 'Kong rating unavailable',
+                                missing: 'Kong rating missing',
+                                available: 'Kong rating missing'
+                              }[link.ratingState]
+                            : `Kong ${link.score}/5`}
+                          {link.ratingObservedAt
+                            ? ` · ${new Date(link.ratingObservedAt).toLocaleString('en-US', { timeZoneName: 'short' })}`
+                            : ''}
+                        </div>
+                      </th>
+                      <td className="min-w-[180px] py-2 pr-4">
+                        {link.leverage === null ? 'Unknown' : `${link.leverage.toFixed(2)}×`}
+                        <div className="mt-1 text-muted-foreground">{link.leverageSource}</div>
+                      </td>
+                      <td className="min-w-[180px] py-2 pr-4">
+                        {link.weight === null ? 'Unknown' : amount(link.weight, 'percent')}
+                        <div className="mt-1 text-muted-foreground">{link.weightSource}</div>
+                      </td>
+                      <td className="whitespace-nowrap py-2 pr-4">
+                        {link.baseLoss === null ? 'Not calculated' : formatCurrency(link.baseLoss)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {dependency.missingRatings.length > 0 && (
+              <p className="mt-2 text-muted-foreground">
+                Missing Kong ratings: {dependency.missingRatings.join('; ')}.
+              </p>
+            )}
+          </details>
+        ))}
+      </div>
+      <p className="text-muted-foreground">
+        Current Kong and QTOV observations are applied to the November 1, 2026 debt snapshot. Pawn leverage is measured
+        onchain; Morpho collateral shares come from current borrower-market allocations. Direct Morpho and Pendle
+        positions use provisional 1× leverage from their QTOV types. Full-position route shares are structural
+        assumptions, not measured balances. Unresolved Katana and Grove look-through stays unknown.
+      </p>
+      <p className="text-muted-foreground">
+        Morpho collateral links describe lender exposure to borrower collateral, not direct token holdings. Issuer,
+        oracle and bridge overlap is not fully mapped. Known-input base losses exclude unmeasured positions and exit
+        discounts; the complete check stays Needs data. Other allocation checks retain their existing inputs.
+      </p>
     </section>
   )
 }
 
 export function TrancheAllocationHealth() {
-  const report = getTrancheAllocationHealth()
+  const [researchOpen, setResearchOpen] = useState(false)
+  const ratings = useQueries({
+    queries: exposures.strategies.map((strategy) => ({
+      queryKey: ['strategy-risk', 1, strategy.address.toLowerCase()],
+      queryFn: () => fetchKongVaultSnapshotRaw(1, strategy.address),
+      staleTime: 60_000,
+      retry: 1
+    }))
+  })
+  const pawn = useQuery({
+    queryKey: ['strategy-reporting', 'pawn-looper'],
+    queryFn: fetchPawnLooperRates,
+    staleTime: 60_000,
+    retry: 1
+  })
+  const morpho = useQuery({
+    queryKey: ['strategy-reporting', 'morpho', YVUSD_MORPHO_VAULT_ADDRESS],
+    queryFn: () => fetchMorphoVaultLookthrough(YVUSD_MORPHO_VAULT_ADDRESS),
+    staleTime: 60_000,
+    retry: 1
+  })
+  const report = getTrancheAllocationHealth(
+    Object.fromEntries(
+      exposures.strategies.map((strategy, index) => {
+        const query = ratings[index]
+        const score = getStrategyRiskLevel(query.data)
+        const timestamp = Number(query.data?.blockTime)
+        return [
+          strategy.address.toLowerCase(),
+          {
+            score,
+            observedAt: Number.isFinite(timestamp) && timestamp > 0 ? new Date(timestamp * 1000).toISOString() : null,
+            state: query.isPending
+              ? 'loading'
+              : query.isError
+                ? 'unavailable'
+                : score === null
+                  ? 'missing'
+                  : 'available'
+          }
+        ]
+      })
+    ),
+    { pawn: pawn.data, morpho: morpho.data }
+  )
   const riskStatus = worstAllocationStatus(report.riskGroups.map((group) => group.status))
   return (
     <section aria-label="Allocation health" className="w-full bg-white">
@@ -263,7 +409,11 @@ export function TrancheAllocationHealth() {
                 <>
                   <div className="flex flex-wrap justify-between gap-1 tabular-nums">
                     <span className={check.value === null ? 'text-muted-foreground' : 'font-medium'}>
-                      {check.value === null ? 'Not available' : amount(check.value, check.unit)}
+                      {check.rule === 1 && report.provisionalLoss.maxKnownBaseLoss !== null
+                        ? `Known-input base: ${formatCurrency(report.provisionalLoss.maxKnownBaseLoss)}`
+                        : check.value === null
+                          ? 'Not available'
+                          : amount(check.value, check.unit)}
                     </span>
                     <span className="text-muted-foreground">
                       {check.limit === null
@@ -274,7 +424,7 @@ export function TrancheAllocationHealth() {
                     </span>
                   </div>
                   <LimitBar
-                    value={check.value}
+                    value={check.rule === 1 ? report.provisionalLoss.maxKnownBaseLoss : check.value}
                     limit={check.limit}
                     direction={check.direction}
                     label={check.name}
@@ -344,7 +494,7 @@ export function TrancheAllocationHealth() {
                 {[
                   'Dependency (mock mapping)',
                   'Actual strategy exposure',
-                  'Loss (mock rate)',
+                  'Dependency loss',
                   'Remaining headroom',
                   'Status'
                 ].map((title) => (
@@ -368,13 +518,15 @@ export function TrancheAllocationHealth() {
                     <span className="text-muted-foreground">({amount(dependency.exposureShare, 'percent')})</span>
                   </td>
                   <td className="whitespace-nowrap py-3 pr-4 tabular-nums">
-                    {formatCurrency(dependency.loss)}{' '}
-                    <span className="text-muted-foreground">({amount(dependency.lossRate, 'percent')})</span>
+                    {dependency.loss === null ? 'Needs data' : formatCurrency(dependency.loss)}{' '}
+                    <span className="text-muted-foreground">
+                      ({dependency.lossRate === null ? 'Needs rating' : amount(dependency.lossRate, 'percent')})
+                    </span>
                   </td>
                   <td
-                    className={`whitespace-nowrap py-3 pr-4 tabular-nums ${dependency.headroom < 0 ? 'text-red-700' : ''}`}
+                    className={`whitespace-nowrap py-3 pr-4 tabular-nums ${dependency.headroom !== null && dependency.headroom < 0 ? 'text-red-700' : ''}`}
                   >
-                    {formatCurrency(dependency.headroom)}
+                    {dependency.headroom === null ? 'Not assessed' : formatCurrency(dependency.headroom)}
                   </td>
                   <td className="whitespace-nowrap py-3">
                     <Status status={dependency.status} />
@@ -384,10 +536,10 @@ export function TrancheAllocationHealth() {
             </tbody>
           </table>
           <p className="mt-3 text-xs text-muted-foreground">
-            Actual USD strategy debt is counted once per mapped dependency; shared dependencies overlap. Mappings and
-            loss rates are illustrative, and gross loop/collateral exposures are not measured. Concentration uses the
-            allocation snapshot total; loss caps use simulated Junior + Equity capital. Headroom reflects rules 1 and 2
-            only.
+            Actual USD strategy debt is counted once per provisional mapped dependency; shared dependencies overlap.
+            Dependency ratings and measured gross exposures are incomplete, so loss and combined headroom are not
+            assessed. Concentration uses the allocation snapshot total; loss caps use simulated Junior + Equity capital.
+            Headroom reflects rules 1 and 2 only.
           </p>
         </div>
       </details>
@@ -419,6 +571,20 @@ export function TrancheAllocationHealth() {
             </div>
           ))}
         </div>
+      </details>
+      <details className="group border-b border-border" onToggle={(event) => setResearchOpen(event.currentTarget.open)}>
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-4 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0657f9] [&::-webkit-details-marker]:hidden">
+          <span className="flex items-center gap-2">
+            <ChevronDown aria-hidden="true" className="h-3 w-3 transition-transform group-open:rotate-180" />
+            Strategy types &amp; measured inputs
+          </span>
+          <span className="text-xs text-muted-foreground">Kong / QTOV</span>
+        </summary>
+        {researchOpen && (
+          <Suspense fallback={<p className="px-4 pb-4 text-xs text-muted-foreground">Loading strategy research…</p>}>
+            <TrancheStrategyResearch />
+          </Suspense>
+        )}
       </details>
       <div className="flex flex-wrap justify-between gap-2 p-4 text-xs text-muted-foreground">
         <span>

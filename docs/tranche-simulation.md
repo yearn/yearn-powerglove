@@ -135,16 +135,70 @@ Junior + Equity capital, excluding the illustrative $150K cooldown queue. The pa
 explicit hybrid scenario, not an assessment that these allocations existed at the simulation
 endpoint or a verified statement about actual tranche compliance.
 
-Dependency mappings and loss rates remain illustrative inputs in
-src/mock-data/tranche-allocation-inputs.json. Each actual position is counted once per mapped
-dependency; shared dependencies overlap. Gross leverage, collateral look-through, curators,
-oracles and exit discounts are not measured. Accordingly, position debt is an exposure proxy,
-not proof of complete dependency exposure. The two funded Pendle positions are aggregated.
-Cumulative risk-group exposure also uses actual debts, counted once per band using mock dependency risk scores. Yields, stress losses, liquidity, holder data and controls remain mock inputs.
-None of these inputs changes the return simulation.
+Single-dependency loss now uses the pinned policy's score-to-loss table (1→10%, 2→25%,
+3→50%, 4→75%, 5→100%) instead of independent mock loss rates. These are conditional stress
+severities, not probabilities. The calculation follows upstream `_link`: capital × leverage ×
+affected share × min(base rate + exit discount, 100%), capped at affected capital.
+
+The user authorized Kong strategy risk levels as provisional dependency-rating proxies. A
+separate provisional model uses the highest available rating among each dependency's linked
+strategies. Missing linked ratings remain explicitly incomplete; the maximum is never averaged
+or represented as an approved dependency-specific score. The canonical complete assessment
+still requires exit discounts and verified dated inputs, so rule 1 remains Needs data.
+
+The provisional model consumes current QTOV observations: Pawn's leverage is measured at a
+recorded block and Morpho collateral weights come from borrower-market allocation shares,
+aggregated by collateral address. Those weights represent lender exposure, not direct token
+holdings. Borrower leverage is not multiplied into the lender's position a second time. These
+collateral dependencies appear only when look-through succeeds; its absence is not zero exposure.
+Cross-strategy issuer/oracle/bridge correlation mapping is still incomplete.
+
+Direct Morpho and Pendle strategies use provisional 1× leverage based on their QTOV types.
+Their full-position protocol/route shares, and Pawn's full-position dependency shares, are
+explicit structural assumptions, not measured balances after idle. Pawn leverage has no 1×
+fallback. Katana's underlying Morpho share and Grove's Sky/USDS share remain unknown; their
+underlying leverage also remains unknown. Other allocation checks keep their prior inputs.
+
+Known-input base loss uses the upstream capped formula with exit discount explicitly excluded
+(zero in this scenario only). Partial sums are labeled as such; they cannot establish a pass.
+The summary bar shows the largest known-input provisional base loss and warns if it exceeds
+the simulated capital cap. Full loss, status and combined headroom remain incomplete. Current
+risk levels and measurement times are shown alongside frozen November 1 debt amounts; this
+is a hybrid scenario, not a historical audit or current portfolio compliance claim.
+
+The old illustrative dependency scores remain only for the separately labeled mock cumulative
+risk-concentration bands; they do not set single-dependency loss rates. None of the additional
+collateral links is treated as a complete issuer dependency map.
+
+Yields, stress losses, liquidity, holder data and controls remain mock inputs. None of these
+inputs changes the return simulation.
 
 Rule 5 remains unresolved: written guidelines specify 25% of 60-day obligations locked in,
 while upstream rules.yaml specifies 50% at the pinned policy revision. Its mock $30K income
 input does not resolve that discrepancy. Profit-unlock balances are not future locked income.
 A verified assessment should eventually come from the upstream evaluator with complete and
 consistent actual inputs, confirmed policy, and its own date and coverage.
+
+
+## QTOV strategy metadata and current observations
+
+The strategy registry, reviewed research records and reporting readers were selectively imported
+from codex/qtov-on-improved-fee-data at f1fc4bd. The full QTOV branch and its unrelated UI were not
+merged. The existing public-client module is reused; Grove is classified explicitly as a depositor
+with destination verification still outstanding.
+
+Allocation health exposes these through the expandable Strategy types & measured inputs section.
+Kong ratings, Pawn leverage and Morpho look-through requests start when Allocation health mounts.
+The research view reuses their query cache; Pendle balance/maturity reads start when that view opens. Kong strategy riskLevel is displayed
+separately from its scoring dimensions; missing ratings remain unavailable. Those strategy ratings
+now supply the explicitly provisional proxy described above, not approved dependency-specific ratings.
+
+Pawn leverage, LTV, liquidation LTV and borrow-rate reads are pinned to one block. Pendle balances,
+decimals and maturities are also read at one block; old fixed quote quantities were removed from the
+ported reader. Maturity remains available independently of the external quote API. Market look-through
+retains the QTOV reader's missing-data checks and retrieval time. All observations show their own times
+and do not overwrite the frozen November 1 capital/return inputs or the captured allocation debts.
+
+The current section is evidence for completing the allocation model, not a declaration that collateral
+risk, exit discounts, 90-day yield lows or bridge liquidity have been fully established. The imported
+strategy-research reference describes a separate USDC-1 pilot; Pawn lending is not the yvUSD looper.

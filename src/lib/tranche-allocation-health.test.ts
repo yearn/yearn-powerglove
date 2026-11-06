@@ -22,18 +22,18 @@ describe('allocation guideline assessment', () => {
     expect(report.checks.find((check) => check.rule === 1)?.limit).toBeCloseTo(1357127.332945, 5)
     expect(report.requiredYield).toBeCloseTo(0.049124724284, 10)
     expect(report.reliableYieldMin).toBeCloseTo(0.058949669141, 10)
-    expect(report.checks.filter((check) => check.status !== 'Needs data')).toHaveLength(10)
+    expect(report.checks.filter((check) => check.status !== 'Needs data')).toHaveLength(9)
     expect(report.riskGroups.map((group) => group.status)).toEqual([
       'Breach',
       'Within limit',
       'Near limit',
       'Within limit'
     ])
-    expect(report.checks.find((check) => check.rule === 1)?.status).toBe('Within limit')
+    expect(report.checks.find((check) => check.rule === 1)?.status).toBe('Needs data')
     expect(report.checks.find((check) => check.rule === 2)?.status).toBe('Breach')
     expect(report.checks.find((check) => check.rule === 6)?.status).toBe('Breach')
     expect(report.checks.find((check) => check.rule === 7)?.status).toBe('Within limit')
-    expect(report.dependencies.find((dependency) => dependency.name === 'Morpho')!.headroom).toBeLessThan(0)
+    expect(report.dependencies.find((dependency) => dependency.name === 'Morpho')!.headroom).toBeNull()
   })
 
   it('sums actual position debts once per dependency without rescaling to simulated TVL', () => {
@@ -41,7 +41,8 @@ describe('allocation guideline assessment', () => {
     const pendle = report.dependencies.find((dependency) => dependency.name === 'Pendle')!
     expect(pendle.strategies).toHaveLength(2)
     expect(pendle.exposure).toBeCloseTo(994924.5993037318, 6)
-    expect(pendle.loss).toBeCloseTo(pendle.exposure * 0.6, 6)
+    expect(pendle.loss).toBeNull()
+    expect(pendle.lossRate).toBeNull()
     expect(pendle.exposureShare).toBeCloseTo(pendle.exposure / report.exposures.totalAllocationUsd, 12)
     expect(pendle.exposure).not.toBeCloseTo(pendle.exposureShare * report.tvl, 2)
     expect(
@@ -54,6 +55,25 @@ describe('allocation guideline assessment', () => {
         )
       ).toBe(true)
     }
+  })
+
+  it('keeps provisional Kong proxy inputs separate from the complete assessment', () => {
+    const report = getTrancheAllocationHealth({
+      '0x0e297de4005883c757c9f09fdf7cf1363c20e626': {
+        score: 2,
+        state: 'available',
+        observedAt: '2026-11-04T00:00:00Z'
+      }
+    })
+    const provisional = report.provisionalLoss.dependencies.find((dependency) => dependency.name === 'Morpho')!
+    expect(provisional.lossRate).toBe(0.25)
+    expect(provisional.baseLoss).toBeCloseTo(1771339.40644483, 6)
+    expect(provisional.complete).toBe(false)
+    expect(provisional.links[0].ratingObservedAt).toBe('2026-11-04T00:00:00Z')
+    expect(report.dependencies.every((dependency) => dependency.lossRate === null && dependency.loss === null)).toBe(
+      true
+    )
+    expect(report.checks.find((check) => check.rule === 1)?.status).toBe('Needs data')
   })
 
   it('does not assign a verdict to the conflicting locked-income policy while assessing illustrative liquidity', () => {

@@ -1,6 +1,16 @@
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { TrancheAllocationHealth } from './TrancheAllocationHealth'
+
+vi.mock('@tanstack/react-query', () => ({
+  useQuery: () => ({ data: undefined, isPending: false, isError: true }),
+  useQueries: () =>
+    Array.from({ length: 6 }, (_, index) => ({
+      data: index === 0 ? { risk: { riskLevel: 2 }, blockTime: '1793750400' } : { risk: null },
+      isPending: false,
+      isError: false
+    }))
+}))
 
 describe('tranche allocation health', () => {
   it('labels invented inputs and shows passing, warning and breached checks', () => {
@@ -15,11 +25,14 @@ describe('tranche allocation health', () => {
     expect(screen.getAllByText('Breach').length).toBeGreaterThan(1)
     expect(screen.getAllByText('Near limit').length).toBeGreaterThan(1)
     expect(screen.getByText('Policy unresolved')).toBeTruthy()
-    expect(screen.getByText('All assumed dependency losses · ranked largest first')).toBeTruthy()
-    expect(screen.getByText(/Each dependency’s actual strategy debt/)).toBeTruthy()
+    expect(screen.getByText('Provisional dependency loss inputs')).toBeTruthy()
+    expect(screen.getByText(/These are stress assumptions/)).toBeTruthy()
+    expect(screen.getByText('2/5 · provisional')).toBeTruthy()
+    expect(screen.getAllByText('$1,771,339.41')[0]).toBeTruthy()
+    expect(screen.getAllByText('Not calculated').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Morpho').length).toBeGreaterThan(0)
     expect(screen.getByText('Actual strategy exposure')).toBeTruthy()
-    expect(screen.getByText('Loss (mock rate)')).toBeTruthy()
+    expect(screen.getByText('Dependency loss')).toBeTruthy()
     expect(screen.getByText(/Mock queue: \$150K in cooldown/)).toBeTruthy()
     expect(screen.getByRole('link', { name: /Guideline source/ }).getAttribute('href')).toContain('ab2cafcf')
   })

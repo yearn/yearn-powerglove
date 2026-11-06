@@ -131,7 +131,13 @@ export type KongVaultSnapshotDebt = {
   lastReport?: KongNullableNumberish
 }
 
+export type KongVaultRisk = {
+  riskLevel?: KongNullableNumberish
+  riskScore?: Record<string, number | string | null> | null
+}
+
 export type KongVaultSnapshot = {
+  risk?: KongVaultRisk | null
   v3?: boolean
   vaultType?: KongNullableNumberish
   keeper?: string | null
@@ -154,6 +160,7 @@ export type KongVaultSnapshot = {
   }
   totalDebt?: KongNullableNumberish
   totalAssets?: KongNullableNumberish
+  totalSupply?: KongNullableNumberish
   apy?: {
     net?: KongNullableNumberish
     grossApr?: KongNullableNumberish

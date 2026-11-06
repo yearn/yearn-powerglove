@@ -7,6 +7,10 @@ vi.mock('@/hooks/useVaultPageData', () => ({
 }))
 vi.mock('@/lib/envio-client', () => ({ isEnvioConfigured: () => false }))
 vi.mock('@/components/charts/charts-panel', () => ({ ChartsPanel: () => <div>Simulated charts</div> }))
+vi.mock('@tanstack/react-query', () => ({
+  useQuery: () => ({ data: undefined, isPending: false, isError: true }),
+  useQueries: () => Array.from({ length: 6 }, () => ({ data: undefined, isPending: false, isError: true }))
+}))
 
 describe('frozen tranche pages', () => {
   it.each([
@@ -18,6 +22,9 @@ describe('frozen tranche pages', () => {
     expect(screen.getByRole('heading', { name })).toBeTruthy()
     expect(screen.getAllByText(tvl).length).toBeGreaterThan(0)
     expect(screen.getByRole('region', { name: 'Allocation health' })).toBeTruthy()
+    expect(screen.getAllByText('Kong rating unavailable').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Not calculated').length).toBeGreaterThan(0)
+    expect(screen.queryByText(/Known-input base:/)).toBeNull()
     expect(screen.getByText('Last-day APY (sim.)')).toBeTruthy()
     expect(screen.queryByText('Expected APY')).toBeNull()
     expect(await screen.findByText('Simulated charts')).toBeTruthy()

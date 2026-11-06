@@ -1,4 +1,6 @@
+import { dependencyPositionLoss, policyLossRate } from '@/lib/tranche-dependency-loss'
 import { lastSimulationPoint, trancheSimulation } from '@/lib/tranche-mock-data'
+import { buildProvisionalDependencyLoss, type TrancheMeasurements } from '@/lib/tranche-provisional-inputs'
 import exposures from '@/mock-data/tranche-allocation-exposures.json'
 import inputs from '@/mock-data/tranche-allocation-inputs.json'
 import policy from '@/mock-data/tranche-allocation-policy.json'
@@ -37,7 +39,16 @@ export function worstAllocationStatus(statuses: AllocationStatus[]): AllocationS
   )
 }
 
-export function getTrancheAllocationHealth() {
+export type StrategyRating = {
+  score: number | null
+  observedAt: string | null
+  state: 'loading' | 'unavailable' | 'missing' | 'available'
+}
+
+export function getTrancheAllocationHealth(
+  ratings: Record<string, StrategyRating> = {},
+  measurements: TrancheMeasurements = {}
+) {
   const balances = lastSimulationPoint.tranches
   const tvl = balances.senior.nav + balances.junior.nav + balances.equity.nav
   // Illustrative risk inputs affect this assessment only, never the returns simulation.
@@ -56,18 +67,31 @@ export function getTrancheAllocationHealth() {
     })
     const exposure = strategies.reduce((sum, strategy) => sum + strategy.allocationUsd, 0)
     const exposureShare = exposure / exposures.totalAllocationUsd
-    const loss = exposure * dependency.lossRate
-    const exposureCap = Math.min(
-      exposures.totalAllocationUsd * policy.dependencyShareMax,
-      (juniorCapital * policy.dependencyLossMax) / dependency.lossRate
-    )
+    const lossRate = policyLossRate(dependency.riskScore)
+    const positionLosses = strategies.map((strategy) => {
+      const position =
+        inputs.dependencyLossPositions[strategy.address.toLowerCase() as keyof typeof inputs.dependencyLossPositions]
+      return dependencyPositionLoss({
+        capital: strategy.allocationUsd,
+        score: dependency.riskScore,
+        leverage: position?.leverage ?? null,
+        exitDiscount: position?.exitDiscount ?? null,
+        weight: position ? ((position.weights as Record<string, number | null>)[dependency.name] ?? null) : null
+      })
+    })
+    const loss =
+      positionLosses.length === 0 || positionLosses.some((value) => value === null)
+        ? null
+        : positionLosses.reduce<number>((sum, value) => sum + (value ?? 0), 0)
+    const exposureCap: number | null = null
     return {
       ...dependency,
+      lossRate,
       strategies,
       exposureShare,
       exposure,
       loss,
-      headroom: exposureCap - exposure,
+      headroom: exposureCap,
       status: worstAllocationStatus([
         allocationStatus(exposureShare, policy.dependencyShareMax, 'max'),
         allocationStatus(loss, juniorCapital * policy.dependencyLossMax, 'max')
@@ -78,7 +102,7 @@ export function getTrancheAllocationHealth() {
     const amount = exposures.strategies.reduce((sum, strategy) => {
       const affected = dependencies.some(
         (dependency) =>
-          dependency.riskScore >= Number(score) &&
+          dependency.illustrativeRiskScore >= Number(score) &&
           dependency.strategies.some((item) => item.address === strategy.address)
       )
       return sum + (affected ? strategy.allocationUsd : 0)
@@ -102,12 +126,14 @@ export function getTrancheAllocationHealth() {
     {
       rule: 1,
       name: 'Single-dependency loss',
-      value: Math.max(...dependencies.map((dependency) => dependency.loss)),
+      value: dependencies.some((dependency) => dependency.loss === null)
+        ? null
+        : Math.max(...dependencies.map((dependency) => dependency.loss ?? 0)),
       limit: juniorCapital * policy.dependencyLossMax,
       direction: 'max',
       unit: 'usd',
       detail:
-        'Actual strategy debt amounts are aggregated using illustrative dependency mappings. Loss rates are mock assumptions. Gross leverage, collateral look-through and exit discounts are not measured; this is not a verified risk assessment.'
+        'Dependency-specific ratings, verified exposure weights, dated leverage and exit discounts are missing. Strategy ratings are shown as a separate screening scenario, never as dependency ratings.'
     },
     {
       rule: 2,
@@ -216,6 +242,7 @@ export function getTrancheAllocationHealth() {
     inputs,
     exposures,
     dependencies,
+    provisionalLoss: buildProvisionalDependencyLoss(ratings, measurements),
     riskGroups,
     // Rule 12 has four cumulative risk groups; it is assessed once, not four times.
     totalRules: 12

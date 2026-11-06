@@ -12,5 +12,17 @@
   "dailySeniorMin": 0.25,
   "juniorShareMin": 0.15,
   "warningMargin": 0.1,
-  "riskGroupCaps": { "2": 0.5, "3": 0.3, "4": 0.1, "5": 0.05 }
+  "riskGroupCaps": {
+    "2": 0.5,
+    "3": 0.3,
+    "4": 0.1,
+    "5": 0.05
+  },
+  "lossRateByRiskScore": {
+    "1": 0.1,
+    "2": 0.25,
+    "3": 0.5,
+    "4": 0.75,
+    "5": 1
+  }
 }
