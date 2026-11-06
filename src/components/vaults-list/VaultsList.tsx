@@ -1,6 +1,5 @@
 import React from 'react'
 import { useIsMobile } from '@/components/ui/use-mobile'
-import { YearnVaultsSummary } from '@/components/YearnVaultsSummary'
 import { useViewportHeight } from '@/hooks/useResponsiveHeight'
 import { useVaultFiltering } from '@/hooks/useVaultFiltering'
 import { useVaultListData } from '@/hooks/useVaultListData'
@@ -23,7 +22,7 @@ export const VaultsList: React.FC<VaultsListProps> = React.memo(({ vaults, token
   const availableHeight = useViewportHeight({
     headerHeight: 53, // Header height
     footerHeight: 53, // Fixed footer height
-    extraOffset: 200 // Summary, table headers, search bar, margins
+    extraOffset: isMobile ? 200 : 120 // Table headers, filters, and margins
   })
 
   // Use our custom hooks for data transformation and filtering
@@ -46,7 +45,6 @@ export const VaultsList: React.FC<VaultsListProps> = React.memo(({ vaults, token
 
   return (
     <div>
-      {!isMobile && <YearnVaultsSummary />}
       {/* Filters Bar */}
       <VaultsFilterBar
         selectedChains={selectedChains}

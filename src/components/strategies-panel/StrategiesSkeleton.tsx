@@ -6,7 +6,7 @@ const StrategiesSkeleton: React.FC = () => {
 
   return (
     <div className="w-full">
-      <div className="w-full mx-auto border-b border-border bg-white sm:border-x">
+      <div className="w-full mx-auto bg-white">
         {/* Tab Navigation Skeleton */}
         <div className="flex items-center border-b border-border">
           <div className="px-6 py-3">
@@ -18,7 +18,7 @@ const StrategiesSkeleton: React.FC = () => {
         <div className="pb-4 lg:flex lg:flex-row flex-col">
           {/* Table Section Skeleton */}
           <div className="lg:flex-1">
-            <div className="border border-[#f5f5f5]">
+            <div className="border-b border-[#f5f5f5]">
               {/* Table Header Skeleton */}
               <div className="flex items-center p-3 text-sm">
                 <div className="w-1/2 flex items-center">

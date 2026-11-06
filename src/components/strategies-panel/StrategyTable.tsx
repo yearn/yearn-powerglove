@@ -46,9 +46,9 @@ export const StrategyTable: React.FC<StrategyTableProps> = React.memo(
 
     return (
       <div className="w-full">
-        <div className="w-full border-y border-[#f5f5f5]">
+        <div className="w-full border-b border-[#f5f5f5]">
           {isMobile ? (
-            <div className="border-b border-[#f5f5f5] p-3">
+            <div className="p-3">
               <div className="text-[11px] font-medium uppercase tracking-[0.08em] text-[#808080]">Sort strategies</div>
               <div className="mt-2 flex flex-wrap gap-2">
                 {[
