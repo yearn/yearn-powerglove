@@ -1,0 +1,42 @@
+{
+  "source": "https://kong.yearn.fi/api/rest/snapshot/1/0x696d02Db93291651ED510704c9b286841d506987",
+  "sourceSha256": "5bb128896c8605407b89bfcdd971a66c96214f66e546bd48ba91723a6f634e40",
+  "retrievedAt": "2026-11-01T19:29:48.499478+00:00",
+  "observedAt": "2026-11-01T18:46:35+00:00",
+  "blockNumber": 26321805,
+  "allocationBasis": "currentDebtUsd",
+  "totalAllocationUsd": 14523102.821852637,
+  "idleUsd": 0,
+  "strategies": [
+    {
+      "address": "0x0e297dE4005883C757c9F09fdF7cF1363C20e626",
+      "name": "Morpho Yearn OG USDC Compounder",
+      "allocationUsd": 7085357.625779319
+    },
+    {
+      "address": "0xc5b16E7eFe1CA05714477b8edcAb4deE9b93a27C",
+      "name": "Katana yvUSDC Compounder",
+      "allocationUsd": 933033.0268175234
+    },
+    {
+      "address": "0xd362efC75Ef1879f37A900823495f402CfdB0986",
+      "name": "stcUSD/USDC Pawn Broker Looper",
+      "allocationUsd": 893192.4239384851
+    },
+    {
+      "address": "0x2dF6c1602528dE8B8A5C72Baf6E70295b3A64142",
+      "name": "sUSDS Pendle PT Maxi",
+      "allocationUsd": 582214.7524090853
+    },
+    {
+      "address": "0x62ebE2ca290DB3B649c390847f8204196771B438",
+      "name": "USD3 Pendle PT Maxi",
+      "allocationUsd": 412709.84689464653
+    },
+    {
+      "address": "0xcaDf62b59406a05754581c31C04f8f7B54AF1e6e",
+      "name": "USDC to Grove USDS Compounder",
+      "allocationUsd": 4616595.146013579
+    }
+  ]
+}
