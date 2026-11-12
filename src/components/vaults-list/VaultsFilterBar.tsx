@@ -210,7 +210,7 @@ export const VaultsFilterBar: React.FC<VaultsFilterBarProps> = ({
 
   if (!isMobile) {
     return (
-      <div className="flex flex-col gap-4 border bg-white p-4 md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col gap-4 border-x bg-white p-4 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-4">
           <ChainSelector
             selectedChains={selectedChains}
@@ -228,7 +228,8 @@ export const VaultsFilterBar: React.FC<VaultsFilterBarProps> = ({
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <Input
             type="text"
-            placeholder="Search vaults or tokens"
+            placeholder="Filter vaults or tokens…"
+            aria-label="Filter vaults or tokens"
             value={searchTerm}
             onChange={(event) => onSearchChange(event.target.value)}
             className="h-10 border-gray-300 pl-9 text-sm"
@@ -239,13 +240,14 @@ export const VaultsFilterBar: React.FC<VaultsFilterBarProps> = ({
   }
 
   return (
-    <div className="border bg-white p-3 shadow-sm">
+    <div className="border-x bg-white p-3 shadow-sm">
       <div className="space-y-2.5">
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <Input
             type="text"
-            placeholder="Search vaults or tokens"
+            placeholder="Filter vaults or tokens…"
+            aria-label="Filter vaults or tokens"
             value={searchTerm}
             onChange={(event) => onSearchChange(event.target.value)}
             className="h-11 rounded-none border-gray-200 bg-gray-50 pl-9 text-sm"

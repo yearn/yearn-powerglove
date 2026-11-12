@@ -107,7 +107,7 @@ export const VaultEventsPanel: React.FC<VaultEventsPanelProps> = React.memo(
             <p className="text-gray-500 text-sm">No events match the selected filter.</p>
           </div>
         ) : (
-          <div className="overflow-hidden border-y border-border bg-white">
+          <div data-vault-activity-rows className="overflow-hidden border-y border-border bg-white">
             {events.map((event) => (
               <VaultEventRow
                 key={event.id}
