@@ -34,7 +34,6 @@ export const VaultEventsPanel: React.FC<VaultEventsPanelProps> = React.memo(
       depositCount,
       withdrawCount,
       transferCount,
-      isTruncated,
       isLoading,
       error,
       eventType,
@@ -77,7 +76,6 @@ export const VaultEventsPanel: React.FC<VaultEventsPanelProps> = React.memo(
             <span>
               <span className="font-semibold text-black">{transferCount}</span> transfers
             </span>
-            {isTruncated ? <span className="font-semibold text-amber-700">Recent events only</span> : null}
           </div>
           <div className="flex-1" />
           <div className="flex flex-wrap items-center gap-3 sm:justify-end">

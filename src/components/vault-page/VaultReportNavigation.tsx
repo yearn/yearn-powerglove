@@ -15,6 +15,7 @@ type VaultReportNavigationProps = {
 }
 
 export function VaultReportNavigation({ ariaLabel, prefix, sections }: VaultReportNavigationProps) {
+  const scrollFrame = useRef(0)
   const navigationRef = useRef<HTMLElement | null>(null)
   const [activeSection, setActiveSection] = useState(sections[0]?.id ?? '')
 
@@ -25,25 +26,58 @@ export function VaultReportNavigation({ ariaLabel, prefix, sections }: VaultRepo
 
       const navigation = navigationRef.current
       const stickyTop = navigation ? Number.parseFloat(window.getComputedStyle(navigation).top) || 0 : 0
-      const navigationOffset = stickyTop + (navigation?.offsetHeight ?? 0) + 8
+      const extraScroll = 2 * Number.parseFloat(window.getComputedStyle(document.documentElement).fontSize)
+      const navigationOffset = stickyTop + (navigation?.offsetHeight ?? 0) - 1 - extraScroll
       const targetTop = target.getBoundingClientRect().top + window.scrollY - navigationOffset
 
-      window.scrollTo({
-        top: Math.max(0, targetTop),
-        behavior
-      })
+      window.cancelAnimationFrame(scrollFrame.current)
+      const destination = Math.max(0, Math.min(targetTop, document.documentElement.scrollHeight - window.innerHeight))
+      if (behavior !== 'smooth') {
+        window.scrollTo({ top: destination, behavior: 'instant' })
+        return
+      }
+      const start = window.scrollY
+      const startedAt = performance.now()
+      const duration = 650
+      const animate = (now: number) => {
+        const progress = Math.min((now - startedAt) / duration, 1)
+        const eased = progress < 0.5 ? 4 * progress ** 3 : 1 - (-2 * progress + 2) ** 3 / 2
+        window.scrollTo({ top: start + (destination - start) * eased, behavior: 'instant' })
+        scrollFrame.current = progress < 1 ? window.requestAnimationFrame(animate) : 0
+      }
+      scrollFrame.current = window.requestAnimationFrame(animate)
     },
     [prefix]
   )
 
   const scheduleSectionScroll = useCallback(
     (sectionId: string, behavior: ScrollBehavior) => {
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => scrollToSection(sectionId, behavior))
+      window.cancelAnimationFrame(scrollFrame.current)
+      scrollFrame.current = requestAnimationFrame(() => {
+        scrollFrame.current = requestAnimationFrame(() => scrollToSection(sectionId, behavior))
       })
     },
     [scrollToSection]
   )
+
+  useEffect(() => {
+    const cancel = () => {
+      window.cancelAnimationFrame(scrollFrame.current)
+      scrollFrame.current = 0
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '].includes(event.key)) cancel()
+    }
+    window.addEventListener('wheel', cancel, { passive: true })
+    window.addEventListener('touchstart', cancel, { passive: true })
+    window.addEventListener('keydown', onKeyDown)
+    return () => {
+      cancel()
+      window.removeEventListener('wheel', cancel)
+      window.removeEventListener('touchstart', cancel)
+      window.removeEventListener('keydown', onKeyDown)
+    }
+  }, [])
 
   useEffect(() => {
     const requestedSection = sections.find(
@@ -109,7 +143,11 @@ export function VaultReportNavigation({ ariaLabel, prefix, sections }: VaultRepo
                 event.preventDefault()
                 event.stopPropagation()
                 setActiveSection(link.id)
-                window.history.replaceState(window.history.state, '', `#${getVaultReportSectionId(prefix, link.id)}`)
+                window.history.replaceState(
+                  { ...window.history.state, __hashScrollIntoViewOptions: false },
+                  '',
+                  `#${getVaultReportSectionId(prefix, link.id)}`
+                )
                 const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'
                 scheduleSectionScroll(link.id, behavior)
               }}
