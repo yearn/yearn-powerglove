@@ -5,7 +5,7 @@ import { buildPairedApyDisplay, buildSingleApyDisplay, getEstimatedApySourceLabe
 import { formatApyDisplay, formatTvlDisplay, normalizeApyDisplayValue } from '@/lib/formatters'
 import type { TokenAsset } from '@/types/tokenAsset'
 import type { Vault } from '@/types/vaultTypes'
-import { getVaultDisplayType, resolveTokenIcon } from '@/utils/vaultDataUtils'
+import { getVaultListType, resolveTokenIcon } from '@/utils/vaultDataUtils'
 
 export function useVaultListData(vaults: Vault[], tokenAssets: TokenAsset[]): VaultListData[] {
   // Memoize the data transformation to avoid recalculation on every render
@@ -34,13 +34,16 @@ export function useVaultListData(vaults: Vault[], tokenAssets: TokenAsset[]): Va
         : buildSingleApyDisplay(apyRawValue)
 
       return {
+        isRetired: vault.isRetired,
+        apiVersion: vault.apiVersion || undefined,
+        tvlUsd: vault.tvl?.close ?? null,
         id: vault.address, // Use the vault's address as a unique ID
         name: vault.name,
         chain: `${CHAIN_ID_TO_NAME[vault.chainId]}`,
         chainIconUri: CHAIN_ID_TO_ICON[vault.chainId],
         token: vault.asset.symbol,
         tokenUri: resolveTokenIcon(vault.asset.address, vault.asset.symbol, tokenAssets),
-        type: getVaultDisplayType(vault),
+        type: getVaultListType(vault),
         estimatedAPY,
         estimatedApySortValue:
           estimatedApyRawValue === null ? Number.NaN : normalizeApyDisplayValue(estimatedApyRawValue),

@@ -51,7 +51,12 @@ export function VirtualScrollTable<T>({
   }, [])
 
   return (
-    <div ref={scrollElementRef} className={`overflow-auto ${className} pb-[70px]`} style={{ height: containerHeight }}>
+    <div
+      data-virtual-scroll
+      ref={scrollElementRef}
+      className={`overflow-auto ${className} pb-[70px]`}
+      style={{ height: containerHeight }}
+    >
       <div style={{ height: totalHeight, position: 'relative' }}>
         <div style={{ transform: `translateY(${offsetY}px)` }}>
           {visibleItems.map(({ item, index }) => (

@@ -8,6 +8,17 @@ import {
 import type { KongVaultListItem, KongVaultSnapshot } from '@/types/kong'
 
 describe('mapKongListItemToVault', () => {
+  it('preserves explicit retirement metadata without inferring it from API version', () => {
+    const item = {
+      chainId: 1,
+      address: '0x1111111111111111111111111111111111111111',
+      name: 'Vault',
+      apiVersion: '0.3.0'
+    }
+    expect(mapKongListItemToVault({ ...item, isRetired: true }).isRetired).toBe(true)
+    expect(mapKongListItemToVault({ ...item, isRetired: false }).isRetired).toBe(false)
+    expect(mapKongListItemToVault(item).isRetired).toBeUndefined()
+  })
   it('uses estimated APY as forward APY when available', () => {
     const item: KongVaultListItem = {
       chainId: 1,

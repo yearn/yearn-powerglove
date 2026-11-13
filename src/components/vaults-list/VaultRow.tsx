@@ -1,10 +1,10 @@
 import { Link } from '@tanstack/react-router'
+import { TriangleAlert } from 'lucide-react'
 import React from 'react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { getChainIdByName } from '@/constants/chains'
 import { cn } from '@/lib/utils'
 import type { ApyDisplayValue } from '@/types/dataTypes'
-import { OptimizedImage } from '../ui/OptimizedImage'
 
 export interface VaultListData {
   id: string
@@ -21,9 +21,15 @@ export interface VaultListData {
   apySortValue: number
   apyRawValue: number
   tvl: string
+  tvlUsd?: number | null
+  apiVersion?: string
+  isRetired?: boolean
 }
 
+export type VaultIconStyle = 'behind' | 'badge'
+
 interface VaultRowProps {
+  iconStyle?: VaultIconStyle
   vault: VaultListData
 }
 
@@ -34,22 +40,22 @@ interface VaultMobileListRowProps extends VaultRowProps {
 export const MOBILE_VAULT_ROW_HEIGHT = 72
 
 const TYPE_META_LABELS: Record<string, string> = {
-  'Allocator Vault': 'Allocator',
-  'Strategy Vault': 'Strategy',
+  'Single Asset': 'Single Asset',
+  'Tokenized Strategy': 'Tokenized Strategy',
   'Factory Vault': 'Factory',
   'Legacy Vault': 'Legacy',
   'External Vault': 'External'
 }
 
 const TYPE_META_CODES: Record<string, string> = {
-  'Allocator Vault': 'AV',
-  'Strategy Vault': 'SV',
+  'Single Asset': 'SA',
+  'Tokenized Strategy': 'TS',
   'Factory Vault': 'FV',
   'Legacy Vault': 'LV',
   'External Vault': 'XV'
 }
 
-const VaultIcon = ({
+export const VaultIcon = ({
   src,
   alt,
   fallback,
@@ -81,15 +87,45 @@ const VaultIcon = ({
       alt={alt}
       loading="lazy"
       onError={() => setHasError(true)}
-      className={cn('rounded-full object-cover', className)}
+      className={cn('object-contain', className)}
     />
   )
 }
 
-const CompactMetaItem = ({ icon, label }: { icon: React.ReactNode; label: string }) => {
+const VaultLogoPair = ({
+  vault,
+  mobile = false,
+  iconStyle = 'badge'
+}: {
+  vault: VaultListData
+  mobile?: boolean
+  iconStyle?: VaultIconStyle
+}) => (
+  <div className={cn('relative isolate shrink-0', mobile ? 'h-10 w-14' : 'h-[30px] w-[42px]')}>
+    <VaultIcon
+      src={vault.chainIconUri}
+      alt={vault.chain}
+      fallback={vault.chain.slice(0, 1)}
+      className={cn(
+        'absolute',
+        iconStyle === 'badge'
+          ? ['bottom-0 translate-y-1/4 z-20 opacity-100', mobile ? 'left-1 h-6 w-6' : 'left-[3px] h-[18px] w-[18px]']
+          : ['left-0 top-0 z-0 opacity-50', mobile ? 'h-8 w-8' : 'h-6 w-6']
+      )}
+    />
+    <VaultIcon
+      src={vault.tokenUri}
+      alt={vault.token}
+      fallback={vault.token.slice(0, 2)}
+      className={cn('absolute top-0 z-10', mobile ? 'left-4 h-10 w-10' : 'left-3 h-[30px] w-[30px]')}
+    />
+  </div>
+)
+
+const CompactMetaItem = ({ icon, label }: { icon?: React.ReactNode; label: string }) => {
   return (
     <div className="inline-flex min-w-0 items-center gap-1.5 text-[11px] font-medium text-gray-500">
-      <span className="shrink-0">{icon}</span>
+      {icon && <span className="shrink-0">{icon}</span>}
       <span className="truncate">{label}</span>
     </div>
   )
@@ -127,7 +163,26 @@ export const DesktopApyValue = ({ metric }: { metric: ApyDisplayValue }) => {
   )
 }
 
-export const VaultRow: React.FC<VaultRowProps> = ({ vault }) => {
+export function RetiredVaultWarning() {
+  return (
+    <TooltipProvider delayDuration={150}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span
+            role="img"
+            aria-label="retired"
+            className="inline-flex shrink-0 text-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <TriangleAlert size={14} aria-hidden="true" />
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>retired</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  )
+}
+
+export const VaultRow: React.FC<VaultRowProps> = ({ vault, iconStyle = 'badge' }) => {
   return (
     <Link
       to="/vaults/$chainId/$vaultAddress"
@@ -135,39 +190,39 @@ export const VaultRow: React.FC<VaultRowProps> = ({ vault }) => {
         chainId: (getChainIdByName(vault.chain) || 1).toString(),
         vaultAddress: vault.id
       }}
-      className="flex px-6 py-2 border-b hover:bg-muted/40 transition-colors cursor-pointer bg-white"
+      className="grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)_minmax(0,2fr)] gap-x-6 pl-6 pr-10 py-2 border-b hover:bg-muted/40 transition-colors cursor-pointer bg-white"
       style={{ height: '50px' }}
     >
-      <div className="flex-[2] text-left flex items-center">{vault.name}</div>
-      <div className="flex-1 flex justify-end items-center gap-2">
-        {vault.chain}
-        {vault.chainIconUri ? (
-          <OptimizedImage src={vault.chainIconUri} alt={vault.chain} className="w-6 h-6" fallbackClassName="w-6 h-6" />
-        ) : (
-          <div className="w-6 h-6 flex items-center justify-center bg-gray-300 rounded-full text-white">?</div>
-        )}
+      <div className="min-w-0 flex-[2] text-left flex items-center gap-2">
+        <VaultLogoPair vault={vault} iconStyle={iconStyle} />
+        <span className="truncate">{vault.name}</span>
+        {vault.isRetired && <RetiredVaultWarning />}
       </div>
-      <div className="flex-1 flex justify-end items-center gap-2">
-        {vault.token}
-        {vault.tokenUri ? (
-          <OptimizedImage src={vault.tokenUri} alt={vault.token} className="w-6 h-6" fallbackClassName="w-6 h-6" />
-        ) : (
-          <div className="w-6 h-6 flex items-center justify-center bg-gray-300 rounded-full">❓</div>
-        )}
+      <div className="relative -left-24 grid w-full min-w-0 max-w-96 grid-cols-3 items-center gap-x-1 justify-self-end">
+        <div className="min-w-0 flex-1 text-right flex items-center justify-end text-sm">
+          <DesktopApyValue metric={vault.estimatedAPY} />
+        </div>
+        <div className="min-w-0 flex-1 text-right flex items-center justify-end text-sm">
+          <DesktopApyValue metric={vault.desktopThirtyDayAPY} />
+        </div>
+        <div className="min-w-0 flex-1 text-right flex items-center justify-end">{vault.tvl}</div>
       </div>
-      <div className="flex-1 text-right flex items-center justify-end">{vault.type}</div>
-      <div className="flex-1 text-right flex items-center justify-end text-sm">
-        <DesktopApyValue metric={vault.estimatedAPY} />
+      <div className="grid w-full min-w-0 max-w-96 grid-cols-3 items-center gap-x-1 justify-self-end">
+        <div className="min-w-0 text-right" title={vault.token}>
+          <span className="block truncate">{vault.token}</span>
+        </div>
+        <div className="min-w-0 text-right">{vault.chain}</div>
+        <div className="min-w-0 text-right text-xs">{vault.type}</div>
       </div>
-      <div className="flex-1 text-right flex items-center justify-end text-sm">
-        <DesktopApyValue metric={vault.desktopThirtyDayAPY} />
-      </div>
-      <div className="flex-1 text-right flex items-center justify-end">{vault.tvl}</div>
     </Link>
   )
 }
 
-export const VaultMobileListRow: React.FC<VaultMobileListRowProps> = ({ vault, isLast = false }) => {
+export const VaultMobileListRow: React.FC<VaultMobileListRowProps> = ({
+  vault,
+  isLast = false,
+  iconStyle = 'badge'
+}) => {
   return (
     <Link
       to="/vaults/$chainId/$vaultAddress"
@@ -183,48 +238,16 @@ export const VaultMobileListRow: React.FC<VaultMobileListRowProps> = ({ vault, i
       <div className="grid grid-cols-[minmax(0,1.8fr)_4.5rem_5rem] items-center gap-x-3">
         <div className="min-w-0">
           <div className="flex min-w-0 items-center gap-2.5">
-            <div className="relative h-8 w-8 shrink-0">
-              <VaultIcon
-                src={vault.tokenUri}
-                alt={vault.token}
-                fallback={vault.token.slice(0, 2)}
-                className="h-8 w-8 border border-gray-100 bg-white"
-              />
-              <div className="absolute -bottom-0.5 -right-0.5 rounded-full bg-white p-0.5 ring-1 ring-gray-200">
-                <VaultIcon
-                  src={vault.chainIconUri}
-                  alt={vault.chain}
-                  fallback={vault.chain.slice(0, 1)}
-                  className="h-3 w-3"
-                />
-              </div>
-            </div>
+            <VaultLogoPair vault={vault} mobile iconStyle={iconStyle} />
 
             <div className="min-w-0 flex-1">
-              <div className="truncate text-[13px] font-semibold leading-4 text-gray-950">{vault.name}</div>
+              <div className="flex min-w-0 items-center gap-1.5">
+                <span className="truncate text-[13px] font-semibold leading-4 text-gray-950">{vault.name}</span>
+                {vault.isRetired && <RetiredVaultWarning />}
+              </div>
               <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-0.5">
-                <CompactMetaItem
-                  icon={
-                    <VaultIcon
-                      src={vault.chainIconUri}
-                      alt={vault.chain}
-                      fallback={vault.chain.slice(0, 1)}
-                      className="h-3 w-3"
-                    />
-                  }
-                  label={vault.chain}
-                />
-                <CompactMetaItem
-                  icon={
-                    <VaultIcon
-                      src={vault.tokenUri}
-                      alt={vault.token}
-                      fallback={vault.token.slice(0, 2)}
-                      className="h-3 w-3"
-                    />
-                  }
-                  label={vault.token}
-                />
+                <CompactMetaItem label={vault.chain} />
+                <CompactMetaItem label={vault.token} />
                 <CompactMetaItem
                   icon={
                     <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-gray-900 text-[8px] font-semibold uppercase text-white">

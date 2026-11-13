@@ -476,6 +476,7 @@ export const mapKongListItemToVault = (item: KongVaultListItem): Vault => {
       decimals: resolveDecimals(item.asset?.decimals, item.decimals),
       address: normalizeAddress(item.asset?.address)
     },
+    isRetired: item.isRetired,
     apiVersion: item.apiVersion ?? (v3 ? '3' : ''),
     pricePerShare: 0,
     apy: {

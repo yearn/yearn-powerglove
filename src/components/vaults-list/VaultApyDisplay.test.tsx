@@ -8,7 +8,17 @@ describe('vault overview APY display', () => {
     const { container } = render(<VaultsTableHeader sortColumn="tvl" sortDirection="desc" onSort={vi.fn()} />)
     const labels = [...container.querySelectorAll('button span')].map((element) => element.textContent)
 
-    expect(labels).toEqual(['Vault', 'Chain', 'Token', 'Type', 'Est. APY', '30D APY', 'TVL'])
+    expect(labels).toEqual(['Vault', 'Est. APY', '30D APY', 'TVL', 'Asset', 'Chain', 'Type'])
+  })
+
+  it('opens descriptor filters without sorting', () => {
+    const onSort = vi.fn()
+    const onFilter = vi.fn()
+    render(<VaultsTableHeader sortColumn="tvl" sortDirection="desc" onSort={onSort} onFilter={onFilter} />)
+    for (const label of ['Asset', 'Chain', 'Type'])
+      fireEvent.click(screen.getByRole('button', { name: `Filter by ${label}` }))
+    expect(onFilter.mock.calls).toEqual([['assets'], ['chains'], ['types']])
+    expect(onSort).not.toHaveBeenCalled()
   })
 
   it('exposes the estimate processing source on focus', async () => {

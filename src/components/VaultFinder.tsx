@@ -59,9 +59,7 @@ export function VaultFinder({ onOpen }: { onOpen?: () => void }) {
               <output className="block px-3 py-5 text-sm text-muted-foreground">Loading vaults…</output>
             ) : !vaults.length && error ? (
               <output className="block px-3 py-5 text-sm text-muted-foreground">Vault search is unavailable.</output>
-            ) : !term ? (
-              <p className="px-3 py-5 text-sm text-muted-foreground">Find a vault to open its detail page.</p>
-            ) : !results.length ? (
+            ) : !term ? null : !results.length ? (
               <output className="block px-3 py-5 text-sm text-muted-foreground">No matching vaults.</output>
             ) : (
               results.map((vault) => (
