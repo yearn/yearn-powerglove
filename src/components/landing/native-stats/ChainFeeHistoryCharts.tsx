@@ -7,7 +7,8 @@ import { buildChainFeeHistorySeries } from './chain-fee-history'
 import { FeeBreakdownChart } from './FeeBreakdownChart'
 import { FeeMetricToggle } from './FeeMetricToggle'
 import type { FeeHistoryPeriod } from './fee-history'
-import { CHAIN_COLORS, CHAIN_NAMES, SkeletonChart } from './hooks'
+import { CHAIN_COLORS, CHAIN_NAMES } from './hooks'
+import { StatsChartSkeleton } from './StatsLoadingSkeletons'
 import { useChainFeeHistories } from './useChainFeeHistories'
 
 export type ChainFeeHistoryView = 'cumulative' | 'periodic'
@@ -41,7 +42,7 @@ export function ChainFeeHistoryCharts({
   return (
     <section className="chain-fee-charts fee-chart-group" aria-label="Earnings and fees by chain" aria-busy={loading}>
       {loading ? (
-        <SkeletonChart />
+        <StatsChartSkeleton title="Earnings by Chain" kind="chain" />
       ) : error ? (
         <div className="card">
           <p>Chain breakdown could not be loaded.</p>

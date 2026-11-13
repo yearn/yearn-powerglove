@@ -20,7 +20,11 @@ function WeeklyHarvests() {
     <article className="metric" aria-label="Harvests This Week" aria-busy={loading}>
       <div className="label">Harvests This Week</div>
       <div className="value" title={title}>
-        {data?.reportCount.toLocaleString() ?? '—'}
+        {loading ? (
+          <span className="skeleton stats-skeleton-value" aria-label="Loading harvest count" />
+        ) : (
+          (data?.reportCount.toLocaleString() ?? '—')
+        )}
       </div>
       {error && (
         <button type="button" onClick={retry} className="text-xs underline" aria-label="Retry harvests this week">
@@ -31,16 +35,30 @@ function WeeklyHarvests() {
   )
 }
 
-export function VaultHeadlineStats({ data }: { data: Pick<TvlSummary, 'totalTvl' | 'vaultCount'> | null }) {
+export function VaultHeadlineStats({
+  data,
+  loading = false
+}: {
+  data: Pick<TvlSummary, 'totalTvl' | 'vaultCount'> | null
+  loading?: boolean
+}) {
   return (
-    <section className="tvl-summary-cards" aria-label="Vault statistics">
+    <section className="tvl-summary-cards" aria-label="Vault statistics" aria-busy={loading}>
       <article className="metric" aria-label="Total TVL">
         <div className="label">Total TVL</div>
-        <div className="value">{fmt(data?.totalTvl)}</div>
+        <div className="value">
+          {loading ? <span className="skeleton stats-skeleton-value" aria-label="Loading TVL" /> : fmt(data?.totalTvl)}
+        </div>
       </article>
       <article className="metric" aria-label="Active Vaults">
         <div className="label">Active Vaults</div>
-        <div className="value">{data?.vaultCount.active?.toLocaleString() ?? '—'}</div>
+        <div className="value">
+          {loading ? (
+            <span className="skeleton stats-skeleton-value" aria-label="Loading active vault count" />
+          ) : (
+            (data?.vaultCount.active?.toLocaleString() ?? '—')
+          )}
+        </div>
       </article>
       <WeeklyHarvests />
     </section>

@@ -122,7 +122,7 @@ export function EffectiveFeesTable({
 
   return (
     <section className="monthly-vault-fees" aria-label="Adjusted TVL and Fees by Vault">
-      <div className="monthly-fee-toolbar">
+      <div className="monthly-fee-toolbar stats-effective-toolbar">
         <div>
           <h2>Adjusted TVL and Fees by Vault</h2>
         </div>

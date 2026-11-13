@@ -2882,3 +2882,237 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* Loading and hydrated charts share the same responsive size contract. */
+.pg-stats {
+  --stats-tvl-plot-height: 320px;
+  --stats-fee-plot-height: 360px;
+  --stats-chart-tvl-height: 402px;
+  --stats-chart-overall-height: 438px;
+  --stats-chart-breakdown-height: 459px;
+  --stats-chart-comparison-height: 486px;
+}
+
+.pg-stats .stats-chart-tvl {
+  min-height: var(--stats-chart-tvl-height);
+}
+.pg-stats .stats-chart-overall {
+  min-height: var(--stats-chart-overall-height);
+}
+.pg-stats .stats-chart-breakdown,
+.pg-stats .stats-chart-yield,
+.pg-stats .stats-chart-chain,
+.pg-stats .stats-chart-type {
+  min-height: var(--stats-chart-breakdown-height);
+}
+.pg-stats .stats-chart-comparison {
+  min-height: var(--stats-chart-comparison-height);
+}
+.pg-stats .fee-history-chart {
+  height: var(--stats-fee-plot-height);
+}
+
+.pg-stats .stats-skeleton-chart-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  min-height: 36px;
+  margin-bottom: 8px;
+}
+.pg-stats .stats-skeleton-chart-header h2 {
+  margin: 0;
+}
+.pg-stats .stats-chart-tvl .stats-skeleton-chart-header {
+  margin-bottom: 12px;
+}
+.pg-stats .stats-skeleton-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.pg-stats .stats-skeleton-controls > span {
+  display: block;
+  width: 96px;
+  height: 32px;
+}
+.pg-stats .stats-skeleton-value {
+  display: block;
+  width: 5ch;
+  height: 1.15em;
+}
+.pg-stats .stats-skeleton-plot {
+  height: var(--stats-fee-plot-height);
+  padding: 8px 12px 50px 60px;
+}
+.pg-stats .stats-skeleton-plot-tvl {
+  height: var(--stats-tvl-plot-height);
+}
+.pg-stats .stats-skeleton-plot > .skeleton {
+  height: 100%;
+  border: 1px solid var(--border);
+  border-radius: 0;
+  background-image: repeating-linear-gradient(to bottom, transparent 0, transparent calc(25% - 1px), var(--border) 25%);
+}
+.pg-stats .stats-skeleton-chain-bar {
+  flex: 1;
+  height: 8px;
+  margin: 0 20px;
+}
+.pg-stats .stats-skeleton-table {
+  height: min(65vh, 626.5px);
+}
+.pg-stats .stats-skeleton-monthly-table {
+  height: 65vh;
+}
+.pg-stats .stats-skeleton-table td {
+  height: 60px;
+}
+.pg-stats .stats-skeleton-pagination {
+  display: flex;
+  justify-content: flex-end;
+  min-height: 64px;
+  padding-top: 12px;
+}
+
+@media (max-width: 600px) {
+  .pg-stats {
+    --stats-chart-tvl-height: 487px;
+    --stats-chart-overall-height: 489px;
+    --stats-chart-breakdown-height: 521px;
+    --stats-chart-comparison-height: 663px;
+  }
+  .pg-stats .stats-chart-chain {
+    min-height: 559px;
+  }
+  .pg-stats .stats-chart-yield {
+    min-height: 515px;
+  }
+  .pg-stats .stats-skeleton-chart-header {
+    min-height: 80px;
+  }
+  .pg-stats .stats-chart-tvl .stats-skeleton-chart-header {
+    min-height: 121px;
+  }
+  .pg-stats .stats-skeleton-controls > span {
+    width: 80px;
+  }
+}
+
+.pg-stats .fee-summary-values .stats-skeleton-value {
+  height: 1.5em;
+}
+.pg-stats .stats-skeleton-chain-row {
+  min-height: 40.58px;
+}
+.pg-stats .stats-effective-toolbar {
+  min-height: 40px;
+}
+.pg-stats .stats-monthly-toolbar {
+  min-height: 57px;
+}
+.pg-stats .stats-timeline-skeleton {
+  height: 62px;
+  display: grid;
+  align-content: space-between;
+  padding-top: 3px;
+  padding-bottom: 3px;
+}
+.pg-stats .stats-timeline-skeleton-track {
+  height: 6px;
+}
+.pg-stats .effective-fees-scroll:not(:has(.fee-stack-detail)) {
+  min-height: min(65vh, 626.5px);
+}
+@media (max-width: 900px) {
+  .pg-stats {
+    --stats-fee-plot-height: 300px;
+  }
+}
+@media (max-width: 600px) {
+  .pg-stats .stats-effective-toolbar {
+    min-height: 133.2px;
+  }
+  .pg-stats .stats-monthly-toolbar {
+    min-height: 186px;
+  }
+  .pg-stats .stats-monthly-footer {
+    min-height: 98px;
+  }
+  .pg-stats .stats-timeline-skeleton {
+    height: 74px;
+  }
+}
+
+.pg-stats .stats-page-panel .tvl-summary-cards .metric {
+  min-height: 106px;
+}
+@media (max-width: 600px) {
+  .pg-stats .stats-page-panel .tvl-summary-cards .metric {
+    min-height: 86px;
+  }
+}
+
+.pg-stats .stats-skeleton-metric-title {
+  min-height: 21px;
+}
+
+.pg-stats .stats-skeleton-chart-header {
+  align-content: space-between;
+}
+.pg-stats .stats-skeleton-chart-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+.pg-stats .stats-skeleton-legends > span {
+  width: 64px;
+}
+.pg-stats .stats-skeleton-picker {
+  width: 160px;
+  height: 36px;
+}
+.pg-stats .stats-chart-breakdown .stats-skeleton-chart-header,
+.pg-stats .stats-chart-chain .stats-skeleton-chart-header,
+.pg-stats .stats-chart-type .stats-skeleton-chart-header,
+.pg-stats .stats-chart-yield .stats-skeleton-chart-header {
+  min-height: 57px;
+}
+.pg-stats .stats-chart-comparison .stats-skeleton-chart-header {
+  min-height: 84px;
+}
+@media (max-width: 600px) {
+  .pg-stats .stats-chart-overall .stats-skeleton-chart-header {
+    min-height: 147px;
+  }
+  .pg-stats .stats-chart-yield .stats-skeleton-chart-header {
+    min-height: 173px;
+  }
+  .pg-stats .stats-chart-chain .stats-skeleton-chart-header {
+    min-height: 217px;
+  }
+  .pg-stats .stats-chart-type .stats-skeleton-chart-header {
+    min-height: 179px;
+  }
+  .pg-stats .stats-chart-comparison .stats-skeleton-chart-header {
+    min-height: 321px;
+  }
+}
+
+.pg-stats .stats-skeleton-plot-chain {
+  height: 300px;
+}
+
+.pg-stats .stats-skeleton-plot,
+.pg-stats .stats-skeleton-table-frame {
+  position: relative;
+}
+.pg-stats .stats-skeleton-spinner {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}

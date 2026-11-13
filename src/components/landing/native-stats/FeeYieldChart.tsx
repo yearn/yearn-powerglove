@@ -7,8 +7,9 @@ import type { FeeHistoryInterval } from './canonical-fees'
 import { FeeMetricToggle } from './FeeMetricToggle'
 import { type FeeHistoryPoint, formatFeeHistoryTick } from './fee-history'
 import { buildTvlYieldSeries, type TvlYieldMetric, type TvlYieldPoint } from './fee-yield'
-import { CHAIN_NAMES, fmt, SkeletonChart } from './hooks'
+import { CHAIN_NAMES, fmt } from './hooks'
 import { StatsContext } from './StatsContext'
+import { StatsPlotSkeleton } from './StatsLoadingSkeletons'
 import { useFeeTvlHistory } from './useFeeTvlHistory'
 
 const percentage = (value: number) =>
@@ -108,7 +109,11 @@ export function FeeYieldChart({
   const color = earnings ? '#46a2ff' : '#16a34a'
 
   return (
-    <section className="card fee-chart-card" aria-label={`${title} per dollar of TVL`} aria-busy={loading}>
+    <section
+      className="card fee-chart-card stats-chart-yield"
+      aria-label={`${title} per dollar of TVL`}
+      aria-busy={loading}
+    >
       <div className="fee-chart-header">
         <div className="fee-chart-title-row">
           <h2>
@@ -141,7 +146,7 @@ export function FeeYieldChart({
         </TooltipProvider>
       </div>
       {loading ? (
-        <SkeletonChart />
+        <StatsPlotSkeleton />
       ) : history.error ? (
         <div className="error-retry">
           <p>Historical TVL could not be loaded for this selection.</p>

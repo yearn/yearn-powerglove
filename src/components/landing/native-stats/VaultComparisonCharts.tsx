@@ -11,8 +11,9 @@ import type { ChainFeeMetric } from './chain-fee-history'
 import { FeeBreakdownChart } from './FeeBreakdownChart'
 import { FeeMetricToggle } from './FeeMetricToggle'
 import type { FeeHistoryPeriod } from './fee-history'
-import { CHAIN_NAMES, CHAIN_SHORT, resolveStatsApiBase, SkeletonChart } from './hooks'
+import { CHAIN_NAMES, CHAIN_SHORT, resolveStatsApiBase } from './hooks'
 import { STATS_CHAINS, StatsChainSelector } from './StatsChainSelector'
+import { StatsPlotSkeleton } from './StatsLoadingSkeletons'
 import {
   allocatorKey,
   allocatorMovingAverageWindow,
@@ -269,10 +270,10 @@ export function VaultComparisonCharts({
             !catalog.isPending ? (
               <p className="text-dim">Choose V3 vault products to build your comparison.</p>
             ) : (
-              <SkeletonChart />
+              <StatsPlotSkeleton />
             )
           ) : loading && histories.every((history) => !history.data) ? (
-            <SkeletonChart />
+            <StatsPlotSkeleton />
           ) : null
         }
         data={chartData}

@@ -7,7 +7,7 @@ import type { ChainFeeMetric } from './chain-fee-history'
 import { FeeBreakdownChart } from './FeeBreakdownChart'
 import { FeeMetricToggle } from './FeeMetricToggle'
 import type { FeeHistoryPeriod } from './fee-history'
-import { SkeletonChart } from './hooks'
+import { StatsChartSkeleton } from './StatsLoadingSkeletons'
 import { useVaultTypeFeeHistories } from './useVaultTypeFeeHistories'
 import { buildVaultTypeFeeSeries } from './vault-type-fees'
 
@@ -44,7 +44,7 @@ export function VaultTypeFeeCharts({
           </button>
         </div>
       ) : loading ? (
-        <SkeletonChart />
+        <StatsChartSkeleton title="Earnings by Vault Type" kind="type" />
       ) : (
         <FeeBreakdownChart
           renderType={renderType}

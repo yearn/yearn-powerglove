@@ -45,7 +45,11 @@ export function SharedStatsChartControls({ chainSelector }: { chainSelector: Rea
           </button>
         </div>
       ) : (
-        <output className="fee-range-timeline text-dim">Loading timeline…</output>
+        <div className="fee-range-timeline stats-timeline-skeleton" aria-busy="true" aria-label="Loading timeline">
+          <div aria-hidden="true" className="skeleton skeleton-line" />
+          <div aria-hidden="true" className="skeleton stats-timeline-skeleton-track" />
+          <div aria-hidden="true" className="skeleton skeleton-line" />
+        </div>
       )}
     </StatsChartControls>
   )

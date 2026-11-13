@@ -9,8 +9,9 @@ import { buildBlueShadePalette } from '@/lib/theme-blue-palette'
 import { ChainTvlHistory } from './ChainTvlHistory'
 import { ChartTypeToggle, type StatsChartType } from './ChartTypeToggle'
 import { formatTvlHistoryTick } from './fee-history'
-import { CAT_COLORS, CHAIN_NAMES, CHAIN_SHORT, CHART_COLORS, fmt, SkeletonCards, useFetch } from './hooks'
+import { CAT_COLORS, CHAIN_NAMES, CHAIN_SHORT, CHART_COLORS, fmt, useFetch } from './hooks'
 import { StatsContext, StatsTimeRangeContext } from './StatsContext'
+import { StatsPlotSkeleton, StatsTvlSkeleton } from './StatsLoadingSkeletons'
 import {
   buildConstantPriceTvlUrl,
   buildTopSeriesChart,
@@ -327,7 +328,13 @@ export function TvlOverview() {
   const warningCount = rawTvlHistory ? getWarningCount(rawTvlHistory.meta) : 0
   const tvlHistoryBarSize = getHistoryBarSize(displayedHistoryRows.length)
 
-  if (loading) return <SkeletonCards count={1} />
+  if (loading)
+    return (
+      <>
+        <VaultHeadlineStats data={null} loading />
+        <StatsTvlSkeleton chainCount={chainFilter === 'all' ? 9 : 1} />
+      </>
+    )
   if (error)
     return (
       <div className="error-retry">
@@ -345,7 +352,7 @@ export function TvlOverview() {
     <>
       <VaultHeadlineStats data={data} />
 
-      <div className="card">
+      <div className="card stats-chart-tvl">
         <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
           <div>
             <div className="fee-chart-title-row">
@@ -460,8 +467,8 @@ export function TvlOverview() {
         )}
 
         {historyLoading && (
-          <div className="flex h-80 items-center justify-center text-sm text-muted-foreground">
-            Loading TVL history...
+          <div aria-label="Loading TVL history" aria-busy="true">
+            <StatsPlotSkeleton tvl />
           </div>
         )}
 
@@ -484,7 +491,7 @@ export function TvlOverview() {
           <div
             className={`chart-container tvl-history-chart${isTvlHistoryInspecting ? ' is-inspecting' : ''}`}
             data-price-adjusted={showPriceNeutral}
-            style={{ height: 320 }}
+            style={{ height: 'var(--stats-tvl-plot-height, 320px)' }}
           >
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart

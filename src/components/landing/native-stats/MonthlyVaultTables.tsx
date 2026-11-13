@@ -10,6 +10,7 @@ import { FeeMetricToggle } from './FeeMetricToggle'
 import { CHAIN_NAMES, powergloveVaultPath, resolveStatsApiBase, shortAddr, usePagination } from './hooks'
 import { buildMonthlyVaultRows, completedFeeMonths, monthlyUsd, monthlyVaultKey } from './monthly-vault-data'
 import { StatsContext } from './StatsContext'
+import { StatsTableSkeleton } from './StatsLoadingSkeletons'
 import { fetchVaultTypeFeeHistories } from './useVaultTypeFeeHistories'
 
 const monthLabel = (period: string) =>
@@ -149,7 +150,7 @@ function MonthlyVaultTable({
   const loading = !!datasetId && fees.isPending
   return (
     <section className="monthly-vault-fees" aria-labelledby={titleId} aria-busy={loading}>
-      <div className="monthly-fee-toolbar">
+      <div className="monthly-fee-toolbar stats-monthly-toolbar">
         <div>
           <div className="fee-chart-title-row">
             <h2 id={titleId}>Monthly Vault {metric === 'earnings' ? 'Earnings' : 'Fees'}</h2>
@@ -210,34 +211,10 @@ function MonthlyVaultTable({
           <output className="sr-only" aria-live="polite">
             Loading monthly {metric} for all vaults…
           </output>
-          <div className="monthly-fee-table-scroll" aria-hidden="true">
-            <table className="monthly-fee-table monthly-fee-skeleton">
-              <thead>
-                <tr>
-                  <th>Vault</th>
-                  <th>annual total</th>
-                  {months.map((month) => (
-                    <th key={month.period}>{monthLabel(month.period)}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {Array.from({ length: 8 }, (_, index) => (
-                  // biome-ignore lint/suspicious/noArrayIndexKey: Placeholder rows are static and never reordered.
-                  <tr key={`loading-${index}`}>
-                    <th>
-                      <div className="skeleton skeleton-line" />
-                      <div className="skeleton skeleton-line-sm" />
-                    </th>
-                    {['total', ...months.map((month) => month.period)].map((column) => (
-                      <td key={column}>
-                        <div className="skeleton skeleton-line" />
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <StatsTableSkeleton monthly bodyOnly />
+          <div aria-hidden="true" className="monthly-fee-footer stats-skeleton-pagination stats-monthly-footer">
+            <div className="skeleton skeleton-line" style={{ width: '12rem' }} />
+            <div className="skeleton" style={{ width: '12rem', height: 32 }} />
           </div>
         </>
       ) : (

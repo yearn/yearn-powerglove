@@ -9,6 +9,7 @@ import { buildBlueShadePalette } from '@/lib/theme-blue-palette'
 import { ChartTypeToggle, type StatsChartType } from './ChartTypeToggle'
 import { formatTvlHistoryTick } from './fee-history'
 import { CAT_COLORS, fmt, useFetch } from './hooks'
+import { StatsPlotSkeleton } from './StatsLoadingSkeletons'
 import {
   ACTUAL_TOTAL_SERIES,
   addChartTotal,
@@ -240,7 +241,11 @@ export function ChainTvlHistory({
         )}
       </div>
 
-      {loading && <div className="chain-history-state">Loading {chainLabel} history...</div>}
+      {loading && (
+        <div aria-label={`Loading ${chainLabel} history`} aria-busy="true">
+          <StatsPlotSkeleton chain />
+        </div>
+      )}
       {error && (
         <div className="chain-history-state error-retry">
           <span>{getTvlHistoryErrorMessage({ isConstantPrice: true, status, error })}</span>

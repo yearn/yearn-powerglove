@@ -86,7 +86,9 @@ export function FeeBreakdownChart({
   const activeSeries = series.filter((item) => !hiddenSeries.has(item.key))
 
   return (
-    <div className="card fee-chart-card">
+    <div
+      className={`card fee-chart-card ${controls ? 'stats-chart-comparison' : title.includes('Chain') ? 'stats-chart-chain' : 'stats-chart-type'}`}
+    >
       <div className="fee-chart-header">
         <div className={controls ? 'fee-chart-controls-row' : undefined}>
           <div className="fee-chart-title-row">

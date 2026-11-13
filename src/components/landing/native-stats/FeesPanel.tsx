@@ -23,9 +23,10 @@ import {
 } from './fee-history'
 import { defaultFeeTimeRange, resolveFeeTimeframe } from './fee-timeframe'
 import { buildTvlYieldSeries } from './fee-yield'
-import { CHAIN_NAMES, fmt, SkeletonCards, SkeletonChart, useFetch } from './hooks'
+import { CHAIN_NAMES, fmt, useFetch } from './hooks'
 import { MonthlyVaultTables } from './MonthlyVaultTables'
 import { StatsContext, StatsTimeRangeContext } from './StatsContext'
+import { StatsChartSkeleton, StatsFeesSkeleton, StatsTableSkeleton } from './StatsLoadingSkeletons'
 import type { FeeStackSummary } from './types'
 import { useFeeTvlHistory } from './useFeeTvlHistory'
 import { VaultComparisonCharts } from './VaultComparisonCharts'
@@ -130,7 +131,7 @@ export function FeeHistoryChart({
 
   if (data.length === 0) {
     return (
-      <div className="card fee-chart-card">
+      <div className="card fee-chart-card stats-chart-overall">
         <div className="fee-chart-title-row">
           <h2>{title}</h2>
           {viewControl}
@@ -142,7 +143,7 @@ export function FeeHistoryChart({
   }
 
   return (
-    <div className="card fee-chart-card">
+    <div className="card fee-chart-card stats-chart-overall">
       <div className="fee-chart-header">
         <div className="fee-chart-title-row">
           <h2>{title}</h2>
@@ -465,18 +466,7 @@ export function FeesPanel() {
       </div>
     )
 
-  if (!hasData && (l1 || l2 || l3))
-    return (
-      <div className="fees-panel" aria-busy="true">
-        <div className="fees-panel fees-panel-initial" aria-busy="true">
-          <div className="fees-loading-overlay fees-loading-overlay-initial">
-            <FeesLoadingStatus label="Loading fee data" />
-          </div>
-          <SkeletonCards count={4} />
-          <SkeletonChart />
-        </div>
-      </div>
-    )
+  if (!hasData && (l1 || l2 || l3)) return <StatsFeesSkeleton />
   if (!hasData) return <div className="fees-panel" />
 
   return (
@@ -499,6 +489,7 @@ export function FeesPanel() {
           </div>
         </div>
       )}
+      {!feeStackError && !feeStack && l4 && <StatsTableSkeleton />}
       {!feeStackError && feeStack && (
         <EffectiveFeesTable feeStack={feeStack} vaults={vaultData?.vaults ?? []} chainSelector={null} />
       )}
@@ -637,7 +628,7 @@ export function FeesPanel() {
               </button>
             </div>
           ) : (
-            <SkeletonChart />
+            <StatsChartSkeleton title="Earnings by Vault" kind="comparison" />
           )}
 
           <MonthlyVaultTables chainSelector={null} datasetId={summary.datasetId} onRetryDataset={retrySummary} />
