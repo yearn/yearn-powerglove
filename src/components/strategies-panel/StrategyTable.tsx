@@ -7,6 +7,7 @@ import type { SortDirection } from '@/utils/sortingUtils'
 import { StrategyRow } from './StrategyRow'
 
 interface StrategyTableProps {
+  pendingRows?: React.ReactNode
   allocatedStrategies: Strategy[]
   unallocatedStrategies: Strategy[]
   sortColumn: StrategySortColumn
@@ -22,6 +23,7 @@ export const StrategyTable: React.FC<StrategyTableProps> = React.memo(
   ({
     allocatedStrategies,
     unallocatedStrategies,
+    pendingRows,
     sortColumn,
     sortDirection,
     onSort,
@@ -108,6 +110,7 @@ export const StrategyTable: React.FC<StrategyTableProps> = React.memo(
                 ))}
             </div>
           )}
+          {pendingRows}
         </div>
       </div>
     )

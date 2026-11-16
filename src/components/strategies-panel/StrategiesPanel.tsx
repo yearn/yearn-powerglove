@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils'
 import type { ReallocationData } from '@/types/reallocationTypes'
 import type { VaultExtended } from '@/types/vaultTypes'
 import type { ChainId } from '../../constants/chains'
+import { PendingTimelockStrategies } from './PendingTimelockStrategies'
 import { StrategyAllocationChart } from './StrategyAllocationChart'
 import { StrategyTable } from './StrategyTable'
 
@@ -44,6 +45,16 @@ export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
           name: strategy.name
         })),
       [strategiesData.strategies]
+    )
+
+    const pendingRows = (
+      <PendingTimelockStrategies
+        chainId={vaultChainId}
+        vaultAddress={vaultDetails.address}
+        decimals={vaultDetails.asset.decimals}
+        symbol={vaultDetails.asset.symbol}
+        enabled={vaultDetails.apiVersion?.startsWith('3.') ?? false}
+      />
     )
 
     // UI state
@@ -188,6 +199,7 @@ export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
 
               <div className="w-full min-[900px]:order-1 min-[900px]:min-w-0 min-[900px]:basis-3/4">
                 <StrategyTable
+                  pendingRows={pendingRows}
                   allocatedStrategies={sortingState.allocatedStrategies}
                   unallocatedStrategies={sortingState.unallocatedStrategies}
                   sortColumn={sortingState.sortColumn}
@@ -290,6 +302,9 @@ export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
           </div>
 
           {renderMainTabContent()}
+          {activeMainTab === 'Current Strategy Allocations' && !sortingState.sortedStrategies?.length
+            ? pendingRows
+            : null}
         </div>
       </div>
     )
