@@ -7,7 +7,7 @@ import { YvUsdTVLChart, YvUsdTvlTooltipContent } from '@/components/charts/YvUsd
 
 const openApySeriesMenu = async (
   view: ReturnType<typeof render>,
-  dropdownLabel: 'Historical' | 'Oracle & estimates'
+  dropdownLabel: 'Historical APY Timeframes' | 'Estimated APY Timeframes'
 ) => {
   const trigger = view.getByRole('button', { name: new RegExp(`^${dropdownLabel} values`, 'i') })
   trigger.focus()
@@ -17,7 +17,7 @@ const openApySeriesMenu = async (
 
 const toggleApySeries = async (
   view: ReturnType<typeof render>,
-  dropdownLabel: 'Historical' | 'Oracle & estimates',
+  dropdownLabel: 'Historical APY Timeframes' | 'Estimated APY Timeframes',
   seriesName: RegExp
 ) => {
   await openApySeriesMenu(view, dropdownLabel)
@@ -84,18 +84,18 @@ describe('APYChart', () => {
     expect(container.querySelector('style')?.textContent).toContain('--color-thirtyDayApy: var(--chart-1)')
     expect(container.querySelector('path[stroke="var(--color-ppsAllTimeApy)"]')).toBeTruthy()
 
-    await toggleApySeries(view, 'Oracle & estimates', /^estimated apy/i)
+    await toggleApySeries(view, 'Estimated APY Timeframes', /^estimated apy/i)
     expect(container.querySelector('path[stroke="var(--color-yBoldEstimatedApy)"]')).toBeNull()
 
-    await toggleApySeries(view, 'Historical', /^all-time apy/i)
+    await toggleApySeries(view, 'Historical APY Timeframes', /^all-time apy/i)
     expect(container.querySelector('path[stroke="var(--color-ppsAllTimeApy)"]')).toBeNull()
 
-    await toggleApySeries(view, 'Historical', /^all-time apy/i)
+    await toggleApySeries(view, 'Historical APY Timeframes', /^all-time apy/i)
     expect(container.querySelector('path[stroke="var(--color-ppsAllTimeApy)"]')).toBeTruthy()
 
     expect(container.querySelector('path[stroke="var(--color-oracleApy)"]')).toBeNull()
 
-    await toggleApySeries(view, 'Oracle & estimates', /^oracle apy fee-adjusted/i)
+    await toggleApySeries(view, 'Estimated APY Timeframes', /^oracle apy fee-adjusted/i)
     expect(
       container.querySelector('path[stroke="var(--color-oracleApy)"][stroke-width="1.5"]:not([stroke-dasharray])')
     ).toBeTruthy()
@@ -103,7 +103,7 @@ describe('APYChart', () => {
 
     expect(container.querySelector('path[stroke="var(--color-oracleApy30dAvg)"]')).toBeNull()
 
-    await toggleApySeries(view, 'Oracle & estimates', /^oracle apy \(30d avg\)/i)
+    await toggleApySeries(view, 'Estimated APY Timeframes', /^oracle apy \(30d avg\)/i)
     expect(container.querySelector('path[stroke="var(--color-oracleApy30dAvg)"]')).toBeTruthy()
   })
 
@@ -237,10 +237,10 @@ describe('ChartsPanel', () => {
       />
     )
 
-    expect(pairedVault.getByRole('button', { name: /^historical values/i })).toBeTruthy()
-    expect(pairedVault.getByRole('button', { name: /^oracle & estimates values/i })).toBeTruthy()
+    expect(pairedVault.getByRole('button', { name: /^historical apy timeframes values/i })).toBeTruthy()
+    expect(pairedVault.getByRole('button', { name: /^estimated apy timeframes values/i })).toBeTruthy()
 
-    await openApySeriesMenu(pairedVault, 'Historical')
+    await openApySeriesMenu(pairedVault, 'Historical APY Timeframes')
     const selectedThirtyDayOption = pairedVault.getByRole('menuitemcheckbox', { name: /^30-day apy/i })
     expect(selectedThirtyDayOption.getAttribute('data-state')).toBe('checked')
     expect(selectedThirtyDayOption.className).toContain('focus:text-[#0657f9]')
@@ -266,7 +266,7 @@ describe('ChartsPanel', () => {
     pairedVault.unmount()
 
     const standardVault = render(<ChartsPanel aprApyData={aprApyData} ppsData={ppsData} tvlData={tvlData} />)
-    expect(standardVault.getByRole('button', { name: /^historical values/i })).toBeTruthy()
+    expect(standardVault.getByRole('button', { name: /^historical apy timeframes values/i })).toBeTruthy()
     expect(standardVault.getByText('Historical return over All Time')).toBeTruthy()
 
     fireEvent.click(standardVault.getByRole('button', { name: '180 Days' }))
@@ -324,7 +324,7 @@ describe('ChartsPanel', () => {
     }))
     const view = render(<ChartsPanel aprApyData={longAprApyData} ppsData={longPpsData} tvlData={tvlData} />)
 
-    await toggleApySeries(view, 'Historical', /^90-day apy/i)
+    await toggleApySeries(view, 'Historical APY Timeframes', /^90-day apy/i)
 
     expect(
       view.container.querySelector(
@@ -344,7 +344,7 @@ describe('ChartsPanel', () => {
     const view = render(
       <ChartsPanel aprApyData={yBoldAprApyData} ppsData={ppsData} tvlData={tvlData} isV3Vault isYBold />
     )
-    await openApySeriesMenu(view, 'Oracle & estimates')
+    await openApySeriesMenu(view, 'Estimated APY Timeframes')
     expect(view.getByText('The larger of the 7-day PPS APY and fee-adjusted Oracle APY.')).toBeTruthy()
   })
 
@@ -378,7 +378,7 @@ describe('ChartsPanel', () => {
     ).toBeTruthy()
     expect(container.querySelector('path[stroke="var(--color-oracleApy)"]')).toBeNull()
 
-    await toggleApySeries(view, 'Oracle & estimates', /^oracle apy fee-adjusted/i)
+    await toggleApySeries(view, 'Estimated APY Timeframes', /^oracle apy fee-adjusted/i)
     expect(container.querySelector('path[stroke="var(--color-estimatedApy)"]')).toBeTruthy()
     expect(container.querySelector('path[stroke="var(--color-oracleApy)"]')).toBeTruthy()
   })

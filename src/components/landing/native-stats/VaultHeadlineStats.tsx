@@ -6,7 +6,7 @@ import type { TvlSummary } from './types'
 import './styles.css'
 
 function WeeklyHarvests() {
-  const { data, loading, error, retry } = useFetch<HarvestSummary>('/api/harvests')
+  const { data, loading } = useFetch<HarvestSummary>('/api/harvests')
   const date = (timestamp: number) =>
     new Date(timestamp * 1000).toLocaleDateString('en-US', {
       month: 'short',
@@ -26,11 +26,6 @@ function WeeklyHarvests() {
           (data?.reportCount.toLocaleString() ?? '—')
         )}
       </div>
-      {error && (
-        <button type="button" onClick={retry} className="text-xs underline" aria-label="Retry harvests this week">
-          Retry
-        </button>
-      )}
     </article>
   )
 }

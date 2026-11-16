@@ -248,6 +248,7 @@ interface APYChartProps {
 }
 
 interface APYSeriesSelectorProps {
+  inline?: boolean
   visibleSeries: APYVisibleSeries
   onVisibleSeriesChange: (nextVisibleSeries: APYVisibleSeries) => void
   historicalApySeries?: PpsHistoricalApyPoint[] | null
@@ -302,6 +303,7 @@ function SeriesLineSample({ seriesKey }: { seriesKey: APYSeriesKey }) {
 }
 
 interface ApySeriesDropdownProps {
+  compact?: boolean
   label: string
   groups: Array<{ label: string; seriesKeys: APYSeriesKey[]; showUnavailable?: boolean }>
   availableSeries: Set<APYSeriesKey>
@@ -309,7 +311,14 @@ interface ApySeriesDropdownProps {
   onSeriesToggle: (seriesKey: APYSeriesKey, checked: boolean) => void
 }
 
-function ApySeriesDropdown({ label, groups, availableSeries, visibleSeries, onSeriesToggle }: ApySeriesDropdownProps) {
+function ApySeriesDropdown({
+  compact = false,
+  label,
+  groups,
+  availableSeries,
+  visibleSeries,
+  onSeriesToggle
+}: ApySeriesDropdownProps) {
   const [open, setOpen] = useState(false)
   const seriesKeys = groups.flatMap((group) => group.seriesKeys)
   const availableCount = seriesKeys.filter((seriesKey) => availableSeries.has(seriesKey)).length
@@ -373,7 +382,7 @@ function ApySeriesDropdown({ label, groups, availableSeries, visibleSeries, onSe
                           <span className="font-medium text-gray-900">{meta.legendLabel}</span>
                           {!available ? <span className="text-[11px] text-gray-500">Unavailable</span> : null}
                         </div>
-                        <p className="mt-0.5 text-xs leading-4 text-gray-500">{meta.description}</p>
+                        {!compact ? <p className="mt-0.5 text-xs leading-4 text-gray-500">{meta.description}</p> : null}
                       </div>
                     </div>
                   </DropdownMenuCheckboxItem>
@@ -388,6 +397,7 @@ function ApySeriesDropdown({ label, groups, availableSeries, visibleSeries, onSe
 }
 
 export function APYSeriesSelector({
+  inline = false,
   visibleSeries,
   onVisibleSeriesChange,
   historicalApySeries,
@@ -420,14 +430,16 @@ export function APYSeriesSelector({
   return (
     <div className={cn('flex w-full flex-col justify-center gap-2 sm:w-auto sm:flex-row', className)}>
       <ApySeriesDropdown
-        label="Historical"
+        compact={inline}
+        label="Historical APY Timeframes"
         groups={[{ label: 'Rolling history', seriesKeys: ROLLING_HISTORICAL_SERIES, showUnavailable: true }]}
         availableSeries={availableSeries}
         visibleSeries={visibleSeries}
         onSeriesToggle={toggleSeries}
       />
       <ApySeriesDropdown
-        label="Oracle & estimates"
+        compact={inline}
+        label="Estimated APY Timeframes"
         groups={[{ label: 'Forward-looking values', seriesKeys: ESTIMATE_SERIES }]}
         availableSeries={availableSeries}
         visibleSeries={visibleSeries}

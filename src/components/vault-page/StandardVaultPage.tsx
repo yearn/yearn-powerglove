@@ -1,7 +1,19 @@
-import { type ReactNode, useLayoutEffect, useMemo, useRef } from 'react'
-import { MainInfoPanel } from '@/components/main-info-panel'
+import { ChevronDown, ChevronUp } from 'lucide-react'
+import { type ReactNode, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { MainInfoPanel, VaultIdentity } from '@/components/main-info-panel'
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle
+} from '@/components/ui/drawer'
+import { useIsMobile } from '@/components/ui/use-mobile'
 import { isEnvioConfigured } from '@/lib/envio-client'
 import type { MainInfoPanelProps } from '@/types/dataTypes'
+import { PerformanceControlsContext } from './PerformanceControlsContext'
 import { getVaultReportSectionId, VaultReportNavigation } from './VaultReportNavigation'
 import { VaultStickyTitle } from './VaultStickyTitle'
 
@@ -21,25 +33,220 @@ type StandardVaultPageProps = {
 }
 
 export function StandardVaultPage({ mainInfo, showAction, charts, strategies, vaultActivity }: StandardVaultPageProps) {
+  const isMobile = useIsMobile()
+  const [expanded, setExpanded] = useState(() => {
+    const hash = window.location.hash.replace('#vault-', '')
+    return sections.some((section) => section.id !== 'overview' && section.id === hash) ? hash : ''
+  })
+  const [mobileLayout, setMobileLayout] = useState<'drawer' | 'inline'>('drawer')
+  const [performanceControls, setPerformanceControls] = useState<HTMLDivElement | null>(null)
   const pageRef = useRef<HTMLDivElement>(null)
+  const drawerIdentityRef = useRef<HTMLDivElement>(null)
+  const [drawerTop, setDrawerTop] = useState(140)
   useLayoutEffect(() => {
     const page = pageRef.current
     const header = document.querySelector('header')
     if (!page || !header) return
     const updateHeaderHeight = () => {
-      page.style.setProperty('--vault-header-height', `${header.getBoundingClientRect().height}px`)
+      const headerHeight = header.getBoundingClientRect().height
+      page.style.setProperty('--vault-header-height', `${headerHeight}px`)
+      if (isMobile && mobileLayout === 'drawer' && drawerIdentityRef.current)
+        setDrawerTop(headerHeight + drawerIdentityRef.current.offsetHeight)
     }
     updateHeaderHeight()
     const observer = new ResizeObserver(updateHeaderHeight)
     observer.observe(header)
+    if (drawerIdentityRef.current) observer.observe(drawerIdentityRef.current)
     return () => observer.disconnect()
-  }, [])
+  }, [isMobile, mobileLayout])
   const hasActivity = isEnvioConfigured()
   const visibleSections = useMemo(
     () => sections.filter((section) => section.id !== 'activity' || hasActivity),
     [hasActivity]
   )
   const content = { performance: charts, strategies, activity: vaultActivity }
+  if (isMobile) {
+    const mobileSections = visibleSections.filter((section) => section.id !== 'overview')
+    const activeSection = visibleSections.find((section) => section.id === expanded)
+    const changeSection = (value: string) => {
+      setExpanded(value)
+      window.history.replaceState(
+        { ...window.history.state, __hashScrollIntoViewOptions: false },
+        '',
+        value ? `#vault-${value}` : `${window.location.pathname}${window.location.search}`
+      )
+    }
+    const layoutSwitch = (
+      <fieldset
+        aria-label="Mobile section layout"
+        className="fixed right-3 top-[calc(var(--vault-header-height,55px)+0.5rem)] z-40 flex border border-border bg-white shadow-sm"
+      >
+        {(['drawer', 'inline'] as const).map((layout) => (
+          <button
+            key={layout}
+            type="button"
+            aria-pressed={mobileLayout === layout}
+            onClick={() => {
+              changeSection('')
+              setMobileLayout(layout)
+            }}
+            className={`px-2 py-1 text-xs ${mobileLayout === layout ? 'bg-gray-100 text-foreground' : 'text-gray-500'}`}
+          >
+            {layout === 'drawer' ? 'Drawers' : 'Expand down'}
+          </button>
+        ))}
+      </fieldset>
+    )
+    if (mobileLayout === 'inline') {
+      return (
+        <div
+          ref={pageRef}
+          className="vault-ledger fixed inset-x-0 bottom-0 top-[var(--vault-header-height,55px)] overflow-y-auto bg-white text-[#151515]"
+          data-testid="standard-vault-page"
+        >
+          {layoutSwitch}
+          <div className="px-4 pt-2 pb-3">
+            <VaultIdentity data={mainInfo} />
+          </div>
+          <section id={getVaultReportSectionId('vault', 'overview')}>
+            <MainInfoPanel {...mainInfo} showAction={showAction} showIdentity={false} />
+          </section>
+          <Accordion type="single" collapsible value={expanded} onValueChange={changeSection}>
+            {visibleSections
+              .filter((section) => section.id !== 'overview')
+              .map((section) => (
+                <AccordionItem key={section.id} value={section.id} className="border-x border-border first:border-t">
+                  <div className="relative">
+                    <AccordionTrigger className="px-4 py-3 text-base text-left hover:no-underline">
+                      {section.label}
+                    </AccordionTrigger>
+                    {section.id === 'performance' && expanded === 'performance' ? (
+                      <div ref={setPerformanceControls} className="absolute right-10 top-1/2 -translate-y-1/2" />
+                    ) : null}
+                  </div>
+                  <AccordionContent className="pb-0">
+                    <PerformanceControlsContext.Provider value={performanceControls}>
+                      {content[section.id]}
+                    </PerformanceControlsContext.Provider>
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+          </Accordion>
+        </div>
+      )
+    }
+    return (
+      <div
+        ref={pageRef}
+        className="vault-ledger fixed inset-x-0 bottom-0 top-[var(--vault-header-height,55px)] flex flex-col bg-white text-[#151515]"
+        data-testid="standard-vault-page"
+      >
+        {layoutSwitch}
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <div ref={drawerIdentityRef} className="px-4 pt-2 pb-3">
+            <VaultIdentity data={mainInfo} />
+          </div>
+          <section id={getVaultReportSectionId('vault', 'overview')}>
+            <MainInfoPanel {...mainInfo} showAction={showAction} showIdentity={false} />
+          </section>
+        </div>
+        <div className="shrink-0 border-x border-b border-border pb-[env(safe-area-inset-bottom)]">
+          {visibleSections
+            .filter((section) => section.id !== 'overview')
+            .map((section) => (
+              <button
+                key={section.id}
+                type="button"
+                aria-haspopup="dialog"
+                aria-expanded={expanded === section.id}
+                onClick={() => changeSection(section.id)}
+                className="flex w-full items-center justify-between border-t border-border px-4 py-3 text-left text-base font-medium"
+              >
+                {section.label}
+                <ChevronUp aria-hidden="true" className="h-4 w-4" />
+              </button>
+            ))}
+        </div>
+        <Drawer
+          open={Boolean(activeSection)}
+          onOpenChange={(open) => {
+            if (!open) changeSection('')
+          }}
+          shouldScaleBackground={false}
+        >
+          <DrawerContent
+            showHandle={false}
+            overlayClassName="bg-transparent"
+            style={{ height: `calc(100dvh - ${drawerTop}px)`, maxHeight: `calc(100dvh - ${drawerTop}px)` }}
+            className="mt-0 rounded-none border border-border bg-white shadow-none"
+          >
+            <div className="shrink-0">
+              {mobileSections
+                .slice(
+                  0,
+                  Math.max(
+                    0,
+                    mobileSections.findIndex((section) => section.id === expanded)
+                  )
+                )
+                .map((section) => (
+                  <button
+                    key={section.id}
+                    type="button"
+                    onClick={() => changeSection(section.id)}
+                    className="flex w-full items-center justify-between border-b border-border px-4 py-3 text-left text-base font-medium"
+                  >
+                    {section.label}
+                    <ChevronUp aria-hidden="true" className="h-4 w-4" />
+                  </button>
+                ))}
+            </div>
+            <DrawerHeader className="relative flex shrink-0 items-center gap-3 pl-4 pr-10 py-3 text-left">
+              <div className="pointer-events-none min-w-0 flex-1">
+                <DrawerTitle className="text-base font-medium leading-6 tracking-normal">
+                  {activeSection?.label}
+                </DrawerTitle>
+                <DrawerDescription className="sr-only">
+                  {mainInfo.vaultName} {activeSection?.label}
+                </DrawerDescription>
+              </div>
+              {expanded === 'performance' ? <div ref={setPerformanceControls} className="relative z-10" /> : null}
+              <DrawerClose aria-label="Close" className="absolute inset-0 flex w-full items-center justify-end px-4">
+                <ChevronDown aria-hidden="true" className="h-4 w-4" />
+              </DrawerClose>
+            </DrawerHeader>
+            <div className={`min-h-0 flex-1 ${expanded === 'performance' ? 'overflow-hidden' : 'overflow-y-auto'}`}>
+              <PerformanceControlsContext.Provider value={performanceControls}>
+                {expanded === 'performance'
+                  ? charts
+                  : expanded === 'strategies'
+                    ? strategies
+                    : expanded === 'activity'
+                      ? vaultActivity
+                      : null}
+              </PerformanceControlsContext.Provider>
+            </div>
+            <div className="shrink-0 pb-[env(safe-area-inset-bottom)]">
+              {mobileSections
+                .slice(mobileSections.findIndex((section) => section.id === expanded) + 1)
+                .map((section) => (
+                  <button
+                    key={section.id}
+                    type="button"
+                    onClick={() => changeSection(section.id)}
+                    className="flex w-full items-center justify-between border-t border-border px-4 py-3 text-left text-base font-medium"
+                  >
+                    {section.label}
+                    <ChevronUp aria-hidden="true" className="h-4 w-4" />
+                  </button>
+                ))}
+            </div>
+          </DrawerContent>
+        </Drawer>
+      </div>
+    )
+  }
+
   return (
     <div ref={pageRef} className="vault-ledger bg-white text-[#151515]" data-testid="standard-vault-page">
       <VaultStickyTitle vaultName={mainInfo.vaultName} />

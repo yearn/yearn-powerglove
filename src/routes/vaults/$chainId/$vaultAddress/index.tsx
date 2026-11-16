@@ -140,6 +140,7 @@ export function SingleVaultPageContent({
         </div>
       )}
       <StandardVaultPage
+        key={`${vaultChainId}:${mainInfoPanelProps.vaultAddress.toLowerCase()}`}
         mainInfo={mainInfoPanelProps}
         showAction={supportsYearnVaultAction(vaultDetails)}
         charts={

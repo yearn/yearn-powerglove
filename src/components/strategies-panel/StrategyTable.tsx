@@ -2,7 +2,6 @@ import { ChevronDown, ChevronRight, ChevronUp } from 'lucide-react'
 import React from 'react'
 import { useIsMobile } from '@/components/ui/use-mobile'
 import type { StrategySortColumn } from '@/hooks/useSortingAndFiltering'
-import { cn } from '@/lib/utils'
 import type { Strategy } from '@/types/dataTypes'
 import type { SortDirection } from '@/utils/sortingUtils'
 import { StrategyRow } from './StrategyRow'
@@ -47,33 +46,7 @@ export const StrategyTable: React.FC<StrategyTableProps> = React.memo(
     return (
       <div className="w-full">
         <div className="w-full border-b border-[#f5f5f5]">
-          {isMobile ? (
-            <div className="p-3">
-              <div className="text-[11px] font-medium uppercase tracking-[0.08em] text-[#808080]">Sort strategies</div>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {[
-                  { column: 'allocationPercent', label: 'Allocation %' },
-                  { column: 'allocationAmount', label: 'amount' },
-                  { column: 'estimatedAPY', label: 'APY' }
-                ].map(({ column, label }) => (
-                  <button
-                    key={column}
-                    type="button"
-                    onClick={() => onSort(column as StrategySortColumn)}
-                    className={cn(
-                      'rounded-none border px-3 py-1.5 text-xs font-medium transition-colors',
-                      sortColumn === column
-                        ? 'border-[#0657f9] bg-[#0657f9]/10 text-[#0657f9]'
-                        : 'border-[#e5e5e5] text-[#4f4f4f] hover:bg-[#f5f5f5]'
-                    )}
-                  >
-                    {label}
-                    {renderSortIcon(column as StrategySortColumn)}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : (
+          {!isMobile ? (
             <div className="flex items-center p-3 text-sm text-[#4f4f4f]">
               <div className="flex w-1/2 items-center">
                 <span className="ml-8 whitespace-nowrap">Vault</span>
@@ -97,7 +70,7 @@ export const StrategyTable: React.FC<StrategyTableProps> = React.memo(
                 {renderSortIcon('estimatedAPY')}
               </div>
             </div>
-          )}
+          ) : null}
 
           {allocatedStrategies.map((strategy) => (
             <StrategyRow

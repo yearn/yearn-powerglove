@@ -2,7 +2,7 @@ import { ExternalLink } from 'lucide-react'
 
 export default function Footer() {
   return (
-    <footer className="mx-auto mt-auto w-full max-w-[1400px] border-x border-t border-border bg-white py-4">
+    <footer className="hidden md:block mx-auto mt-auto w-full max-w-[1400px] border-x border-t border-border bg-white py-4">
       <div className="px-4 sm:px-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
           <div className="flex items-center justify-center">

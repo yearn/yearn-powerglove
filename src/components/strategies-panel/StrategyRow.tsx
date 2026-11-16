@@ -140,6 +140,7 @@ export const StrategyRow: React.FC<StrategyRowProps> = React.memo(
                 {strategy.details.supportsStrategyPage && strategySnapshot.isSuccess && strategySnapshot.data && (
                   <Link
                     to="/vaults/$chainId/$vaultAddress"
+                    hash=""
                     params={{
                       chainId: strategy.details.chainId.toString(),
                       vaultAddress: strategy.details.vaultAddress

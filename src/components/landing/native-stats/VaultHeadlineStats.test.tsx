@@ -70,7 +70,7 @@ it('shows the published count and UTC window, including a genuine zero', () => {
   expect(within(card).getByText('0')).toBeTruthy()
 })
 
-it('keeps a harvest failure independent of TVL and supports retry', () => {
+it('keeps a harvest failure independent of TVL without a retry button', () => {
   harvest.loading = true
   const { rerender } = render(<VaultsHeadline />)
   const card = screen.getByRole('article', { name: 'Harvests This Week' })
@@ -80,6 +80,5 @@ it('keeps a harvest failure independent of TVL and supports retry', () => {
   rerender(<VaultsHeadline />)
   expect(within(card).getByText('—')).toBeTruthy()
   expect(screen.getByText('$1.5M')).toBeTruthy()
-  fireEvent.click(screen.getByRole('button', { name: 'Retry harvests this week' }))
-  expect(retry).toHaveBeenCalledOnce()
+  expect(screen.queryByRole('button', { name: 'Retry harvests this week' })).toBeNull()
 })
