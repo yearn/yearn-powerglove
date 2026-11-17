@@ -42,10 +42,13 @@ export function ChainDistributionChart({
           <Tooltip
             content={<StatsTooltipContent mobile={mobile} onClose={tooltip.dismiss} />}
             {...tooltip.tooltipProps}
-            formatter={(value: number, name: string) => [
-              `${fmt(value)} · ${total > 0 ? ((value / total) * 100).toFixed(2) : '0.00'}%`,
-              name
-            ]}
+            formatter={(value, name) => {
+              const amount = typeof value === 'number' ? value : null
+              return [
+                `${fmt(amount)} · ${amount === null ? '—' : total > 0 ? `${((amount / total) * 100).toFixed(2)}%` : '0.00%'}`,
+                name ?? ''
+              ]
+            }}
             contentStyle={{
               background: 'var(--surface)',
               border: '1px solid var(--border)',

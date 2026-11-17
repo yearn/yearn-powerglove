@@ -5,6 +5,7 @@ import { MobileYAxisTick, StatsTooltipContent, useMobileChartTooltip } from './S
 afterEach(cleanup)
 function Chart({ mobile = true }: { mobile?: boolean }) {
   const tooltip = useMobileChartTooltip(mobile)
+  const payload = [{ name: 'TVL', value: 100, graphicalItemId: 'tvl' }]
   return (
     <div>
       <button type="button" {...tooltip.chartEvents}>
@@ -14,7 +15,7 @@ function Chart({ mobile = true }: { mobile?: boolean }) {
         mobile={mobile}
         onClose={tooltip.dismiss}
         active={tooltip.tooltipProps.active ?? true}
-        payload={[{ name: 'TVL', value: 100 }]}
+        payload={payload}
       />
     </div>
   )

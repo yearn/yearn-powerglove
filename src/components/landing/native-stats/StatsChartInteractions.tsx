@@ -1,9 +1,14 @@
 import { X } from 'lucide-react'
 import { type ReactNode, useEffect, useState } from 'react'
-import { DefaultTooltipContent, type TooltipProps } from 'recharts'
-import type { NameType, ValueType } from 'recharts/types/component/DefaultTooltipContent'
+import { DefaultTooltipContent } from 'recharts'
+import type {
+  Props as DefaultTooltipProps,
+  NameType,
+  Payload,
+  ValueType
+} from 'recharts/types/component/DefaultTooltipContent'
 
-type ChartTooltipProps = TooltipProps<ValueType, NameType>
+type ChartTooltipProps = DefaultTooltipProps<ValueType, NameType> & { active?: boolean }
 
 export function useMobileChartTooltip(mobile: boolean) {
   const [dismissed, setDismissed] = useState(false)
@@ -47,10 +52,18 @@ export function StatsTooltipContent({
 }: ChartTooltipProps & {
   mobile: boolean
   onClose: () => void
-  renderContent?: (props: ChartTooltipProps) => ReactNode
+  renderContent?: (props: { active?: boolean; label?: string; payload?: Payload<ValueType, NameType>[] }) => ReactNode
 }) {
   if (!props.active || !props.payload?.length) return null
-  const content = renderContent ? renderContent(props) : <DefaultTooltipContent {...props} />
+  const content = renderContent ? (
+    renderContent({
+      active: props.active,
+      label: typeof props.label === 'string' || typeof props.label === 'number' ? String(props.label) : undefined,
+      payload: [...props.payload]
+    })
+  ) : (
+    <DefaultTooltipContent {...props} />
+  )
   if (!mobile) return content
   return (
     <div className="stats-mobile-tooltip">
