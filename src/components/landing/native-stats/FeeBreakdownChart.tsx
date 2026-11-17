@@ -1,11 +1,14 @@
 import { type ReactNode, useState } from 'react'
 import { Area, Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import type { NameType, Payload, ValueType } from 'recharts/types/component/DefaultTooltipContent'
+import { useIsMobile } from '@/components/ui/use-mobile'
 import { type ChartTypeControl, ChartTypeToggle } from './ChartTypeToggle'
 import type { FeeHistoryInterval } from './canonical-fees'
 import type { ChainFeeMetric } from './chain-fee-history'
 import { formatFeeHistoryTick } from './fee-history'
 import { fmt } from './hooks'
+import { MobileYAxisTick, StatsTooltipContent, useMobileChartTooltip } from './StatsChartInteractions'
+import { StatsChartOptions } from './StatsChartOptions'
 import type { VaultComparisonPoint } from './vault-fee-history'
 
 export interface FeeBreakdownSeries {
@@ -82,6 +85,8 @@ export function FeeBreakdownChart({
   placeholder?: ReactNode
   stacked?: boolean
 }) {
+  const mobile = useIsMobile()
+  const tooltip = useMobileChartTooltip(mobile)
   const [hiddenSeries, setHiddenSeries] = useState<Set<string>>(() => new Set())
   const activeSeries = series.filter((item) => !hiddenSeries.has(item.key))
 
@@ -90,46 +95,49 @@ export function FeeBreakdownChart({
       className={`card fee-chart-card ${controls ? 'stats-chart-comparison' : title.includes('Chain') ? 'stats-chart-chain' : 'stats-chart-type'}`}
     >
       <div className="fee-chart-header">
-        <div className={controls ? 'fee-chart-controls-row' : undefined}>
-          <div className="fee-chart-title-row">
-            <h2>{title}</h2>
-            {metricControl}
-            {viewControl}
-            <ChartTypeToggle value={renderType} onValueChange={onRenderTypeChange} label={title.toLowerCase()} />
+        {mobile && <h2>{title}</h2>}
+        <StatsChartOptions title={title}>
+          <div className={controls ? 'fee-chart-controls-row' : undefined}>
+            <div className="fee-chart-title-row">
+              {!mobile && <h2>{title}</h2>}
+              {metricControl}
+              {viewControl}
+              <ChartTypeToggle value={renderType} onValueChange={onRenderTypeChange} label={title.toLowerCase()} />
+            </div>
+            {subtitle && <span className="text-dim">{subtitle}</span>}
+            {controls}
           </div>
-          {subtitle && <span className="text-dim">{subtitle}</span>}
-          {controls}
-        </div>
-        <fieldset className="fee-series-toggles">
-          <legend className="sr-only">{title} data series</legend>
-          {series.map((item) => {
-            const visible = !hiddenSeries.has(item.key)
-            const color = item.color
-            return (
-              <button
-                type="button"
-                key={item.key}
-                className="fee-series-toggle"
-                aria-pressed={visible}
-                onClick={() =>
-                  setHiddenSeries((current) => {
-                    const next = new Set(current)
-                    if (next.has(item.key)) next.delete(item.key)
-                    else next.add(item.key)
-                    return next
-                  })
-                }
-              >
-                <span
-                  className="fee-series-swatch"
-                  aria-hidden="true"
-                  style={{ borderColor: color, backgroundColor: visible ? color : 'transparent' }}
-                />
-                {item.label}
-              </button>
-            )
-          })}
-        </fieldset>
+          <fieldset className="fee-series-toggles">
+            <legend className="sr-only">{title} data series</legend>
+            {series.map((item) => {
+              const visible = !hiddenSeries.has(item.key)
+              const color = item.color
+              return (
+                <button
+                  type="button"
+                  key={item.key}
+                  className="fee-series-toggle"
+                  aria-pressed={visible}
+                  onClick={() =>
+                    setHiddenSeries((current) => {
+                      const next = new Set(current)
+                      if (next.has(item.key)) next.delete(item.key)
+                      else next.add(item.key)
+                      return next
+                    })
+                  }
+                >
+                  <span
+                    className="fee-series-swatch"
+                    aria-hidden="true"
+                    style={{ borderColor: color, backgroundColor: visible ? color : 'transparent' }}
+                  />
+                  {item.label}
+                </button>
+              )
+            })}
+          </fieldset>
+        </StatsChartOptions>
       </div>
       {notice}
       {placeholder ??
@@ -138,24 +146,33 @@ export function FeeBreakdownChart({
         ) : (
           <div className="chart-container fee-history-chart">
             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={data} stackOffset="none" margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
+              <ComposedChart
+                {...tooltip.chartEvents}
+                data={data}
+                stackOffset="none"
+                margin={{ top: mobile ? 18 : 8, right: mobile ? 8 : 12, bottom: 0, left: mobile ? 8 : 0 }}
+              >
                 <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
                 <XAxis
                   dataKey="period"
                   tickFormatter={(period: string) => formatFeeHistoryTick(period, interval)}
                   tick={{ fill: 'var(--text-3)', fontSize: 11 }}
                   interval={Math.max(0, Math.floor(data.length / 10) - 1)}
-                  angle={-35}
+                  angle={mobile ? -90 : -35}
                   textAnchor="end"
-                  height={50}
+                  height={mobile ? 70 : 50}
                 />
-                <YAxis
-                  domain={[(minimum: number) => Math.min(0, minimum), (maximum: number) => Math.max(0, maximum)]}
-                  tick={{ fill: 'var(--text-3)', fontSize: 11 }}
-                  tickFormatter={(value: number) => fmt(value, 1)}
-                  width={68}
+
+                <Tooltip
+                  {...tooltip.tooltipProps}
+                  content={
+                    <StatsTooltipContent
+                      mobile={mobile}
+                      onClose={tooltip.dismiss}
+                      renderContent={(props) => <ChainFeeTooltip {...props} />}
+                    />
+                  }
                 />
-                <Tooltip content={<ChainFeeTooltip />} />
                 {activeSeries.map((item) =>
                   renderType === 'bar' ? (
                     <Bar
@@ -193,6 +210,21 @@ export function FeeBreakdownChart({
                     />
                   )
                 )}
+
+                <YAxis
+                  mirror={mobile}
+                  tickMargin={mobile ? 8 : 5}
+                  domain={[(minimum: number) => Math.min(0, minimum), (maximum: number) => Math.max(0, maximum)]}
+                  tick={
+                    mobile ? (
+                      <MobileYAxisTick formatter={(value) => fmt(value, 1)} />
+                    ) : (
+                      { fill: 'var(--text-3)', fontSize: 11 }
+                    )
+                  }
+                  tickFormatter={(value: number) => fmt(value, 1)}
+                  width={mobile ? 1 : 68}
+                />
               </ComposedChart>
             </ResponsiveContainer>
           </div>

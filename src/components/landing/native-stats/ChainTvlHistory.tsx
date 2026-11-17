@@ -1,14 +1,15 @@
-import { Info } from 'lucide-react'
 import { useId, useMemo, useState } from 'react'
 import { Area, Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import type { NameType, Payload, ValueType } from 'recharts/types/component/DefaultTooltipContent'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { useIsMobile } from '@/components/ui/use-mobile'
 import { useRootDarkMode } from '@/hooks/useRootDarkMode'
 import { buildBlueShadePalette } from '@/lib/theme-blue-palette'
 import { ChartTypeToggle, type StatsChartType } from './ChartTypeToggle'
 import { formatTvlHistoryTick } from './fee-history'
 import { CAT_COLORS, fmt, useFetch } from './hooks'
+import { MobileYAxisTick, StatsTooltipContent, useMobileChartTooltip } from './StatsChartInteractions'
+import { StatsChartOptions } from './StatsChartOptions'
 import { StatsPlotSkeleton } from './StatsLoadingSkeletons'
 import {
   ACTUAL_TOTAL_SERIES,
@@ -17,7 +18,6 @@ import {
   buildTopSeriesChart,
   type ChainTvlHistoryBreakdown,
   getAvailableChartSeries,
-  getPriceNeutralCoverageLabel,
   getStackRenderSeries,
   getTvlHistoryErrorMessage,
   getTvlHistoryRangeBounds,
@@ -112,6 +112,8 @@ export function ChainTvlHistory({
   selectedRange?: { from: number; to: number }
   renderType?: StatsChartType
 }) {
+  const mobile = useIsMobile()
+  const tooltip = useMobileChartTooltip(mobile)
   const isDark = useRootDarkMode()
   const [breakdown, setBreakdown] = useState<ChainTvlHistoryBreakdown>('vault')
   const [range, setRange] = useState<TvlHistoryRange>('all')
@@ -161,7 +163,6 @@ export function ChainTvlHistory({
   }, [breakdown, colors, data, showPriceNeutral, selectedRange])
 
   const priceNeutralVisible = showPriceNeutral
-  const coverage = data ? getPriceNeutralCoverageLabel(data.meta) : null
 
   return (
     <section className="chain-history-drilldown" aria-labelledby={`chain-history-${chainId}`}>
@@ -169,42 +170,44 @@ export function ChainTvlHistory({
         <div>
           <div className="fee-chart-title-row">
             <h3 id={`chain-history-${chainId}`}>{chainLabel} TVL History</h3>
-            <div className="chain-history-controls">
-              <Tabs value={breakdown} onValueChange={(value) => setBreakdown(value as ChainTvlHistoryBreakdown)}>
-                <TabsList className="tvl-history-tabs" aria-label={`${chainLabel} TVL history breakdown`}>
-                  <TabsTrigger className="tvl-history-tab" value="vault">
-                    Vaults
-                  </TabsTrigger>
-                  <TabsTrigger className="tvl-history-tab" value="category">
-                    Version
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
-              <label className="flex cursor-pointer items-center gap-2 text-xs">
-                <input
-                  type="checkbox"
-                  checked={showPriceNeutral}
-                  onChange={(event) => setShowPriceNeutral(event.target.checked)}
-                />
-                price adjusted
-              </label>
-              {!selectedRange && (
-                <div className="tvl-history-control-group" aria-label={`${chainLabel} history time range`}>
-                  {TVL_HISTORY_RANGE_OPTIONS.map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      className={range === option.value ? 'active' : undefined}
-                      aria-pressed={range === option.value}
-                      onClick={() => setRange(option.value)}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-              {!renderType && <ChartTypeToggle value={view} onValueChange={setView} label={`${chainLabel} TVL`} />}
-            </div>
+            <StatsChartOptions title={`${chainLabel} TVL History`}>
+              <div className="chain-history-controls">
+                <Tabs value={breakdown} onValueChange={(value) => setBreakdown(value as ChainTvlHistoryBreakdown)}>
+                  <TabsList className="tvl-history-tabs" aria-label={`${chainLabel} TVL history breakdown`}>
+                    <TabsTrigger className="tvl-history-tab" value="vault">
+                      Vaults
+                    </TabsTrigger>
+                    <TabsTrigger className="tvl-history-tab" value="category">
+                      Version
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
+                <label className="flex cursor-pointer items-center gap-2 text-xs">
+                  <input
+                    type="checkbox"
+                    checked={showPriceNeutral}
+                    onChange={(event) => setShowPriceNeutral(event.target.checked)}
+                  />
+                  price adjusted
+                </label>
+                {!selectedRange && (
+                  <div className="tvl-history-control-group" aria-label={`${chainLabel} history time range`}>
+                    {TVL_HISTORY_RANGE_OPTIONS.map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        className={range === option.value ? 'active' : undefined}
+                        aria-pressed={range === option.value}
+                        onClick={() => setRange(option.value)}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {!renderType && <ChartTypeToggle value={view} onValueChange={setView} label={`${chainLabel} TVL`} />}
+              </div>
+            </StatsChartOptions>
           </div>
           <p>
             {breakdown === 'vault'
@@ -212,33 +215,6 @@ export function ChainTvlHistory({
               : `Vault versions on ${chainLabel}`}
           </p>
         </div>
-        {data && (
-          <Popover>
-            <PopoverTrigger asChild>
-              <button type="button" className="tvl-history-icon-btn" aria-label={`${chainLabel} history details`}>
-                <Info size={15} strokeWidth={1.8} />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent align="end" className="tvl-history-info-popover">
-              <div className="label">Chain history</div>
-              <div className="mt-2 grid gap-2 text-xs">
-                <div className="flex items-center justify-between gap-4">
-                  <span className="text-muted-foreground">Chain ID</span>
-                  <span className="font-medium tabular-nums">{chainId}</span>
-                </div>
-                <div className="flex items-center justify-between gap-4">
-                  <span className="text-muted-foreground">Run</span>
-                  <span className="font-medium tabular-nums">#{data.runId}</span>
-                </div>
-                <div className="flex items-center justify-between gap-4">
-                  <span className="text-muted-foreground">Reference window</span>
-                  <span className="font-medium tabular-nums">{data.meta.referenceWindowPoints} valid prices</span>
-                </div>
-                {coverage && <div className="text-muted-foreground">{coverage}</div>}
-              </div>
-            </PopoverContent>
-          </Popover>
-        )}
       </div>
 
       {loading && (
@@ -263,7 +239,11 @@ export function ChainTvlHistory({
       {!loading && !error && chart.rows.length > 0 && (
         <div className="chain-history-chart" data-chain-history={chainLabel} data-price-adjusted={priceNeutralVisible}>
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={chart.rows} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
+            <ComposedChart
+              {...tooltip.chartEvents}
+              data={chart.rows}
+              margin={{ top: mobile ? 18 : 8, right: mobile ? 8 : 12, bottom: 0, left: mobile ? 8 : 0 }}
+            >
               <defs>
                 <linearGradient id={fillId} x1="0" x2="0" y1="0" y2="1">
                   <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.16} />
@@ -276,20 +256,23 @@ export function ChainTvlHistory({
                 tickFormatter={formatTvlHistoryTick}
                 tick={{ fill: 'var(--text-3)', fontSize: 11 }}
                 axisLine={{ stroke: 'var(--border)' }}
-                angle={-45}
+                angle={mobile ? -90 : -45}
                 textAnchor="end"
-                height={50}
+                height={mobile ? 70 : 50}
                 interval={Math.max(0, Math.floor(chart.rows.length / 7) - 1)}
                 minTickGap={16}
               />
-              <YAxis
-                tickFormatter={(value: number) => fmt(value, 0)}
-                tick={{ fill: 'var(--text-3)', fontSize: 11 }}
-                axisLine={false}
-                tickLine={false}
-                width={60}
+
+              <Tooltip
+                {...tooltip.tooltipProps}
+                content={
+                  <StatsTooltipContent
+                    mobile={mobile}
+                    onClose={tooltip.dismiss}
+                    renderContent={(props) => <ChainTvlTooltip {...props} showPriceNeutral={priceNeutralVisible} />}
+                  />
+                }
               />
-              <Tooltip content={<ChainTvlTooltip showPriceNeutral={priceNeutralVisible} />} />
               {view === 'line' && (
                 <>
                   <Area
@@ -340,6 +323,22 @@ export function ChainTvlHistory({
                     isAnimationActive={false}
                   />
                 ))}
+
+              <YAxis
+                mirror={mobile}
+                tickMargin={mobile ? 8 : 5}
+                tickFormatter={(value: number) => fmt(value, 0)}
+                tick={
+                  mobile ? (
+                    <MobileYAxisTick formatter={(value) => fmt(value, 0)} />
+                  ) : (
+                    { fill: 'var(--text-3)', fontSize: 11 }
+                  )
+                }
+                axisLine={false}
+                tickLine={false}
+                width={mobile ? 1 : 60}
+              />
             </ComposedChart>
           </ResponsiveContainer>
         </div>

@@ -23,6 +23,7 @@ export function FeeDateSlider({
   onApply: (range: ChartDateRange) => void
   minDurationDays?: number
 }) {
+  const [pointerInteraction, setPointerInteraction] = useState(false)
   const selectionKey = `${bounds.start}:${bounds.end}:${selected?.start}:${selected?.end}`
   const [draft, setDraft] = useState<{ key: string; values: number[] } | null>(null)
   const values = draft?.key === selectionKey ? draft.values : feeSliderValues(bounds, selected, minDurationDays)
@@ -41,6 +42,9 @@ export function FeeDateSlider({
       </div>
       <Slider.Root
         className="fee-date-slider"
+        data-pointer-interaction={pointerInteraction || undefined}
+        onPointerDown={() => setPointerInteraction(true)}
+        onKeyDown={() => setPointerInteraction(false)}
         value={values}
         min={min}
         max={max}

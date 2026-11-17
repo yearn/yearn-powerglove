@@ -66,7 +66,9 @@ export function NativeStatsDashboard({ analysis = false }: { analysis?: boolean 
     [chainFilter, lastFetchedAt]
   )
 
-  const chainSelector = <StatsChainSelector value={chainFilter} onValueChange={setChainFilter} />
+  const chainSelector = (
+    <StatsChainSelector value={chainFilter} onValueChange={setChainFilter} drawerOnMobile={!analysis} />
+  )
 
   return (
     <StatsTimeRangeContext.Provider value={rangeContext}>

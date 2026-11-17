@@ -1,6 +1,7 @@
 import { type ReactNode, useContext, useEffect, useMemo, useState } from 'react'
 import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { Tooltip as HelpTooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { useIsMobile } from '@/components/ui/use-mobile'
 import { ChainFeeHistoryCharts, type ChainFeeHistoryView } from './ChainFeeHistoryCharts'
 import { type ChartTypeControl, ChartTypeToggle, type StatsChartType } from './ChartTypeToggle'
 import { ChartViewToggle } from './ChartViewToggle'
@@ -25,6 +26,8 @@ import { defaultFeeTimeRange, resolveFeeTimeframe } from './fee-timeframe'
 import { buildTvlYieldSeries } from './fee-yield'
 import { CHAIN_NAMES, fmt, useFetch } from './hooks'
 import { MonthlyVaultTables } from './MonthlyVaultTables'
+import { MobileYAxisTick, StatsTooltipContent, useMobileChartTooltip } from './StatsChartInteractions'
+import { StatsChartOptions } from './StatsChartOptions'
 import { StatsContext, StatsTimeRangeContext } from './StatsContext'
 import { StatsChartSkeleton, StatsFeesSkeleton, StatsTableSkeleton } from './StatsLoadingSkeletons'
 import type { FeeStackSummary } from './types'
@@ -96,6 +99,8 @@ export function FeeHistoryChart({
   description: string
   interval: FeeHistoryInterval
 }) {
+  const mobile = useIsMobile()
+  const tooltip = useMobileChartTooltip(mobile)
   const { chainFilter } = useContext(StatsContext)
   const tvl = useFeeTvlHistory(periods)
   const [showTvl, setShowTvl] = useState(true)
@@ -134,8 +139,10 @@ export function FeeHistoryChart({
       <div className="card fee-chart-card stats-chart-overall">
         <div className="fee-chart-title-row">
           <h2>{title}</h2>
-          {viewControl}
-          <ChartTypeToggle value={renderType} onValueChange={onRenderTypeChange} label="earnings and fees" />
+          <StatsChartOptions title={title}>
+            {viewControl}
+            <ChartTypeToggle value={renderType} onValueChange={onRenderTypeChange} label="earnings and fees" />
+          </StatsChartOptions>
         </div>
         <p className="text-dim">No completed history in this range.</p>
       </div>
@@ -145,80 +152,73 @@ export function FeeHistoryChart({
   return (
     <div className="card fee-chart-card stats-chart-overall">
       <div className="fee-chart-header">
-        <div className="fee-chart-title-row">
-          <h2>{title}</h2>
-          {viewControl}
-          <ChartTypeToggle value={renderType} onValueChange={onRenderTypeChange} label="earnings and fees" />
-        </div>
-        <fieldset className="fee-series-toggles">
-          <legend className="sr-only">{title} data series</legend>
-          {series.map((item) => {
-            const isVisible = visibleSeries.has(item.key)
-            return (
-              <button
-                type="button"
-                key={item.key}
-                className="fee-series-toggle"
-                aria-pressed={isVisible}
-                onClick={() => toggleSeries(item.key)}
-              >
-                <span
-                  className="fee-series-swatch"
-                  aria-hidden="true"
-                  style={{ borderColor: item.color, backgroundColor: isVisible ? item.color : 'transparent' }}
-                />
-                {item.label}
-              </button>
-            )
-          })}
-          <button
-            type="button"
-            className="fee-series-toggle"
-            aria-label="TVL"
-            aria-pressed={showTvl}
-            title="Average daily adjusted TVL for each period, on the right axis. TVL remains a balance in cumulative view."
-            onClick={() => setShowTvl((value) => !value)}
-          >
-            <span
-              className="fee-series-swatch"
-              aria-hidden="true"
-              style={{ borderColor: tvlColor, backgroundColor: showTvl ? tvlColor : 'transparent' }}
-            />
-            TVL{tvl.loading && <span className="sr-only"> loading</span>}
-          </button>
-        </fieldset>
+        {mobile && <h2>{title}</h2>}
+        <StatsChartOptions title={title}>
+          <div className="fee-chart-title-row">
+            {!mobile && <h2>{title}</h2>}
+            {viewControl}
+            <ChartTypeToggle value={renderType} onValueChange={onRenderTypeChange} label="earnings and fees" />
+          </div>
+          <fieldset className="fee-series-toggles">
+            <legend className="sr-only">{title} data series</legend>
+            {series.map((item) => {
+              const isVisible = visibleSeries.has(item.key)
+              return (
+                <button
+                  type="button"
+                  key={item.key}
+                  className="fee-series-toggle"
+                  aria-pressed={isVisible}
+                  onClick={() => toggleSeries(item.key)}
+                >
+                  <span
+                    className="fee-series-swatch"
+                    aria-hidden="true"
+                    style={{ borderColor: item.color, backgroundColor: isVisible ? item.color : 'transparent' }}
+                  />
+                  {item.label}
+                </button>
+              )
+            })}
+            <button
+              type="button"
+              className="fee-series-toggle"
+              aria-label="TVL"
+              aria-pressed={showTvl}
+              title="Average daily adjusted TVL for each period, on the right axis. TVL remains a balance in cumulative view."
+              onClick={() => setShowTvl((value) => !value)}
+            >
+              <span
+                className="fee-series-swatch"
+                aria-hidden="true"
+                style={{ borderColor: tvlColor, backgroundColor: showTvl ? tvlColor : 'transparent' }}
+              />
+              TVL{tvl.loading && <span className="sr-only"> loading</span>}
+            </button>
+          </fieldset>
+        </StatsChartOptions>
       </div>
       <div className="chart-container fee-history-chart">
         <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={chartData} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
+          <ComposedChart
+            {...tooltip.chartEvents}
+            data={chartData}
+            margin={{ top: mobile ? 18 : 8, right: mobile ? 8 : 12, bottom: 0, left: mobile ? 8 : 0 }}
+          >
             <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
             <XAxis
               dataKey="period"
               tickFormatter={(period: string) => formatFeeHistoryTick(period, interval)}
               tick={{ fill: 'var(--text-3)', fontSize: 11 }}
               interval={Math.max(0, Math.floor(data.length / 10) - 1)}
-              angle={-35}
+              angle={mobile ? -90 : -35}
               textAnchor="end"
-              height={50}
+              height={mobile ? 70 : 50}
             />
-            <YAxis
-              tick={{ fill: 'var(--text-3)', fontSize: 11 }}
-              tickFormatter={(value: number) => fmt(value, 0)}
-              width={68}
-            />
-            {showTvl && hasTvl && (
-              <YAxis
-                yAxisId="tvl"
-                orientation="right"
-                width={68}
-                tick={{ fill: 'var(--text-3)', fontSize: 11 }}
-                tickFormatter={(value: number) => fmt(value, 0)}
-                axisLine={false}
-                tickLine={false}
-                label={{ value: 'TVL', angle: 90, position: 'insideRight', fill: 'var(--text-3)', fontSize: 11 }}
-              />
-            )}
+
             <Tooltip
+              content={<StatsTooltipContent mobile={mobile} onClose={tooltip.dismiss} />}
+              {...tooltip.tooltipProps}
               contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 4 }}
               labelStyle={{ color: 'var(--text)' }}
               formatter={(value, name) => [
@@ -281,6 +281,44 @@ export function FeeHistoryChart({
                   name={item.dataKey}
                 />
               )
+            )}
+
+            <YAxis
+              mirror={mobile}
+              tickMargin={mobile ? 8 : 5}
+              tick={
+                mobile ? (
+                  <MobileYAxisTick formatter={(value) => fmt(value, 0)} />
+                ) : (
+                  { fill: 'var(--text-3)', fontSize: 11 }
+                )
+              }
+              tickFormatter={(value: number) => fmt(value, 0)}
+              width={mobile ? 1 : 68}
+            />
+            {showTvl && hasTvl && (
+              <YAxis
+                mirror={mobile}
+                tickMargin={mobile ? 8 : 5}
+                yAxisId="tvl"
+                orientation="right"
+                width={mobile ? 1 : 68}
+                tick={
+                  mobile ? (
+                    <MobileYAxisTick right formatter={(value) => fmt(value, 0)} />
+                  ) : (
+                    { fill: 'var(--text-3)', fontSize: 11 }
+                  )
+                }
+                tickFormatter={(value: number) => fmt(value, 0)}
+                axisLine={false}
+                tickLine={false}
+                label={
+                  mobile
+                    ? undefined
+                    : { value: 'TVL', angle: 90, position: 'insideRight', fill: 'var(--text-3)', fontSize: 11 }
+                }
+              />
             )}
           </ComposedChart>
         </ResponsiveContainer>

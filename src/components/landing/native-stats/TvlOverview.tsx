@@ -1,9 +1,9 @@
-import { ChevronRight, Info } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import { Fragment, useContext, useEffect, useId, useMemo, useState } from 'react'
 import { Area, Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import type { NameType, Payload, ValueType } from 'recharts/types/component/DefaultTooltipContent'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { useIsMobile } from '@/components/ui/use-mobile'
 import { useRootDarkMode } from '@/hooks/useRootDarkMode'
 import { buildBlueShadePalette } from '@/lib/theme-blue-palette'
 import { ChainDistributionChart } from './ChainDistributionChart'
@@ -11,6 +11,8 @@ import { ChainTvlHistory } from './ChainTvlHistory'
 import { ChartTypeToggle, type StatsChartType } from './ChartTypeToggle'
 import { formatTvlHistoryTick } from './fee-history'
 import { CAT_COLORS, CHAIN_NAMES, CHAIN_SHORT, fmt, useFetch } from './hooks'
+import { MobileYAxisTick, StatsTooltipContent, useMobileChartTooltip } from './StatsChartInteractions'
+import { StatsChartOptions, StatsTableColumnSelector } from './StatsChartOptions'
 import { StatsContext, StatsTimeRangeContext } from './StatsContext'
 import { StatsPlotSkeleton, StatsTvlSkeleton } from './StatsLoadingSkeletons'
 import {
@@ -19,7 +21,6 @@ import {
   buildTvlHistoryUrl,
   DAY_SECONDS,
   getAvailableChartSeries,
-  getPriceNeutralCoverageLabel,
   getStackRenderSeries,
   getTvlHistoryErrorMessage,
   labelVersionHistoryChart,
@@ -47,14 +48,6 @@ function formatFullDate(timestamp: number | string): string {
     day: 'numeric',
     year: 'numeric'
   })
-}
-
-function getWarningCount(meta: Record<string, unknown>): number {
-  const warnings = meta.warnings
-  if (Array.isArray(warnings)) return warnings.length
-  if (typeof warnings === 'number' && Number.isFinite(warnings)) return warnings
-  if (typeof meta.warningCount === 'number' && Number.isFinite(meta.warningCount)) return meta.warningCount
-  return 0
 }
 
 function getHistoryBarSize(rowCount: number): number {
@@ -183,6 +176,9 @@ export function TvlHistoryTooltip({
 }
 
 export function TvlOverview() {
+  const mobile = useIsMobile()
+  const tooltip = useMobileChartTooltip(mobile)
+  const [chainColumn, setChainColumn] = useState('tvl')
   const { range: selectedRange } = useContext(StatsTimeRangeContext)
   const { chainFilter, setLastFetchedAt } = useContext(StatsContext)
   const isDark = useRootDarkMode()
@@ -320,13 +316,7 @@ export function TvlOverview() {
   const historyLoading = tvlHistoryLoading || (showPriceNeutral && constantPriceLoading)
   const historyError = tvlHistoryError || (showPriceNeutral && constantPriceError)
   const hasTvlHistory = displayedHistoryRows.length > 0 && tvlHistorySeries.length > 0
-  const tvlHistoryRangeLabel = rawTvlHistory
-    ? `${formatFullDate(rawTvlHistory.range.from)} - ${formatFullDate(rawTvlHistory.range.to)}`
-    : '-'
-  const constantPriceCoverageLabel = constantPriceHistory
-    ? getPriceNeutralCoverageLabel(constantPriceHistory.meta)
-    : null
-  const warningCount = rawTvlHistory ? getWarningCount(rawTvlHistory.meta) : 0
+
   const tvlHistoryBarSize = getHistoryBarSize(displayedHistoryRows.length)
 
   if (loading)
@@ -359,97 +349,33 @@ export function TvlOverview() {
           <div>
             <div className="fee-chart-title-row">
               <h2>TVL History</h2>
-              <ChartTypeToggle value={tvlHistoryView} onValueChange={setTvlHistoryView} label="TVL" />
-              <div className="tvl-history-controls" aria-label="TVL history controls">
-                <Tabs
-                  value={tvlHistoryBreakdown}
-                  onValueChange={(value) => setTvlHistoryBreakdown(value as OverallTvlHistoryBreakdown)}
-                >
-                  <TabsList className="tvl-history-tabs" aria-label="TVL history breakdown">
-                    <TabsTrigger className="tvl-history-tab" value="chain">
-                      Chains
-                    </TabsTrigger>
-                    <TabsTrigger className="tvl-history-tab" value="category">
-                      Version
-                    </TabsTrigger>
-                  </TabsList>
-                </Tabs>
-                <label className="flex cursor-pointer items-center gap-2 text-xs">
-                  <input
-                    type="checkbox"
-                    checked={showPriceNeutral}
-                    onChange={(event) => setShowPriceNeutral(event.target.checked)}
-                  />
-                  price adjusted
-                </label>
-              </div>
+              <StatsChartOptions title="TVL History">
+                <ChartTypeToggle value={tvlHistoryView} onValueChange={setTvlHistoryView} label="TVL" />
+                <div className="tvl-history-controls" aria-label="TVL history controls">
+                  <Tabs
+                    value={tvlHistoryBreakdown}
+                    onValueChange={(value) => setTvlHistoryBreakdown(value as OverallTvlHistoryBreakdown)}
+                  >
+                    <TabsList className="tvl-history-tabs" aria-label="TVL history breakdown">
+                      <TabsTrigger className="tvl-history-tab" value="chain">
+                        Chains
+                      </TabsTrigger>
+                      <TabsTrigger className="tvl-history-tab" value="category">
+                        Version
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                  <label className="flex cursor-pointer items-center gap-2 text-xs">
+                    <input
+                      type="checkbox"
+                      checked={showPriceNeutral}
+                      onChange={(event) => setShowPriceNeutral(event.target.checked)}
+                    />
+                    price adjusted
+                  </label>
+                </div>
+              </StatsChartOptions>
             </div>
-          </div>
-          <div className="tvl-history-header-actions">
-            {rawTvlHistory?.id && (
-              <Popover>
-                <PopoverTrigger asChild>
-                  <button type="button" className="tvl-history-icon-btn" aria-label="TVL history run details">
-                    <Info size={15} strokeWidth={1.8} />
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent align="end" className="tvl-history-info-popover">
-                  <div className="label">Run details</div>
-                  <div className="mt-2 grid gap-2 text-xs">
-                    <div className="flex items-center justify-between gap-4">
-                      <span className="text-muted-foreground">Run</span>
-                      <span className="font-medium tabular-nums">#{rawTvlHistory.id}</span>
-                    </div>
-                    <div className="flex items-center justify-between gap-4">
-                      <span className="text-muted-foreground">Interval</span>
-                      <span className="font-medium">{rawTvlHistory.interval}</span>
-                    </div>
-                    <div className="flex items-center justify-between gap-4">
-                      <span className="text-muted-foreground">Mode</span>
-                      <span className="font-medium">{rawTvlHistory.mode}</span>
-                    </div>
-                    <div className="flex items-center justify-between gap-4">
-                      <span className="text-muted-foreground">Points</span>
-                      <span className="font-medium tabular-nums">{rawTvlHistory.pointCount.toLocaleString()}</span>
-                    </div>
-                    <div className="flex items-center justify-between gap-4">
-                      <span className="text-muted-foreground">Range</span>
-                      <span className="font-medium tabular-nums">{tvlHistoryRangeLabel}</span>
-                    </div>
-                    <div className="flex items-center justify-between gap-4">
-                      <span className="text-muted-foreground">Warnings</span>
-                      <span className="font-medium tabular-nums">{warningCount}</span>
-                    </div>
-                    {Array.isArray(rawTvlHistory.meta.seriesWithoutRawHistory) &&
-                      rawTvlHistory.meta.seriesWithoutRawHistory.length > 0 && (
-                        <div className="text-muted-foreground">
-                          {rawTvlHistory.meta.seriesWithoutRawHistory
-                            .map((series) => String(series).toUpperCase())
-                            .join(', ')}{' '}
-                          has no raw history before the current snapshot.
-                        </div>
-                      )}
-                    {constantPriceHistory && (
-                      <>
-                        <div className="mt-1 border-t border-border pt-2 text-muted-foreground">
-                          Price-adjusted TVL values underlying assets at each vault&apos;s first available valid price
-                          in the selected timeframe. It removes later price movement, but includes earned yield.
-                        </div>
-                        <div className="flex items-center justify-between gap-4">
-                          <span className="text-muted-foreground">Reference window</span>
-                          <span className="font-medium tabular-nums">
-                            {constantPriceHistory.meta.referenceWindowPoints} valid prices
-                          </span>
-                        </div>
-                        {constantPriceCoverageLabel && (
-                          <div className="text-muted-foreground">{constantPriceCoverageLabel}</div>
-                        )}
-                      </>
-                    )}
-                  </div>
-                </PopoverContent>
-              </Popover>
-            )}
           </div>
         </div>
 
@@ -497,8 +423,9 @@ export function TvlOverview() {
           >
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart
+                {...tooltip.chartEvents}
                 data={displayedHistoryRows}
-                margin={{ top: 8, right: 12, bottom: 0, left: 0 }}
+                margin={{ top: mobile ? 18 : 8, right: mobile ? 8 : 12, bottom: 0, left: mobile ? 8 : 0 }}
                 onMouseMove={() => setIsTvlHistoryInspecting(true)}
                 onMouseLeave={() => setIsTvlHistoryInspecting(false)}
               >
@@ -515,25 +442,27 @@ export function TvlOverview() {
                   tickFormatter={formatTvlHistoryTick}
                   tick={{ fill: 'var(--text-3)', fontSize: 11 }}
                   axisLine={{ stroke: 'var(--border)' }}
-                  angle={-45}
+                  angle={mobile ? -90 : -45}
                   textAnchor="end"
-                  height={50}
+                  height={mobile ? 70 : 50}
                   interval={Math.max(0, Math.floor(displayedHistoryRows.length / 8) - 1)}
                   minTickGap={16}
                 />
-                <YAxis
-                  tickFormatter={(value: number) => fmt(value, 0)}
-                  tick={{ fill: 'var(--text-3)', fontSize: 11 }}
-                  axisLine={false}
-                  tickLine={false}
-                  width={60}
-                />
+
                 <Tooltip
+                  {...tooltip.tooltipProps}
                   content={
-                    <TvlHistoryTooltip
-                      canonicalTotalByTimestamp={tvlHistoryCanonicalTotalByTimestamp}
-                      remainingSeries={tvlHistoryRemainingSeries}
-                      priceAdjusted={showPriceNeutral}
+                    <StatsTooltipContent
+                      mobile={mobile}
+                      onClose={tooltip.dismiss}
+                      renderContent={(props) => (
+                        <TvlHistoryTooltip
+                          {...props}
+                          canonicalTotalByTimestamp={tvlHistoryCanonicalTotalByTimestamp}
+                          remainingSeries={tvlHistoryRemainingSeries}
+                          priceAdjusted={showPriceNeutral}
+                        />
+                      )}
                     />
                   }
                   cursor={
@@ -593,6 +522,22 @@ export function TvlOverview() {
                       isAnimationActive={false}
                     />
                   ))}
+
+                <YAxis
+                  mirror={mobile}
+                  tickMargin={mobile ? 8 : 5}
+                  tickFormatter={(value: number) => fmt(value, 0)}
+                  tick={
+                    mobile ? (
+                      <MobileYAxisTick formatter={(value) => fmt(value, 0)} />
+                    ) : (
+                      { fill: 'var(--text-3)', fontSize: 11 }
+                    )
+                  }
+                  axisLine={false}
+                  tickLine={false}
+                  width={mobile ? 1 : 60}
+                />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
@@ -619,10 +564,19 @@ export function TvlOverview() {
         <div className={`chain-distribution-layout${selectedHistoryChain ? ' is-expanded' : ''}`}>
           <ChainDistributionChart chains={chainData} colors={tvlHistoryColors} total={totalChainTvl} />
           <div className="chain-distribution-table">
+            <StatsTableColumnSelector
+              label="Chain data column"
+              value={chainColumn}
+              onChange={setChainColumn}
+              columns={[
+                { value: 'tvl', label: 'TVL' },
+                { value: 'percentage', label: '% of TVL' }
+              ]}
+            />
             <div className="chain-distribution-head">
               <span>Chain</span>
-              <span>TVL</span>
-              <span>% of TVL</span>
+              <span hidden={mobile && chainColumn !== 'tvl'}>TVL</span>
+              <span hidden={mobile && chainColumn !== 'percentage'}>% of TVL</span>
             </div>
             {chainData.map((c, i) => {
               const isExpanded = selectedHistoryChain === c.chain
@@ -644,8 +598,12 @@ export function TvlOverview() {
                       />
                       {c.label}
                     </span>
-                    <span className="stat-value">{fmt(c.tvl)}</span>
-                    <span className="chain-distribution-percentage">{chainPercentage(c.tvl).toFixed(2)}%</span>
+                    <span className="stat-value" hidden={mobile && chainColumn !== 'tvl'}>
+                      {fmt(c.tvl)}
+                    </span>
+                    <span className="chain-distribution-percentage" hidden={mobile && chainColumn !== 'percentage'}>
+                      {chainPercentage(c.tvl).toFixed(2)}%
+                    </span>
                   </button>
                   {isExpanded && c.chainId !== null && (
                     <ChainTvlHistory

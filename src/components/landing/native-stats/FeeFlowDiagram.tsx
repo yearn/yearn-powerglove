@@ -9,6 +9,7 @@ export function FeeFlowDiagram({ children, label }: { children: ReactNode; label
     if (!canvas) return
     const update = () => {
       const bounds = canvas.getBoundingClientRect()
+      const mobile = canvas.closest('.stats-capital-modal') !== null
       const cards = [...canvas.querySelectorAll<HTMLElement>('[data-flow-id]')]
       const byId = new Map(cards.map((card) => [card.dataset.flowId, card]))
       const connections = cards.flatMap((card) => [
@@ -31,11 +32,13 @@ export function FeeFlowDiagram({ children, label }: { children: ReactNode; label
           const targetY = b.top + b.height / 2 - bounds.top
           let path: string
           if (target.dataset.flowId === 'selected') {
-            const spine = b.left + b.width / 2 - bounds.left
+            const spine = (mobile ? b.right - 12 : b.left + b.width / 2) - bounds.left
             path = `M ${a.right - bounds.left} ${a.top + a.height / 2 - bounds.top} H ${spine} V ${b.top - bounds.top}`
           } else {
             const spine =
-              source.dataset.flowId === 'selected' ? a.left + a.width / 2 - bounds.left : a.left + 12 - bounds.left
+              source.dataset.flowId === 'selected' && !mobile
+                ? a.left + a.width / 2 - bounds.left
+                : a.left + 12 - bounds.left
             path = `M ${spine} ${a.bottom - bounds.top} V ${targetY} H ${b.left - bounds.left}`
           }
           return [

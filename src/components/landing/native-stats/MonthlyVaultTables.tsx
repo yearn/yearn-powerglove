@@ -2,6 +2,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { ArrowDown, ArrowUp } from 'lucide-react'
 import { type ReactNode, useContext, useId, useMemo, useState } from 'react'
+import { DialogTrigger } from '@/components/ui/dialog'
+import { useIsMobile } from '@/components/ui/use-mobile'
 import { assertCanonicalFeeResponse } from '@/lib/fee-api-contract'
 import { fetchKongVaultListRaw } from '@/lib/kong-vault-client'
 import type { CanonicalVaultFee } from './canonical-fees'
@@ -9,8 +11,11 @@ import type { ChainFeeMetric } from './chain-fee-history'
 import { FeeMetricToggle } from './FeeMetricToggle'
 import { CHAIN_NAMES, powergloveVaultPath, resolveStatsApiBase, shortAddr, usePagination } from './hooks'
 import { buildMonthlyVaultRows, completedFeeMonths, monthlyUsd, monthlyVaultKey } from './monthly-vault-data'
+import { StatsTableColumnSelector } from './StatsChartOptions'
 import { StatsContext } from './StatsContext'
 import { StatsTableSkeleton } from './StatsLoadingSkeletons'
+import { StatsTableModal } from './StatsTableModal'
+import { StatsTableSearch } from './StatsTableSearch'
 import { fetchVaultTypeFeeHistories } from './useVaultTypeFeeHistories'
 
 const monthLabel = (period: string) =>
@@ -58,6 +63,9 @@ function MonthlyVaultTable({
   onTypeChange?: (value: string) => void
 }) {
   const { chainFilter } = useContext(StatsContext)
+  const mobile = useIsMobile()
+  const [mobileColumn, setMobileColumn] = useState('total')
+  const [viewAll, setViewAll] = useState(false)
   const titleId = useId()
   const [months] = useState(() => completedFeeMonths(Math.floor(Date.now() / 1000)))
   const [search, setSearch] = useState('')
@@ -147,50 +155,99 @@ function MonthlyVaultTable({
         (sort.descending ? <ArrowDown size={12} aria-hidden="true" /> : <ArrowUp size={12} aria-hidden="true" />)}
     </button>
   )
+  const visibleMonths = months
+    .map((month, index) => ({ ...month, index }))
+    .filter((month) => !mobile || mobileColumn === String(month.index))
+  const showTotal = !mobile || mobileColumn === 'total'
   const loading = !!datasetId && fees.isPending
-  return (
-    <section className="monthly-vault-fees" aria-labelledby={titleId} aria-busy={loading}>
+  const selectedTitle = `${mobileColumn === 'total' ? 'Annual' : monthLabel(months[Number(mobileColumn)].period)} ${metric === 'earnings' ? 'Earnings' : 'Fees'} by Vault`
+  const summaryRows = useMemo(
+    () =>
+      mobile
+        ? (fees.data?.[metric] ?? [])
+            .filter((row) => chainFilter === 'all' || String(row.vault.chainId) === chainFilter)
+            .map((row) => ({ row, value: mobileColumn === 'total' ? row.total : row.months[Number(mobileColumn)] }))
+            .sort((a, b) => (a.value === null ? (b.value === null ? 0 : 1) : b.value === null ? -1 : b.value - a.value))
+            .slice(0, 5)
+            .map(({ row }) => row)
+        : [],
+    [mobile, fees.data, metric, chainFilter, mobileColumn]
+  )
+  const renderTable = (compact: boolean) => (
+    <section
+      className={`monthly-vault-fees${compact ? ' stats-compact-table' : ''}`}
+      aria-labelledby={`${titleId}-${compact ? 'summary' : 'full'}`}
+      aria-busy={loading}
+    >
+      {mobile && !compact && (
+        <h2 id={`${titleId}-full`} className="sr-only">
+          {selectedTitle}
+        </h2>
+      )}
       <div className="monthly-fee-toolbar stats-monthly-toolbar">
-        <div>
-          <div className="fee-chart-title-row">
-            <h2 id={titleId}>Monthly Vault {metric === 'earnings' ? 'Earnings' : 'Fees'}</h2>
-            {metricControl}
+        {(!mobile || compact) && (
+          <div>
+            <div className="fee-chart-title-row">
+              <h2 id={`${titleId}-${compact ? 'summary' : 'full'}`}>
+                {mobile ? selectedTitle : <>Monthly Vault {metric === 'earnings' ? 'Earnings' : 'Fees'}</>}
+              </h2>
+              {metricControl}
+            </div>
+            {!compact && (
+              <p className="text-dim">
+                {monthLabel(months[0].period)} – {monthLabel(months[11].period)} ·{' '}
+                {metric === 'fees' ? 'Fees charged' : 'Gains minus losses'} (USD) · Completed months only
+              </p>
+            )}
           </div>
-          <p className="text-dim">
-            {monthLabel(months[0].period)} – {monthLabel(months[11].period)} ·{' '}
-            {metric === 'fees' ? 'Fees charged' : 'Gains minus losses'} (USD) · Completed months only
-          </p>
-        </div>
-        <div className="monthly-fee-filters">
-          {chainSelector}
-          {onTypeChange && (
-            <select
-              className="filter-select"
-              aria-label="Vault type"
-              value={typeFilter}
-              onChange={(event) => onTypeChange(event.target.value)}
-            >
-              <option value="all">All vault types</option>
-              {Array.from(new Set((fees.data?.[metric] ?? []).map((row) => row.vaultType)))
-                .sort()
-                .map((type) => (
-                  <option key={type} value={type}>
-                    {type}
-                  </option>
-                ))}
-            </select>
-          )}
-          <input
-            className="search-input"
-            aria-label={`Search vault ${metric}`}
-            placeholder="Search vaults or addresses…"
-            value={search}
-            onChange={(event) => {
-              setSearch(event.target.value)
-              setPage(0)
-            }}
-          />
-        </div>
+        )}
+        {!compact && (
+          <div className="monthly-fee-filters">
+            {chainSelector}
+            {onTypeChange && (
+              <select
+                className="filter-select"
+                aria-label="Vault type"
+                value={typeFilter}
+                onChange={(event) => onTypeChange(event.target.value)}
+              >
+                <option value="all">All vault types</option>
+                {Array.from(new Set((fees.data?.[metric] ?? []).map((row) => row.vaultType)))
+                  .sort()
+                  .map((type) => (
+                    <option key={type} value={type}>
+                      {type}
+                    </option>
+                  ))}
+              </select>
+            )}
+            <StatsTableSearch
+              mobile={mobile}
+              label={`Search vault ${metric}`}
+              value={search}
+              onChange={(value) => {
+                setSearch(value)
+                setPage(0)
+              }}
+            />
+          </div>
+        )}
+      </div>
+      <div className="stats-table-column-row">
+        {mobile && !compact && metricControl}
+        <StatsTableColumnSelector
+          label="Monthly vault data column"
+          value={mobileColumn}
+          onChange={(value) => {
+            setMobileColumn(value)
+            setSort({ column: value === 'total' ? 'total' : Number(value), descending: true })
+            setPage(0)
+          }}
+          columns={[
+            { value: 'total', label: 'Annual total' },
+            ...months.map((month, index) => ({ value: String(index), label: monthLabel(month.period) }))
+          ]}
+        />
       </div>
       {fees.isError || !datasetId ? (
         <div className="error-retry">
@@ -211,77 +268,131 @@ function MonthlyVaultTable({
           <output className="sr-only" aria-live="polite">
             Loading monthly {metric} for all vaults…
           </output>
-          <StatsTableSkeleton monthly bodyOnly />
-          <div aria-hidden="true" className="monthly-fee-footer stats-skeleton-pagination stats-monthly-footer">
+          <StatsTableSkeleton monthly bodyOnly compact={compact} />
+          <div
+            aria-hidden="true"
+            className={`monthly-fee-footer stats-skeleton-pagination stats-monthly-footer${compact ? ' hidden' : ''}`}
+          >
             <div className="skeleton skeleton-line" style={{ width: '12rem' }} />
             <div className="skeleton" style={{ width: '12rem', height: 32 }} />
           </div>
         </>
       ) : (
         <>
-          {/* biome-ignore lint/a11y/noNoninteractiveTabindex: Keyboard users need to scroll the monthly columns. */}
-          <section className="monthly-fee-table-scroll" tabIndex={0} aria-label={`Monthly vault ${metric} table`}>
-            <table className="monthly-fee-table">
+          <section
+            className={`monthly-fee-table-scroll${compact ? ' stats-compact-table-body' : ''}`}
+            tabIndex={compact ? undefined : 0}
+            aria-label={`Monthly vault ${metric} table`}
+          >
+            <table className="monthly-fee-table stats-mobile-two-column-table">
               <caption className="sr-only">
                 Vault {metric} for the last 12 completed months in USD. Unavailable amounts are shown as a dash.
               </caption>
               <thead>
                 <tr>
                   <th scope="col">Vault</th>
-                  <th
-                    scope="col"
-                    aria-sort={sort.column === 'total' ? (sort.descending ? 'descending' : 'ascending') : 'none'}
-                  >
-                    {sortButton('total', 'annual total')}
-                  </th>
-                  {months.map((month, index) => (
+                  {showTotal && (
                     <th
-                      key={month.period}
                       scope="col"
-                      aria-sort={sort.column === index ? (sort.descending ? 'descending' : 'ascending') : 'none'}
+                      aria-sort={
+                        compact
+                          ? 'descending'
+                          : sort.column === 'total'
+                            ? sort.descending
+                              ? 'descending'
+                              : 'ascending'
+                            : 'none'
+                      }
                     >
-                      {sortButton(index, monthLabel(month.period))}
+                      {compact ? 'annual total' : sortButton('total', 'annual total')}
+                    </th>
+                  )}
+                  {visibleMonths.map(({ period, index }) => (
+                    <th
+                      key={period}
+                      scope="col"
+                      aria-sort={
+                        compact
+                          ? 'descending'
+                          : sort.column === index
+                            ? sort.descending
+                              ? 'descending'
+                              : 'ascending'
+                            : 'none'
+                      }
+                    >
+                      {compact ? monthLabel(period) : sortButton(index, monthLabel(period))}
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                <tr className="monthly-fee-total">
-                  <th scope="row">
-                    {search.trim() || chainFilter !== 'all' || typeFilter !== 'all' ? 'Filtered vaults' : 'All vaults'}
-                  </th>
-                  <td>{monthlyUsd(annualTotal)}</td>
-                  {totals.map((value, index) => (
-                    <td key={months[index].period}>{monthlyUsd(value)}</td>
-                  ))}
-                </tr>
-                {rows.slice(start, end).map((row) => (
+                {!compact && (
+                  <tr className="monthly-fee-total">
+                    <th scope="row">
+                      {search.trim() || chainFilter !== 'all' || typeFilter !== 'all'
+                        ? 'Filtered vaults'
+                        : 'All vaults'}
+                    </th>
+                    {showTotal && <td>{monthlyUsd(annualTotal)}</td>}
+                    {visibleMonths.map(({ period, index }) => (
+                      <td key={period}>{monthlyUsd(totals[index])}</td>
+                    ))}
+                  </tr>
+                )}
+                {(compact ? summaryRows : rows.slice(start, end)).map((row) => (
                   <tr key={monthlyVaultKey(row.vault)}>
                     <th scope="row">
                       <Link to={powergloveVaultPath(row.vault.chainId, row.vault.address)} title={row.vault.address}>
                         {row.vault.name ?? shortAddr(row.vault.address)}
                       </Link>
-                      <span className="monthly-fee-address">
-                        {shortAddr(row.vault.address)} ·{' '}
-                        {CHAIN_NAMES[row.vault.chainId] ?? `Chain ${row.vault.chainId}`} · {row.vaultType}
-                      </span>
+                      {!mobile && (
+                        <span className="monthly-fee-address">
+                          {shortAddr(row.vault.address)} ·{' '}
+                          {CHAIN_NAMES[row.vault.chainId] ?? `Chain ${row.vault.chainId}`} · {row.vaultType}
+                        </span>
+                      )}
                     </th>
-                    <td>{monthlyUsd(row.total)}</td>
-                    {row.months.map((value, index) => (
-                      <td key={months[index].period}>{monthlyUsd(value)}</td>
+                    {showTotal && <td>{monthlyUsd(row.total)}</td>}
+                    {visibleMonths.map(({ period, index }) => (
+                      <td key={period}>{monthlyUsd(row.months[index])}</td>
                     ))}
                   </tr>
                 ))}
               </tbody>
             </table>
-            {!rows.length && <p className="monthly-fee-empty text-dim">No vaults match these filters.</p>}
+            {!(compact ? summaryRows : rows).length && (
+              <p className="monthly-fee-empty text-dim">No vaults match these filters.</p>
+            )}
           </section>
           <div className="monthly-fee-footer">
-            <span className="text-dim">{rows.length.toLocaleString()} vaults · Rounded to the nearest dollar</span>
-            {pagination}
+            {compact ? (
+              <DialogTrigger asChild>
+                <button type="button" className="page-btn stats-view-all">
+                  View all
+                </button>
+              </DialogTrigger>
+            ) : (
+              <>
+                {(!mobile || !pagination) && (
+                  <span className="text-dim">
+                    {rows.length.toLocaleString()} vaults{!mobile && ' · Rounded to the nearest dollar'}
+                  </span>
+                )}
+                {pagination}
+              </>
+            )}
           </div>
         </>
       )}
     </section>
+  )
+
+  return mobile ? (
+    <StatsTableModal title={selectedTitle} open={viewAll} onOpenChange={setViewAll} summary={renderTable(true)}>
+      {renderTable(false)}
+    </StatsTableModal>
+  ) : (
+    renderTable(false)
   )
 }

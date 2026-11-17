@@ -1,3 +1,4 @@
+import { useIsMobile } from '@/components/ui/use-mobile'
 import { YearnSpinner } from '@/components/utils/YearnLoader'
 
 function CenteredSpinner() {
@@ -52,23 +53,41 @@ export function StatsChartSkeleton({
           </div>
         )}
       </div>
+      <div aria-hidden="true" className="skeleton stats-mobile-options-skeleton" />
       <StatsPlotSkeleton tvl={kind === 'tvl'} />
     </section>
   )
 }
 
-export function StatsTableSkeleton({ monthly = false, bodyOnly = false }: { monthly?: boolean; bodyOnly?: boolean }) {
-  const title = monthly ? 'Monthly Vault Earnings' : 'Adjusted TVL and Fees by Vault'
-  const columns = monthly
+export function StatsTableSkeleton({
+  monthly = false,
+  bodyOnly = false,
+  compact
+}: {
+  monthly?: boolean
+  bodyOnly?: boolean
+  compact?: boolean
+}) {
+  const mobile = useIsMobile()
+  const compactTable = compact ?? mobile
+  const title = compactTable
+    ? monthly
+      ? 'Annual Earnings by Vault'
+      : 'Adjusted TVL by Vault'
+    : monthly
+      ? 'Monthly Vault Earnings'
+      : 'Adjusted TVL and Fees by Vault'
+  const allColumns = monthly
     ? ['Vault', 'annual total', ...Array.from({ length: 12 }, (_, index) => `Month ${index + 1}`)]
     : ['Vault', 'Adjusted TVL', 'Reported TVL', 'Performance fee', 'Management fee']
+  const columns = mobile ? allColumns.slice(0, 2) : allColumns
   const body = (
     <div className="stats-skeleton-table-frame">
       <div
-        className={`monthly-fee-table-scroll stats-skeleton-table ${monthly ? 'stats-skeleton-monthly-table' : ''}`}
+        className={`monthly-fee-table-scroll stats-skeleton-table ${monthly ? 'stats-skeleton-monthly-table' : ''}${compactTable ? ' stats-compact-table-body' : ''}`}
         aria-hidden="true"
       >
-        <table className="monthly-fee-table monthly-fee-skeleton">
+        <table className="monthly-fee-table monthly-fee-skeleton stats-mobile-two-column-table">
           <thead>
             <tr>
               {columns.map((column) => (
@@ -77,7 +96,7 @@ export function StatsTableSkeleton({ monthly = false, bodyOnly = false }: { mont
             </tr>
           </thead>
           <tbody>
-            {Array.from({ length: monthly ? 12 : 10 }, (_, index) => (
+            {Array.from({ length: compactTable ? 5 : monthly ? 12 : 10 }, (_, index) => (
               // biome-ignore lint/suspicious/noArrayIndexKey: Static loading placeholders.
               <tr key={index}>
                 {columns.map((column, columnIndex) => (
@@ -100,7 +119,11 @@ export function StatsTableSkeleton({ monthly = false, bodyOnly = false }: { mont
   )
   if (bodyOnly) return body
   return (
-    <section className="monthly-vault-fees" aria-label={`Loading ${title}`} aria-busy="true">
+    <section
+      className={`monthly-vault-fees${compactTable ? ' stats-compact-table' : ''}`}
+      aria-label={`Loading ${title}`}
+      aria-busy="true"
+    >
       <div className={`monthly-fee-toolbar ${monthly ? 'stats-monthly-toolbar' : 'stats-effective-toolbar'}`}>
         <div>
           <h2>{title}</h2>
@@ -110,11 +133,14 @@ export function StatsTableSkeleton({ monthly = false, bodyOnly = false }: { mont
             </div>
           )}
         </div>
-        <div aria-hidden="true" className="stats-skeleton-controls">
-          <span className="skeleton" />
-          <span className="skeleton" />
-        </div>
+        {!compactTable && (
+          <div aria-hidden="true" className="stats-skeleton-controls">
+            <span className="skeleton" />
+            <span className="skeleton" />
+          </div>
+        )}
       </div>
+      {compactTable && <div aria-hidden="true" className="skeleton stats-compact-column-skeleton" />}
       {body}
       <div
         aria-hidden="true"

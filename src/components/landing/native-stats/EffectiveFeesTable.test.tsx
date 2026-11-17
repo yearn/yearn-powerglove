@@ -10,6 +10,8 @@ import { StatsContext } from './StatsContext'
 import type { FeeStackSummary } from './types'
 import type { OriginAudit, OriginGraph } from './vault-origin'
 
+let mobileView = false
+vi.mock('@/components/ui/use-mobile', () => ({ useIsMobile: () => mobileView }))
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ to, children }: { to: string; children: ReactNode }) => <a href={to}>{children}</a>
 }))
@@ -156,6 +158,7 @@ function Table({ metadata }: { metadata?: KongVaultListItem[] }) {
   )
 }
 afterEach(() => {
+  mobileView = false
   cleanup()
   for (const client of clients) client.clear()
   clients.length = 0
@@ -356,4 +359,74 @@ it('allows filtering an effective-fee entry classified as External', () => {
   fireEvent.change(filter, { target: { value: 'External' } })
   expect(screen.getByText('Example vault', { exact: true })).toBeTruthy()
   expect(screen.queryByRole('link', { name: 'Example vault' })).toBeNull()
+})
+
+it('opens vault details from both mobile tables without inline expansion', () => {
+  mobileView = true
+  render(<Table />)
+  const table = screen.getByRole('table', { name: 'Current effective fees for direct vault deposits' })
+  expect(within(table).getAllByRole('columnheader')).toHaveLength(2)
+  expect(within(table).getByRole('columnheader', { name: /Adjusted TVL/ })).toBeTruthy()
+  fireEvent.change(screen.getByRole('combobox', { name: 'Adjusted TVL and fees data column' }), {
+    target: { value: 'effective' }
+  })
+  expect(within(table).getAllByRole('columnheader')).toHaveLength(2)
+  expect(within(table).getByRole('columnheader', { name: /effective perf. fee/ })).toBeTruthy()
+  expect(screen.queryByRole('textbox', { name: 'Search effective fees' })).toBeNull()
+  fireEvent.click(within(table).getByRole('button', { name: 'Example vault' }))
+  let detail = screen.getByRole('dialog', { name: 'Example vault' })
+  expect(within(detail).getByRole('region', { name: 'Selected vault' })).toBeTruthy()
+  fireEvent.click(within(detail).getByRole('button', { name: 'Close' }))
+  fireEvent.click(screen.getByRole('button', { name: 'View all' }))
+  const dialog = screen.getByRole('dialog', { name: 'Effective Performance Fees by Vault' })
+  expect(within(dialog).queryByRole('link', { name: /Open .* Powerglove page/ })).toBeNull()
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Example vault' }))
+  detail = screen.getByRole('dialog', { name: 'Example vault' })
+  expect(within(detail).getByRole('region', { name: 'Selected vault' })).toBeTruthy()
+  expect(dialog.querySelector('.fee-stack-detail')).toBeNull()
+})
+
+it('ranks five vaults by the selected category and moves filtering and pagination into the mobile modal', () => {
+  mobileView = true
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  clients.push(client)
+  const entries = Array.from({ length: 12 }, (_, index) => ({
+    ...stack.entries![0],
+    vault: { address: `0xvault${index}`, chainId: 1, name: `Vault ${index}` },
+    performanceFee: index * 100,
+    adjustedTvlUsd: 100 - index
+  }))
+  const { container } = render(
+    <QueryClientProvider client={client}>
+      <EffectiveFeesTable feeStack={{ ...stack, entries }} vaults={[]} chainSelector={null} />
+    </QueryClientProvider>
+  )
+  const summary = container.querySelector('.stats-compact-table')!
+  expect(within(summary as HTMLElement).getAllByRole('row')).toHaveLength(6)
+  expect(screen.queryByRole('textbox')).toBeNull()
+  expect(screen.queryByRole('button', { name: 'Next' })).toBeNull()
+  fireEvent.change(screen.getByRole('combobox', { name: 'Adjusted TVL and fees data column' }), {
+    target: { value: 'effective' }
+  })
+  expect(screen.getByRole('heading', { name: 'Effective Performance Fees by Vault' })).toBeTruthy()
+  expect(within(summary as HTMLElement).getAllByRole('row')[1].textContent).toContain('Vault 11')
+  fireEvent.click(screen.getByRole('button', { name: 'View all' }))
+  const dialog = screen.getByRole('dialog', { name: 'Effective Performance Fees by Vault' })
+  expect(within(dialog).getByRole('combobox', { name: 'Effective fees vault type' })).toBeTruthy()
+  expect(within(dialog).getByText('1–10 of 12')).toBeTruthy()
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Next' }))
+  expect(within(dialog).getByText('11–12 of 12')).toBeTruthy()
+  expect(within(dialog).queryByRole('textbox')).toBeNull()
+  expect(document.activeElement).toBe(dialog)
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Search' }))
+  expect(document.activeElement).toBe(within(dialog).getByRole('textbox'))
+  fireEvent.change(within(dialog).getByRole('textbox', { name: 'Search effective fees' }), {
+    target: { value: 'Vault 2' }
+  })
+  expect(within(dialog).getAllByRole('row')).toHaveLength(2)
+  expect(within(dialog).getByText('Vault 2', { exact: true })).toBeTruthy()
+  expect(summary.textContent).toContain('Vault 11')
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Close search' }))
+  expect(within(dialog).queryByRole('textbox')).toBeNull()
+  expect(within(dialog).getByText('1–10 of 12')).toBeTruthy()
 })

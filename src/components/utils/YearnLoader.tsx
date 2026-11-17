@@ -22,7 +22,7 @@ export function YearnSpinner({ size = 64 }: { size?: number }) {
       className="relative flex shrink-0 items-center justify-center"
       style={{ width: size, height: size }}
     >
-      <div className="absolute inset-0 rounded-full border-2 border-t-transparent border-[#0657F9] animate-spin motion-reduce:animate-none" />
+      <div className="absolute inset-0 rounded-full border-2 border-t-transparent border-[#0657F9] animate-spin" />
       <img
         src="/logo.svg"
         alt=""

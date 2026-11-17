@@ -1,14 +1,18 @@
+import { CalendarDays } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useContext, useEffect } from 'react'
+import { useIsMobile } from '@/components/ui/use-mobile'
 import { FeeDateSlider } from './FeeTimeRangeSlider'
 import { feeRangeDate, feeSliderValues } from './fee-range-slider'
 import { useFetch } from './hooks'
 import { StatsChartControls } from './StatsChartControls'
 import { StatsTimeRangeContext } from './StatsContext'
+import { StatsFilterDrawer } from './StatsFilterDrawer'
 import type { LegacyTvlSummary } from './tvl-summary'
 import type { TvlHistoryRun } from './types'
 
 export function SharedStatsChartControls({ chainSelector }: { chainSelector: ReactNode }) {
+  const mobile = useIsMobile()
   const { range, setRange } = useContext(StatsTimeRangeContext)
   const summary = useFetch<LegacyTvlSummary>('/api/tvl')
   const filters = new URLSearchParams({ groupBy: 'chain', mode: 'external', interval: 'weekly' })
@@ -26,8 +30,8 @@ export function SharedStatsChartControls({ chainSelector }: { chainSelector: Rea
   useEffect(() => {
     if (start && end && (range?.start !== start || range?.end !== end)) setRange({ start, end })
   }, [start, end, range, setRange])
-  return (
-    <StatsChartControls leading={chainSelector}>
+  const timeline = (
+    <>
       {bounds ? (
         <FeeDateSlider bounds={bounds} selected={range} onApply={setRange} minDurationDays={365} />
       ) : summary.error || history.error ? (
@@ -51,6 +55,34 @@ export function SharedStatsChartControls({ chainSelector }: { chainSelector: Rea
           <div aria-hidden="true" className="skeleton skeleton-line" />
         </div>
       )}
-    </StatsChartControls>
+    </>
   )
+  if (mobile) {
+    const dateLabel = (date: string) =>
+      new Date(`${date}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' })
+    const selectedLabel = start && end ? `${dateLabel(start)} – ${dateLabel(end)}` : 'Choose dates'
+    return (
+      <StatsChartControls className="stats-toolbar-drawers" leading={chainSelector}>
+        <StatsFilterDrawer
+          title="Date range"
+          trigger={
+            <button
+              type="button"
+              className="page-btn stats-date-drawer-trigger"
+              aria-label={`Date range: ${selectedLabel}`}
+            >
+              <CalendarDays size={16} aria-hidden="true" />
+              <span>
+                <span>Date range</span>
+                <small>{selectedLabel}</small>
+              </span>
+            </button>
+          }
+        >
+          {timeline}
+        </StatsFilterDrawer>
+      </StatsChartControls>
+    )
+  }
+  return <StatsChartControls leading={chainSelector}>{timeline}</StatsChartControls>
 }

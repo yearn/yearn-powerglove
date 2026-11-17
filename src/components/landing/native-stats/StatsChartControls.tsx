@@ -1,7 +1,15 @@
 import { Menu, X } from 'lucide-react'
 import { type ReactNode, useId, useLayoutEffect, useRef, useState } from 'react'
 
-export function StatsChartControls({ children, leading }: { children: ReactNode; leading?: ReactNode }) {
+export function StatsChartControls({
+  children,
+  leading,
+  className = ''
+}: {
+  children: ReactNode
+  leading?: ReactNode
+  className?: string
+}) {
   const [expanded, setExpanded] = useState(true)
   const controlsId = useId()
   const toolbarRef = useRef<HTMLDivElement>(null)
@@ -23,7 +31,7 @@ export function StatsChartControls({ children, leading }: { children: ReactNode;
   }, [expanded])
 
   return (
-    <div ref={toolbarRef} className={`fees-toolbar${expanded ? '' : ' fees-toolbar-collapsed'}`}>
+    <div ref={toolbarRef} className={`fees-toolbar ${className}${expanded ? '' : ' fees-toolbar-collapsed'}`}>
       <div id={controlsId} className="fees-toolbar-controls" hidden={!expanded}>
         {leading}
         {children}

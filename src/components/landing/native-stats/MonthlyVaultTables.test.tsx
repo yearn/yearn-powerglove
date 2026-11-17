@@ -7,6 +7,8 @@ import { MonthlyVaultTables } from './MonthlyVaultTables'
 import { completedFeeMonths } from './monthly-vault-data'
 import { StatsContext } from './StatsContext'
 
+let mobileView = false
+vi.mock('@/components/ui/use-mobile', () => ({ useIsMobile: () => mobileView }))
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ to, children }: { to: string; children: ReactNode }) => <a href={to}>{children}</a>
 }))
@@ -58,6 +60,7 @@ function Table({ datasetId = 'selected' }: { datasetId?: string } = {}) {
   )
 }
 afterEach(() => {
+  mobileView = false
   cleanup()
   vi.restoreAllMocks()
 })
@@ -278,4 +281,87 @@ describe('monthly fee table', () => {
     expect(screen.getByRole('table', { name: /Vault fees for/ }).textContent).toContain('$120')
     client.clear()
   })
+})
+
+it('switches mobile months and metrics without losing names or treating unavailable amounts as zero', () => {
+  mobileView = true
+  const months = completedFeeMonths(Math.floor(Date.now() / 1000))
+  const client = new QueryClient()
+  const row = {
+    vault: vault(1, 'Alice', '12'),
+    vaultType: 'Allocator',
+    months: [null, 0, ...Array(10).fill(1)],
+    total: null
+  }
+  client.setQueryData(['monthly-vault-data', '', 'selected', months[0].period, 'product'], {
+    fees: [row],
+    earnings: [row]
+  })
+  render(
+    <QueryClientProvider client={client}>
+      <Table />
+    </QueryClientProvider>
+  )
+  const table = screen.getByRole('table', { name: /Vault earnings for/ })
+  expect(within(table).getAllByRole('columnheader')).toHaveLength(2)
+  const selector = screen.getByRole('combobox', { name: 'Monthly vault data column' })
+  fireEvent.change(selector, { target: { value: '0' } })
+  expect(within(table).getAllByRole('columnheader')).toHaveLength(2)
+  expect(within(table).getByRole('link', { name: 'Alice' })).toBeTruthy()
+  expect(within(table).getAllByRole('row')[1].textContent).toContain('—')
+  fireEvent.change(selector, { target: { value: '1' } })
+  expect(within(table).getAllByRole('row')[1].textContent).toContain('$0')
+  fireEvent.click(
+    within(screen.getByRole('group', { name: 'Monthly vault metric' })).getByRole('button', { name: 'Fees' })
+  )
+  expect(
+    screen.getByRole('combobox', { name: 'Monthly vault data column' }).getAttribute('value') ??
+      (selector as HTMLSelectElement).value
+  ).toBe('1')
+  client.clear()
+})
+
+it('shows five monthly vaults and exposes the full filtered table in a modal', () => {
+  mobileView = true
+  const months = completedFeeMonths(Math.floor(Date.now() / 1000))
+  const client = new QueryClient()
+  const rows = Array.from({ length: 12 }, (_, index) => ({
+    vault: { ...vault(1, `Vault ${index}`, '12'), address: `0xvault${index}` },
+    vaultType: 'Allocator',
+    months: Array(12).fill(index),
+    total: index * 12
+  }))
+  client.setQueryData(['monthly-vault-data', '', 'selected', months[0].period, 'product'], {
+    fees: rows,
+    earnings: rows
+  })
+  const { container } = render(
+    <QueryClientProvider client={client}>
+      <Table />
+    </QueryClientProvider>
+  )
+  const summary = container.querySelector('.stats-compact-table')! as HTMLElement
+  expect(within(summary).getAllByRole('row')).toHaveLength(6)
+  expect(within(summary).getAllByRole('row')[1].textContent).toContain('Vault 11')
+  expect(screen.getByRole('heading', { name: 'Annual Earnings by Vault' })).toBeTruthy()
+  expect(screen.queryByRole('textbox')).toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: 'View all' }))
+  const dialog = screen.getByRole('dialog', { name: 'Annual Earnings by Vault' })
+  expect(within(dialog).getByRole('combobox', { name: 'Vault type' })).toBeTruthy()
+  expect(within(dialog).getByText('1–10 of 12')).toBeTruthy()
+  expect(within(dialog).queryByRole('textbox')).toBeNull()
+  expect(document.activeElement).toBe(dialog)
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Search' }))
+  expect(document.activeElement).toBe(within(dialog).getByRole('textbox'))
+  fireEvent.change(within(dialog).getByRole('textbox', { name: 'Search vault earnings' }), {
+    target: { value: 'Vault 2' }
+  })
+  expect(within(dialog).getAllByRole('row')).toHaveLength(3)
+  expect(summary.textContent).toContain('Vault 11')
+  fireEvent.change(within(dialog).getByRole('combobox', { name: 'Monthly vault data column' }), {
+    target: { value: '0' }
+  })
+  expect(within(dialog).getAllByRole('columnheader')).toHaveLength(2)
+  expect(summary.querySelector('h2')?.textContent).toContain('Earnings by Vault')
+  client.clear()
 })

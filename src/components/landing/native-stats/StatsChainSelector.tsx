@@ -1,7 +1,11 @@
+import { Check, ChevronDown } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { DrawerClose } from '@/components/ui/drawer'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { useIsMobile } from '@/components/ui/use-mobile'
 import { CHAIN_ID_TO_ICON, isSupportedChainId } from '@/constants/chains'
 import { cn } from '@/lib/utils'
+import { StatsFilterDrawer } from './StatsFilterDrawer'
 
 export const STATS_CHAINS = [
   { id: 'all', label: 'All Chains' },
@@ -31,14 +35,17 @@ export function StatsChainSelector({
   onValueChange,
   chains = STATS_CHAINS,
   label = 'Chain',
-  className
+  className,
+  drawerOnMobile = false
 }: {
   value: string
   onValueChange: (value: string) => void
   chains?: { id: string; label: string }[]
   label?: string
   className?: string
+  drawerOnMobile?: boolean
 }) {
+  const mobile = useIsMobile()
   const [keyboardFocus, setKeyboardFocus] = useState(true)
 
   useEffect(() => {
@@ -52,6 +59,44 @@ export function StatsChainSelector({
       document.removeEventListener('keydown', onKeyDown, true)
     }
   }, [])
+
+  if (mobile && drawerOnMobile) {
+    const selected = chains.find((chain) => chain.id === value)
+    return (
+      <StatsFilterDrawer
+        title="Chains"
+        trigger={
+          <button
+            type="button"
+            className={cn('page-btn stats-chain-select stats-chain-drawer-trigger', className)}
+            aria-label={`Choose chain: ${selected?.label ?? value}`}
+          >
+            <img src={chainIcon(value)} alt="" width={20} height={20} />
+            <span>{selected?.label ?? value}</span>
+            <ChevronDown size={14} aria-hidden="true" />
+          </button>
+        }
+      >
+        <fieldset className="stats-chain-drawer-list">
+          <legend className="sr-only">Select chain</legend>
+          {chains.map((chain) => (
+            <DrawerClose key={chain.id} asChild>
+              <button
+                type="button"
+                className="stats-chain-drawer-choice"
+                aria-pressed={chain.id === value}
+                onClick={() => onValueChange(chain.id)}
+              >
+                <img src={chainIcon(chain.id)} alt="" width={20} height={20} />
+                <span>{chain.label}</span>
+                {chain.id === value && <Check size={16} aria-hidden="true" />}
+              </button>
+            </DrawerClose>
+          ))}
+        </fieldset>
+      </StatsFilterDrawer>
+    )
+  }
 
   return (
     <Select value={value} onValueChange={onValueChange}>
