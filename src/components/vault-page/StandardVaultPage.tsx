@@ -1,7 +1,6 @@
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { type ReactNode, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { MainInfoPanel, VaultIdentity } from '@/components/main-info-panel'
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import {
   Drawer,
   DrawerClose,
@@ -38,7 +37,6 @@ export function StandardVaultPage({ mainInfo, showAction, charts, strategies, va
     const hash = window.location.hash.replace('#vault-', '')
     return sections.some((section) => section.id !== 'overview' && section.id === hash) ? hash : ''
   })
-  const [mobileLayout, setMobileLayout] = useState<'drawer' | 'inline'>('drawer')
   const [performanceControls, setPerformanceControls] = useState<HTMLDivElement | null>(null)
   const pageRef = useRef<HTMLDivElement>(null)
   const drawerIdentityRef = useRef<HTMLDivElement>(null)
@@ -50,15 +48,14 @@ export function StandardVaultPage({ mainInfo, showAction, charts, strategies, va
     const updateHeaderHeight = () => {
       const headerHeight = header.getBoundingClientRect().height
       page.style.setProperty('--vault-header-height', `${headerHeight}px`)
-      if (isMobile && mobileLayout === 'drawer' && drawerIdentityRef.current)
-        setDrawerTop(headerHeight + drawerIdentityRef.current.offsetHeight)
+      if (isMobile && drawerIdentityRef.current) setDrawerTop(headerHeight + drawerIdentityRef.current.offsetHeight)
     }
     updateHeaderHeight()
     const observer = new ResizeObserver(updateHeaderHeight)
     observer.observe(header)
     if (drawerIdentityRef.current) observer.observe(drawerIdentityRef.current)
     return () => observer.disconnect()
-  }, [isMobile, mobileLayout])
+  }, [isMobile])
   const hasActivity = isEnvioConfigured()
   const visibleSections = useMemo(
     () => sections.filter((section) => section.id !== 'activity' || hasActivity),
@@ -76,72 +73,12 @@ export function StandardVaultPage({ mainInfo, showAction, charts, strategies, va
         value ? `#vault-${value}` : `${window.location.pathname}${window.location.search}`
       )
     }
-    const layoutSwitch = (
-      <fieldset
-        aria-label="Mobile section layout"
-        className="fixed right-3 top-[calc(var(--vault-header-height,55px)+0.5rem)] z-40 flex border border-border bg-white shadow-sm"
-      >
-        {(['drawer', 'inline'] as const).map((layout) => (
-          <button
-            key={layout}
-            type="button"
-            aria-pressed={mobileLayout === layout}
-            onClick={() => {
-              changeSection('')
-              setMobileLayout(layout)
-            }}
-            className={`px-2 py-1 text-xs ${mobileLayout === layout ? 'bg-gray-100 text-foreground' : 'text-gray-500'}`}
-          >
-            {layout === 'drawer' ? 'Drawers' : 'Expand down'}
-          </button>
-        ))}
-      </fieldset>
-    )
-    if (mobileLayout === 'inline') {
-      return (
-        <div
-          ref={pageRef}
-          className="vault-ledger fixed inset-x-0 bottom-0 top-[var(--vault-header-height,55px)] overflow-y-auto bg-white text-[#151515]"
-          data-testid="standard-vault-page"
-        >
-          {layoutSwitch}
-          <div className="px-4 pt-2 pb-3">
-            <VaultIdentity data={mainInfo} />
-          </div>
-          <section id={getVaultReportSectionId('vault', 'overview')}>
-            <MainInfoPanel {...mainInfo} showAction={showAction} showIdentity={false} />
-          </section>
-          <Accordion type="single" collapsible value={expanded} onValueChange={changeSection}>
-            {visibleSections
-              .filter((section) => section.id !== 'overview')
-              .map((section) => (
-                <AccordionItem key={section.id} value={section.id} className="border-x border-border first:border-t">
-                  <div className="relative">
-                    <AccordionTrigger className="px-4 py-3 text-base text-left hover:no-underline">
-                      {section.label}
-                    </AccordionTrigger>
-                    {section.id === 'performance' && expanded === 'performance' ? (
-                      <div ref={setPerformanceControls} className="absolute right-10 top-1/2 -translate-y-1/2" />
-                    ) : null}
-                  </div>
-                  <AccordionContent className="pb-0">
-                    <PerformanceControlsContext.Provider value={performanceControls}>
-                      {content[section.id]}
-                    </PerformanceControlsContext.Provider>
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-          </Accordion>
-        </div>
-      )
-    }
     return (
       <div
         ref={pageRef}
         className="vault-ledger fixed inset-x-0 bottom-0 top-[var(--vault-header-height,55px)] flex flex-col bg-white text-[#151515]"
         data-testid="standard-vault-page"
       >
-        {layoutSwitch}
         <div className="min-h-0 flex-1 overflow-y-auto">
           <div ref={drawerIdentityRef} className="px-4 pt-2 pb-3">
             <VaultIdentity data={mainInfo} />

@@ -110,7 +110,7 @@ it('opens a directly linked section on mobile', () => {
   expect(screen.getByText('Allocations')).toBeTruthy()
 })
 
-it('supports comparing downward sections with drawers on mobile', () => {
+it('uses drawers exclusively for mobile sections', () => {
   viewport.mobile = true
   render(
     <StandardVaultPage
@@ -121,14 +121,13 @@ it('supports comparing downward sections with drawers on mobile', () => {
       vaultActivity={null}
     />
   )
-  fireEvent.click(screen.getByRole('button', { name: 'Expand down' }))
+  expect(screen.queryByRole('group', { name: 'Mobile section layout' })).toBeNull()
+  expect(screen.queryByRole('button', { name: 'Expand down' })).toBeNull()
+  expect(screen.queryByRole('button', { name: 'Drawers' })).toBeNull()
   fireEvent.click(screen.getByRole('button', { name: 'Performance' }))
-  expect(screen.queryByRole('dialog')).toBeNull()
-  expect(screen.getByText('Charts')).toBeTruthy()
-  fireEvent.click(screen.getByRole('button', { name: 'Strategies' }))
-  expect(screen.queryByText('Charts')).toBeNull()
-  expect(screen.getByText('Allocations')).toBeTruthy()
-  fireEvent.click(screen.getByRole('button', { name: 'Drawers' }))
-  fireEvent.click(screen.getByRole('button', { name: 'Performance' }))
-  expect(screen.getByRole('dialog')).toBeTruthy()
+  const drawer = within(screen.getByRole('dialog'))
+  expect(drawer.getByText('Charts')).toBeTruthy()
+  fireEvent.click(drawer.getByRole('button', { name: 'Strategies' }))
+  expect(drawer.queryByText('Charts')).toBeNull()
+  expect(drawer.getByText('Allocations')).toBeTruthy()
 })
