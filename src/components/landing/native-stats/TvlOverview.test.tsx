@@ -132,6 +132,18 @@ afterEach(() => {
 })
 
 describe('shared TVL chart controls', () => {
+  it('shows a distribution donut and chain percentages with expandable rows', () => {
+    const { container } = render(<Overview />)
+    expect(screen.getByRole('img', { name: 'TVL distribution by chain' })).toBeTruthy()
+    expect(container.querySelector('.chain-distribution-row')?.textContent).toContain('66.67%')
+    fireEvent.click(screen.getByRole('button', { name: /Ethereum/, expanded: false }))
+    expect(screen.getByTestId('drilldown')).toBeTruthy()
+    expect(container.querySelector('.chain-distribution-layout.is-expanded')).toBeTruthy()
+    expect(container.querySelectorAll('.chain-distribution-bar')).toHaveLength(1)
+    fireEvent.click(screen.getByRole('button', { name: /Ethereum/, expanded: true }))
+    expect(container.querySelector('.chain-distribution-bar')).toBeNull()
+  })
+
   it('shows TVL and active vault cards while leaving unavailable weekly harvests as a dash', () => {
     render(<Overview />)
     const tvl = screen.getByRole('article', { name: 'Total TVL' })
@@ -183,7 +195,7 @@ describe('shared TVL chart controls', () => {
     fireEvent.change(screen.getByRole('combobox', { name: 'Chain' }), { target: { value: '1' } })
     expect(container.querySelectorAll('.recharts-bar')).toHaveLength(1)
     fireEvent.click(screen.getByRole('button', { name: 'Show TVL as lines' }))
-    fireEvent.click(screen.getByRole('button', { name: /Ethereum/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Ethereum/, expanded: false }))
     expect(screen.getByTestId('drilldown').getAttribute('data-type')).toBe('line')
     const start = screen.getByRole('slider', { name: 'Range start' })
     start.focus()

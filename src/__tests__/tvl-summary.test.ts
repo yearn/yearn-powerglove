@@ -161,3 +161,9 @@ describe('TVL by Chain adjustment', () => {
     expect(toggleSelectedChain('Ethereum', 'Ethereum')).toBeNull()
   })
 })
+
+it('normalizes the legacy Yeer label without losing overlap accounting or filtering', () => {
+  const data = { tvlByChain: { Yeer: 100 }, overlapByChain: { Yeer: 20 }, crossChainOverlapByChain: { Yeer: 5 } }
+  expect(buildAdjustedChainTvl(data, 'Robinhood')).toEqual([{ chain: 'Robinhood', tvl: 75 }])
+  expect(resolveChainId('Yeer', { 4663: 'Robinhood' })).toBe(4663)
+})

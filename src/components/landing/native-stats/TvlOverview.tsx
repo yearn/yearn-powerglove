@@ -1,4 +1,4 @@
-import { ChevronDown, Info } from 'lucide-react'
+import { ChevronRight, Info } from 'lucide-react'
 import { Fragment, useContext, useEffect, useId, useMemo, useState } from 'react'
 import { Area, Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import type { NameType, Payload, ValueType } from 'recharts/types/component/DefaultTooltipContent'
@@ -6,10 +6,11 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useRootDarkMode } from '@/hooks/useRootDarkMode'
 import { buildBlueShadePalette } from '@/lib/theme-blue-palette'
+import { ChainDistributionChart } from './ChainDistributionChart'
 import { ChainTvlHistory } from './ChainTvlHistory'
 import { ChartTypeToggle, type StatsChartType } from './ChartTypeToggle'
 import { formatTvlHistoryTick } from './fee-history'
-import { CAT_COLORS, CHAIN_NAMES, CHAIN_SHORT, CHART_COLORS, fmt, useFetch } from './hooks'
+import { CAT_COLORS, CHAIN_NAMES, CHAIN_SHORT, fmt, useFetch } from './hooks'
 import { StatsContext, StatsTimeRangeContext } from './StatsContext'
 import { StatsPlotSkeleton, StatsTvlSkeleton } from './StatsLoadingSkeletons'
 import {
@@ -346,7 +347,8 @@ export function TvlOverview() {
     )
   if (!data) return null
 
-  const maxChainTvl = Math.max(1, ...chainData.map(({ tvl }) => tvl))
+  const totalChainTvl = chainData.reduce((total, { tvl }) => total + Math.max(0, tvl), 0)
+  const chainPercentage = (tvl: number) => (totalChainTvl > 0 ? (tvl / totalChainTvl) * 100 : 0)
 
   return (
     <>
@@ -612,59 +614,81 @@ export function TvlOverview() {
       </div>
 
       {/* ── TVL by Chain ── */}
-      <div className="card">
+      <div className="card chain-distribution-card">
         <h2>TVL by Chain</h2>
-        <div style={{ marginTop: '0.25rem' }}>
-          {chainData.map((c, i) => {
-            const isExpanded = selectedHistoryChain === c.chain
-            return (
-              <Fragment key={c.chain}>
-                <button
-                  type="button"
-                  className={`stat-row chain-stat-row${isExpanded ? ' is-selected' : ''}`}
-                  aria-expanded={isExpanded}
-                  aria-controls={c.chainId ? `chain-history-${c.chainId}` : undefined}
-                  disabled={c.chainId === null}
-                  onClick={() => setSelectedHistoryChain((current) => toggleSelectedChain(current, c.chain))}
-                >
-                  <span className="stat-label chain-stat-label">
-                    <span className="legend-dot" style={{ background: CHART_COLORS[i % CHART_COLORS.length] }} />
-                    {c.label}
-                  </span>
-                  <span className="chain-stat-bar">
-                    <span className="inline-bar">
-                      <span className="inline-bar-track">
-                        <span
-                          className="inline-bar-fill"
-                          style={{
-                            width: `${(Math.max(0, c.tvl) / maxChainTvl) * 100}%`,
-                            background: CHART_COLORS[i % CHART_COLORS.length]
-                          }}
-                        />
-                      </span>
-                    </span>
-                  </span>
-                  <span className="stat-value">{fmt(c.tvl)}</span>
-                  <ChevronDown className="chain-stat-chevron" size={15} strokeWidth={1.8} aria-hidden="true" />
-                </button>
-                {isExpanded && c.chainId !== null && (
-                  <ChainTvlHistory
-                    chainId={c.chainId}
-                    chainLabel={c.label}
-                    datasetId={rawData?.datasetId}
-                    allTimeRange={selectedBounds}
-                    selectedRange={selectedBounds}
-                    renderType={tvlHistoryView}
-                  />
-                )}
-              </Fragment>
-            )
-          })}
-          {chainData.length === 0 && (
-            <div className="text-dim" style={{ textAlign: 'center', padding: '1rem' }}>
-              No data for selected chain
+        <div className={`chain-distribution-layout${selectedHistoryChain ? ' is-expanded' : ''}`}>
+          <ChainDistributionChart chains={chainData} colors={tvlHistoryColors} total={totalChainTvl} />
+          <div className="chain-distribution-table">
+            <div className="chain-distribution-head">
+              <span>Chain</span>
+              <span>TVL</span>
+              <span>% of TVL</span>
             </div>
-          )}
+            {chainData.map((c, i) => {
+              const isExpanded = selectedHistoryChain === c.chain
+              return (
+                <Fragment key={c.chain}>
+                  <button
+                    type="button"
+                    className={`stat-row chain-stat-row chain-distribution-row${isExpanded ? ' is-selected' : ''}`}
+                    aria-expanded={isExpanded}
+                    aria-controls={c.chainId ? `chain-history-${c.chainId}` : undefined}
+                    disabled={c.chainId === null}
+                    onClick={() => setSelectedHistoryChain((current) => toggleSelectedChain(current, c.chain))}
+                  >
+                    <span className="stat-label chain-stat-label">
+                      <ChevronRight className="chain-stat-chevron" size={15} strokeWidth={1.8} aria-hidden="true" />
+                      <span
+                        className="legend-dot"
+                        style={{ background: tvlHistoryColors[i % tvlHistoryColors.length] }}
+                      />
+                      {c.label}
+                    </span>
+                    <span className="stat-value">{fmt(c.tvl)}</span>
+                    <span className="chain-distribution-percentage">{chainPercentage(c.tvl).toFixed(2)}%</span>
+                  </button>
+                  {isExpanded && c.chainId !== null && (
+                    <ChainTvlHistory
+                      chainId={c.chainId}
+                      chainLabel={c.label}
+                      datasetId={rawData?.datasetId}
+                      allTimeRange={selectedBounds}
+                      selectedRange={selectedBounds}
+                      renderType={tvlHistoryView}
+                    />
+                  )}
+                </Fragment>
+              )
+            })}
+            {chainData.length === 0 && (
+              <div className="text-dim" style={{ textAlign: 'center', padding: '1rem' }}>
+                No data for selected chain
+              </div>
+            )}
+          </div>
+          {selectedHistoryChain ? (
+            <div className="chain-distribution-bar" aria-label="TVL distribution by chain">
+              {chainData
+                .filter((chain) => chain.tvl > 0)
+                .map((chain) => (
+                  <button
+                    type="button"
+                    key={chain.chain}
+                    className="chain-distribution-segment"
+                    style={{
+                      flexGrow: chain.tvl,
+                      background: tvlHistoryColors[chainData.indexOf(chain) % tvlHistoryColors.length]
+                    }}
+                    title={`${chain.label} · ${fmt(chain.tvl)} · ${chainPercentage(chain.tvl).toFixed(2)}%`}
+                    aria-label={`${chain.label}: ${fmt(chain.tvl)}, ${chainPercentage(chain.tvl).toFixed(2)}% of TVL`}
+                    onClick={() => {
+                      if (chain.chainId !== null)
+                        setSelectedHistoryChain((current) => toggleSelectedChain(current, chain.chain))
+                    }}
+                  />
+                ))}
+            </div>
+          ) : null}
         </div>
       </div>
     </>

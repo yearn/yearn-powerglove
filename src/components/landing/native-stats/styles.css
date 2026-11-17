@@ -166,6 +166,15 @@
 }
 
 .pg-stats .filter-select,
+.pg-stats .filter-select {
+  appearance: none;
+  padding-right: 2.25rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%234f4f4f' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1rem;
+}
+
 .pg-stats .search-input {
   padding: 0.45rem 0.75rem;
 }
@@ -3115,4 +3124,110 @@
   display: grid;
   place-items: center;
   pointer-events: none;
+}
+
+.pg-stats .chain-distribution-head,
+.pg-stats .chain-distribution-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(76px, 120px) minmax(65px, 90px);
+  align-items: center;
+  gap: 12px;
+}
+.pg-stats .chain-distribution-head {
+  padding: 8px 0;
+  color: var(--text-3);
+  font-size: 11px;
+}
+.pg-stats .chain-distribution-head > :not(:first-child),
+.pg-stats .chain-distribution-percentage {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.pg-stats .chain-distribution-row .chain-stat-label {
+  width: auto;
+  flex-basis: auto;
+  min-width: 0;
+}
+.pg-stats .chain-distribution-row.is-selected .chain-stat-chevron {
+  transform: rotate(90deg);
+}
+@media (forced-colors: active) {
+  .pg-stats .filter-select {
+    appearance: auto;
+    background-image: none;
+  }
+}
+
+.pg-stats .chain-distribution-layout {
+  position: relative;
+  min-height: 280px;
+  margin-top: 12px;
+}
+.pg-stats .chain-distribution-table {
+  padding-right: 310px;
+  transition: padding-right 260ms ease;
+}
+.pg-stats .chain-distribution-donut {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  width: 280px;
+  height: 280px;
+  transform: translateY(-50%);
+  transform-origin: top right;
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 260ms ease 100ms;
+}
+.pg-stats .chain-distribution-layout.is-expanded .chain-distribution-table {
+  padding-right: 0;
+  transition: none;
+}
+.pg-stats .chain-distribution-layout.is-expanded .chain-distribution-donut {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: none;
+}
+.pg-stats .chain-distribution-bar {
+  display: flex;
+  height: 18px;
+  margin-top: 16px;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.pg-stats .chain-distribution-segment {
+  flex-basis: 0;
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+.pg-stats .chain-distribution-segment:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: -2px;
+}
+.pg-stats .stats-skeleton-chain-donut {
+  border: 38px solid var(--surface-2);
+  border-radius: 50%;
+}
+@media (max-width: 700px) {
+  .pg-stats .chain-distribution-table {
+    padding-right: 0;
+    padding-top: 150px;
+    transition: padding-top 260ms ease;
+  }
+  .pg-stats .chain-distribution-donut {
+    top: 0;
+    transform: scale(0.5);
+  }
+  .pg-stats .chain-distribution-layout.is-expanded .chain-distribution-table {
+    padding-top: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pg-stats .chain-distribution-table,
+  .pg-stats .chain-distribution-donut {
+    transition: none;
+  }
 }

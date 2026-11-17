@@ -153,18 +153,28 @@ export function StatsTvlSkeleton({ chainCount = 9 }: { chainCount?: number }) {
   return (
     <>
       <StatsChartSkeleton title="TVL History" kind="tvl" />
-      <section className="card" aria-label="Loading TVL by Chain" aria-busy="true">
+      <section className="card chain-distribution-card" aria-label="Loading TVL by Chain" aria-busy="true">
         <h2>TVL by Chain</h2>
-        <div aria-hidden="true" className="relative" style={{ marginTop: '0.25rem' }}>
-          {Array.from({ length: chainCount }, (_, index) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: Static loading placeholders.
-            <div className="stat-row chain-stat-row stats-skeleton-chain-row" key={index}>
-              <Line width="6rem" />
-              <div className="skeleton stats-skeleton-chain-bar" />
-              <Line width="4rem" />
+        <div className="chain-distribution-layout">
+          <div aria-hidden="true" className="chain-distribution-donut stats-skeleton-chain-donut" />
+          <div className="chain-distribution-table">
+            <div aria-hidden="true" className="chain-distribution-head">
+              <span>Chain</span>
+              <span>TVL</span>
+              <span>% of TVL</span>
             </div>
-          ))}
-          <CenteredSpinner />
+            <div aria-hidden="true" className="relative" style={{ marginTop: '0.25rem' }}>
+              {Array.from({ length: chainCount }, (_, index) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: Static loading placeholders.
+                <div className="stat-row chain-stat-row chain-distribution-row stats-skeleton-chain-row" key={index}>
+                  <Line width="6rem" />
+                  <Line width="4rem" />
+                  <Line width="4rem" />
+                </div>
+              ))}
+              <CenteredSpinner />
+            </div>
+          </div>
         </div>
       </section>
     </>

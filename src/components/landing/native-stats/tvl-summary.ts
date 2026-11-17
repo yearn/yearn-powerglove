@@ -48,15 +48,20 @@ export function getAdjustedChainTvl(
   return rawTvl - (nestedOverlap ?? 0) - (crossChainOverlap ?? 0)
 }
 
+// Older Yearn Data publications use the former label for Robinhood (chain 4663).
+function canonicalChainName(chain: string): string {
+  return chain === 'Yeer' ? 'Robinhood' : chain
+}
+
 export function buildAdjustedChainTvl(
   data: Pick<TvlSummary, 'tvlByChain' | 'overlapByChain' | 'crossChainOverlapByChain'>,
   chainFilter: string
 ): AdjustedChainTvl[] {
   return (
     Object.entries(data.tvlByChain)
-      .filter(([chain]) => chainFilter === 'all' || chain === chainFilter)
+      .filter(([chain]) => chainFilter === 'all' || canonicalChainName(chain) === canonicalChainName(chainFilter))
       .map(([chain, rawTvl]) => ({
-        chain,
+        chain: canonicalChainName(chain),
         tvl: getAdjustedChainTvl(rawTvl, data.overlapByChain[chain], data.crossChainOverlapByChain[chain])
       }))
       // Keep negative adjusted values visible. They signal upstream overlap larger than raw TVL and must not disappear silently.
@@ -66,7 +71,7 @@ export function buildAdjustedChainTvl(
 }
 
 export function resolveChainId(chain: string, chainNames: Record<number, string>): number | null {
-  const namedChain = Object.entries(chainNames).find(([, name]) => name === chain)
+  const namedChain = Object.entries(chainNames).find(([, name]) => name === canonicalChainName(chain))
   if (namedChain) return Number(namedChain[0])
   const fallback = /^Chain (\d+)$/.exec(chain)
   return fallback ? Number(fallback[1]) : null
