@@ -21,6 +21,9 @@ import { fetchVaultTypeFeeHistories } from './useVaultTypeFeeHistories'
 const monthLabel = (period: string) =>
   new Date(`${period}-01T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' })
 
+const totalLabel = (amount: number | null, partial: boolean) =>
+  `${monthlyUsd(amount)}${amount !== null && partial ? ' (partial)' : ''}`
+
 export function MonthlyVaultTables({
   chainSelector,
   datasetId,
@@ -95,10 +98,13 @@ function MonthlyVaultTable({
         retry: false
       })
       if (!metadata.length) throw new Error('Vault metadata is unavailable')
-      const histories = await fetchVaultTypeFeeHistories(base, filters.toString(), months, signal)
+      const histories = await fetchVaultTypeFeeHistories(base, filters.toString(), months, signal, true)
       return {
         fees: buildMonthlyVaultRows(catalog.vaults, histories, metadata),
-        earnings: buildMonthlyVaultRows(catalog.vaults, histories, metadata, 'earnings')
+        earnings: buildMonthlyVaultRows(catalog.vaults, histories, metadata, 'earnings'),
+        unavailableMonths: months
+          .filter((_, index) => histories[index] === null)
+          .map(({ period }) => monthLabel(period))
       }
     }
   })
@@ -128,11 +134,15 @@ function MonthlyVaultTable({
   }, [fees.data, metric, chainFilter, typeFilter, search, sort])
   const totals = months.map((_, index) => {
     const values = rows.map((row) => row.months[index]).filter((value) => value !== null)
-    return values.length ? values.reduce((sum, value) => sum + value, 0) : null
+    return {
+      amount: values.length ? values.reduce((sum, value) => sum + value, 0) : null,
+      partial: values.length < rows.length
+    }
   })
-  const annualTotal = totals.some((value) => value === null)
+  const annualTotal = totals.some(({ amount }) => amount === null)
     ? null
-    : totals.reduce<number>((sum, value) => sum + (value ?? 0), 0)
+    : totals.reduce<number>((sum, { amount }) => sum + (amount ?? 0), 0)
+  const unavailableMonths = fees.data?.unavailableMonths ?? []
   const { start, end, setPage, pagination } = usePagination(rows.length, 10)
   const filtersKey = `${chainFilter}:${typeFilter}`
   const [paginationFiltersKey, setPaginationFiltersKey] = useState(filtersKey)
@@ -279,6 +289,9 @@ function MonthlyVaultTable({
         </>
       ) : (
         <>
+          {unavailableMonths.length > 0 && (
+            <p className="text-dim">Incomplete publication coverage for {unavailableMonths.join(', ')}.</p>
+          )}
           <section
             className={`monthly-fee-table-scroll${compact ? ' stats-compact-table-body' : ''}`}
             tabIndex={compact ? undefined : 0}
@@ -334,9 +347,16 @@ function MonthlyVaultTable({
                         ? 'Filtered vaults'
                         : 'All vaults'}
                     </th>
-                    {showTotal && <td>{monthlyUsd(annualTotal)}</td>}
+                    {showTotal && (
+                      <td>
+                        {totalLabel(
+                          annualTotal,
+                          totals.some(({ partial }) => partial)
+                        )}
+                      </td>
+                    )}
                     {visibleMonths.map(({ period, index }) => (
-                      <td key={period}>{monthlyUsd(totals[index])}</td>
+                      <td key={period}>{totalLabel(totals[index].amount, totals[index].partial)}</td>
                     ))}
                   </tr>
                 )}

@@ -156,15 +156,16 @@ describe('monthly fee table', () => {
     expect(queries[1].get('interval')).toBe('monthly')
     const totalRow = within(table).getByRole('rowheader', { name: 'All vaults' }).closest('tr')!
     const annualCell = within(totalRow).getAllByRole('cell')[0]
-    expect(annualCell.textContent).toBe('$244')
-    expect(within(totalRow).queryByRole('button', { name: /Partial coverage/ })).toBeNull()
+    expect(annualCell.textContent).toBe('$244 (partial)')
+    expect(within(totalRow).getAllByRole('cell')[1].textContent).toBe('$142 (partial)')
     const totalsBeforeSort = totalRow.textContent
     fireEvent.click(within(table).getByRole('button', { name: 'Sort by annual total' }))
     expect(within(table).getAllByRole('row')[1].textContent).toBe(totalsBeforeSort)
     expect(within(table).getAllByRole('row')[2].textContent).toContain('Bob')
     fireEvent.change(screen.getByRole('textbox', { name: 'Search vault fees' }), { target: { value: 'Alice' } })
     expect(within(table).getAllByRole('row')).toHaveLength(3)
-    expect(within(table).queryByRole('button', { name: /Partial coverage/ })).toBeNull()
+    const filteredTotals = within(table).getByRole('row', { name: /^Filtered vaults/ })
+    expect(filteredTotals.textContent).not.toContain('partial')
     fireEvent.click(within(toggle).getByRole('button', { name: 'Earnings' }))
     expect(screen.getByRole('textbox', { name: 'Search vault earnings' }).getAttribute('value')).toBe('Alice')
     expect(screen.getAllByRole('link', { name: 'Alice' })).toHaveLength(1)

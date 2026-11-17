@@ -86,20 +86,20 @@ describe('chain fee history', () => {
     ])
   })
 
-  it('zero-fills missing amounts and resumes accumulation when amounts return', () => {
+  it('keeps unavailable amounts distinct from measured zero and leaves cumulative totals incomplete', () => {
     const result = buildChainFeeHistorySeries(
       [
         {
           chainId: 1,
-          history: { interval: 'monthly', buckets: [bucket('2026-01', null, null), bucket('2026-02', '200', '20')] }
+          history: { interval: 'monthly', buckets: [bucket('2026-01', null, null), bucket('2026-02', '200', '0')] }
         }
       ],
       ['2026-01', '2026-02'].map((period) => ({ period }))
     )
-    expect(result.periodic.map((point) => point.fees[1])).toEqual([0, 20])
-    expect(result.cumulative.map((point) => point.fees[1])).toEqual([0, 0, 20])
-    expect(result.periodic.map((point) => point.earnings[1])).toEqual([0, 200])
-    expect(result.cumulative.map((point) => point.earnings[1])).toEqual([0, 0, 200])
+    expect(result.periodic.map((point) => point.fees[1])).toEqual([null, 0])
+    expect(result.cumulative.map((point) => point.fees[1])).toEqual([0, null, null])
+    expect(result.periodic.map((point) => point.earnings[1])).toEqual([null, 200])
+    expect(result.cumulative.map((point) => point.earnings[1])).toEqual([0, null, null])
   })
 
   it('zero-fills months outside a chain history and chains with no activity in the window', () => {

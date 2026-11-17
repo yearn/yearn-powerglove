@@ -79,6 +79,9 @@ vi.mock('./hooks', async (importOriginal) => ({
   ...(await importOriginal<typeof import('./hooks')>()),
   useFetch: (url: string) => {
     requestedUrls.push(url)
+    if (feeHistoryFailed && url.startsWith('/api/fees/history')) {
+      return { data: null, loading: false, error: 'Unavailable', fetchedAt: null, retry: retryFeeHistory }
+    }
     return {
       data: feeDataLoading
         ? null
@@ -140,9 +143,13 @@ const history = {
 }
 const requestedUrls: string[] = []
 let feeDataLoading = false
+let feeHistoryFailed = false
+const retryFeeHistory = vi.fn()
 
 afterEach(() => {
   feeDataLoading = false
+  feeHistoryFailed = false
+  retryFeeHistory.mockClear()
   allTimeMismatch = false
   requestedUrls.length = 0
   cleanup()
@@ -271,7 +278,7 @@ it('shows all-time and selected-range amounts side by side, pinned to the same d
   )
   const fees = screen.getByRole('region', { name: 'Gross Fees' })
   expect(within(fees).getByText('All time')).toBeTruthy()
-  expect(within(fees).getByText('Since Jan 1, 2024')).toBeTruthy()
+  expect(within(fees).getByText('Jan 1, 2024 – Oct 1, 2026')).toBeTruthy()
   expect(within(fees).getByText('$1.0K')).toBeTruthy()
   expect(within(fees).getByText('$10')).toBeTruthy()
   const net = screen.getByRole('region', { name: 'Net Yield' })
@@ -294,4 +301,14 @@ it('keeps all-time values unavailable when they come from a different publicatio
   expect(within(fees).getByText('—')).toBeTruthy()
   expect(within(fees).getByText('$10')).toBeTruthy()
   expect(screen.getByRole('button', { name: 'Retry all-time totals' })).toBeTruthy()
+})
+
+it('keeps both vault tables available during a chart history failure', () => {
+  feeHistoryFailed = true
+  render(<FeesPanel />)
+  expect(screen.getByText('Effective fees table')).toBeTruthy()
+  expect(screen.getByText('Monthly tables').getAttribute('data-dataset-id')).toBe('selected')
+  expect(screen.getByRole('region', { name: 'Gross Fees' })).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: 'Retry fee history' }))
+  expect(retryFeeHistory).toHaveBeenCalledOnce()
 })

@@ -10,8 +10,8 @@ export type ChainFeeMetric = 'earnings' | 'fees'
 
 export interface ChainFeeHistoryPoint {
   period: string
-  earnings: Record<string, number>
-  fees: Record<string, number>
+  earnings: Record<string, number | null>
+  fees: Record<string, number | null>
 }
 
 export function buildChainFeeHistorySeries(histories: ChainFeeHistory[], periods: FeeHistoryPeriod[]) {
@@ -23,16 +23,16 @@ export function buildChainFeeHistorySeries(histories: ChainFeeHistory[], periods
     const point: ChainFeeHistoryPoint = { period, earnings: {}, fees: {} }
     for (const { chainId, buckets } of indexed) {
       const bucket = buckets.get(period)
-      // Missing amounts contribute zero in the chain breakdown charts.
-      point.earnings[chainId] = canonicalDecimalToNumber(bucket?.lifetimeEarnings.netYieldUsd ?? null) ?? 0
-      point.fees[chainId] = canonicalDecimalToNumber(bucket?.totalFeesPaidUsd ?? null) ?? 0
+      // The API omits inactive periods but returns null when a reported amount is unavailable.
+      point.earnings[chainId] = bucket ? canonicalDecimalToNumber(bucket.lifetimeEarnings.netYieldUsd) : 0
+      point.fees[chainId] = bucket ? canonicalDecimalToNumber(bucket.totalFeesPaidUsd) : 0
     }
     return point
   })
   const first = periods[0]
   if (!first) return { periodic, cumulative: [] }
 
-  const totals: Record<ChainFeeMetric, Record<number, number>> = { earnings: {}, fees: {} }
+  const totals: Record<ChainFeeMetric, Record<number, number | null>> = { earnings: {}, fees: {} }
   for (const { chainId } of histories) {
     totals.earnings[chainId] = 0
     totals.fees[chainId] = 0
@@ -45,7 +45,9 @@ export function buildChainFeeHistorySeries(histories: ChainFeeHistory[], periods
   const cumulative = periodic.map((point, index): ChainFeeHistoryPoint => {
     for (const metric of ['earnings', 'fees'] as const) {
       for (const { chainId } of histories) {
-        totals[metric][chainId] += point[metric][chainId]
+        const total = totals[metric][chainId]
+        const amount = point[metric][chainId]
+        totals[metric][chainId] = total === null || amount === null ? null : total + amount
       }
     }
     return {

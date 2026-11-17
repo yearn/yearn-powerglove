@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { afterEach, expect, it, vi } from 'vitest'
-import { VaultsHeadline } from './VaultHeadlineStats'
+import { VaultHeadlineStats, VaultsHeadline } from './VaultHeadlineStats'
 
 const retry = vi.fn()
 const harvest = vi.hoisted(() => ({
@@ -9,6 +9,7 @@ const harvest = vi.hoisted(() => ({
   loading: false,
   error: null as string | null
 }))
+const harvestRequests: string[] = []
 const state = vi.hoisted(() => ({
   data: { totalTvl: 1500000, vaultCount: { active: 123, total: 150 } } as {
     totalTvl: number
@@ -19,7 +20,11 @@ const state = vi.hoisted(() => ({
 }))
 vi.mock('./hooks', async (original) => ({
   ...(await original<typeof import('./hooks')>()),
-  useFetch: (url: string) => ({ ...(url === '/api/harvests' ? harvest : state), retry })
+  useFetch: (url: string) => {
+    if (!url.startsWith('/api/harvests')) return { ...state, retry }
+    harvestRequests.push(url)
+    return { ...harvest, retry }
+  }
 }))
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ to, children, className }: { to: string; children: ReactNode; className?: string }) => (
@@ -36,6 +41,7 @@ afterEach(() => {
   harvest.data = null
   harvest.loading = false
   harvest.error = null
+  harvestRequests.length = 0
   retry.mockClear()
 })
 
@@ -81,4 +87,11 @@ it('keeps a harvest failure independent of TVL without a retry button', () => {
   expect(within(card).getByText('—')).toBeTruthy()
   expect(screen.getByText('$1.5M')).toBeTruthy()
   expect(screen.queryByRole('button', { name: 'Retry harvests this week' })).toBeNull()
+})
+
+it('requests harvests for the same chain as the displayed TVL', () => {
+  const { rerender } = render(<VaultHeadlineStats data={null} chainFilter="10" />)
+  expect(harvestRequests).toEqual(['/api/harvests?chainId=10'])
+  rerender(<VaultHeadlineStats data={null} />)
+  expect(harvestRequests[harvestRequests.length - 1]).toBe('/api/harvests')
 })

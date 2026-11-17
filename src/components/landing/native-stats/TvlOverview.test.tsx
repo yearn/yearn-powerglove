@@ -30,7 +30,7 @@ vi.mock('./hooks', async (original) => ({
   ...(await original<typeof import('./hooks')>()),
   useFetch: (url: string) => {
     urls.push(url)
-    if (url === '/api/harvests') return { data: null, loading: false, error: null, retry: vi.fn() }
+    if (url.startsWith('/api/harvests')) return { data: null, loading: false, error: null, retry: vi.fn() }
     const params = new URLSearchParams(url.split('?')[1])
     const scoped = params.has('chainId')
     const chartRows = legacyPricingGaps ? gapRows : rows

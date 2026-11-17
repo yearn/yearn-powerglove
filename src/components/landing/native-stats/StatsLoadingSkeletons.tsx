@@ -207,19 +207,27 @@ export function StatsTvlSkeleton({ chainCount = 9 }: { chainCount?: number }) {
   )
 }
 
-export function StatsFeesSkeleton() {
+export function StatsFeeChartsSkeleton() {
+  return (
+    <>
+      <StatsChartSkeleton title="Monthly Earnings & Fees" kind="overall" />
+      <StatsChartSkeleton title="Monthly Fees per $1 of TVL (Annualized)" kind="yield" />
+      <StatsChartSkeleton title="Earnings by Chain" kind="chain" />
+      <StatsChartSkeleton title="Earnings by Vault Type" kind="type" />
+      <StatsChartSkeleton title="Earnings by Vault" kind="comparison" />
+    </>
+  )
+}
+
+export function StatsFeesSkeleton({ includeStack = true }: { includeStack?: boolean }) {
   return (
     <div className="fees-panel" aria-busy="true">
       <output className="sr-only">Loading fee data</output>
-      <StatsTableSkeleton />
+      {includeStack && <StatsTableSkeleton />}
       <section className="earnings-fees-section">
         <StatsFeeSummarySkeleton />
         <div className="row fee-chart-row">
-          <StatsChartSkeleton title="Monthly Earnings & Fees" kind="overall" />
-          <StatsChartSkeleton title="Monthly Fees per $1 of TVL (Annualized)" kind="yield" />
-          <StatsChartSkeleton title="Earnings by Chain" kind="chain" />
-          <StatsChartSkeleton title="Earnings by Vault Type" kind="type" />
-          <StatsChartSkeleton title="Earnings by Vault" kind="comparison" />
+          <StatsFeeChartsSkeleton />
           <StatsTableSkeleton monthly />
         </div>
       </section>

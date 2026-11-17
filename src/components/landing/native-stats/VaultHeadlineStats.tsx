@@ -5,8 +5,10 @@ import { fmt, useFetch } from './hooks'
 import type { TvlSummary } from './types'
 import './styles.css'
 
-function WeeklyHarvests() {
-  const { data, loading } = useFetch<HarvestSummary>('/api/harvests')
+function WeeklyHarvests({ chainFilter }: { chainFilter: string }) {
+  const { data, loading } = useFetch<HarvestSummary>(
+    chainFilter === 'all' ? '/api/harvests' : `/api/harvests?chainId=${chainFilter}`
+  )
   const date = (timestamp: number) =>
     new Date(timestamp * 1000).toLocaleDateString('en-US', {
       month: 'short',
@@ -32,10 +34,12 @@ function WeeklyHarvests() {
 
 export function VaultHeadlineStats({
   data,
-  loading = false
+  loading = false,
+  chainFilter = 'all'
 }: {
   data: Pick<TvlSummary, 'totalTvl' | 'vaultCount'> | null
   loading?: boolean
+  chainFilter?: string
 }) {
   return (
     <section className="tvl-summary-cards" aria-label="Vault statistics" aria-busy={loading}>
@@ -55,7 +59,7 @@ export function VaultHeadlineStats({
           )}
         </div>
       </article>
-      <WeeklyHarvests />
+      <WeeklyHarvests chainFilter={chainFilter} />
     </section>
   )
 }

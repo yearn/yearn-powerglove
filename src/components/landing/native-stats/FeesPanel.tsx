@@ -29,7 +29,12 @@ import { MonthlyVaultTables } from './MonthlyVaultTables'
 import { MobileYAxisTick, StatsTooltipContent, useMobileChartTooltip } from './StatsChartInteractions'
 import { StatsChartOptions } from './StatsChartOptions'
 import { StatsContext, StatsTimeRangeContext } from './StatsContext'
-import { StatsChartSkeleton, StatsFeesSkeleton, StatsTableSkeleton } from './StatsLoadingSkeletons'
+import {
+  StatsChartSkeleton,
+  StatsFeeChartsSkeleton,
+  StatsFeesSkeleton,
+  StatsTableSkeleton
+} from './StatsLoadingSkeletons'
 import type { FeeStackSummary } from './types'
 import { useFeeTvlHistory } from './useFeeTvlHistory'
 import { VaultComparisonCharts } from './VaultComparisonCharts'
@@ -466,14 +471,10 @@ export function FeesPanel() {
     [vaultData]
   )
 
-  // Only show skeletons on initial load, not when switching time ranges
-  const hasData =
-    validSummary &&
-    history &&
-    vaultData &&
-    (!summary.datasetId || (history.datasetId === summary.datasetId && vaultData.datasetId === summary.datasetId))
+  const hasHistory = validSummary && history && (!summary.datasetId || history.datasetId === summary.datasetId)
+  const hasVaultData = validSummary && vaultData && (!summary.datasetId || vaultData.datasetId === summary.datasetId)
   const isFetching = l1 || l2 || l3 || l4
-  const isRefreshing = Boolean(hasData) && isFetching
+  const isRefreshing = Boolean(hasHistory) && (l1 || l2)
   useEffect(() => {
     if (!isRefreshing) {
       setShowLoadingOverlay(false)
@@ -483,29 +484,6 @@ export function FeesPanel() {
     const timeout = window.setTimeout(() => setShowLoadingOverlay(true), 180)
     return () => window.clearTimeout(timeout)
   }, [isRefreshing])
-
-  if (summaryError || historyError || vaultError || (summary && !validSummary))
-    return (
-      <div className="fees-panel">
-        <div className="card">
-          <h2>Fee data could not be loaded</h2>
-          <p className="text-dim">Please try again.</p>
-          <button
-            className="page-btn"
-            onClick={() => {
-              retrySummary()
-              retryHistory()
-              retryVaults()
-            }}
-          >
-            Retry fee data
-          </button>
-        </div>
-      </div>
-    )
-
-  if (!hasData && (l1 || l2 || l3)) return <StatsFeesSkeleton />
-  if (!hasData) return <div className="fees-panel" />
 
   return (
     <div className="fees-panel" aria-busy={isFetching}>
@@ -529,149 +507,186 @@ export function FeesPanel() {
       )}
       {!feeStackError && !feeStack && l4 && <StatsTableSkeleton />}
       {!feeStackError && feeStack && (
-        <EffectiveFeesTable feeStack={feeStack} vaults={vaultData?.vaults ?? []} chainSelector={null} />
+        <EffectiveFeesTable feeStack={feeStack} vaults={hasVaultData ? vaultData.vaults : []} chainSelector={null} />
       )}
 
-      <section className="earnings-fees-section" aria-label="Earnings and Fees">
-        <TooltipProvider delayDuration={200}>
-          <div className="fee-summary-grid">
-            {(
-              [
-                {
-                  title: 'Gross Fees',
-                  field: 'totalFeesPaidUsd',
-                  description: 'Fees charged across the stack'
-                },
-                {
-                  title: 'Net Yield',
-                  field: 'netLifetimeEarningsUsd',
-                  description: 'Gross gains less losses'
-                },
-                {
-                  title: 'Gross Gains',
-                  field: 'grossGainsUsd',
-                  description: 'Reported vault gains'
-                },
-                { title: 'Losses', field: 'lossesUsd', description: 'Reported vault losses' }
-              ] as const
-            ).map((metric) => (
-              <section className="fee-summary-stat" key={metric.field} aria-label={metric.title}>
-                <FeeMetricTitle title={metric.title} description={metric.description} />
-                <dl className="fee-summary-values">
-                  <div>
-                    <dt>All time</dt>
-                    <dd>
-                      {allTime.loading && !allTimeSummary
-                        ? '…'
-                        : formatCanonicalUsd(allTimeSummary?.[metric.field] ?? null)}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>Since {rangeLabel(selectedRange.start)}</dt>
-                    <dd>{formatCanonicalUsd(summary[metric.field])}</dd>
-                  </div>
-                </dl>
-              </section>
-            ))}
-          </div>
-        </TooltipProvider>
-        {!allTime.loading && !allTimeSummary && (
-          <div className="error-retry">
-            <span>All-time totals are unavailable.</span>
-            <button type="button" className="page-btn" onClick={allTime.retry}>
-              Retry all-time totals
-            </button>
-          </div>
-        )}
-
-        {/* ---- Full-width fee history charts ---- */}
-        <div className="row fee-chart-row">
-          <FeeHistoryChart
-            {...chartType('overall')}
-            viewControl={
-              <ChartViewToggle {...chartView('overall')} interval={historyInterval} label="Earnings and fees" />
-            }
-            periods={feeHistorySeries}
-            cumulative={chartViews.overall === 'cumulative'}
-            title={
-              chartViews.overall === 'cumulative'
-                ? 'Cumulative Earnings & Fees'
-                : historyInterval === 'weekly'
-                  ? 'Weekly Earnings & Fees'
-                  : 'Monthly Earnings & Fees'
-            }
-            data={chartViews.overall === 'cumulative' ? cumulativeFeeHistorySeries : feeHistorySeries}
-            interval={historyInterval}
-            series={[
-              {
-                key: 'gains',
-                dataKey: chartViews.overall === 'cumulative' ? 'cumulativeGrossGainsUsd' : 'grossGainsUsd',
-                label: 'Gross Gains',
-                color: '#46a2ff'
-              },
-              {
-                key: 'yield',
-                dataKey: chartViews.overall === 'cumulative' ? 'cumulativeNetYieldUsd' : 'netYieldUsd',
-                label: 'Net Yield',
-                color: '#94adf2'
-              },
-              {
-                key: 'fees',
-                dataKey: chartViews.overall === 'cumulative' ? 'cumulativeFeesPaidUsd' : 'totalFeesPaidUsd',
-                label: 'Gross Fees',
-                color: '#16a34a',
-                strokeDasharray: '6 3'
-              }
-            ]}
-            description={`${chartTypes.overall === 'bar' ? 'Bar' : 'Line'} chart comparing ${chartViews.overall === 'cumulative' ? 'cumulative' : historyInterval} canonical gross gains, net yield, and gross fees over completed periods in the selected time range.`}
-          />
-
-          <section className="chain-fee-charts fee-chart-group" aria-label="Fees and earnings per dollar of TVL">
-            <FeeYieldChart periods={feeHistorySeries} interval={historyInterval} {...chartType('feeYield')} />
-          </section>
-
-          <ChainFeeHistoryCharts
-            {...chartType('chain')}
-            query={historyFilters.toString()}
-            chainIds={historyChainIds}
-            periods={feeHistorySeries}
-            {...chartView('chain')}
-            interval={historyInterval}
-          />
-
-          <VaultTypeFeeCharts
-            {...chartType('vaultType')}
-            query={historyFilters.toString()}
-            periods={feeHistorySeries}
-            interval={historyInterval}
-            {...chartView('vaultType')}
-          />
-
-          {productData?.datasetId === summary.datasetId && productData?.aggregationScope === 'product' ? (
-            <VaultComparisonCharts
-              selectedKeys={selectedAllocatorKeys}
-              onSelectedKeysChange={setSelectedAllocatorKeys}
-              query={historyFilters.toString()}
-              rankedVaults={productData.vaults}
-              periods={feeHistorySeries}
-              {...chartView('allocator')}
-              interval={historyInterval}
-              {...chartType('allocator')}
-            />
-          ) : productError ? (
+      {summaryError || (!validSummary && !l1) ? (
+        <div className="card">
+          <h2>Fee summary could not be loaded</h2>
+          <button type="button" className="page-btn" onClick={retrySummary}>
+            Retry fee summary
+          </button>
+        </div>
+      ) : !validSummary ? (
+        <StatsFeesSkeleton includeStack={false} />
+      ) : (
+        <section className="earnings-fees-section" aria-label="Earnings and Fees">
+          <TooltipProvider delayDuration={200}>
+            <div className="fee-summary-grid">
+              {(
+                [
+                  {
+                    title: 'Gross Fees',
+                    field: 'totalFeesPaidUsd',
+                    description: 'Fees charged across the stack'
+                  },
+                  {
+                    title: 'Net Yield',
+                    field: 'netLifetimeEarningsUsd',
+                    description: 'Gross gains less losses'
+                  },
+                  {
+                    title: 'Gross Gains',
+                    field: 'grossGainsUsd',
+                    description: 'Reported vault gains'
+                  },
+                  { title: 'Losses', field: 'lossesUsd', description: 'Reported vault losses' }
+                ] as const
+              ).map((metric) => (
+                <section className="fee-summary-stat" key={metric.field} aria-label={metric.title}>
+                  <FeeMetricTitle title={metric.title} description={metric.description} />
+                  <dl className="fee-summary-values">
+                    <div>
+                      <dt>All time</dt>
+                      <dd>
+                        {allTime.loading && !allTimeSummary
+                          ? '…'
+                          : formatCanonicalUsd(allTimeSummary?.[metric.field] ?? null)}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>
+                        {rangeLabel(selectedRange.start)} – {rangeLabel(selectedRange.end)}
+                      </dt>
+                      <dd>{formatCanonicalUsd(summary[metric.field])}</dd>
+                    </div>
+                  </dl>
+                </section>
+              ))}
+            </div>
+          </TooltipProvider>
+          {!allTime.loading && !allTimeSummary && (
             <div className="error-retry">
-              <p>Product fee data could not be loaded.</p>
-              <button type="button" className="page-btn" onClick={retryProducts}>
-                Retry product fees
+              <span>All-time totals are unavailable.</span>
+              <button type="button" className="page-btn" onClick={allTime.retry}>
+                Retry all-time totals
               </button>
             </div>
-          ) : (
-            <StatsChartSkeleton title="Earnings by Vault" kind="comparison" />
           )}
 
-          <MonthlyVaultTables chainSelector={null} datasetId={summary.datasetId} onRetryDataset={retrySummary} />
-        </div>
-      </section>
+          {/* ---- Full-width fee history charts ---- */}
+          <div className="row fee-chart-row">
+            {historyError || (!hasHistory && !l2) ? (
+              <div className="card">
+                <h2>Fee history could not be loaded</h2>
+                <button type="button" className="page-btn" onClick={retryHistory}>
+                  Retry fee history
+                </button>
+              </div>
+            ) : !hasHistory ? (
+              <StatsFeeChartsSkeleton />
+            ) : (
+              <>
+                <FeeHistoryChart
+                  {...chartType('overall')}
+                  viewControl={
+                    <ChartViewToggle {...chartView('overall')} interval={historyInterval} label="Earnings and fees" />
+                  }
+                  periods={feeHistorySeries}
+                  cumulative={chartViews.overall === 'cumulative'}
+                  title={
+                    chartViews.overall === 'cumulative'
+                      ? 'Cumulative Earnings & Fees'
+                      : historyInterval === 'weekly'
+                        ? 'Weekly Earnings & Fees'
+                        : 'Monthly Earnings & Fees'
+                  }
+                  data={chartViews.overall === 'cumulative' ? cumulativeFeeHistorySeries : feeHistorySeries}
+                  interval={historyInterval}
+                  series={[
+                    {
+                      key: 'gains',
+                      dataKey: chartViews.overall === 'cumulative' ? 'cumulativeGrossGainsUsd' : 'grossGainsUsd',
+                      label: 'Gross Gains',
+                      color: '#46a2ff'
+                    },
+                    {
+                      key: 'yield',
+                      dataKey: chartViews.overall === 'cumulative' ? 'cumulativeNetYieldUsd' : 'netYieldUsd',
+                      label: 'Net Yield',
+                      color: '#94adf2'
+                    },
+                    {
+                      key: 'fees',
+                      dataKey: chartViews.overall === 'cumulative' ? 'cumulativeFeesPaidUsd' : 'totalFeesPaidUsd',
+                      label: 'Gross Fees',
+                      color: '#16a34a',
+                      strokeDasharray: '6 3'
+                    }
+                  ]}
+                  description={`${chartTypes.overall === 'bar' ? 'Bar' : 'Line'} chart comparing ${chartViews.overall === 'cumulative' ? 'cumulative' : historyInterval} canonical gross gains, net yield, and gross fees over completed periods in the selected time range.`}
+                />
+
+                <section className="chain-fee-charts fee-chart-group" aria-label="Fees and earnings per dollar of TVL">
+                  <FeeYieldChart periods={feeHistorySeries} interval={historyInterval} {...chartType('feeYield')} />
+                </section>
+
+                {vaultError || (!hasVaultData && !l3) ? (
+                  <div className="card">
+                    <p>Chain breakdown could not be loaded.</p>
+                    <button type="button" className="page-btn" onClick={retryVaults}>
+                      Retry chain breakdown
+                    </button>
+                  </div>
+                ) : !hasVaultData ? (
+                  <StatsChartSkeleton title="Earnings by Chain" kind="chain" />
+                ) : (
+                  <ChainFeeHistoryCharts
+                    {...chartType('chain')}
+                    query={historyFilters.toString()}
+                    chainIds={historyChainIds}
+                    periods={feeHistorySeries}
+                    {...chartView('chain')}
+                    interval={historyInterval}
+                  />
+                )}
+
+                <VaultTypeFeeCharts
+                  {...chartType('vaultType')}
+                  query={historyFilters.toString()}
+                  periods={feeHistorySeries}
+                  interval={historyInterval}
+                  {...chartView('vaultType')}
+                />
+
+                {productData?.datasetId === summary.datasetId && productData?.aggregationScope === 'product' ? (
+                  <VaultComparisonCharts
+                    selectedKeys={selectedAllocatorKeys}
+                    onSelectedKeysChange={setSelectedAllocatorKeys}
+                    query={historyFilters.toString()}
+                    rankedVaults={productData.vaults}
+                    periods={feeHistorySeries}
+                    {...chartView('allocator')}
+                    interval={historyInterval}
+                    {...chartType('allocator')}
+                  />
+                ) : productError ? (
+                  <div className="error-retry">
+                    <p>Product fee data could not be loaded.</p>
+                    <button type="button" className="page-btn" onClick={retryProducts}>
+                      Retry product fees
+                    </button>
+                  </div>
+                ) : (
+                  <StatsChartSkeleton title="Earnings by Vault" kind="comparison" />
+                )}
+              </>
+            )}
+
+            <MonthlyVaultTables chainSelector={null} datasetId={summary.datasetId} onRetryDataset={retrySummary} />
+          </div>
+        </section>
+      )}
     </div>
   )
 }

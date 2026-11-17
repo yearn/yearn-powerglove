@@ -1,7 +1,8 @@
 import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
-import { defineConfig, loadEnv } from 'vite'
+import { defineConfig, loadEnv, type ProxyOptions } from 'vite'
+import { proxyYearnData } from './api/yearn-data'
 
 const DEFAULT_YEARN_DATA_API = 'https://yearn-data-api-preview.vercel.app'
 
@@ -13,10 +14,8 @@ const parseAllowedHosts = (value?: string): string[] =>
     .map((host) => host.trim())
     .filter(Boolean)
 
-const proxyTo = (target: string) => ({ target, changeOrigin: true })
-
 const yvUsdAprProxy = {
-  '/api/yvusd/aprs': {
+  '^/api/yvusd/aprs/?(?:\\?|$)': {
     target: 'https://yvusd-api.yearn.fi',
     changeOrigin: true,
     rewrite: () => '/api/aprs'
@@ -29,27 +28,28 @@ export default defineConfig(({ mode }) => {
   const allowedHosts = [...DEFAULT_ALLOWED_HOSTS, ...parseAllowedHosts(env.LOCAL_VITE_ALLOWED_HOSTS)]
   const yearnDataApiTarget =
     env.VITE_YEARN_DATA_API_TARGET || env.VITE_PUBLIC_YEARN_DATA_API_URL || DEFAULT_YEARN_DATA_API
-  // This token is server-only. Never give it a VITE_ prefix or include it in browser fetches.
-  const hostedDataProxy = {
-    ...proxyTo(yearnDataApiTarget),
-    ...(env.YEARN_DATA_API_PROTECTION_BYPASS && new URL(yearnDataApiTarget).hostname.endsWith('.vercel.app')
-      ? { headers: { 'x-vercel-protection-bypass': env.YEARN_DATA_API_PROTECTION_BYPASS } }
-      : {})
+  const statsApiProxy: ProxyOptions = {
+    async bypass(req, res) {
+      if (!res) return false
+      const response = {
+        setHeader: (name: string, value: string) => res.setHeader(name, value),
+        status: (status: number) => ({
+          json: (body: unknown) => {
+            res.statusCode = status
+            res.setHeader('Content-Type', 'application/json; charset=utf-8')
+            res.end(JSON.stringify(body))
+          }
+        })
+      }
+      await proxyYearnData(req, response, {
+        target: yearnDataApiTarget,
+        token: env.YEARN_DATA_API_PROTECTION_BYPASS
+      })
+      // Tell Vite the response was handled after its host check, without proxying it again.
+      return req.url ?? '/'
+    }
   }
-  const statsApiProxy = {
-    '/api/publication': hostedDataProxy,
-    '/api/harvests': hostedDataProxy,
-    '/api/audit/tree': hostedDataProxy,
-    '/api/analytics': hostedDataProxy,
-    '/api/comparison/defillama-comparable': hostedDataProxy,
-    '/api/comparison': hostedDataProxy,
-    '/api/tvl/graph': hostedDataProxy,
-    '/api/tvl': hostedDataProxy,
-    '/api/fees/stack': hostedDataProxy,
-    '/api/fees': hostedDataProxy,
-    '/api/profitability': hostedDataProxy
-  }
-  const appApiProxy = { ...yvUsdAprProxy, ...statsApiProxy }
+  const proxy = { ...yvUsdAprProxy, '/api/': statsApiProxy }
 
   return {
     plugins: [TanStackRouterVite({ target: 'react', autoCodeSplitting: true }), react()],
@@ -62,12 +62,12 @@ export default defineConfig(({ mode }) => {
       process.env.NODE_ENV === 'development'
         ? {
             allowedHosts,
-            proxy: appApiProxy
+            proxy
           }
         : {},
     preview: {
       allowedHosts,
-      proxy: appApiProxy
+      proxy
     }
   }
 })

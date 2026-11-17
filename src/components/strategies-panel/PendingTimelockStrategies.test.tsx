@@ -1,7 +1,9 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import type { PendingTimelockStrategy } from '@/hooks/usePendingTimelockStrategies'
+import type { VaultExtended } from '@/types/vaultTypes'
 import { PendingTimelockStrategies } from './PendingTimelockStrategies'
+import { StrategiesPanel } from './StrategiesPanel'
 
 const state = vi.hoisted(() => ({
   data: [] as PendingTimelockStrategy[] | undefined,
@@ -9,6 +11,9 @@ const state = vi.hoisted(() => ({
   isPending: false
 }))
 vi.mock('@/hooks/usePendingTimelockStrategies', () => ({ usePendingTimelockStrategies: () => state }))
+vi.mock('@/hooks/useStrategiesData', () => ({
+  useStrategiesData: () => ({ strategies: [], allocationChartData: [], isLoading: false, error: undefined })
+}))
 afterEach(() => {
   cleanup()
   state.data = []
@@ -30,7 +35,7 @@ it('distinguishes unavailable data from no pending changes', () => {
   render(<PendingTimelockStrategies {...props} />)
   expect(screen.getByRole('status').textContent).toContain('unavailable')
 })
-it('shows scheduled additions separately with ready status, zero debt and explorer links', () => {
+it('shows the first scheduled addition, unlock time, zero debt and explorer links on an empty allocator', () => {
   state.data = [
     {
       chainId: 1,
@@ -47,7 +52,15 @@ it('shows scheduled additions separately with ready status, zero debt and explor
       maxDebtRaw: '0'
     }
   ]
-  render(<PendingTimelockStrategies {...props} />)
+  const vaultDetails = {
+    address: props.vaultAddress,
+    apiVersion: '3.0.4',
+    asset: { decimals: props.decimals, symbol: props.symbol }
+  } as VaultExtended
+  render(<StrategiesPanel vaultChainId={props.chainId} vaultDetails={vaultDetails} />)
+  expect(screen.getByText(/This vault contains no strategies/)).toBeTruthy()
+  expect(screen.getAllByText('Test strategy')).toHaveLength(1)
+  expect(screen.getByText(/^Unlocks /)).toBeTruthy()
   expect(screen.getByText('Timelock ready')).toBeTruthy()
   fireEvent.click(screen.getByText('Test strategy'))
   expect(screen.getByText('Maximum debt: 0 USDC')).toBeTruthy()

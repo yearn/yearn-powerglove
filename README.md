@@ -83,4 +83,5 @@ those diagnostics in yearn-data's selected publication and native exports.
 
 Use the yearn-data repository's `docs/powerglove-pairing.md` for source selection,
 cutoff/pricing requirements and manual refresh. Rebuild after changing public
-Vite configuration; review Stats at `/` and additional analysis at `/stats/analysis`.
+Vite configuration. The vault list is at `/` and `/vaults`, the full Stats dashboard is
+at `/stats`, and additional analysis is at `/stats/analysis`.

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import handler from '../../api/yearn-data'
+import handler, { proxyYearnData } from '../../api/yearn-data'
 import vercelConfig from '../../vercel.json'
 
 function response() {
@@ -10,6 +10,21 @@ function response() {
 afterEach(() => {
   vi.unstubAllEnvs()
   vi.unstubAllGlobals()
+})
+
+describe('Vite Yearn Data proxy', () => {
+  it.each([
+    ['GET', '/api/tvl', 'http://example.vercel.app', 503],
+    ['GET', '/api/tvl/unsupported', 'https://example.vercel.app', 404],
+    ['POST', '/api/tvl', 'https://example.vercel.app', 405]
+  ])('rejects unsupported request or upstream configuration (%s %s)', async (method, url, target, status) => {
+    const upstream = vi.fn()
+    vi.stubGlobal('fetch', upstream)
+    const res = response()
+    await proxyYearnData({ method, url }, res, { target, token: 'test-token' })
+    expect(res.status).toHaveBeenCalledWith(status)
+    expect(upstream).not.toHaveBeenCalled()
+  })
 })
 
 describe('hosted Yearn Data proxy', () => {

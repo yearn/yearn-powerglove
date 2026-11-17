@@ -38,19 +38,22 @@ function ChainFeeTooltip({
   payload?: Payload<ValueType, NameType>[]
 }) {
   if (!active || !payload?.length) return null
-  const values = payload.filter((item) => typeof item.value === 'number')
+  const total = payload.reduce<number | null>(
+    (sum, item) => (sum === null || typeof item.value !== 'number' ? null : sum + item.value),
+    0
+  )
   return (
     <div className="chain-fee-tooltip">
       <strong>{label}</strong>
-      {values.map((item) => (
+      {payload.map((item) => (
         <div key={String(item.name)}>
           <span style={{ color: item.color }}>{item.name}</span>
-          <span>{formatChainFeeAmount(item.value as number)}</span>
+          <span>{typeof item.value === 'number' ? formatChainFeeAmount(item.value) : 'Unavailable'}</span>
         </div>
       ))}
       <div className="chain-fee-tooltip-total">
         <span>Total (shown series)</span>
-        <strong>{formatChainFeeAmount(values.reduce((total, item) => total + (item.value as number), 0))}</strong>
+        <strong>{total === null ? 'Unavailable' : formatChainFeeAmount(total)}</strong>
       </div>
     </div>
   )
@@ -165,6 +168,7 @@ export function FeeBreakdownChart({
 
                 <Tooltip
                   {...tooltip.tooltipProps}
+                  filterNull={false}
                   content={
                     <StatsTooltipContent
                       mobile={mobile}

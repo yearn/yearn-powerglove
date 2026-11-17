@@ -322,7 +322,7 @@ export function TvlOverview() {
   if (loading)
     return (
       <>
-        <VaultHeadlineStats data={null} loading />
+        <VaultHeadlineStats data={null} loading chainFilter={chainFilter} />
         <StatsTvlSkeleton chainCount={chainFilter === 'all' ? 9 : 1} />
       </>
     )
@@ -342,7 +342,7 @@ export function TvlOverview() {
 
   return (
     <>
-      <VaultHeadlineStats data={data} />
+      <VaultHeadlineStats data={data} chainFilter={chainFilter} />
 
       <div className="card stats-chart-tvl">
         <div className="mb-3 flex flex-wrap items-start justify-between gap-3">

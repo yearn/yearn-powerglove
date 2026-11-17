@@ -42,7 +42,7 @@ export function buildVaultTypeFeeSeries(
   const presentTypes = new Set(groups.flatMap((group) => group.map(({ type }) => type)))
   const series = VAULT_TYPE_SERIES.filter((item) => presentTypes.has(item.key))
   const empty = () => Object.fromEntries(series.map((item) => [item.key, 0]))
-  const periodic = periods.map(({ period }, index): ChainFeeHistoryPoint => {
+  const periodic = periods.map(({ period }, index) => {
     const point = { period, earnings: empty(), fees: empty() }
     for (const { vault, type } of groups[index] ?? []) {
       point.earnings[type] += canonicalDecimalToNumber(vault.lifetimeEarnings.netYieldUsd) ?? 0

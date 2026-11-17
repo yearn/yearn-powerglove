@@ -5,12 +5,26 @@ import { type CanonicalVaultHistoryFee, isMoney } from './canonical-fees'
 import { type FeeHistoryPeriod, feeHistoryBoundary } from './fee-history'
 import { resolveStatsApiBase } from './hooks'
 
-export async function fetchVaultTypeFeeHistories(
+export function fetchVaultTypeFeeHistories(
   base: string,
   query: string,
   periods: FeeHistoryPeriod[],
   signal: AbortSignal
-): Promise<CanonicalVaultHistoryFee[][]> {
+): Promise<CanonicalVaultHistoryFee[][]>
+export function fetchVaultTypeFeeHistories(
+  base: string,
+  query: string,
+  periods: FeeHistoryPeriod[],
+  signal: AbortSignal,
+  completeMonthsOnly: true
+): Promise<(CanonicalVaultHistoryFee[] | null)[]>
+export async function fetchVaultTypeFeeHistories(
+  base: string,
+  query: string,
+  periods: FeeHistoryPeriod[],
+  signal: AbortSignal,
+  completeMonthsOnly = false
+): Promise<(CanonicalVaultHistoryFee[] | null)[]> {
   if (!periods.length) return []
   const params = new URLSearchParams(query)
   const datasetId = params.get('datasetId')
@@ -34,11 +48,12 @@ export async function fetchVaultTypeFeeHistories(
     typeof payload.dataCutoffTimestamp !== 'number' ||
     !Number.isFinite(payload.dataCutoffTimestamp) ||
     payload.dataCutoffTimestamp <= 0 ||
-    ranges.some((range) => range.startTimestamp >= payload.dataCutoffTimestamp)
+    (!completeMonthsOnly && ranges.some((range) => range.startTimestamp >= payload.dataCutoffTimestamp))
   ) {
     throw new Error('Vault history does not match the selected dataset')
   }
   const histories = ranges.map((range) => {
+    if (completeMonthsOnly && range.endTimestamp > payload.dataCutoffTimestamp) return null
     const buckets = payload.buckets.filter(
       (bucket: { period: string; startTimestamp: number; endTimestamp: number }) =>
         bucket != null &&

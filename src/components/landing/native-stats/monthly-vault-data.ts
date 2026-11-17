@@ -30,11 +30,13 @@ export interface MonthlyVaultRow {
 }
 export function buildMonthlyVaultRows(
   catalog: CanonicalVaultFee[],
-  histories: CanonicalVaultHistoryFee[][],
+  histories: (CanonicalVaultHistoryFee[] | null)[],
   metadata: MonthlyFeeVault[] = [],
   metric: 'fees' | 'earnings' = 'fees'
 ): MonthlyVaultRow[] {
-  const published = new Map([...catalog, ...histories.flat()].map((vault) => [monthlyVaultKey(vault), vault]))
+  const published = new Map(
+    [...catalog, ...histories.flatMap((rows) => rows ?? [])].map((vault) => [monthlyVaultKey(vault), vault])
+  )
   const vaults = new Map<string, MonthlyFeeVault>(published)
   const groupedMembers = new Set(
     [...published.values()].flatMap((vault) =>
@@ -48,11 +50,12 @@ export function buildMonthlyVaultRows(
     if (groupedMembers.has(key)) continue
     vaults.set(key, { ...published.get(key), ...vault, name: published.get(key)?.name || vault.name })
   }
-  const months = histories.map((rows) => new Map(rows.map((vault) => [monthlyVaultKey(vault), vault])))
+  const months = histories.map((rows) => rows && new Map(rows.map((vault) => [monthlyVaultKey(vault), vault])))
   return [...vaults]
     .filter(([, vault]) => vault.isHidden !== true)
     .map(([key, vault]) => {
       const values = months.map((rows) => {
+        if (!rows) return null
         const row = rows.get(key)
         if (row)
           return canonicalDecimalToNumber(metric === 'fees' ? row.totalFeesPaidUsd : row.lifetimeEarnings?.netYieldUsd)

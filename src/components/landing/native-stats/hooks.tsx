@@ -349,18 +349,13 @@ export const CHART_COLORS = [
 ]
 
 export function useSort(defaultKey: string, defaultDir: 'asc' | 'desc' = 'desc') {
-  const [sortKey, setSortKey] = useState(defaultKey)
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>(defaultDir)
+  const [{ key: sortKey, direction: sortDir }, setSort] = useState({ key: defaultKey, direction: defaultDir })
 
   const handleSort = useCallback((key: string) => {
-    setSortKey((prev) => {
-      if (prev === key) {
-        setSortDir((dir) => (dir === 'desc' ? 'asc' : 'desc'))
-        return prev
-      }
-      setSortDir('desc')
-      return key
-    })
+    setSort(({ key: previousKey, direction }) => ({
+      key,
+      direction: previousKey === key && direction === 'desc' ? 'asc' : 'desc'
+    }))
   }, [])
 
   const sorted = useCallback(

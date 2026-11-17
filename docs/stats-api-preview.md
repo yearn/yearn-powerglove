@@ -2,7 +2,8 @@
 
 Core TVL, earnings, fees, analytics, comparison, audit and TVL graph
 requests use the same Powerglove origin. Hosted builds serve these read-only
-routes through `api/yearn-data.ts`; local Vite builds use the equivalent proxy.
+routes through `api/yearn-data.ts`. Local Vite servers use the same handler and
+require an HTTPS upstream for these routes.
 An explicit `VITE_PUBLIC_YEARN_DATA_API_URL` can select a public Yearn Data origin.
 Supplementary legacy endpoints retain their separate API configuration.
 

@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { MainInfoPanelProps } from '@/types/dataTypes'
 import { StandardVaultPage } from './StandardVaultPage'
@@ -83,15 +83,24 @@ it('opens mobile sections in a drawer while preserving the overview', async () =
     expect(screen.getByRole('button', { name }).getAttribute('aria-expanded')).toBe('false')
   }
   expect(screen.getByText('Vault description')).toBeTruthy()
-  fireEvent.click(screen.getByRole('button', { name: 'Performance' }))
+  const trigger = screen.getByRole('button', { name: 'Performance' })
+  trigger.focus()
+  fireEvent.click(trigger)
   expect(await screen.findByRole('dialog')).toBeTruthy()
   expect(screen.getByText('Charts')).toBeTruthy()
-  const drawer = within(screen.getByRole('dialog'))
+  const dialog = screen.getByRole('dialog')
+  const drawer = within(dialog)
+  const close = drawer.getByRole('button', { name: 'Close' })
+  await waitFor(() => expect(document.activeElement).toBe(close))
   expect(drawer.getByRole('button', { name: 'Vault activity' })).toBeTruthy()
   fireEvent.click(drawer.getByRole('button', { name: 'Strategies' }))
   expect(drawer.getByRole('button', { name: 'Performance' })).toBeTruthy()
   expect(drawer.getByRole('button', { name: 'Vault activity' })).toBeTruthy()
   expect(screen.getByText('Allocations')).toBeTruthy()
+  fireEvent.click(drawer.getByRole('button', { name: 'Close' }))
+  // jsdom does not dispatch the drawer's CSS exit animation event.
+  fireEvent(dialog, Object.assign(new Event('animationend'), { animationName: 'slideToBottom' }))
+  await waitFor(() => expect(document.activeElement).toBe(trigger))
 })
 
 it('opens a directly linked section on mobile', () => {

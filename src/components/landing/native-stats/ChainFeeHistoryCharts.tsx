@@ -38,6 +38,7 @@ export function ChainFeeHistoryCharts({
     color: CHAIN_COLORS[chainId] ?? '#808080'
   }))
   const series = useMemo(() => buildChainFeeHistorySeries(data ?? [], periods), [data, periods])
+  const hasUnavailable = series[view].some((point) => Object.values(point[metric]).includes(null))
 
   return (
     <section className="chain-fee-charts fee-chart-group" aria-label="Earnings and fees by chain" aria-busy={loading}>
@@ -62,6 +63,7 @@ export function ChainFeeHistoryCharts({
           data={series[view]}
           series={chartSeries}
           interval={interval}
+          notice={hasUnavailable && <p className="text-dim">Unavailable amounts are omitted from the chart.</p>}
         />
       )}
     </section>

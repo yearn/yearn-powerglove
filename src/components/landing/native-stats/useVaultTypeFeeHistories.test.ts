@@ -5,6 +5,13 @@ afterEach(() => vi.unstubAllGlobals())
 
 const january = { period: '2026-01', startTimestamp: 1767225600, endTimestamp: 1769904000 }
 const february = { period: '2026-02', startTimestamp: 1769904000, endTimestamp: 1772323200 }
+const vault = {
+  address: '0xvault',
+  chainId: 1,
+  contractFamily: 'v3',
+  lifetimeEarnings: { netYieldUsd: null },
+  totalFeesPaidUsd: '0'
+}
 const response = (overrides = {}) => ({
   aggregationScope: 'contract',
   datasetId: 'selected',
@@ -24,13 +31,6 @@ function mockResponse(payload: unknown) {
 
 describe('vault type grouped history requests', () => {
   it('loads all periods in one request, pins product scope and preserves requested order', async () => {
-    const vault = {
-      address: '0xvault',
-      chainId: 1,
-      contractFamily: 'v3',
-      lifetimeEarnings: { netYieldUsd: null },
-      totalFeesPaidUsd: '0'
-    }
     const fetchMock = mockResponse(
       response({
         aggregationScope: 'product',
@@ -83,6 +83,28 @@ describe('vault type grouped history requests', () => {
     expect(params.get('since')).toBe(String(period.startTimestamp))
     expect(params.get('until')).toBe(String(period.endTimestamp))
     expect(params.get('interval')).toBe('weekly')
+  })
+
+  it('marks the month straddling the publication cutoff as unavailable for monthly totals', async () => {
+    mockResponse(
+      response({
+        aggregationScope: 'product',
+        dataCutoffTimestamp: february.startTimestamp + 86400,
+        buckets: [
+          { ...january, vaults: [vault] },
+          { ...february, vaults: [vault] }
+        ]
+      })
+    )
+    await expect(
+      fetchVaultTypeFeeHistories(
+        '',
+        'datasetId=selected&scope=product',
+        [january, february],
+        new AbortController().signal,
+        true
+      )
+    ).resolves.toEqual([[vault], null])
   })
 
   it.each([

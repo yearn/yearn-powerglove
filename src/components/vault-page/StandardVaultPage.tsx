@@ -40,6 +40,8 @@ export function StandardVaultPage({ mainInfo, showAction, charts, strategies, va
   const [performanceControls, setPerformanceControls] = useState<HTMLDivElement | null>(null)
   const pageRef = useRef<HTMLDivElement>(null)
   const drawerIdentityRef = useRef<HTMLDivElement>(null)
+  const drawerTriggerRef = useRef<HTMLButtonElement>(null)
+  const drawerCloseRef = useRef<HTMLButtonElement>(null)
   const [drawerTop, setDrawerTop] = useState(140)
   useLayoutEffect(() => {
     const page = pageRef.current
@@ -96,7 +98,10 @@ export function StandardVaultPage({ mainInfo, showAction, charts, strategies, va
                 type="button"
                 aria-haspopup="dialog"
                 aria-expanded={expanded === section.id}
-                onClick={() => changeSection(section.id)}
+                onClick={(event) => {
+                  drawerTriggerRef.current = event.currentTarget
+                  changeSection(section.id)
+                }}
                 className="flex w-full items-center justify-between border-t border-border px-4 py-3 text-left text-base font-medium"
               >
                 {section.label}
@@ -114,6 +119,16 @@ export function StandardVaultPage({ mainInfo, showAction, charts, strategies, va
           <DrawerContent
             showHandle={false}
             overlayClassName="bg-transparent"
+            onOpenAutoFocus={(event) => {
+              event.preventDefault()
+              drawerCloseRef.current?.focus({ preventScroll: true })
+            }}
+            onCloseAutoFocus={(event) => {
+              if (!drawerTriggerRef.current) return
+              event.preventDefault()
+              drawerTriggerRef.current.focus({ preventScroll: true })
+              drawerTriggerRef.current = null
+            }}
             style={{ height: `calc(100dvh - ${drawerTop}px)`, maxHeight: `calc(100dvh - ${drawerTop}px)` }}
             className="mt-0 rounded-none border border-border bg-white shadow-none"
           >
@@ -148,7 +163,11 @@ export function StandardVaultPage({ mainInfo, showAction, charts, strategies, va
                 </DrawerDescription>
               </div>
               {expanded === 'performance' ? <div ref={setPerformanceControls} className="relative z-10" /> : null}
-              <DrawerClose aria-label="Close" className="absolute inset-0 flex w-full items-center justify-end px-4">
+              <DrawerClose
+                ref={drawerCloseRef}
+                aria-label="Close"
+                className="absolute inset-0 flex w-full items-center justify-end px-4"
+              >
                 <ChevronDown aria-hidden="true" className="h-4 w-4" />
               </DrawerClose>
             </DrawerHeader>

@@ -29,19 +29,21 @@ type Response = {
   setHeader: (name: string, value: string) => void
 }
 
-// Vercel runs this proxy on the server. Its upstream access token never reaches Vite.
-export default async function handler(req: { method?: string; url?: string }, res: Response) {
+export async function proxyYearnData(
+  req: { method?: string; url?: string },
+  res: Response,
+  { target, token, rewritten = false }: { target?: string; token?: string; rewritten?: boolean }
+) {
   res.setHeader('Cache-Control', 'no-store')
   if (req.method !== 'GET') {
     res.setHeader('Allow', 'GET')
     return res.status(405).json({ error: 'Method not allowed' })
   }
   const request = new URL(req.url ?? '/', 'https://powerglove.invalid')
-  const path = (request.searchParams.get('__statsPath') ?? request.pathname).replace(/\/$/, '')
+  const path = ((rewritten && request.searchParams.get('__statsPath')) || request.pathname).replace(/\/$/, '')
   request.searchParams.delete('__statsPath')
   if (!DATA_ROUTES.has(path)) return res.status(404).json({ error: 'Not found' })
 
-  const target = process.env.YEARN_DATA_API_URL
   if (!target) return res.status(503).json({ error: 'Stats API is not configured' })
 
   try {
@@ -53,7 +55,6 @@ export default async function handler(req: { method?: string; url?: string }, re
     upstream.search = request.search
     upstream.hash = ''
     const headers: Record<string, string> = { Accept: 'application/json' }
-    const token = process.env.YEARN_DATA_API_PROTECTION_BYPASS
     if (token && upstream.hostname.endsWith('.vercel.app')) headers['x-vercel-protection-bypass'] = token
     const response = await fetch(upstream, {
       headers,
@@ -79,4 +80,12 @@ export default async function handler(req: { method?: string; url?: string }, re
     if (error instanceof CanonicalFeeResponseError) return res.status(502).json({ error: error.message })
     return res.status(502).json({ error: 'Stats API is unavailable' })
   }
+}
+
+export default function handler(req: { method?: string; url?: string }, res: Response) {
+  return proxyYearnData(req, res, {
+    target: process.env.YEARN_DATA_API_URL,
+    token: process.env.YEARN_DATA_API_PROTECTION_BYPASS,
+    rewritten: true
+  })
 }

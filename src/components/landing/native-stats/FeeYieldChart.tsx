@@ -1,7 +1,5 @@
-import { Info } from 'lucide-react'
 import { useContext, useMemo, useState } from 'react'
 import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { Tooltip as HelpTooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { useIsMobile } from '@/components/ui/use-mobile'
 import { type ChartTypeControl, ChartTypeToggle } from './ChartTypeToggle'
 import type { FeeHistoryInterval } from './canonical-fees'
@@ -107,7 +105,7 @@ export function FeeYieldChart({
   )
   const loading = history.loading
   const key = 'annualizedYieldPct'
-  const available = data.filter((point) => point[key] !== null).length
+  const hasYield = data.some((point) => point[key] !== null)
   const earnings = metric === 'earnings'
   const title = earnings ? 'Earnings' : 'Fees'
   const yieldLabel = earnings ? 'Annualized earnings yield' : 'Annualized fee yield'
@@ -131,24 +129,6 @@ export function FeeYieldChart({
               onValueChange={onRenderTypeChange}
               label={`${title.toLowerCase()} per dollar of TVL`}
             />
-            <TooltipProvider delayDuration={200}>
-              <HelpTooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    className="tvl-history-icon-btn"
-                    aria-label={`How ${title.toLowerCase()} per dollar of TVL is calculated`}
-                  >
-                    <Info size={15} />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent className="max-w-xs">
-                  {earnings ? 'Reported net yield (gross gains less losses)' : 'Gross fees charged'} divided by the
-                  average published daily, overlap-adjusted TVL for the same UTC period, multiplied by 365 divided by
-                  the number of days in that period. This uses simple annualization without compounding.
-                </TooltipContent>
-              </HelpTooltip>
-            </TooltipProvider>
           </StatsChartOptions>
         </div>
       </div>
@@ -161,78 +141,70 @@ export function FeeYieldChart({
             Retry {yieldLabel.toLowerCase()}
           </button>
         </div>
-      ) : available === 0 ? (
+      ) : !hasYield ? (
         <p className="text-dim">
           {yieldLabel} is unavailable: this selection needs {earnings ? 'reported net yield' : 'recorded fees'}, daily
           TVL coverage, and a positive average TVL.
         </p>
       ) : (
-        <>
-          <div
-            className="chart-container fee-history-chart"
-            data-fee-yield-chart="periodic"
-            data-tvl-yield-metric={metric}
-          >
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart
-                {...tooltip.chartEvents}
-                data={data}
-                margin={{ top: mobile ? 18 : 8, right: mobile ? 8 : 12, bottom: 0, left: mobile ? 8 : 0 }}
-              >
-                <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
-                <XAxis
-                  dataKey="period"
-                  tickFormatter={(period: string) => formatFeeHistoryTick(period, interval)}
-                  tick={{ fill: 'var(--text-3)', fontSize: 11 }}
-                  interval={Math.max(0, Math.floor(data.length / 10) - 1)}
-                  angle={mobile ? -90 : -35}
-                  textAnchor="end"
-                  height={mobile ? 70 : 50}
-                />
+        <div
+          className="chart-container fee-history-chart"
+          data-fee-yield-chart="periodic"
+          data-tvl-yield-metric={metric}
+        >
+          <ResponsiveContainer width="100%" height="100%">
+            <ComposedChart
+              {...tooltip.chartEvents}
+              data={data}
+              margin={{ top: mobile ? 18 : 8, right: mobile ? 8 : 12, bottom: 0, left: mobile ? 8 : 0 }}
+            >
+              <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
+              <XAxis
+                dataKey="period"
+                tickFormatter={(period: string) => formatFeeHistoryTick(period, interval)}
+                tick={{ fill: 'var(--text-3)', fontSize: 11 }}
+                interval={Math.max(0, Math.floor(data.length / 10) - 1)}
+                angle={mobile ? -90 : -35}
+                textAnchor="end"
+                height={mobile ? 70 : 50}
+              />
 
-                <Tooltip
-                  {...tooltip.tooltipProps}
-                  content={
-                    <StatsTooltipContent
-                      mobile={mobile}
-                      onClose={tooltip.dismiss}
-                      renderContent={(props) => <FeeYieldTooltip {...props} metric={metric} />}
-                    />
-                  }
-                />
-                {renderType === 'bar' ? (
-                  <Bar dataKey={key} name={yieldLabel} fill={color} maxBarSize={32} isAnimationActive={false} />
-                ) : (
-                  <Line
-                    type="linear"
-                    dataKey={key}
-                    name={yieldLabel}
-                    stroke={color}
-                    strokeWidth={2}
-                    dot={false}
-                    connectNulls={false}
-                    isAnimationActive={false}
+              <Tooltip
+                {...tooltip.tooltipProps}
+                content={
+                  <StatsTooltipContent
+                    mobile={mobile}
+                    onClose={tooltip.dismiss}
+                    renderContent={(props) => <FeeYieldTooltip {...props} metric={metric} />}
                   />
-                )}
-
-                <YAxis
-                  mirror={mobile}
-                  tickMargin={mobile ? 8 : 5}
-                  tickFormatter={percentage}
-                  tick={mobile ? <MobileYAxisTick formatter={percentage} /> : { fill: 'var(--text-3)', fontSize: 11 }}
-                  width={mobile ? 1 : 68}
-                  domain={[(min: number) => Math.min(0, min), (max: number) => Math.max(0, max)]}
+                }
+              />
+              {renderType === 'bar' ? (
+                <Bar dataKey={key} name={yieldLabel} fill={color} maxBarSize={32} isAnimationActive={false} />
+              ) : (
+                <Line
+                  type="linear"
+                  dataKey={key}
+                  name={yieldLabel}
+                  stroke={color}
+                  strokeWidth={2}
+                  dot={false}
+                  connectNulls={false}
+                  isAnimationActive={false}
                 />
-              </ComposedChart>
-            </ResponsiveContainer>
-          </div>
-          {available < data.length && (
-            <p className="text-dim">
-              {data.length - available} periods have unavailable {yieldLabel.toLowerCase()}. Gaps indicate missing{' '}
-              {earnings ? 'net yield' : 'fees'}, missing daily TVL, or zero average TVL.
-            </p>
-          )}
-        </>
+              )}
+
+              <YAxis
+                mirror={mobile}
+                tickMargin={mobile ? 8 : 5}
+                tickFormatter={percentage}
+                tick={mobile ? <MobileYAxisTick formatter={percentage} /> : { fill: 'var(--text-3)', fontSize: 11 }}
+                width={mobile ? 1 : 68}
+                domain={[(min: number) => Math.min(0, min), (max: number) => Math.max(0, max)]}
+              />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
       )}
     </section>
   )
