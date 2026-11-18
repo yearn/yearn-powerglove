@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import type { VaultListData } from '@/components/vaults-list/VaultRow'
 import { CHAIN_ID_TO_ICON, CHAIN_ID_TO_NAME } from '@/constants/chains'
-import { buildPairedApyDisplay, getEstimatedApySourceLabel } from '@/lib/apy-display'
+import { buildPairedApyDisplay, buildSingleApyDisplay, getEstimatedApySourceLabel } from '@/lib/apy-display'
 import { formatApyDisplay, formatTvlDisplay, normalizeApyDisplayValue } from '@/lib/formatters'
 import { buildKatanaApyDisplay, getThirtyDayDisplayApy, KATANA_CHAIN_ID } from '@/lib/katana-apy'
 import { lastSimulationPoint } from '@/lib/tranche-mock-data'

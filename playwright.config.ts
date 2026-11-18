@@ -1,5 +1,5 @@
-import { defineConfig, devices } from '@playwright/test'
 import { existsSync } from 'node:fs'
+import { defineConfig, devices } from '@playwright/test'
 
 const managedChrome = '/opt/hermes-browsers/156.0.8078.80/chrome-linux64/chrome'
 
