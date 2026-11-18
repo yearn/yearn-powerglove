@@ -65,6 +65,10 @@
       "destination": "/api/yearn-data?__statsPath=/api/comparison/defillama-comparable"
     },
     {
+      "source": "/vaults/:chainId([1-9][0-9]*)/:address(0x[a-fA-F0-9]{40}){/}?",
+      "destination": "/api/vault-page?chainId=:chainId&address=:address"
+    },
+    {
       "source": "/((?!api/).*)",
       "destination": "/"
     }
@@ -74,6 +78,9 @@
     "deploymentEnabled": false
   },
   "functions": {
+    "api/vault-page.ts": {
+      "includeFiles": "dist/index.html"
+    },
     "api/yearn-data.ts": {
       "maxDuration": 60
     }

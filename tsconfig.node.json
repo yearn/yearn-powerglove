@@ -8,5 +8,11 @@
     "allowSyntheticDefaultImports": true,
     "types": ["node"]
   },
-  "include": ["vite.config.ts", "api/yearn-data.ts", "src/lib/fee-api-contract.ts", "src/lib/harvest-api-contract.ts"]
+  "include": [
+    "vite.config.ts",
+    "api/yearn-data.ts",
+    "api/vault-page.ts",
+    "src/lib/fee-api-contract.ts",
+    "src/lib/harvest-api-contract.ts"
+  ]
 }
