@@ -152,8 +152,8 @@ export function SimulatedTranchePage({ tranche }: { tranche: TrancheId }) {
         }
         strategies={<OriginalVaultPanel section="strategies" />}
         vaultActivity={<OriginalVaultPanel section="activity" />}
+        footer={<SimulationSummary />}
       />
-      <SimulationSummary />
     </VaultPageLayout>
   )
 }

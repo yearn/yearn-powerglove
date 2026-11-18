@@ -1,6 +1,12 @@
-import { render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { render, screen, within } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { SimulatedTranchePage } from './SimulatedTranchePage'
+
+const viewport = vi.hoisted(() => ({ mobile: false }))
+vi.mock('@/components/ui/use-mobile', () => ({ useIsMobile: () => viewport.mobile }))
+afterEach(() => {
+  viewport.mobile = false
+})
 
 vi.mock('@/hooks/useVaultPageData', () => ({
   useVaultPageData: () => ({ vaultDetails: null, hasErrors: true, isInitialLoading: false })
@@ -13,6 +19,17 @@ vi.mock('@tanstack/react-query', () => ({
 }))
 
 describe('frozen tranche pages', () => {
+  it.each(['senior', 'junior', 'equity'] as const)(
+    'keeps %s migration results in the scrollable mobile page',
+    (tranche) => {
+      viewport.mobile = true
+      render(<SimulatedTranchePage tranche={tranche} />)
+      const page = screen.getByTestId('standard-vault-page')
+      const summary = within(page).getByRole('heading', { name: 'Simulated migration · August 1 – November 1, 2026' })
+      expect(summary.closest('.overflow-y-auto')).toBeTruthy()
+      expect(within(page).getByRole('columnheader', { name: 'Unlocked return' })).toBeTruthy()
+    }
+  )
   it.each([
     { tranche: 'senior' as const, name: 'Senior yvUSD', tvl: '$8,928,927.29' },
     { tranche: 'junior' as const, name: 'Junior yvUSD', tvl: '$5,324,549.19' },

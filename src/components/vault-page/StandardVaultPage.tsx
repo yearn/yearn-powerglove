@@ -29,9 +29,17 @@ type StandardVaultPageProps = {
   charts: ReactNode
   strategies: ReactNode
   vaultActivity: ReactNode
+  footer?: ReactNode
 }
 
-export function StandardVaultPage({ mainInfo, showAction, charts, strategies, vaultActivity }: StandardVaultPageProps) {
+export function StandardVaultPage({
+  mainInfo,
+  showAction,
+  charts,
+  strategies,
+  vaultActivity,
+  footer
+}: StandardVaultPageProps) {
   const isMobile = useIsMobile()
   const [expanded, setExpanded] = useState(() => {
     const hash = window.location.hash.replace('#vault-', '')
@@ -88,6 +96,7 @@ export function StandardVaultPage({ mainInfo, showAction, charts, strategies, va
           <section id={getVaultReportSectionId('vault', 'overview')}>
             <MainInfoPanel {...mainInfo} showAction={showAction} showIdentity={false} />
           </section>
+          {footer}
         </div>
         <div className="shrink-0 border-x border-b border-border pb-[env(safe-area-inset-bottom)]">
           {visibleSections
@@ -204,26 +213,29 @@ export function StandardVaultPage({ mainInfo, showAction, charts, strategies, va
   }
 
   return (
-    <div ref={pageRef} className="vault-ledger bg-white text-[#151515]" data-testid="standard-vault-page">
-      <VaultStickyTitle vaultName={mainInfo.vaultName} />
-      <section id={getVaultReportSectionId('vault', 'overview')} className="scroll-mt-28 bg-white">
-        <MainInfoPanel {...mainInfo} showAction={showAction} />
-      </section>
-      <VaultReportNavigation ariaLabel="Vault report sections" prefix="vault" sections={visibleSections} />
-      {visibleSections
-        .filter((section) => section.id !== 'overview')
-        .map((section) => (
-          <section
-            key={section.id}
-            id={getVaultReportSectionId('vault', section.id)}
-            className="scroll-mt-28 border-x border-b border-[#d8d8d8] bg-white last:border-b-0"
-          >
-            <div className="px-4 pb-2 pt-12 sm:px-6 lg:px-8">
-              <h2 className="text-2xl font-bold tracking-[-0.025em] text-[#111] sm:text-3xl">{section.label}</h2>
-            </div>
-            {content[section.id]}
-          </section>
-        ))}
-    </div>
+    <>
+      <div ref={pageRef} className="vault-ledger bg-white text-[#151515]" data-testid="standard-vault-page">
+        <VaultStickyTitle vaultName={mainInfo.vaultName} />
+        <section id={getVaultReportSectionId('vault', 'overview')} className="scroll-mt-28 bg-white">
+          <MainInfoPanel {...mainInfo} showAction={showAction} />
+        </section>
+        <VaultReportNavigation ariaLabel="Vault report sections" prefix="vault" sections={visibleSections} />
+        {visibleSections
+          .filter((section) => section.id !== 'overview')
+          .map((section) => (
+            <section
+              key={section.id}
+              id={getVaultReportSectionId('vault', section.id)}
+              className="scroll-mt-28 border-x border-b border-[#d8d8d8] bg-white last:border-b-0"
+            >
+              <div className="px-4 pb-2 pt-12 sm:px-6 lg:px-8">
+                <h2 className="text-2xl font-bold tracking-[-0.025em] text-[#111] sm:text-3xl">{section.label}</h2>
+              </div>
+              {content[section.id]}
+            </section>
+          ))}
+      </div>
+      {footer}
+    </>
   )
 }
