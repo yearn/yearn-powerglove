@@ -315,13 +315,6 @@ function alignStateStrategyOrder(
   }
 }
 
-function alignChronologicalStateStrategies(states: readonly ReallocationState[]): ReallocationState[] {
-  return states.reduce((orderedStates, state) => {
-    orderedStates.push(alignStateStrategyOrder(orderedStates[orderedStates.length - 1], state))
-    return orderedStates
-  }, [] as ReallocationState[])
-}
-
 function buildStateAllocationMap(state: ReallocationState): Map<string, number> {
   return state.strategies.reduce((allocationByStrategyKey, strategy) => {
     const nextAllocationByStrategyKey = new Map(allocationByStrategyKey)
@@ -528,24 +521,32 @@ export function formatReallocationTimestamp(timestamp: string | null): string {
 export function getReallocationPanelLabels(panel: Pick<ReallocationPanel, 'kind'>): {
   beforeLabel: string
   afterLabel: string
+  beforeAprLabel: string
+  afterAprLabel: string
 } {
-  if (panel.kind === 'proposal') {
+  if (panel.kind === 'proposal' || panel.kind === 'historical') {
     return {
       beforeLabel: 'Current',
-      afterLabel: 'Proposed'
+      afterLabel: 'Proposed',
+      beforeAprLabel: 'APR at current debt',
+      afterAprLabel: 'APR at target debt'
     }
   }
 
   if (panel.kind === 'current') {
     return {
       beforeLabel: 'Last Seen',
-      afterLabel: 'Current'
+      afterLabel: 'Current',
+      beforeAprLabel: 'Last Seen APR',
+      afterAprLabel: 'Current APR'
     }
   }
 
   return {
     beforeLabel: 'Before',
-    afterLabel: 'After'
+    afterLabel: 'After',
+    beforeAprLabel: 'Before APR',
+    afterAprLabel: 'After APR'
   }
 }
 
@@ -555,23 +556,33 @@ export function buildReallocationPanels(
 ): ReallocationPanel[] {
   const dedupedHistory = dedupeHistory(changes)
   const chronologicalHistory = dedupedHistory.slice().reverse()
-  const chronologicalSnapshotStates = alignChronologicalStateStrategies(chronologicalHistory.map(buildSnapshotState))
+  const historicalPanels = chronologicalHistory.reduce(
+    (state, change) => {
+      const beforeState = alignStateStrategyOrder(state.previousBeforeState, buildSnapshotState(change))
+      const afterState = alignStateStrategyOrder(beforeState, buildProposalState(change))
 
-  const historicalPanels = chronologicalSnapshotStates.slice(1).map((afterState, index) => {
-    const beforeState = chronologicalSnapshotStates[index]
-
-    return {
-      id: `historical:${beforeState.id}->${afterState.id}`,
-      beforeState,
-      afterState,
-      beforeTimestampUtc: beforeState.timestampUtc,
-      afterTimestampUtc: afterState.timestampUtc,
-      kind: 'historical' as const
+      return {
+        previousBeforeState: beforeState,
+        panels: [
+          ...state.panels,
+          {
+            id: `historical:${change.sourceKey}`,
+            beforeState,
+            afterState,
+            beforeTimestampUtc: change.timestampUtc,
+            afterTimestampUtc: change.timestampUtc,
+            kind: 'historical' as const
+          }
+        ]
+      }
+    },
+    {
+      previousBeforeState: undefined as ReallocationState | undefined,
+      panels: [] as ReallocationPanel[]
     }
-  })
+  ).panels
 
-  const latestChange = dedupedHistory[0]
-  const latestSnapshotState = chronologicalSnapshotStates[chronologicalSnapshotStates.length - 1]
+  const latestSnapshotState = historicalPanels[historicalPanels.length - 1]?.beforeState
   const currentPanel =
     latestSnapshotState && currentAllocation
       ? (() => {
@@ -590,53 +601,14 @@ export function buildReallocationPanels(
           }
         })()
       : null
-  const proposalPanel = latestChange
-    ? latestSnapshotState
-      ? [
-          {
-            id: `proposal:${latestChange.sourceKey}`,
-            beforeState: latestSnapshotState,
-            afterState: alignStateStrategyOrder(latestSnapshotState, buildProposalState(latestChange)),
-            beforeTimestampUtc: latestSnapshotState.timestampUtc,
-            afterTimestampUtc: latestChange.timestampUtc,
-            kind: 'proposal' as const
-          }
-        ]
-      : []
-    : []
 
   const currentMatchesLatestSnapshot = currentPanel
     ? statesMatch(currentPanel.beforeState, currentPanel.afterState)
     : false
-  const adjustedHistoricalPanels =
-    currentMatchesLatestSnapshot && historicalPanels.length > 0 && currentAllocation
-      ? historicalPanels.map((panel, index) => {
-          if (index !== historicalPanels.length - 1) {
-            return panel
-          }
+  const terminalPanels =
+    currentPanel && !currentMatchesLatestSnapshot && panelHasAllocations(currentPanel) ? [currentPanel] : []
 
-          return {
-            ...panel,
-            afterState: {
-              ...panel.afterState,
-              timestampUtc: currentAllocation.timestampUtc,
-              tvl: currentAllocation.tvl,
-              tvlUnit: currentAllocation.tvlUnit,
-              vaultAprPct: currentAllocation.vaultAprPct
-            },
-            afterTimestampUtc: currentAllocation.timestampUtc
-          }
-        })
-      : historicalPanels
-  const terminalPanels = currentPanel
-    ? currentMatchesLatestSnapshot
-      ? historicalPanels.length > 0
-        ? []
-        : [currentPanel]
-      : [currentPanel]
-    : proposalPanel
-
-  return [...adjustedHistoricalPanels, ...terminalPanels].filter(panelHasAllocations)
+  return [...historicalPanels, ...terminalPanels]
 }
 
 export function buildColorByStrategyKey(panels: readonly ReallocationPanel[]): string[] {
