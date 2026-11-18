@@ -15,8 +15,15 @@ import { cn } from '@/lib/utils'
 import type { ReallocationData } from '@/types/reallocationTypes'
 import type { VaultExtended } from '@/types/vaultTypes'
 import type { ChainId } from '../../constants/chains'
+import { PendingTimelockStrategies } from './PendingTimelockStrategies'
 import { StrategyAllocationChart } from './StrategyAllocationChart'
 import { StrategyTable } from './StrategyTable'
+
+const TvlFlowGraphTool = React.lazy(() =>
+  import('@/components/landing/native-stats/TvlFlowGraphTool').then(({ TvlFlowGraphTool: Component }) => ({
+    default: Component
+  }))
+)
 
 interface StrategiesPanelProps {
   vaultChainId: ChainId
@@ -30,6 +37,26 @@ export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
     const strategiesData = useStrategiesData(vaultChainId, vaultDetails)
     const sortingState = useSortingAndFiltering(strategiesData.strategies)
 
+    const tvlFlowStrategyMetadata = React.useMemo(
+      () =>
+        strategiesData.strategies.map((strategy) => ({
+          address: strategy.details.vaultAddress,
+          chainId: Number(strategy.details.chainId),
+          name: strategy.name
+        })),
+      [strategiesData.strategies]
+    )
+
+    const pendingRows = (
+      <PendingTimelockStrategies
+        chainId={vaultChainId}
+        vaultAddress={vaultDetails.address}
+        decimals={vaultDetails.asset.decimals}
+        symbol={vaultDetails.asset.symbol}
+        enabled={vaultDetails.apiVersion?.startsWith('3.') ?? false}
+      />
+    )
+
     // UI state
     const [expandedRows, setExpandedRows] = useState<Set<number>>(() => new Set())
     const [activeMainTab, setActiveMainTab] = useState<string>('Current Strategy Allocations')
@@ -41,7 +68,7 @@ export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
       ? reallocationData.panels[reallocationData.panels.length - 1]?.id
       : undefined
     const mainTabs = React.useMemo(() => {
-      const list: string[] = ['Current Strategy Allocations']
+      const list: string[] = ['Current Strategy Allocations', 'TVL Flow']
       if (hasReallocation) list.push('Current Reallocation')
       return list
     }, [hasReallocation])
@@ -121,6 +148,22 @@ export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
 
     const renderMainTabContent = () => {
       switch (activeMainTab) {
+        case 'TVL Flow':
+          return (
+            <React.Suspense
+              fallback={
+                <div className="flex min-h-[320px] items-center justify-center px-4 py-8 text-sm text-[#808080]">
+                  Loading TVL flow...
+                </div>
+              }
+            >
+              <TvlFlowGraphTool
+                embedded
+                strategyMetadata={tvlFlowStrategyMetadata}
+                vault={{ address: vaultDetails.address, chainId: Number(vaultChainId) }}
+              />
+            </React.Suspense>
+          )
         case 'Current Strategy Allocations': {
           if (strategiesData.isLoading) {
             return <StrategiesSkeleton />
@@ -156,6 +199,7 @@ export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
 
               <div className="w-full min-[900px]:order-1 min-[900px]:min-w-0 min-[900px]:basis-3/4">
                 <StrategyTable
+                  pendingRows={pendingRows}
                   allocatedStrategies={sortingState.allocatedStrategies}
                   unallocatedStrategies={sortingState.unallocatedStrategies}
                   sortColumn={sortingState.sortColumn}
@@ -239,7 +283,7 @@ export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
 
     return (
       <div className="w-full">
-        <div className="mx-auto w-full border-b border-border bg-white">
+        <div className="mx-auto w-full bg-white">
           <div className="flex items-center overflow-x-auto border-b border-border">
             {mainTabs.map((tab) => (
               <button
@@ -258,6 +302,9 @@ export const StrategiesPanel: React.FC<StrategiesPanelProps> = React.memo(
           </div>
 
           {renderMainTabContent()}
+          {activeMainTab === 'Current Strategy Allocations' && !sortingState.sortedStrategies?.length
+            ? pendingRows
+            : null}
         </div>
       </div>
     )

@@ -20,7 +20,6 @@ vi.mock('@/components/vault-events', () => ({
 }))
 
 vi.mock('@/components/vault-page', () => ({
-  VaultPageBreadcrumb: ({ vaultName }: { vaultName: string }) => <div>{vaultName}</div>,
   VaultPageLayout: ({ children }: { children: ReactNode }) => <div>{children}</div>
 }))
 

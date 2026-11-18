@@ -61,6 +61,9 @@ body {
 }
 
 @layer base {
+  html {
+    scrollbar-gutter: stable;
+  }
   :root {
     --background: 0 0% 100%;
     --foreground: 0 0% 3.9%;
@@ -176,5 +179,54 @@ body {
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@keyframes vault-filter-reveal {
+  from {
+    opacity: 0;
+    transform: translateX(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .vault-filter-selectors {
+    animation: vault-filter-reveal 160ms ease-out;
+  }
+}
+
+@keyframes vault-filter-reveal-down {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .vault-filter-selectors-below {
+    animation-name: vault-filter-reveal-down;
+  }
+}
+
+@keyframes vault-filter-row-expand {
+  from {
+    grid-template-rows: 0fr;
+  }
+  to {
+    grid-template-rows: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .vault-filter-row-expansion {
+    animation: vault-filter-row-expand 160ms ease-out;
   }
 }

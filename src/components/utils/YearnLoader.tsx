@@ -15,6 +15,25 @@ interface YearnLoaderProps {
   showProgress?: boolean // Show loading progress
 }
 
+export function YearnSpinner({ size = 64 }: { size?: number }) {
+  return (
+    <div
+      aria-hidden="true"
+      className="relative flex shrink-0 items-center justify-center"
+      style={{ width: size, height: size }}
+    >
+      <div className="absolute inset-0 rounded-full border-2 border-t-transparent border-[#0657F9] animate-spin" />
+      <img
+        src="/logo.svg"
+        alt=""
+        width={Math.round(size * 0.78)}
+        height={Math.round(size * 0.78)}
+        className="relative z-10"
+      />
+    </div>
+  )
+}
+
 const YearnLoader: React.FC<YearnLoaderProps> = ({ loadingState, enhancedLoadingState, showProgress = false }) => {
   // Calculate loading progress
   const getLoadingProgress = () => {
@@ -41,11 +60,7 @@ const YearnLoader: React.FC<YearnLoaderProps> = ({ loadingState, enhancedLoading
 
   return (
     <div className="fixed inset-0 flex flex-col items-center justify-center">
-      <div className="relative flex items-center justify-center w-16 h-16">
-        {/* Spinning border circles around the logo */}
-        <div className="absolute inset-0 w-16 h-16 border-2 border-t-transparent border-[#0657F9] rounded-full animate-spin"></div>
-        <img src="/logo.svg" alt="Yearn Finance Logo" width={50} height={50} className="z-10 mx-auto" />
-      </div>
+      <YearnSpinner />
       <div className="mt-4 text-base text-[#0657F9] font-medium text-center">{getLoadingMessage()}</div>
       {showProgress && enhancedLoadingState && (
         <div className="mt-2 w-48">

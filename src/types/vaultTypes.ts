@@ -34,6 +34,7 @@ export type VaultSimple = {
     decimals: number
     address: string
   }
+  isRetired?: boolean
   apiVersion?: string
   pricePerShare: number
   apy?: {

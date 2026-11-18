@@ -41,7 +41,6 @@ export const VaultManagementEventsPanel: React.FC<VaultManagementEventsPanelProp
     const {
       allEvents,
       allEventCount,
-      isTruncated,
       countsByType,
       availableEventTypeOptions,
       isLoading,
@@ -72,7 +71,6 @@ export const VaultManagementEventsPanel: React.FC<VaultManagementEventsPanelProp
       staleTime: 60 * 1000
     })
     const userEvents = userEventsResult?.events ?? []
-    const hasTruncatedHistory = isTruncated || Boolean(userEventsResult?.isTruncated)
 
     const baseStrategyNamesByAddress = React.useMemo(() => {
       const byAddress: Record<string, string> = {}
@@ -201,9 +199,6 @@ export const VaultManagementEventsPanel: React.FC<VaultManagementEventsPanelProp
                 <span className="font-semibold text-black">{activeTypeCount}</span> matching current filter
               </span>
             ) : null}
-            {hasTruncatedHistory ? (
-              <span className="font-semibold text-amber-700">Showing a partial history capped to recent events</span>
-            ) : null}
           </div>
           <div className="flex-1" />
           <div className="flex flex-wrap items-center gap-3 sm:justify-end">
@@ -233,7 +228,7 @@ export const VaultManagementEventsPanel: React.FC<VaultManagementEventsPanelProp
             <p className="text-sm text-gray-500">No management events match the selected filter.</p>
           </div>
         ) : (
-          <div className="overflow-hidden border-y border-border bg-white">
+          <div data-vault-activity-rows className="overflow-hidden border-y border-border bg-white">
             {paginatedTimelineItems.map((item) =>
               item.kind === 'reallocation' ? (
                 <VaultDebtReallocationRow

@@ -124,3 +124,11 @@ export function getVaultDisplayType(vault: Pick<Vault, 'apiVersion' | 'name' | '
 
   return 'External Vault'
 }
+
+/** Product labels for the vault listing, independent of API generation. */
+export function getVaultListType(vault: Pick<Vault, 'apiVersion' | 'name' | 'vaultType'>): string {
+  const type = getVaultDisplayType(vault)
+  if (type === 'Allocator Vault' || type === 'Legacy Vault') return 'Single Asset'
+  if (type === 'Strategy Vault') return 'Tokenized Strategy'
+  return type
+}

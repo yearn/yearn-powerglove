@@ -144,7 +144,7 @@ const isV3Vault = (apiVersion?: string | null, explicitV3?: boolean): boolean =>
   return version.startsWith('3') || version.startsWith('~3')
 }
 
-const deriveVaultType = ({
+export const deriveVaultType = ({
   vaultType,
   kind,
   type,
@@ -511,6 +511,7 @@ export const mapKongListItemToVault = (item: KongVaultListItem): Vault => {
       decimals: resolveDecimals(item.asset?.decimals, item.decimals),
       address: normalizeAddress(item.asset?.address)
     },
+    isRetired: item.isRetired,
     apiVersion: item.apiVersion ?? (v3 ? '3' : ''),
     pricePerShare: 0,
     apy: {

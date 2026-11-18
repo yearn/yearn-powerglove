@@ -34,7 +34,6 @@ export const VaultEventsPanel: React.FC<VaultEventsPanelProps> = React.memo(
       depositCount,
       withdrawCount,
       transferCount,
-      isTruncated,
       isLoading,
       error,
       eventType,
@@ -77,7 +76,6 @@ export const VaultEventsPanel: React.FC<VaultEventsPanelProps> = React.memo(
             <span>
               <span className="font-semibold text-black">{transferCount}</span> transfers
             </span>
-            {isTruncated ? <span className="font-semibold text-amber-700">Recent events only</span> : null}
           </div>
           <div className="flex-1" />
           <div className="flex flex-wrap items-center gap-3 sm:justify-end">
@@ -107,7 +105,7 @@ export const VaultEventsPanel: React.FC<VaultEventsPanelProps> = React.memo(
             <p className="text-gray-500 text-sm">No events match the selected filter.</p>
           </div>
         ) : (
-          <div className="overflow-hidden border-y border-border bg-white">
+          <div data-vault-activity-rows className="overflow-hidden border-y border-border bg-white">
             {events.map((event) => (
               <VaultEventRow
                 key={event.id}

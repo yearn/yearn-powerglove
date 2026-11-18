@@ -1,11 +1,12 @@
 {
   "compilerOptions": {
     "composite": true,
+    "outDir": "node_modules/.tmp/tsconfig-node",
     "skipLibCheck": true,
     "module": "ESNext",
     "moduleResolution": "bundler",
     "allowSyntheticDefaultImports": true,
     "types": ["node"]
   },
-  "include": ["vite.config.ts"]
+  "include": ["vite.config.ts", "api/yearn-data.ts", "src/lib/fee-api-contract.ts", "src/lib/harvest-api-contract.ts"]
 }

@@ -5,9 +5,11 @@ export default function ScrollToTop() {
   const router = useRouter()
 
   useEffect(() => {
-    const unsubscribe = router.subscribe('onResolved', () => {
-      window.scrollTo(0, 0) // Scroll to the top of the page
-    }) // Specify 'navigate' as the event type
+    const unsubscribe = router.subscribe('onResolved', ({ fromLocation, toLocation }) => {
+      if (fromLocation?.pathname !== toLocation.pathname) {
+        window.scrollTo(0, 0)
+      }
+    })
 
     return () => unsubscribe() // Cleanup the subscription on unmount
   }, [router])

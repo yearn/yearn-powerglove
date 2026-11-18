@@ -1,5 +1,7 @@
 import { format, parseISO } from 'date-fns'
-import { useState } from 'react'
+import { TrendingUp } from 'lucide-react'
+import { useContext, useId, useState } from 'react'
+import { createPortal } from 'react-dom'
 import APYChart, { APYSeriesSelector, type APYVisibleSeries, buildApyVisibleSeries } from '@/components/charts/APYChart'
 import ChartSkeleton from '@/components/charts/ChartSkeleton'
 import ChartsLoader from '@/components/charts/ChartsLoader'
@@ -14,18 +16,22 @@ import PPSChart from '@/components/charts/PPSChart'
 import TVLChart from '@/components/charts/TVLChart'
 import YvUsdDualLineChart from '@/components/charts/YvUsdDualLineChart'
 import YvUsdTVLChart from '@/components/charts/YvUsdTVLChart'
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { Button } from '@/components/ui/button'
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger
-} from '@/components/ui/dialog'
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger
+} from '@/components/ui/drawer'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useIsMobile } from '@/components/ui/use-mobile'
 import { ChartErrorBoundary } from '@/components/utils/ErrorBoundary'
+import { PerformanceControlsContext } from '@/components/vault-page/PerformanceControlsContext'
 import type { aprApyChartData, ppsChartData, tvlChartData, yvUsdChartData } from '@/types/dataTypes'
 
 type ChartData = {
@@ -55,7 +61,7 @@ const chartTabs: Array<{
   {
     value: 'historical-apy',
     label: 'Historical Performance',
-    mobileLabel: 'Performance'
+    mobileLabel: 'APY'
   },
   {
     value: 'historical-pps',
@@ -158,7 +164,11 @@ function YvUsdScopeControl({
 
 export function ChartsPanel(data: ChartData) {
   const isMobile = useIsMobile()
+  const mobileTimeframeId = useId()
+  const performanceControls = useContext(PerformanceControlsContext)
+  const fitMobileDrawer = isMobile && Boolean(performanceControls?.closest('[role="dialog"]'))
   const [activeTab, setActiveTab] = useState<ChartTab>('historical-apy')
+  const [expandedMobileChart, setExpandedMobileChart] = useState('historical-apy')
   const {
     aprApyData,
     tvlData,
@@ -176,15 +186,16 @@ export function ChartsPanel(data: ChartData) {
     const label = `${format(parseISO(range.start), 'MMM d, yyyy')} – ${format(parseISO(range.end), 'MMM d, yyyy')}`
     setCustomDateRange(range)
     setTimeframe({ value: 'custom', label, mobileLabel: label })
-    setIsTimeframeDialogOpen(false)
+    setIsOptionsOpen(false)
   }
   const [apyVisibleSeries, setApyVisibleSeries] = useState<APYVisibleSeries | null>(null)
   const [yvUsdSeriesScope, setYvUsdSeriesScope] = useState<YvUsdSeriesScope>('both')
-  const [isTimeframeDialogOpen, setIsTimeframeDialogOpen] = useState(false)
+  const [showCustomTimeframe, setShowCustomTimeframe] = useState(false)
+  const [isOptionsOpen, setIsOptionsOpen] = useState(false)
 
   if (hasErrors) {
     return (
-      <div className="bg-white sm:border-x sm:border-border">
+      <div className="bg-white">
         <div className="flex h-96 items-center justify-center">
           <div className="text-red-500">Error loading chart data</div>
         </div>
@@ -254,7 +265,11 @@ export function ChartsPanel(data: ChartData) {
 
   const activeChartInfo = chartInfo[activeTab]
   const showGhostedOverlay = !isMobile
-  const chartHeightClassName = isMobile ? 'h-[260px]' : 'h-[320px] lg:h-[400px]'
+  const chartHeightClassName = fitMobileDrawer
+    ? 'h-full min-h-0'
+    : isMobile
+      ? 'h-[clamp(160px,calc(100dvh-22rem),260px)]'
+      : 'h-[320px] lg:h-[400px]'
   const desktopAlignedChartBottom = 16
   const chartOverlayYAxisWidthByTab = {
     'historical-apy': 60,
@@ -414,13 +429,6 @@ export function ChartsPanel(data: ChartData) {
     }
   })()
 
-  const mobileChartDescription = (
-    <div className="space-y-1">
-      <div className="text-sm font-medium">{activeChartInfo.title}</div>
-      <div className="text-xs text-gray-500">{activeChartInfo.mobileDescription}</div>
-    </div>
-  )
-
   const desktopChartDescription = (
     <div className="space-y-1">
       <div className="text-sm font-medium">{activeChartInfo.title}</div>
@@ -429,68 +437,75 @@ export function ChartsPanel(data: ChartData) {
   )
 
   const mobileChartControls = (
-    <div className="flex flex-col gap-4">
-      {hasYvUsdChartData && activeTab === 'historical-apy' ? (
-        <YvUsdScopeControl value={yvUsdSeriesScope} onChange={setYvUsdSeriesScope} />
-      ) : null}
-      <div className="w-full">
-        <Dialog open={isTimeframeDialogOpen} onOpenChange={setIsTimeframeDialogOpen}>
-          <DialogTrigger asChild>
-            <Button
-              variant="outline"
-              className="flex h-auto w-full flex-col items-start rounded-none border-border px-3 py-2 text-left"
+    <Drawer open={isOptionsOpen} onOpenChange={setIsOptionsOpen} shouldScaleBackground={false}>
+      <DrawerTrigger asChild>
+        <Button variant="outline" className="h-6 shrink-0 rounded-none px-2 py-0 text-xs">
+          Options
+        </Button>
+      </DrawerTrigger>
+      <DrawerContent className="max-h-[85dvh] bg-white">
+        <DrawerHeader>
+          <DrawerTitle>Chart options</DrawerTitle>
+          <DrawerDescription>Choose the timeframe and data shown in the chart.</DrawerDescription>
+        </DrawerHeader>
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 pb-2">
+          {hasYvUsdChartData && (isMobile || activeTab === 'historical-apy') ? (
+            <YvUsdScopeControl value={yvUsdSeriesScope} onChange={setYvUsdSeriesScope} />
+          ) : null}
+          <div className="space-y-2">
+            <label htmlFor={mobileTimeframeId} className="text-sm font-medium">
+              Timeframe
+            </label>
+            <select
+              id={mobileTimeframeId}
+              value={showCustomTimeframe ? 'custom' : timeframe.value}
+              onChange={(event) => {
+                const selected = timeframes.find((item) => item.value === event.target.value)
+                setShowCustomTimeframe(event.target.value === 'custom')
+                if (selected) setTimeframe(selected)
+              }}
+              className="h-10 w-full border border-border bg-white px-3 text-sm"
             >
-              <span className="text-[11px] font-medium uppercase tracking-[0.08em] text-gray-500">Timeframe</span>
-              <span className="text-sm text-foreground">{timeframe.mobileLabel}</span>
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-[calc(100vw-2rem)] rounded-lg p-4 sm:max-w-sm">
-            <DialogHeader>
-              <DialogTitle>Timeframe</DialogTitle>
-              <DialogDescription>Choose the time window for the active chart.</DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-2">
-              {timeframes.map((tf) => (
-                <button
-                  key={tf.value}
-                  type="button"
-                  onClick={() => {
-                    setTimeframe(tf)
-                    setIsTimeframeDialogOpen(false)
-                  }}
-                  className={`rounded-none border px-3 py-3 text-left text-sm font-medium transition-colors ${
-                    timeframe.value === tf.value
-                      ? 'border-[#0657f9] bg-[#0657f9]/5 text-[#0657f9]'
-                      : 'border-border text-foreground hover:bg-gray-50'
-                  }`}
-                >
-                  {tf.label}
-                </button>
+              {timeframes.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.label}
+                </option>
               ))}
+              <option value="custom">Custom</option>
+            </select>
+            {showCustomTimeframe || timeframe.value === 'custom' ? (
               <CustomTimeframePicker
                 value={customDateRange}
                 active={timeframe.value === 'custom'}
                 onApply={applyCustomRange}
-                className={`rounded-none border px-3 py-3 text-left text-sm font-medium transition-colors ${timeframe.value === 'custom' ? 'border-[#0657f9] bg-[#0657f9]/5 text-[#0657f9]' : 'border-border text-foreground hover:bg-gray-50'}`}
+                className="w-full border border-border px-3 py-2 text-sm"
               />
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
-      {activeTab === 'historical-apy' ? (
-        <APYSeriesSelector
-          visibleSeries={resolvedApyVisibleSeries}
-          onVisibleSeriesChange={setApyVisibleSeries}
-          historicalApySeries={historicalApySeries}
-          lockedHistoricalApySeries={lockedHistoricalApySeries}
-          hasOracleApy={hasOracleApy}
-          hasOracleApy30dAvg={hasOracleApy30dAvg}
-          hasYBoldEstimatedApy={hasYBoldEstimatedApy}
-          hasEstimatedApy={hasEstimatedApy}
-          hasEstimatedApy30dAvg={hasEstimatedApy30dAvg}
-        />
-      ) : null}
-    </div>
+            ) : null}
+          </div>
+          {isMobile || activeTab === 'historical-apy' ? (
+            <APYSeriesSelector
+              inline
+              visibleSeries={resolvedApyVisibleSeries}
+              onVisibleSeriesChange={setApyVisibleSeries}
+              historicalApySeries={historicalApySeries}
+              lockedHistoricalApySeries={lockedHistoricalApySeries}
+              hasOracleApy={hasOracleApy}
+              hasOracleApy30dAvg={hasOracleApy30dAvg}
+              hasYBoldEstimatedApy={hasYBoldEstimatedApy}
+              hasEstimatedApy={hasEstimatedApy}
+              hasEstimatedApy30dAvg={hasEstimatedApy30dAvg}
+            />
+          ) : null}
+        </div>
+        <DrawerFooter>
+          <DrawerClose asChild>
+            <Button variant="outline" className="rounded-none">
+              Done
+            </Button>
+          </DrawerClose>
+        </DrawerFooter>
+      </DrawerContent>
+    </Drawer>
   )
 
   const desktopChartControls = (
@@ -550,41 +565,51 @@ export function ChartsPanel(data: ChartData) {
 
   if (isMobile) {
     return (
-      <div className="bg-white border-x border-border">
-        <Tabs
-          value={activeTab}
-          className="w-full"
+      <div className={fitMobileDrawer ? 'flex h-full min-h-0 flex-col bg-white' : 'bg-white'}>
+        {performanceControls ? (
+          createPortal(mobileChartControls, performanceControls)
+        ) : (
+          <div className="flex justify-end px-4 py-3">{mobileChartControls}</div>
+        )}
+        <Accordion
+          className={fitMobileDrawer ? 'flex min-h-0 flex-1 flex-col' : undefined}
+          type="single"
+          value={expandedMobileChart}
           onValueChange={(value) => {
-            setActiveTab(value as ChartTab)
+            setExpandedMobileChart(value)
+            if (value) setActiveTab(value as ChartTab)
           }}
         >
-          <div className="border-b border-border">
-            <div className="px-4 sm:px-6">
-              <TabsList className="grid h-auto w-full grid-cols-3 gap-0 bg-transparent p-0">
-                {chartTabs.map((tab) => (
-                  <TabsTrigger
-                    key={tab.value}
-                    value={tab.value}
-                    className="flex min-w-0 rounded-none border border-border px-2 py-3 text-center text-sm data-[state=active]:border-[#0657f9] data-[state=active]:bg-[#0657f9]/5 data-[state=active]:text-foreground data-[state=active]:shadow-none sm:border-x-0 sm:border-t-0 sm:border-b-2 sm:px-4"
-                  >
-                    {tab.mobileLabel}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </div>
-          </div>
-          <div className="space-y-4 p-4 sm:p-6">
-            <div className="border-b border-border pb-4">{mobileChartDescription}</div>
-            {chartTabContent}
-            {mobileChartControls}
-          </div>
-        </Tabs>
+          {chartTabs.map((tab) => (
+            <AccordionItem
+              key={tab.value}
+              value={tab.value}
+              className={`border-t border-border [&:not(:last-child)]:border-b-0 ${fitMobileDrawer ? 'flex min-h-0 flex-col [&>h3]:shrink-0 data-[state=open]:flex-1 data-[state=closed]:shrink-0' : ''}`}
+            >
+              <AccordionTrigger className="pl-8 pr-4 py-3 text-sm text-left transition-none [&>svg]:transition-none hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0657f9]">
+                <span className="flex items-center gap-2">
+                  <TrendingUp aria-hidden="true" className="h-4 w-4 shrink-0" />
+                  {tab.mobileLabel}
+                </span>
+              </AccordionTrigger>
+              <AccordionContent
+                animated={false}
+                containerClassName={fitMobileDrawer ? 'min-h-0 flex-1' : undefined}
+                className={fitMobileDrawer ? 'h-full pb-0' : 'pb-0'}
+              >
+                {expandedMobileChart === tab.value ? (
+                  <div className={fitMobileDrawer ? 'h-full min-h-0 p-3' : 'p-4'}>{chartBody}</div>
+                ) : null}
+              </AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
       </div>
     )
   }
 
   return (
-    <div className="bg-white border-x border-border">
+    <div className="bg-white">
       <Tabs
         value={activeTab}
         className="w-full"

@@ -13,26 +13,26 @@ const ChartSkeleton: React.FC = () => {
   ]
 
   return (
-    <div className="bg-white sm:border-x sm:border-border">
+    <div className="bg-white">
       <Tabs defaultValue="historical-apy" className="w-full">
-        <div className="border-b border-border">
+        <div className="sm:border-b sm:border-border">
           <div className="px-4 pt-4 sm:px-6">
             <TabsList className="grid w-full grid-cols-3 bg-transparent p-0">
               <TabsTrigger
                 value="historical-apy"
-                className="rounded-none border border-border px-2 py-3 text-xs data-[state=active]:border-[#0657f9] data-[state=active]:bg-transparent data-[state=active]:shadow-none sm:border-x-0 sm:border-t-0 sm:border-b-2 sm:px-4 sm:text-sm"
+                className="rounded-none border-b-2 border-r border-t border-border first:border-l px-2 py-3 text-xs data-[state=active]:border-[#0657f9] data-[state=active]:bg-transparent data-[state=active]:shadow-none sm:border-x-0 sm:border-t-0 sm:border-b-2 sm:px-4 sm:text-sm"
               >
                 Performance
               </TabsTrigger>
               <TabsTrigger
                 value="historical-pps"
-                className="rounded-none border border-border px-2 py-3 text-xs data-[state=active]:border-[#0657f9] data-[state=active]:bg-transparent data-[state=active]:shadow-none sm:border-x-0 sm:border-t-0 sm:border-b-2 sm:px-4 sm:text-sm"
+                className="rounded-none border-b-2 border-r border-t border-border first:border-l px-2 py-3 text-xs data-[state=active]:border-[#0657f9] data-[state=active]:bg-transparent data-[state=active]:shadow-none sm:border-x-0 sm:border-t-0 sm:border-b-2 sm:px-4 sm:text-sm"
               >
                 Share Growth
               </TabsTrigger>
               <TabsTrigger
                 value="historical-tvl"
-                className="rounded-none border border-border px-2 py-3 text-xs data-[state=active]:border-[#0657f9] data-[state=active]:bg-transparent data-[state=active]:shadow-none sm:border-x-0 sm:border-t-0 sm:border-b-2 sm:px-4 sm:text-sm"
+                className="rounded-none border-b-2 border-r border-t border-border first:border-l px-2 py-3 text-xs data-[state=active]:border-[#0657f9] data-[state=active]:bg-transparent data-[state=active]:shadow-none sm:border-x-0 sm:border-t-0 sm:border-b-2 sm:px-4 sm:text-sm"
               >
                 TVL
               </TabsTrigger>
