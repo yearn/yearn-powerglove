@@ -2,6 +2,7 @@ import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 import { defineConfig, loadEnv, type ProxyOptions } from 'vite'
+import vaultPage from './api/vault-page'
 import { proxyYearnData } from './api/yearn-data'
 
 const DEFAULT_YEARN_DATA_API = 'https://yearn-data-api-preview.vercel.app'
@@ -67,7 +68,17 @@ export default defineConfig(({ mode }) => {
         : {},
     preview: {
       allowedHosts,
-      proxy
+      proxy: {
+        ...proxy,
+        '^/vaults/[1-9][0-9]*/0x[a-fA-F0-9]{40}/?(?:\\?|$)': {
+          async bypass(req, res) {
+            if (!req.url || !res) return false
+            const [, , chainId, address] = req.url.split('?')[0].split('/')
+            await vaultPage({ method: req.method, query: { chainId, address } }, res)
+            return req.url
+          }
+        }
+      }
     }
   }
 })
