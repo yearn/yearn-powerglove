@@ -15,7 +15,8 @@
     "test:e2e": "playwright test",
     "preinstall": "node scripts/check-node-version.mjs",
     "pretest": "node scripts/check-node-version.mjs",
-    "pretest:watch": "node scripts/check-node-version.mjs"
+    "pretest:watch": "node scripts/check-node-version.mjs",
+    "simulate:tranches": "bun scripts/generate-tranche-simulation.ts"
   },
   "dependencies": {
     "@apollo/client": "4.3.3",

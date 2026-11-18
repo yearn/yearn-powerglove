@@ -1,4 +1,7 @@
+import { existsSync } from 'node:fs'
 import { defineConfig, devices } from '@playwright/test'
+
+const managedChrome = '/opt/hermes-browsers/156.0.8078.80/chrome-linux64/chrome'
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -10,7 +13,8 @@ export default defineConfig({
   use: {
     trace: 'on-first-retry',
     launchOptions: {
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
+      executablePath: existsSync(managedChrome) ? managedChrome : undefined,
+      chromiumSandbox: true
     }
   },
   projects: [

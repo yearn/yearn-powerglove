@@ -58,14 +58,14 @@ function Stat({ label, children, className = '' }: { label: string; children: Re
 export function VaultIdentity({
   data
 }: {
-  data: Pick<MainInfoPanelProps, 'vaultId' | 'deploymentDate' | 'vaultName' | 'apiVersion'>
+  data: Pick<MainInfoPanelProps, 'vaultId' | 'deploymentDate' | 'deploymentLabel' | 'vaultName' | 'apiVersion'>
 }) {
   return (
     <>
       <div className="mb-1 flex flex-wrap items-center gap-2 sm:mb-2">
         <div className="text-xs text-gray-500 sm:text-sm">{data.vaultId}</div>
         <div className="inline-block bg-gray-100 px-2 py-0.5 text-[10px] sm:py-1 sm:text-xs">
-          Deployed: {data.deploymentDate}
+          {data.deploymentLabel ?? 'Deployed'}: {data.deploymentDate}
         </div>
       </div>
       <div className="mb-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 sm:mb-2 sm:items-end sm:gap-3">
@@ -199,7 +199,7 @@ export function MainInfoPanel({
 
           <div className="w-full max-w-xl min-w-0 pt-2 sm:pt-3 min-[1100px]:col-start-1 min-[1100px]:row-start-2">
             <div className="grid min-w-0 grid-cols-3 content-start gap-x-2 gap-y-2 sm:gap-x-6 sm:gap-y-5">
-              <Stat label="Expected APY">
+              <Stat label={data.expectedApyLabel ?? 'Expected APY'}>
                 <ApyMetricValue metric={data.oneDayAPY} />
               </Stat>
               <Stat label="7-day APY">
@@ -208,7 +208,7 @@ export function MainInfoPanel({
               <Stat label="30-day APY">
                 <ApyMetricValue metric={data.thirtyDayAPY} />
               </Stat>
-              <Stat label="Total Supply">{renderTotalSupply('sm:hidden', 'hidden sm:inline')}</Stat>
+              <Stat label={data.tvlLabel ?? 'Total Supply'}>{renderTotalSupply('sm:hidden', 'hidden sm:inline')}</Stat>
               <Stat label="Management Fee">
                 <span className="tabular-nums">{data.managementFee}</span>
               </Stat>
@@ -217,7 +217,7 @@ export function MainInfoPanel({
               </Stat>
               <Stat label="Network">{network}</Stat>
               <Stat label="Vault Token">{vaultToken}</Stat>
-              <Stat label="Vault Address">{vaultAddress}</Stat>
+              <Stat label={data.vaultAddressLabel ?? 'Vault Address'}>{vaultAddress}</Stat>
             </div>
           </div>
 

@@ -1,0 +1,116 @@
+{
+  "label": "Actual strategy debt snapshot; unconfirmed dependency ratings and illustrative other risk inputs",
+  "cooldownWithdrawalsUsd": 150000,
+  "juniorWithdrawalsDue7dUsd": 150000,
+  "topThreeSeniorHoldingsUsd": 2500000,
+  "reliableYield": 0.064,
+  "lockedIncome60dUsd": 30000,
+  "instantCashAsSeniorShare": 0.085,
+  "cash24hUsd": 3000000,
+  "stressLossAsJuniorShare": 0.7,
+  "cooldownDays": 14,
+  "longestExitDays": 10,
+  "lossRecognitionDays": 7,
+  "newStrategyAmountUsd": 650000,
+  "newStrategyLossRate": 0.5,
+  "targetReviewDate": "2026-10-22",
+  "dependencies": [
+    {
+      "name": "Morpho",
+      "illustrativeRiskScore": 1,
+      "riskScore": null
+    },
+    {
+      "name": "Sky / USDS",
+      "illustrativeRiskScore": 1,
+      "riskScore": null
+    },
+    {
+      "name": "Pendle",
+      "illustrativeRiskScore": 3,
+      "riskScore": null
+    },
+    {
+      "name": "Katana / bridge",
+      "illustrativeRiskScore": 4,
+      "riskScore": null
+    },
+    {
+      "name": "USD3 issuer",
+      "illustrativeRiskScore": 5,
+      "riskScore": null
+    },
+    {
+      "name": "Grove",
+      "illustrativeRiskScore": 2,
+      "riskScore": null
+    },
+    {
+      "name": "Pawn Broker",
+      "illustrativeRiskScore": 3,
+      "riskScore": null
+    },
+    {
+      "name": "Cap / stcUSD",
+      "illustrativeRiskScore": 3,
+      "riskScore": null
+    }
+  ],
+  "strategyDependencies": {
+    "0x0e297de4005883c757c9f09fdf7cf1363c20e626": ["Morpho"],
+    "0xc5b16e7efe1ca05714477b8edcab4dee9b93a27c": ["Katana / bridge", "Morpho"],
+    "0xd362efc75ef1879f37a900823495f402cfdb0986": ["Pawn Broker", "Cap / stcUSD"],
+    "0x2df6c1602528de8b8a5c72baf6e70295b3a64142": ["Pendle", "Sky / USDS"],
+    "0x62ebe2ca290db3b649c390847f8204196771b438": ["Pendle", "USD3 issuer"],
+    "0xcadf62b59406a05754581c31c04f8f7b54af1e6e": ["Grove", "Sky / USDS"]
+  },
+  "dependencyLossPositions": {
+    "0x0e297de4005883c757c9f09fdf7cf1363c20e626": {
+      "leverage": null,
+      "exitDiscount": null,
+      "weights": {
+        "Morpho": null
+      }
+    },
+    "0xc5b16e7efe1ca05714477b8edcab4dee9b93a27c": {
+      "leverage": null,
+      "exitDiscount": null,
+      "weights": {
+        "Katana / bridge": null,
+        "Morpho": null
+      }
+    },
+    "0xd362efc75ef1879f37a900823495f402cfdb0986": {
+      "leverage": null,
+      "exitDiscount": null,
+      "weights": {
+        "Pawn Broker": null,
+        "Cap / stcUSD": null
+      }
+    },
+    "0x2df6c1602528de8b8a5c72baf6e70295b3a64142": {
+      "leverage": null,
+      "exitDiscount": null,
+      "weights": {
+        "Pendle": null,
+        "Sky / USDS": null
+      }
+    },
+    "0x62ebe2ca290db3b649c390847f8204196771b438": {
+      "leverage": null,
+      "exitDiscount": null,
+      "weights": {
+        "Pendle": null,
+        "USD3 issuer": null
+      }
+    },
+    "0xcadf62b59406a05754581c31c04f8f7b54af1e6e": {
+      "leverage": null,
+      "exitDiscount": null,
+      "weights": {
+        "Grove": null,
+        "Sky / USDS": null
+      }
+    }
+  }
+}

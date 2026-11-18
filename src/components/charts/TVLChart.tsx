@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react'
-import { Bar, CartesianGrid, ComposedChart, ResponsiveContainer, XAxis, YAxis } from 'recharts'
+import { Bar, CartesianGrid, ComposedChart, ReferenceLine, ResponsiveContainer, XAxis, YAxis } from 'recharts'
 import { type ChartTimeframe, filterChartTimeframe } from '@/components/charts/chart-utils'
 import { ChartContainer, ChartTooltip } from '@/components/ui/chart'
 import { useIsMobile } from '@/components/ui/use-mobile'
@@ -8,6 +8,7 @@ import type { ChartDataPoint } from '@/types/dataTypes'
 interface TVLChartProps {
   chartData: ChartDataPoint[]
   timeframe: ChartTimeframe
+  migrationDate?: string
   hideAxes?: boolean
   hideTooltip?: boolean
   chartMargin?: Partial<{
@@ -25,7 +26,7 @@ const formatTooltipValue = (value: unknown) => {
 }
 
 export const TVLChart: React.FC<TVLChartProps> = React.memo(
-  ({ chartData, timeframe, hideAxes, hideTooltip, chartMargin, yAxisWidth }) => {
+  ({ chartData, migrationDate, timeframe, hideAxes, hideTooltip, chartMargin, yAxisWidth }) => {
     const isMobile = useIsMobile()
     const filteredData = useMemo(() => filterChartTimeframe(chartData, timeframe), [chartData, timeframe])
     const chartBottomPadding = isMobile ? 12 : 16
@@ -49,6 +50,14 @@ export const TVLChart: React.FC<TVLChartProps> = React.memo(
             }}
           >
             <CartesianGrid vertical={false} />
+            {migrationDate && (
+              <ReferenceLine
+                x={migrationDate}
+                stroke="#777"
+                strokeDasharray="4 4"
+                label={{ value: 'Migration', position: 'insideTopRight', fontSize: 11 }}
+              />
+            )}
             <XAxis
               dataKey="date"
               minTickGap={isMobile ? 32 : 24}

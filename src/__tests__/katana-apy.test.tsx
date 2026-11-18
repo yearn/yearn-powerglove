@@ -32,26 +32,25 @@ describe('Katana APY parity with yearn.fi', () => {
     expect(details.apy?.monthlyNet).toBe(0.01)
     expect(vault.historicalMonthlyApy).toBe(0.01)
     const list = renderHook(() => useVaultListData([vault], []))
-    expect(list.result.current[0].estimatedAPY.display).toBe('12.00%')
-    expect(list.result.current[0].desktopThirtyDayAPY.display).toBe('10.00%')
-    expect(list.result.current[0].APY).toBe('10.0%')
-    expect(list.result.current[0].apySortValue).toBe(10)
-    expect(list.result.current[0].estimatedApySortValue).toBe(12)
+    const row = list.result.current.find((candidate) => candidate.id === vault.address)!
+    expect(row.estimatedAPY.display).toBe('12.00%')
+    expect(row.desktopThirtyDayAPY.display).toBe('10.00%')
+    expect(row.APY).toBe('10.0%')
+    expect(row.apySortValue).toBe(10)
+    expect(row.estimatedApySortValue).toBe(12)
     const summary = renderHook(() => useMainInfoPanelData({ vaultDetails: details, tokenAssets: [] }))
     expect(summary.result.current?.oneDayAPY.display).toBe('12.00%')
     expect(summary.result.current?.thirtyDayAPY.display).toBe('10.00%')
-    expect(list.result.current[0].estimatedAPY.tooltipItems).toEqual([
+    expect(row.estimatedAPY.tooltipItems).toEqual([
       { label: 'Native APY', value: '3.00%' },
       { label: 'Rewards APR', value: '9.00%' }
     ])
-    expect(list.result.current[0].desktopThirtyDayAPY.tooltipItems).toEqual([
+    expect(row.desktopThirtyDayAPY.tooltipItems).toEqual([
       { label: 'Native APY', value: '1.00%' },
       { label: 'Rewards APR', value: '9.00%' }
     ])
-    expect(summary.result.current?.oneDayAPY.tooltipItems).toEqual(list.result.current[0].estimatedAPY.tooltipItems)
-    expect(summary.result.current?.thirtyDayAPY.tooltipItems).toEqual(
-      list.result.current[0].desktopThirtyDayAPY.tooltipItems
-    )
+    expect(summary.result.current?.oneDayAPY.tooltipItems).toEqual(row.estimatedAPY.tooltipItems)
+    expect(summary.result.current?.thirtyDayAPY.tooltipItems).toEqual(row.desktopThirtyDayAPY.tooltipItems)
     expect(summary.result.current?.sevenDayAPY).toEqual({
       display: '11.00%',
       tooltipItems: [
